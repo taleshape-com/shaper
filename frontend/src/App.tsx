@@ -121,7 +121,7 @@ function App() {
     queries: [],
   });
   useEffect(() => {
-    fetch("http://localhost:1323/api/sample")
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/sample`)
       .then((response) => response.json())
       .then((fetchedData: Result) => {
         setData(fetchedData);

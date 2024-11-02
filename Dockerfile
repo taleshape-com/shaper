@@ -16,7 +16,7 @@ ENV GOARCH=amd64
 COPY . .
 
 # Build the binary
-RUN go build -a -ldflags "-w -extldflags '-static'" -o /usr/local/bin/shaper main.go
+RUN go build -a -ldflags "-w -extldflags '-static'" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
 
 FROM scratch
 
