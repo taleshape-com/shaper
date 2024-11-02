@@ -16,10 +16,10 @@ ENV GOARCH=amd64
 COPY . .
 
 # Build the binary
-RUN go build -a -ldflags "-w -extldflags '-static'" -o /usr/local/bin/duckshape main.go
+RUN go build -a -ldflags "-w -extldflags '-static'" -o /usr/local/bin/shaper main.go
 
 FROM scratch
 
-COPY --from=build /usr/local/bin/duckshape /usr/local/bin/duckshape
+COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
 
-CMD ["/usr/local/bin/duckshape"]
+CMD ["/usr/local/bin/shaper"]

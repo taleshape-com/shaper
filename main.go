@@ -4,11 +4,11 @@ package main
 
 import (
 	"context"
-	"duckshape/core"
-	"duckshape/server"
-	"duckshape/util/signals"
 	"log/slog"
 	"os"
+	"shaper/core"
+	"shaper/server"
+	"shaper/util/signals"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/marcboeker/go-duckdb"
@@ -20,7 +20,7 @@ func main() {
 
 func Run() func(context.Context) {
 	// connect to duckdb
-	db, err := sqlx.Connect("duckdb", "")
+	db, err := sqlx.Connect("duckdb", "warehouse.duckdb")
 	if err != nil {
 		panic(err)
 	}

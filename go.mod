@@ -1,4 +1,4 @@
-module duckshape
+module shaper
 
 go 1.23.1
 

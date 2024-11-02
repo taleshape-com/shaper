@@ -1,8 +1,8 @@
 package server
 
 import (
-	"duckshape/core"
-	"duckshape/server/handler"
+	"shaper/core"
+	"shaper/server/handler"
 
 	"github.com/labstack/echo/v4"
 )

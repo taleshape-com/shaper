@@ -6,13 +6,12 @@
 // TODO: metrics https://echo.labstack.com/docs/middleware/prometheus
 // TODO: rate limit https://echo.labstack.com/docs/middleware/rate-limiter
 // TODO: TLS https://echo.labstack.com/docs/cookbook/auto-tls#server
-// TODO: CORS https://echo.labstack.com/docs/cookbook/cors
 // TODO: embed and serve frontend https://echo.labstack.com/docs/cookbook/embed-resources
 package server
 
 import (
-	"duckshape/core"
 	"net/http"
+	"shaper/core"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -27,11 +26,17 @@ func Start(app *core.App) *echo.Echo {
 	// Middlewares
 	e.Use(slogecho.New(app.Logger))
 	e.Use(middleware.BodyLimit("2M"))
+	// CORS restricted
+	// Allows requests from any `https://labstack.com` or `https://labstack.net` origin
+	// wth GET, PUT, POST or DELETE method.
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
+	}))
 	e.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
 		StackSize: 1 << 10, // 1 KB
 		LogLevel:  log.ERROR,
 	}))
-	e.Use(middleware.Recover())
 
 	// Routes
 	routes(e, app)
