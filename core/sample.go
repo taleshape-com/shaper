@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type Result struct {
@@ -12,8 +14,20 @@ type Result struct {
 }
 
 type Query struct {
-	Columns []string        `json:"columns"`
+	Render  Render          `json:"render"`
+	Columns []Column        `json:"columns"`
 	Rows    [][]interface{} `json:"rows"`
+}
+
+type Render struct {
+	Type  string  `json:"type"`
+	XAxis *string `json:"xAxis"`
+}
+
+type Column struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Nullable bool   `json:"nullable"`
 }
 
 func Sample(app *App, ctx context.Context) (Result, error) {
@@ -33,14 +47,13 @@ func Sample(app *App, ctx context.Context) (Result, error) {
 		if i == len(sqls)-1 {
 			continue
 		}
-		query := Query{}
+		query := Query{Columns: []Column{}}
 		// run query
 		rows, err := app.db.QueryxContext(ctx, string(sql)+";")
 		if err != nil {
 			return result, err
 		}
-		columns, err := rows.Columns()
-		query.Columns = columns
+		colTypes, err := rows.ColumnTypes()
 		if err != nil {
 			return result, err
 		}
@@ -51,7 +64,79 @@ func Sample(app *App, ctx context.Context) (Result, error) {
 			}
 			query.Rows = append(query.Rows, row)
 		}
+		for i, c := range colTypes {
+			nullable, ok := c.Nullable()
+			col := Column{Name: c.Name(), Type: mapDBType(c.DatabaseTypeName(), i, query.Rows), Nullable: ok && nullable}
+			query.Columns = append(query.Columns, col)
+		}
+		query.Render = getRender(query.Columns, query.Rows)
 		result.Queries = append(result.Queries, query)
 	}
 	return result, err
+}
+
+// TODO: map all types
+func mapDBType(dbType string, index int, rows [][]interface{}) string {
+	switch dbType {
+	case "VARCHAR":
+		return "string"
+	case "DOUBLE":
+		return "number"
+	case "FLOAT":
+		return "number"
+	case "BIGINT":
+		return "number"
+	case "DATE":
+		if onlyYears(rows, index) {
+			return "year"
+		}
+		return "date"
+	case "TIMESTAMP":
+		return "timestamp"
+	default:
+		panic(fmt.Sprintf("unsupported type: %s", dbType))
+	}
+}
+
+func getRender(columns []Column, rows [][]interface{}) Render {
+	dateTimeColumn := -1
+	numberColumns := 0
+
+	for i, col := range columns {
+		if col.Type == "year" || col.Type == "date" || col.Type == "timestamp" {
+			dateTimeColumn = i
+		} else if col.Type == "number" {
+			numberColumns++
+		}
+	}
+
+	if dateTimeColumn != -1 && numberColumns == len(columns)-1 {
+		if hasOnlyUniqueValues(rows, dateTimeColumn) {
+			return Render{Type: "line", XAxis: &columns[dateTimeColumn].Name}
+		}
+	}
+
+	return Render{Type: "table"}
+}
+
+func onlyYears(rows [][]interface{}, index int) bool {
+	for _, row := range rows {
+		t := row[index].(time.Time)
+		if t.Month() != 1 || t.Day() != 1 {
+			return false
+		}
+	}
+	return true
+}
+
+func hasOnlyUniqueValues(rows [][]interface{}, columnIndex int) bool {
+	seen := make(map[interface{}]bool)
+	for _, row := range rows {
+		value := row[columnIndex]
+		if seen[value] {
+			return false
+		}
+		seen[value] = true
+	}
+	return true
 }
