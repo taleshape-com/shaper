@@ -1,3 +1,4 @@
+select 'Global Rate by Year';
 select
   make_date(year, 1, 1) as Year,
   round(sum(births) / sum(deaths), 2) as Ratio
@@ -5,6 +6,7 @@ from base
 group by year
 order by year;
 
+select '2024 by Country';
 select
   country as Country,
   sum(births)::int64 as Births,

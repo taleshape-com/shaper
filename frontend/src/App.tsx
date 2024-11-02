@@ -31,7 +31,10 @@ type LineProps = {
 type Result = {
   title: string;
   queries: {
-    render: { type: "table" } | { type: "line"; xAxis: string };
+    render:
+      | { type: "title" }
+      | { type: "table" }
+      | { type: "line"; xAxis: string };
     columns: {
       name: string;
       type: "year" | "number" | "string";
@@ -125,6 +128,7 @@ function App() {
       })
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
+  let nextTitle: string | undefined = undefined;
   return (
     <div className="w-screen h-screen px-4 py-8 sm:px-6 lg:px-8 overflow-auto">
       <h1 className="mb-8 text-xl text-center">{data.title}</h1>
@@ -133,11 +137,21 @@ function App() {
           <div>No data to show...</div>
         ) : (
           data.queries.map(({ render, columns, rows }, index) => {
+            if (render.type === "title") {
+              nextTitle = rows[0][0] as string;
+              return;
+            }
+            let title: string | undefined = undefined;
+            if (nextTitle) {
+              title = nextTitle;
+              nextTitle = undefined;
+            }
             return (
               <div
                 key={index}
                 className="lg:w-[calc(50vw-5rem)] h-[calc(50vh-4rem)] lg:h-[calc(100vh-12rem)]"
               >
+                <h2 className="text-lg mb-10 text-center">{title}</h2>
                 {render.type === "line" ? (
                   <MyLine headers={columns} data={rows} xaxis={render.xAxis} />
                 ) : (

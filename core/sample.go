@@ -99,6 +99,11 @@ func mapDBType(dbType string, index int, rows [][]interface{}) string {
 }
 
 func getRender(columns []Column, rows [][]interface{}) Render {
+	// Check for title case: single string column with one row
+	if len(columns) == 1 && len(rows) == 1 && columns[0].Type == "string" {
+		return Render{Type: "title"}
+	}
+
 	dateTimeColumn := -1
 	numberColumns := 0
 
