@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -30,11 +31,10 @@ type Column struct {
 	Nullable bool   `json:"nullable"`
 }
 
-func Sample(app *App, ctx context.Context) (Result, error) {
-	fileName := "Birth Data.sql"
-	title, _ := strings.CutSuffix(fileName, ".sql")
+func GetDashboard(app *App, ctx context.Context, name string) (Result, error) {
+	fileName := path.Join("dashboards", name+".sql")
 	result := Result{
-		Title:   title,
+		Title:   name,
 		Queries: []Query{},
 	}
 	// read sql file

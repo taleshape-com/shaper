@@ -7,9 +7,9 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Sample(app *core.App) func(echo.Context) error {
+func GetDashboard(app *core.App) func(echo.Context) error {
 	return func(c echo.Context) error {
-		result, err := core.Sample(app, c.Request().Context())
+		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"))
 		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error error }{Error: err}, "  ")
 		}

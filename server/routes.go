@@ -8,5 +8,5 @@ import (
 )
 
 func routes(e *echo.Echo, app *core.App) {
-	e.GET("/api/sample", handler.Sample(app))
+	e.GET("/api/dashboard/:name", handler.GetDashboard(app))
 }
