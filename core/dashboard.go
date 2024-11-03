@@ -9,7 +9,11 @@ import (
 	"time"
 )
 
-type Result struct {
+type ListResult struct {
+	Dashboards []string `json:"dashboards"`
+}
+
+type GetResult struct {
 	Title   string  `json:"title"`
 	Queries []Query `json:"queries"`
 }
@@ -31,9 +35,24 @@ type Column struct {
 	Nullable bool   `json:"nullable"`
 }
 
-func GetDashboard(app *App, ctx context.Context, name string) (Result, error) {
+func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
+	result := ListResult{Dashboards: []string{}}
+	files, err := os.ReadDir("dashboards")
+	if err != nil {
+		return result, fmt.Errorf("failed to read dashboards directory: %w", err)
+	}
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".sql") {
+			dashboardName := strings.TrimSuffix(file.Name(), ".sql")
+			result.Dashboards = append(result.Dashboards, dashboardName)
+		}
+	}
+	return result, nil
+}
+
+func GetDashboard(app *App, ctx context.Context, name string) (GetResult, error) {
 	fileName := path.Join("dashboards", name+".sql")
-	result := Result{
+	result := GetResult{
 		Title:   name,
 		Queries: []Query{},
 	}

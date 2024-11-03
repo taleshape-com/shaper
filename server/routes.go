@@ -8,5 +8,6 @@ import (
 )
 
 func routes(e *echo.Echo, app *core.App) {
+	e.GET("/api/dashboards", handler.ListDashboards(app))
 	e.GET("/api/dashboard/:name", handler.GetDashboard(app))
 }

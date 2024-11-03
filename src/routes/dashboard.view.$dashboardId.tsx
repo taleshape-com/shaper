@@ -29,7 +29,7 @@ export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   component: DashboardViewComponent,
 });
 
-export function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
