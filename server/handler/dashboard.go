@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func ListDashboards(app *core.App) func(echo.Context) error {
+func ListDashboards(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		result, err := core.ListDashboards(app, c.Request().Context())
 		if err != nil {
@@ -17,7 +17,7 @@ func ListDashboards(app *core.App) func(echo.Context) error {
 	}
 }
 
-func GetDashboard(app *core.App) func(echo.Context) error {
+func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"))
 		if err != nil {

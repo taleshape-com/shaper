@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"log/slog"
 	"os"
 	"shaper/core"
@@ -13,6 +14,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/marcboeker/go-duckdb"
 )
+
+//go:embed dist
+var frontendFS embed.FS
 
 func main() {
 	signals.HandleInterrupt(Run())
@@ -26,8 +30,9 @@ func Run() func(context.Context) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	app := core.New(db, logger)
-	e := server.Start(app)
+	e := server.Start(app, frontendFS)
 
 	return func(ctx context.Context) {
 		if err := db.Close(); err != nil {

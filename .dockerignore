@@ -1,1 +1,7 @@
 Dockerfile
+dashboards
+dist
+node_modules
+README.md
+
+

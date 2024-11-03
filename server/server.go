@@ -10,6 +10,7 @@
 package server
 
 import (
+	"io/fs"
 	"net/http"
 	"shaper/core"
 
@@ -19,7 +20,7 @@ import (
 	slogecho "github.com/samber/slog-echo"
 )
 
-func Start(app *core.App) *echo.Echo {
+func Start(app *core.App, frontendFS fs.FS) *echo.Echo {
 	// Echo instance
 	e := echo.New()
 
@@ -39,7 +40,7 @@ func Start(app *core.App) *echo.Echo {
 	}))
 
 	// Routes
-	routes(e, app)
+	routes(e, app, frontendFS)
 
 	// Start server
 	go func() {
