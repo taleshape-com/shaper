@@ -16,6 +16,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/peterbourgon/ff v1.7.1 // indirect
+	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/samber/lo v1.38.1 // indirect
 	github.com/samber/slog-echo v1.14.7 // indirect

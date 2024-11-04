@@ -9,11 +9,19 @@ export const Route = createFileRoute("/dashboard/view/$dashboardId")({
     return fetch(
       `${import.meta.env.VITE_API_URL || ""}/api/dashboard/${dashboardId}`,
     )
-      .then((response) => response.json())
+      .then((response) => {
+        if (response.status !== 200) {
+          return response
+            .json()
+            .then((data: { Error: { Type: number; Msg: string } }) => {
+              throw new Error(data.Error.Msg);
+            });
+        }
+        return response.json();
+      })
       .then((fetchedData: Result) => {
         return fetchedData;
-      })
-      .catch((error) => console.error("Error fetching data:", error));
+      });
   },
   errorComponent: DashboardErrorComponent as any,
   notFoundComponent: () => {

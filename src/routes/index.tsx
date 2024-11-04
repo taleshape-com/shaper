@@ -12,7 +12,6 @@ export const Route = createFileRoute('/')({
       .then((fetchedData: DashboardListResponse) => {
         return fetchedData
       })
-      .catch((error) => console.error('Error fetching data:', error))
   },
   errorComponent: DashboardErrorComponent as any,
   component: Index,

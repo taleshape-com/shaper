@@ -10,6 +10,7 @@
 package server
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"shaper/core"
@@ -20,9 +21,10 @@ import (
 	slogecho "github.com/samber/slog-echo"
 )
 
-func Start(app *core.App, frontendFS fs.FS) *echo.Echo {
+func Start(host string, port int, app *core.App, frontendFS fs.FS) *echo.Echo {
 	// Echo instance
 	e := echo.New()
+	e.HideBanner = true
 
 	// Middlewares
 	e.Use(slogecho.New(app.Logger))
@@ -44,7 +46,7 @@ func Start(app *core.App, frontendFS fs.FS) *echo.Echo {
 
 	// Start server
 	go func() {
-		if err := e.Start(":1323"); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(fmt.Sprintf("%s:%d", host, port)); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("error starting server", err)
 		}
 	}()
