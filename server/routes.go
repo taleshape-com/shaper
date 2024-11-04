@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io/fs"
 	"shaper/core"
 	"shaper/server/handler"
@@ -12,11 +11,9 @@ import (
 
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	apiWithAuth := e.Group("/api", middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-		// TODO: make this config
 		KeyLookup: "cookie:shaper-token",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			fmt.Println(key)
-			return key == "test", nil
+			return core.ValidLogin(app, c.Request().Context(), key)
 		},
 		ErrorHandler: func(err error, c echo.Context) error {
 			return c.JSON(401, map[string]string{"error": "Unauthorized"})
