@@ -55,7 +55,7 @@ function LoginComponent() {
 
   return (
     <div className="p-2">
-      <div>You must log in!</div>
+      <div>Login Required:</div>
       <div className="h-2" />
       <form onSubmit={onSubmit} className="flex gap-2">
         <input
