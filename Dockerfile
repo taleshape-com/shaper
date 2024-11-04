@@ -2,9 +2,9 @@ FROM node:22.11.0 AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
+COPY . .
 RUN npm run lint
 ENV NODE_ENV=production
-COPY . .
 RUN npm run build
 
 FROM golang:1.23.2 AS build

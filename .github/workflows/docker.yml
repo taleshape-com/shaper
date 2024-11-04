@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker_publish:
-    name: Docker build and publish
+  docker:
+    name: Docker
     runs-on: ubuntu-latest
     steps:
       - name: Set up Docker Buildx
