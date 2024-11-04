@@ -51,7 +51,7 @@ func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
 }
 
 func GetDashboard(app *App, ctx context.Context, name string) (GetResult, error) {
-	fileName := path.Join("dashboards", name+".sql")
+	fileName := path.Join(app.DashboardDir, name+".sql")
 	result := GetResult{
 		Title:   name,
 		Queries: []Query{},

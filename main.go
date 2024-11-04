@@ -21,10 +21,11 @@ import (
 var frontendFS embed.FS
 
 type Config struct {
-	Address    string
-	Port       int
-	DBFile     string
-	LoginToken string
+	Address      string
+	Port         int
+	DBFile       string
+	LoginToken   string
+	DashboardDir string
 }
 
 func main() {
@@ -38,7 +39,8 @@ func loadConfig() Config {
 	addr := flags.String('a', "addr", "0.0.0.0", "server address")
 	port := flags.Int('p', "port", 3000, "port to listen on")
 	dbFile := flags.String('f', "duckdb", "", "path to duckdb file (default: use in-memory db)")
-	loginToken := flags.String('t', "token", "", "token used for login")
+	loginToken := flags.String('t', "token", "", "token used for login (required)")
+	dashboardDir := flags.String('d', "dashboards", "", "path to directory to read dashboard SQL files from (required)")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
@@ -46,6 +48,9 @@ func loadConfig() Config {
 	)
 	if err == nil && *loginToken == "" {
 		err = fmt.Errorf("--token must be set")
+	}
+	if err == nil && *dashboardDir == "" {
+		err = fmt.Errorf("--dashboards must be set")
 	}
 	if err != nil {
 		fmt.Printf("%s\n", ffhelp.Flags(flags))
@@ -58,10 +63,11 @@ func loadConfig() Config {
 	}
 
 	config := Config{
-		Address:    *addr,
-		Port:       *port,
-		DBFile:     *dbFile,
-		LoginToken: *loginToken,
+		Address:      *addr,
+		Port:         *port,
+		DBFile:       *dbFile,
+		LoginToken:   *loginToken,
+		DashboardDir: *dashboardDir,
 	}
 	return config
 }
@@ -80,7 +86,7 @@ func Run(config Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	app := core.New(db, logger, config.LoginToken)
+	app := core.New(db, logger, config.LoginToken, config.DashboardDir)
 	e := server.Start(config.Address, config.Port, app, frontendFS)
 
 	return func(ctx context.Context) {
