@@ -1,4 +1,4 @@
-name: Lint, build and deploy
+name: Docker
 on:
   push:
     branches:
@@ -24,6 +24,6 @@ jobs:
       - name: Build and push Docker images
         uses: docker/build-push-action@v6
         with:
-          push: github.ref == 'refs/heads/main'
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: taleshape/shaper:latest
 
