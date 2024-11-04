@@ -1,5 +1,4 @@
 // Tremor LineChart [v0.3.2]
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 "use client";
 

@@ -79,11 +79,11 @@ func Run(config Config) func(context.Context) {
 
 	return func(ctx context.Context) {
 		if err := db.Close(); err != nil {
-			logger.ErrorContext(ctx, "error closing database connection", err)
+			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
 		}
 		db.Close()
 		if err := e.Shutdown(ctx); err != nil {
-			logger.ErrorContext(ctx, "error stopping server", err)
+			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
 		}
 	}
 }
