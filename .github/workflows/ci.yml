@@ -9,10 +9,18 @@ concurrency:
   group: ${{ github.ref_name }}
   cancel-in-progress: true
 
-env:
-  REGISTRY: ghcr.io
-
 jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run lint
+
   govet:
     runs-on: ubuntu-latest
     steps:
@@ -25,17 +33,6 @@ jobs:
         run: mkdir dist && touch dist/index.html
       - name: Go vet
         run: go vet ./...
-
-  eslint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run lint
 
   docker_publish:
     name: Docker build and publish
@@ -50,12 +47,11 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push Docker images
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ env.REGISTRY }}/taleshape-com/shaper:latest
+          tags: taleshape/shaper:latest
 
