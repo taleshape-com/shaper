@@ -22,7 +22,7 @@ jobs:
           go-version: 1.21.3
       - uses: actions/checkout@v3
       - name: Ensure dist dir exists
-        run: mkdir dist
+        run: mkdir dist && touch dist/index.html
       - name: Go vet
         run: go vet ./...
 
