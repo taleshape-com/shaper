@@ -8,10 +8,11 @@ import (
 )
 
 type App struct {
-	db     *sqlx.DB
-	Logger *slog.Logger
+	db         *sqlx.DB
+	Logger     *slog.Logger
+	LoginToken string
 }
 
-func New(db *sqlx.DB, logger *slog.Logger) *App {
-	return &App{db: db, Logger: logger}
+func New(db *sqlx.DB, logger *slog.Logger, loginToken string) *App {
+	return &App{db: db, Logger: logger, LoginToken: loginToken}
 }

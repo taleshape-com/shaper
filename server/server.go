@@ -1,12 +1,8 @@
-// TODO: consider https://go-chi.io/
-// Chi works with plain http interfaces.
-// Need to do TLS myself (see https://github.com/caddyserver/certmagic or https://docs.vultr.com/secure-a-golang-web-server-with-a-selfsigned-or-lets-encrypt-ssl-certificate)
-// Need to do JSON encoding myself
+// TODO: https://echo.labstack.com/docs/middleware/secure
 // TODO: GZIP https://echo.labstack.com/docs/middleware/gzip
 // TODO: metrics https://echo.labstack.com/docs/middleware/prometheus
 // TODO: rate limit https://echo.labstack.com/docs/middleware/rate-limiter
 // TODO: TLS https://echo.labstack.com/docs/cookbook/auto-tls#server
-// TODO: embed and serve frontend https://echo.labstack.com/docs/cookbook/embed-resources
 package server
 
 import (

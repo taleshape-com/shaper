@@ -3,13 +3,23 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Result } from "../lib/dashboard";
 import DashboardLineChart from "../components/dashboard/DashboardLineChart";
 import DashboardTable from "../components/dashboard/DashboardTable";
+import { redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   loader: async ({ params: { dashboardId } }) => {
-    return fetch(
-      `${import.meta.env.VITE_API_URL || ""}/api/dashboard/${dashboardId}`,
-    )
-      .then((response) => {
+    return fetch(`/api/dashboard/${dashboardId}`)
+      .then(async (response) => {
+        if (response.status === 401) {
+          throw redirect({
+            to: "/login",
+            search: {
+              // Use the current location to power a redirect after login
+              // (Do not use `router.state.resolvedLocation` as it can
+              // potentially lag behind the actual current location)
+              redirect: location.pathname + location.search + location.hash,
+            },
+          });
+        }
         if (response.status !== 200) {
           return response
             .json()

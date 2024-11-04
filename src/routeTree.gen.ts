@@ -11,10 +11,17 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as LoginImport } from './routes/login'
 import { Route as IndexImport } from './routes/index'
 import { Route as DashboardViewDashboardIdImport } from './routes/dashboard.view.$dashboardId'
 
 // Create/Update Routes
+
+const LoginRoute = LoginImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const IndexRoute = IndexImport.update({
   id: '/',
@@ -39,6 +46,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginImport
+      parentRoute: typeof rootRoute
+    }
     '/dashboard/view/$dashboardId': {
       id: '/dashboard/view/$dashboardId'
       path: '/dashboard/view/$dashboardId'
@@ -53,36 +67,41 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/dashboard/view/$dashboardId': typeof DashboardViewDashboardIdRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/dashboard/view/$dashboardId': typeof DashboardViewDashboardIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/dashboard/view/$dashboardId': typeof DashboardViewDashboardIdRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard/view/$dashboardId'
+  fullPaths: '/' | '/login' | '/dashboard/view/$dashboardId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard/view/$dashboardId'
-  id: '__root__' | '/' | '/dashboard/view/$dashboardId'
+  to: '/' | '/login' | '/dashboard/view/$dashboardId'
+  id: '__root__' | '/' | '/login' | '/dashboard/view/$dashboardId'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   DashboardViewDashboardIdRoute: typeof DashboardViewDashboardIdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   DashboardViewDashboardIdRoute: DashboardViewDashboardIdRoute,
 }
 
@@ -97,11 +116,15 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/login",
         "/dashboard/view/$dashboardId"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/login": {
+      "filePath": "login.tsx"
     },
     "/dashboard/view/$dashboardId": {
       "filePath": "dashboard.view.$dashboardId.tsx"

@@ -1,31 +1,52 @@
-import { ErrorComponent, createFileRoute, Link } from '@tanstack/react-router'
-import type { ErrorComponentProps } from '@tanstack/react-router'
+import { redirect } from "@tanstack/react-router";
+import { ErrorComponent, createFileRoute, Link } from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 
 type DashboardListResponse = {
-  dashboards: string[]
-}
+  dashboards: string[];
+};
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   loader: async () => {
-    return fetch(`${import.meta.env.VITE_API_URL || ''}/api/dashboards`)
-      .then((response) => response.json())
-      .then((fetchedData: DashboardListResponse) => {
-        return fetchedData
+    return fetch(`/api/dashboards`)
+      .then(async (response) => {
+        if (response.status === 401) {
+          throw redirect({
+            to: "/login",
+            search: {
+              // Use the current location to power a redirect after login
+              // (Do not use `router.state.resolvedLocation` as it can
+              // potentially lag behind the actual current location)
+              redirect: location.pathname + location.search + location.hash,
+            },
+          });
+        }
+        if (response.status !== 200) {
+          return response
+            .json()
+            .then((data: { Error: { Type: number; Msg: string } }) => {
+              throw new Error(data.Error.Msg);
+            });
+        }
+        return response.json();
       })
+      .then((fetchedData: DashboardListResponse) => {
+        return fetchedData;
+      });
   },
   errorComponent: DashboardErrorComponent as any,
   component: Index,
-})
+});
 
 function DashboardErrorComponent({ error }: ErrorComponentProps) {
-  return <ErrorComponent error={error} />
+  return <ErrorComponent error={error} />;
 }
 
 function Index() {
-  const data = Route.useLoaderData()
+  const data = Route.useLoaderData();
 
   if (!data) {
-    return <div className="p-2">Loading dashboards...</div>
+    return <div className="p-2">Loading dashboards...</div>;
   }
 
   return (
@@ -49,5 +70,5 @@ function Index() {
         </ul>
       )}
     </div>
-  )
+  );
 }

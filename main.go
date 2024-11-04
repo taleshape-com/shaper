@@ -21,9 +21,10 @@ import (
 var frontendFS embed.FS
 
 type Config struct {
-	Address string
-	Port    int
-	DBFile  string
+	Address    string
+	Port       int
+	DBFile     string
+	LoginToken string
 }
 
 func main() {
@@ -37,11 +38,15 @@ func loadConfig() Config {
 	addr := flags.String('a', "addr", "0.0.0.0", "server address")
 	port := flags.Int('p', "port", 3000, "port to listen on")
 	dbFile := flags.String('f', "duckdb", "", "path to duckdb file (default: use in-memory db)")
+	loginToken := flags.String('t', "token", "", "token used for login")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
 		ff.WithConfigFileParser(ff.PlainParser),
 	)
+	if err == nil && *loginToken == "" {
+		err = fmt.Errorf("--token must be set")
+	}
 	if err != nil {
 		fmt.Printf("%s\n", ffhelp.Flags(flags))
 		fmt.Printf("err=%v\n", err)
@@ -53,9 +58,10 @@ func loadConfig() Config {
 	}
 
 	config := Config{
-		Address: *addr,
-		Port:    *port,
-		DBFile:  *dbFile,
+		Address:    *addr,
+		Port:       *port,
+		DBFile:     *dbFile,
+		LoginToken: *loginToken,
 	}
 	return config
 }
@@ -74,7 +80,7 @@ func Run(config Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	app := core.New(db, logger)
+	app := core.New(db, logger, config.LoginToken)
 	e := server.Start(config.Address, config.Port, app, frontendFS)
 
 	return func(ctx context.Context) {
