@@ -73,6 +73,7 @@ function LoginComponent() {
           autoFocus
           className="border p-1 px-2 rounded"
           disabled={isLoggingIn}
+          type="password"
         />
         <button
           type="submit"
