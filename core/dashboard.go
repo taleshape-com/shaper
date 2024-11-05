@@ -110,11 +110,7 @@ func mapDBType(dbType string, index int, rows [][]interface{}) string {
 			return "year"
 		}
 		return "date"
-	case "TIMESTAMP":
-	case "TIMESTAMP_NS":
-	case "TIMESTAMP_MS":
-	case "TIMESTAMP_S":
-	case "TIMESTAMPZ":
+	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPZ":
 		return "timestamp"
 	}
 	panic(fmt.Sprintf("unsupported type: %s", dbType))
