@@ -4,6 +4,7 @@ import { Result } from "../lib/dashboard";
 import DashboardLineChart from "../components/dashboard/DashboardLineChart";
 import DashboardTable from "../components/dashboard/DashboardTable";
 import { redirect } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   loader: async ({ params: { dashboardId } }) => {
@@ -62,6 +63,13 @@ function DashboardViewComponent() {
 
   return (
     <div className="w-screen h-screen px-4 py-8 sm:px-6 lg:px-8 overflow-auto">
+    <Helmet>
+      <title>{data.title}</title>
+      <meta
+        name="description"
+        content={data.title}
+      />
+    </Helmet>
       <h1 className="mb-8 text-xl text-center">{data.title}</h1>
       <div className="flex flex-col lg:flex-row lg:flex-wrap gap-4">
         {data.queries.length === 0 ? (

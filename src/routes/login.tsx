@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { login, testCookie } from "../lib/auth";
 import { ErrorComponentProps } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
 
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({
@@ -55,6 +56,13 @@ function LoginComponent() {
 
   return (
     <div className="p-2">
+      <Helmet>
+        <title>Login</title>
+        <meta
+          name="description"
+          content="Login to continue"
+        />
+      </Helmet>
       <div>Login Required:</div>
       <div className="h-2" />
       <form onSubmit={onSubmit} className="flex gap-2">

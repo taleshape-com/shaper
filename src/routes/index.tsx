@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { ErrorComponent, createFileRoute, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
 
 type DashboardListResponse = {
   dashboards: string[];
@@ -51,6 +52,13 @@ function Index() {
 
   return (
     <div className="p-4">
+      <Helmet>
+        <title>Dashboard Overview</title>
+        <meta
+          name="description"
+          content="Show a list of all available dashboards"
+        />
+      </Helmet>
       <h2 className="text-2xl font-bold mb-4">Available Dashboards</h2>
       {data.dashboards.length === 0 ? (
         <p>No dashboards available.</p>
