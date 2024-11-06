@@ -22,6 +22,9 @@ const formatValue = (value: string | number): string => {
 };
 
 function DashboardTable({ headers, data }: TableProps) {
+  if (!data) {
+    return <div>No data</div>;
+  }
   return (
     <TableRoot className="max-h-screen overflow-auto w-full">
       <Table>
