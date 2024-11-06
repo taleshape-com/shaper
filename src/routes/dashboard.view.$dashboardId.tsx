@@ -1,4 +1,4 @@
-import { ErrorComponent, createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Result } from "../lib/dashboard";
 import DashboardLineChart from "../components/dashboard/DashboardLineChart";
@@ -21,11 +21,16 @@ export const Route = createFileRoute("/dashboard/view/$dashboardId")({
             },
           });
         }
+        if (response.status === 404) {
+          throw notFound();
+        }
         if (response.status !== 200) {
           return response
             .json()
             .then((data: { Error: { Type: number; Msg: string } }) => {
-              throw new Error(data.Error.Msg);
+              throw new Error(
+                (data?.Error?.Msg || data?.Error || data).toString(),
+              );
             });
         }
         return response.json();
@@ -34,7 +39,7 @@ export const Route = createFileRoute("/dashboard/view/$dashboardId")({
         return fetchedData;
       });
   },
-  errorComponent: DashboardErrorComponent as any,
+  errorComponent: DashboardErrorComponent,
   notFoundComponent: () => {
     return (
       <div>
@@ -49,7 +54,11 @@ export const Route = createFileRoute("/dashboard/view/$dashboardId")({
 });
 
 function DashboardErrorComponent({ error }: ErrorComponentProps) {
-  return <ErrorComponent error={error} />;
+  return (
+    <div className="p-4 m-4 bg-red-200 rounded-md">
+      <p>{error.message}</p>
+    </div>
+  );
 }
 
 function DashboardViewComponent() {
@@ -63,13 +72,10 @@ function DashboardViewComponent() {
 
   return (
     <div className="w-screen h-screen px-4 py-8 sm:px-6 lg:px-8 overflow-auto">
-    <Helmet>
-      <title>{data.title}</title>
-      <meta
-        name="description"
-        content={data.title}
-      />
-    </Helmet>
+      <Helmet>
+        <title>{data.title}</title>
+        <meta name="description" content={data.title} />
+      </Helmet>
       <h1 className="mb-8 text-xl text-center">{data.title}</h1>
       <div className="flex flex-col lg:flex-row lg:flex-wrap gap-4">
         {data.queries.length === 0 ? (
