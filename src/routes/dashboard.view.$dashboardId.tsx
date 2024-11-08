@@ -5,6 +5,7 @@ import DashboardLineChart from "../components/dashboard/DashboardLineChart";
 import DashboardTable from "../components/dashboard/DashboardTable";
 import { redirect } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
+import DashboardBarChart from "../components/dashboard/DashboardBarChart";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   loader: async ({ params: { dashboardId } }) => {
@@ -27,11 +28,21 @@ export const Route = createFileRoute("/dashboard/view/$dashboardId")({
         if (response.status !== 200) {
           return response
             .json()
-            .then((data: { Error: { Type: number; Msg: string } }) => {
-              throw new Error(
-                (data?.Error?.Msg || data?.Error || data).toString(),
-              );
-            });
+            .then(
+              (data: {
+                Error?: { Type: number; Msg?: string };
+                message?: string;
+              }) => {
+                throw new Error(
+                  (
+                    data?.Error?.Msg ??
+                    data?.Error ??
+                    data?.message ??
+                    data
+                  ).toString(),
+                );
+              },
+            );
         }
         return response.json();
       })
@@ -64,8 +75,6 @@ function DashboardErrorComponent({ error }: ErrorComponentProps) {
 function DashboardViewComponent() {
   const data = Route.useLoaderData();
 
-  let nextTitle: string | undefined = undefined;
-
   if (!data) {
     return <div>Loading...</div>;
   }
@@ -82,26 +91,27 @@ function DashboardViewComponent() {
           <div>No data to show...</div>
         ) : (
           data.queries.map(({ render, columns, rows }, index) => {
-            if (render.type === "title") {
-              nextTitle = rows[0][0] as string;
-              return;
-            }
-            let title: string | undefined = undefined;
-            if (nextTitle) {
-              title = nextTitle;
-              nextTitle = undefined;
-            }
             return (
               <div
                 key={index}
                 className="lg:w-[calc(50vw-5rem)] h-[calc(50vh-4rem)] lg:h-[calc(100vh-12rem)]"
               >
-                <h2 className="text-lg mb-10 text-center">{title}</h2>
-                {render.type === "line" ? (
+                <h2 className="text-lg mb-10 text-center">{render.label}</h2>
+                {render.type === "linechart" ? (
                   <DashboardLineChart
                     headers={columns}
                     data={rows}
                     xaxis={render.xAxis}
+                    yaxis={render.yAxis}
+                    categoryIndex={render.categoryIndex}
+                  />
+                ) : render.type === "barchart" ? (
+                  <DashboardBarChart
+                    headers={columns}
+                    data={rows}
+                    xaxis={render.xAxis}
+                    yaxis={render.yAxis}
+                    categoryIndex={render.categoryIndex}
                   />
                 ) : (
                   <DashboardTable headers={columns} data={rows} />

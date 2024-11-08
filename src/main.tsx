@@ -5,11 +5,13 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
+import { ErrorComponent } from "@tanstack/react-router";
 
 // Create a new router instance
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
+  defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   defaultStaleTime: 5000,
 });
 

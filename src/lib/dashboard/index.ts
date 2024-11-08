@@ -8,9 +8,21 @@ export type Result = {
   title: string;
   queries: {
     render:
-      | { type: "title" }
-      | { type: "table" }
-      | { type: "line"; xAxis: string };
+      | { type: "table"; label?: string }
+      | {
+          type: "linechart";
+          label?: string;
+          xAxis: string;
+          yAxis: string;
+          categoryIndex?: number;
+        }
+      | {
+          type: "barchart";
+          label?: string;
+          xAxis: string;
+          yAxis: string;
+          categoryIndex?: number;
+        };
     columns: {
       name: string;
       type: "year" | "number" | "string";

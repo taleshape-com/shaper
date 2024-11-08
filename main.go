@@ -86,7 +86,10 @@ func Run(config Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	app := core.New(db, logger, config.LoginToken, config.DashboardDir)
+	app, err := core.New(db, logger, config.LoginToken, config.DashboardDir)
+	if err != nil {
+		panic(err)
+	}
 	e := server.Start(config.Address, config.Port, app, frontendFS)
 
 	return func(ctx context.Context) {

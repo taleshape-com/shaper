@@ -1,4 +1,5 @@
 import { Column } from "../../lib/dashboard";
+import { BarChart } from "../tremor/BarChart";
 import { LineChart } from "../tremor/LineChart";
 
 type LineProps = {
@@ -13,7 +14,7 @@ const toYear = (value: string | number) => {
   return new Date(value).getFullYear();
 };
 
-const DashboardLineChart = ({
+const DashboardBarChart = ({
   headers,
   data,
   xaxis,
@@ -58,8 +59,9 @@ const DashboardLineChart = ({
     };
   });
   return (
-    <LineChart
+    <BarChart
       className="h-full w-full"
+      type="stacked"
       data={chartdata}
       index={xaxis}
       categories={Array.from(categories)}
@@ -73,4 +75,4 @@ const DashboardLineChart = ({
   );
 };
 
-export default DashboardLineChart;
+export default DashboardBarChart;
