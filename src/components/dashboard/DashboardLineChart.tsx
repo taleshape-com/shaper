@@ -27,7 +27,10 @@ const DashboardLineChart = ({
   const xaxisIndex = headers.findIndex((c) => c.name === xaxis);
   const dataByXaxis = data.reduce(
     (acc, row) => {
-      const key = row[xaxisIndex];
+      let key = row[xaxisIndex];
+      if (headers[xaxisIndex].type === "year") {
+        key = toYear(key);
+      }
       if (!acc[key]) {
         acc[key] = {};
       }
@@ -35,10 +38,9 @@ const DashboardLineChart = ({
         if (i === xaxisIndex && i === categoryIndex) {
           return;
         }
-        // if (c.type === "year") {
-        //   d[c.name] = toYear(row[i]);
-        //   return;
-        // }
+        if (headers[i].type === "year") {
+          cell = toYear(cell);
+        }
         if (categoryIndex == null) {
           acc[key][yaxis] = cell;
           return;
