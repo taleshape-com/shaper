@@ -110,7 +110,7 @@ func GetDashboard(app *App, ctx context.Context, name string) (GetResult, error)
 		// 	}
 		// 	query.Columns = append(query.Columns, col)
 		// }
-		if isLabel(sql) {
+		if isLabel(sql, query.Rows) {
 			nextLabel = query.Rows[0][0].(string)
 			continue
 		}
@@ -171,9 +171,8 @@ func getTagName(sql string, tag string) string {
 }
 
 // TODO: Once UNION types work, we need a more solid way to detect labels
-// Also make sure we have a single row + column
-func isLabel(sql string) bool {
-	return strings.Contains(sql, "::LABEL")
+func isLabel(sql string, rows [][]interface{}) bool {
+	return strings.Contains(sql, "::LABEL") && len(rows) == 1 && len(rows[0]) == 1
 }
 
 // TODO: Line charts should assert that only one XAXIS/LINECHART_YAXIS/LINECHART_CATEGORY is present and no columns without a tag

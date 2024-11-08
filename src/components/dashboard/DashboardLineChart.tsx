@@ -35,7 +35,7 @@ const DashboardLineChart = ({
         acc[key] = {};
       }
       row.forEach((cell, i) => {
-        if (i === xaxisIndex && i === categoryIndex) {
+        if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
         if (headers[i].type === "year") {
