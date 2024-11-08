@@ -94,7 +94,7 @@ function DashboardViewComponent() {
             return (
               <div
                 key={index}
-                className="lg:w-[calc(50vw-5rem)] h-[calc(50vh-4rem)] lg:h-[calc(50vh-10rem)] mb-24"
+                className="lg:w-[calc(50vw-5rem)] h-[calc(50vh-4rem)] lg:h-[calc(100vh-12rem)] mb-24"
               >
                 <h2 className="text-lg mb-10 text-center">{render.label}</h2>
                 {render.type === "linechart" ? (
