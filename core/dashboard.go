@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -26,11 +28,18 @@ type Query struct {
 }
 
 type Render struct {
-	Type          string  `json:"type"`
-	Label         *string `json:"label"`
-	XAxis         *string `json:"xAxis"`
-	YAxis         *string `json:"yAxis"`
-	CategoryIndex *int    `json:"categoryIndex"`
+	Type  string  `json:"type"`
+	Label *string `json:"label"`
+}
+
+type renderInfo struct {
+	Type          string
+	Label         *string
+	XAxisIndex    *int
+	YAxisIndex    *int
+	CategoryIndex *int
+	ValueIndex    *int
+	LabelIndex    *int
 }
 
 //	type Desc struct {
@@ -45,6 +54,7 @@ type Column struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
 	Nullable bool   `json:"nullable"`
+	Tag      string `json:"tag"`
 }
 
 func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
@@ -62,7 +72,7 @@ func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
 	return result, nil
 }
 
-func GetDashboard(app *App, ctx context.Context, name string) (GetResult, error) {
+func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Values) (GetResult, error) {
 	fileName := path.Join(app.DashboardDir, name+".sql")
 	result := GetResult{
 		Title:   name,
@@ -75,13 +85,23 @@ func GetDashboard(app *App, ctx context.Context, name string) (GetResult, error)
 	}
 	nextLabel := ""
 	sqls := strings.Split(string(sqlFile), ";")
+	// TODO: support multiple values
+	// TODO: currently variables have to be defined in the order they are used. create a dependency graph instead
+	vars := map[string]string{}
 	for i, sql := range sqls {
 		if i == len(sqls)-1 {
 			continue
 		}
+		// TODO: assert that variable names are alphanumeric
+		// TODO: escape variable values
+		// TODO: assert that variables in query are set. otherwise it silently falls back to empty string
+		varPrefix := ""
+		for k, v := range vars {
+			varPrefix += fmt.Sprintf("SET VARIABLE %s = '%s';\n", k, v)
+		}
 		query := Query{Columns: []Column{}}
 		// run query
-		rows, err := app.db.QueryxContext(ctx, string(sql)+";")
+		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sql)+";")
 		if err != nil {
 			return result, err
 		}
@@ -114,16 +134,70 @@ func GetDashboard(app *App, ctx context.Context, name string) (GetResult, error)
 			nextLabel = query.Rows[0][0].(string)
 			continue
 		}
+		rInfo := getRenderInfo(colTypes, query.Rows, sql, nextLabel)
+		query.Render = Render{
+			Type:  rInfo.Type,
+			Label: rInfo.Label,
+		}
 		for i, c := range colTypes {
 			nullable, ok := c.Nullable()
-			col := Column{Name: c.Name(), Type: mapDBType(c.DatabaseTypeName(), i, query.Rows), Nullable: ok && nullable}
+			col := Column{
+				Name:     c.Name(),
+				Type:     mapDBType(c.DatabaseTypeName(), i, query.Rows),
+				Nullable: ok && nullable,
+				Tag:      mapTag(i, rInfo),
+			}
 			query.Columns = append(query.Columns, col)
+			// Fetch vars from dropdown
+			if query.Render.Type == "dropdown" {
+				// Set default value + label to first row
+				if col.Tag == "value" {
+					param := queryParams.Get(col.Name)
+					if param == "" {
+						param = query.Rows[0][i].(string)
+					} else {
+						isValidVar := false
+						for _, row := range query.Rows {
+							if row[i].(string) == param {
+								isValidVar = true
+								break
+							}
+						}
+						if !isValidVar {
+							return result, fmt.Errorf("invalid value for query param '%s': %s", col.Name, param)
+						}
+					}
+					vars[col.Name] = param
+				}
+			}
 		}
-		query.Render = getRender(query.Columns, query.Rows, sql, nextLabel)
 		result.Queries = append(result.Queries, query)
 		nextLabel = ""
 	}
 	return result, err
+}
+
+func mapTag(index int, rInfo renderInfo) string {
+	if rInfo.Type == "linechart" || rInfo.Type == "barchart" {
+		if rInfo.XAxisIndex != nil && index == *rInfo.XAxisIndex {
+			return "xAxis"
+		}
+		if rInfo.YAxisIndex != nil && index == *rInfo.YAxisIndex {
+			return "yAxis"
+		}
+		if rInfo.CategoryIndex != nil && index == *rInfo.CategoryIndex {
+			return "category"
+		}
+	}
+	if rInfo.Type == "dropdown" {
+		if rInfo.ValueIndex != nil && index == *rInfo.ValueIndex {
+			return "value"
+		}
+		if rInfo.LabelIndex != nil && index == *rInfo.LabelIndex {
+			return "label"
+		}
+	}
+	return ""
 }
 
 // TODO: map all types
@@ -176,7 +250,7 @@ func isLabel(sql string, rows [][]interface{}) bool {
 }
 
 // TODO: Line charts should assert that only one XAXIS/LINECHART_YAXIS/LINECHART_CATEGORY is present and no columns without a tag
-func getRender(columns []Column, rows [][]interface{}, sql string, label string) Render {
+func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sql string, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
@@ -186,18 +260,21 @@ func getRender(columns []Column, rows [][]interface{}, sql string, label string)
 	lineY := getTagName(sql, "LINECHART_YAXIS")
 	if lineY != "" && xaxis != "" {
 		lineCat := getTagName(sql, "LINECHART_CATEGORY")
-		r := Render{
+		r := renderInfo{
 			Label: labelValue,
 			Type:  "linechart",
-			XAxis: &xaxis,
-			YAxis: &lineY,
 		}
-		if lineCat != "" {
-			for i, c := range columns {
-				if c.Name == lineCat {
+		for i, c := range columns {
+			if lineCat != "" {
+				if c.Name() == lineCat {
 					r.CategoryIndex = &i
-					break
 				}
+			}
+			if c.Name() == xaxis {
+				r.XAxisIndex = &i
+			}
+			if c.Name() == lineY {
+				r.YAxisIndex = &i
 			}
 		}
 		return r
@@ -206,39 +283,52 @@ func getRender(columns []Column, rows [][]interface{}, sql string, label string)
 	barY := getTagName(sql, "BARCHART_YAXIS")
 	if barY != "" && xaxis != "" {
 		barCat := getTagName(sql, "BARCHART_CATEGORY")
-		r := Render{
+		r := renderInfo{
 			Label: labelValue,
 			Type:  "barchart",
-			XAxis: &xaxis,
-			YAxis: &barY,
 		}
-		if barCat != "" {
-			for i, c := range columns {
-				if c.Name == barCat {
+		for i, c := range columns {
+			if barCat != "" {
+				if c.Name() == barCat {
 					r.CategoryIndex = &i
-					break
 				}
+			}
+			if c.Name() == xaxis {
+				r.XAxisIndex = &i
+			}
+			if c.Name() == barY {
+				r.YAxisIndex = &i
 			}
 		}
 		return r
 	}
 
-	// dateTimeColumn := -1
-	// numberColumns := 0
-	// for i, col := range columns {
-	// 	if col.Type == "year" || col.Type == "date" || col.Type == "timestamp" {
-	// 		dateTimeColumn = i
-	// 	} else if col.Type == "number" {
-	// 		numberColumns++
-	// 	}
-	// }
-	// if dateTimeColumn != -1 && numberColumns == len(columns)-1 {
-	// 	if hasOnlyUniqueValues(rows, dateTimeColumn) {
-	// 		return Render{Type: "line", XAxis: &columns[dateTimeColumn].Name}
-	// 	}
-	// }
+	dropdown := getTagName(sql, "DROPDOWN")
+	if dropdown != "" {
+		label := getTagName(sql, "LABEL")
+		valueIndex := -1
+		var labelIndex *int
+		for i, c := range columns {
+			if c.Name() == dropdown {
+				valueIndex = i
+			}
+			if label != "" && c.Name() == label {
+				labelIndex = &i
+			}
+		}
+		if valueIndex == -1 {
+			panic(fmt.Sprintf("column %s not found", dropdown))
+		}
 
-	return Render{
+		return renderInfo{
+			Label:      labelValue,
+			Type:       "dropdown",
+			ValueIndex: &valueIndex,
+			LabelIndex: labelIndex,
+		}
+	}
+
+	return renderInfo{
 		Label: labelValue,
 		Type:  "table",
 	}

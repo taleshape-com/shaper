@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Result } from "../lib/dashboard";
@@ -6,10 +7,19 @@ import DashboardTable from "../components/dashboard/DashboardTable";
 import { redirect } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import DashboardBarChart from "../components/dashboard/DashboardBarChart";
+import DashboardDropdown from "../components/dashboard/DashboardDropdown";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
-  loader: async ({ params: { dashboardId } }) => {
-    return fetch(`/api/dashboard/${dashboardId}`)
+  validateSearch: z.object({
+    vars: z.record(z.string()).optional(),
+  }),
+  loaderDeps: ({ search: { vars } }) => ({
+    vars,
+  }),
+  loader: async ({ params: { dashboardId }, deps: { vars } }) => {
+    const searchParams = new URLSearchParams(vars).toString();
+    return fetch(`/api/dashboard/${dashboardId}?${searchParams}`)
       .then(async (response) => {
         if (response.status === 401) {
           throw redirect({
@@ -73,7 +83,9 @@ function DashboardErrorComponent({ error }: ErrorComponentProps) {
 }
 
 function DashboardViewComponent() {
+  const { vars } = Route.useSearch();
   const data = Route.useLoaderData();
+  const navigate = useNavigate({ from: "/dashboard/view/$dashboardId" });
 
   if (!data) {
     return <div>Loading...</div>;
@@ -98,20 +110,24 @@ function DashboardViewComponent() {
               >
                 <h2 className="text-lg mb-10 text-center">{render.label}</h2>
                 {render.type === "linechart" ? (
-                  <DashboardLineChart
-                    headers={columns}
-                    data={rows}
-                    xaxis={render.xAxis}
-                    yaxis={render.yAxis}
-                    categoryIndex={render.categoryIndex}
-                  />
+                  <DashboardLineChart headers={columns} data={rows} />
                 ) : render.type === "barchart" ? (
-                  <DashboardBarChart
+                  <DashboardBarChart headers={columns} data={rows} />
+                ) : render.type === "dropdown" ? (
+                  <DashboardDropdown
                     headers={columns}
                     data={rows}
-                    xaxis={render.xAxis}
-                    yaxis={render.yAxis}
-                    categoryIndex={render.categoryIndex}
+                    vars={vars}
+                    onChange={(value, varName) => {
+                      navigate({
+                        search: (old: any) => ({
+                          ...old,
+                          vars: {
+                            [varName]: value,
+                          },
+                        }),
+                      });
+                    }}
                   />
                 ) : (
                   <DashboardTable headers={columns} data={rows} />

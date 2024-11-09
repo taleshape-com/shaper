@@ -19,7 +19,7 @@ func ListDashboards(app *core.App) echo.HandlerFunc {
 
 func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"))
+		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"), c.QueryParams())
 		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
 		}

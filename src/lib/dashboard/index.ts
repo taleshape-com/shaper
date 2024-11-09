@@ -2,6 +2,7 @@ export type Column = {
   name: string;
   type: "year" | "number" | "string";
   nullable: boolean;
+  tag: "xAxis" | "yAxis" | "category" | "value" | "label" | "";
 };
 
 export type Result = {
@@ -12,22 +13,16 @@ export type Result = {
       | {
           type: "linechart";
           label?: string;
-          xAxis: string;
-          yAxis: string;
-          categoryIndex?: number;
         }
       | {
           type: "barchart";
           label?: string;
-          xAxis: string;
-          yAxis: string;
-          categoryIndex?: number;
+        }
+      | {
+          type: "dropdown";
+          label?: string;
         };
-    columns: {
-      name: string;
-      type: "year" | "number" | "string";
-      nullable: boolean;
-    }[];
+    columns: Column[];
     rows: (string | number)[][];
   }[];
 };

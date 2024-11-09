@@ -1,30 +1,28 @@
 import { Column } from "../../lib/dashboard";
 import { BarChart } from "../tremor/BarChart";
 
-type LineProps = {
+type BarProps = {
   headers: Column[];
   data: (string | number)[][];
-  xaxis: string;
-  yaxis: string;
-  categoryIndex?: number;
 };
 
 const toYear = (value: string | number) => {
   return new Date(value).getFullYear();
 };
 
-const DashboardBarChart = ({
-  headers,
-  data,
-  xaxis,
-  yaxis,
-  categoryIndex,
-}: LineProps) => {
+const DashboardBarChart = ({ headers, data }: BarProps) => {
+  const yaxisHeader = headers.find((c) => c.tag === "yAxis");
+  if (!yaxisHeader) {
+    throw new Error("No yaxis header found");
+  }
+  const yaxis = yaxisHeader.name;
+  const categoryIndex = headers.findIndex((c) => c.tag === "category");
   const categories = new Set<string>();
-  if (categoryIndex == null) {
+  if (categoryIndex === -1) {
     categories.add(yaxis);
   }
-  const xaxisIndex = headers.findIndex((c) => c.name === xaxis);
+  const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
+  const xaxis = headers[xaxisIndex].name;
   const dataByXaxis = data.reduce(
     (acc, row) => {
       let key = row[xaxisIndex];
@@ -41,7 +39,7 @@ const DashboardBarChart = ({
         if (headers[i].type === "year") {
           cell = toYear(cell);
         }
-        if (categoryIndex == null) {
+        if (categoryIndex === -1) {
           acc[key][yaxis] = cell;
           return;
         }
@@ -71,7 +69,7 @@ const DashboardBarChart = ({
       }}
       xAxisLabel={xaxis}
       yAxisLabel={yaxis}
-      showLegend={categoryIndex != null}
+      showLegend={categoryIndex !== -1}
     />
   );
 };
