@@ -32,7 +32,7 @@ const DashboardLineChart = ({ label, headers, data }: LineProps) => {
         acc[key] = {};
       }
       row.forEach((cell, i) => {
-        let c = formatValue(cell)
+        const c = formatValue(cell)
         if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
