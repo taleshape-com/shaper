@@ -35,14 +35,17 @@ func indexHTMLWithCache(frontendFS fs.FS) echo.HandlerFunc {
 		panic(err)
 	}
 	return func(c echo.Context) error {
+		fmt.Println("hi")
 		indexFile, err := fsys.Open("index.html")
 		if err != nil {
+			fmt.Println("a", err)
 			return echo.NotFoundHandler(c)
 		}
 		defer indexFile.Close()
 
 		stat, err := indexFile.Stat()
 		if err != nil {
+			fmt.Println("b", err)
 			return echo.NotFoundHandler(c)
 		}
 

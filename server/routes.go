@@ -28,8 +28,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	apiWithAuth.GET("/dashboard/:name", handler.GetDashboard(app))
 
 	// Static assets - aggressive caching
-	assetsGroup := e.Group("/assets")
-	assetsGroup.Use(CacheControl(CacheConfig{
+	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{
 		MaxAge:    365 * 24 * time.Hour, // 1 year
 		Public:    true,
 		Immutable: true,
@@ -37,12 +36,10 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	assetsGroup.GET("/*", frontend(frontendFS))
 
 	// Icon - moderate caching
-	iconGroup := e.Group("")
-	iconGroup.Use(CacheControl(CacheConfig{
+	e.GET("/icon.svg", frontend(frontendFS), CacheControl(CacheConfig{
 		MaxAge: 24 * time.Hour, // 1 day
 		Public: true,
 	}))
-	iconGroup.GET("/icon.svg", frontend(frontendFS))
 
 	// Index HTML - light caching with revalidation
 	e.GET("/*", indexHTMLWithCache(frontendFS))
