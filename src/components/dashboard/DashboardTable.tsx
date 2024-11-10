@@ -1,4 +1,5 @@
-import { Column } from "../../lib/dashboard";
+import { Column, Result } from "../../lib/dashboard";
+import { formatValue } from "../../lib/render";
 import {
   Table,
   TableBody,
@@ -11,14 +12,7 @@ import {
 
 type TableProps = {
   headers: Column[];
-  data: (string | number)[][];
-};
-
-const formatValue = (value: string | number): string => {
-  if (typeof value === "number") {
-    return value.toLocaleString();
-  }
-  return value;
+  data: Result['queries'][0]['rows']
 };
 
 function DashboardTable({ headers, data }: TableProps) {

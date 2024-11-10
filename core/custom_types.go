@@ -13,6 +13,8 @@ var dbTypes = []struct {
 	{"BARCHART_YAXIS", "DOUBLE"},
 	{"BARCHART_CATEGORY", "VARCHAR"},
 	{"DROPDOWN", "VARCHAR"},
+	{"DROPDOWN_MULTI", "VARCHAR"},
+	{"HINT", "VARCHAR"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

@@ -9,16 +9,24 @@ import { Helmet } from "react-helmet";
 import DashboardBarChart from "../components/dashboard/DashboardBarChart";
 import DashboardDropdown from "../components/dashboard/DashboardDropdown";
 import { useNavigate } from "@tanstack/react-router";
+import DashboardDropdownMulti from "../components/dashboard/DashboardDropdownMulti";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   validateSearch: z.object({
-    vars: z.record(z.string()).optional(),
+    vars: z.record(z.union([z.string(), z.array(z.string())])).optional(),
   }),
   loaderDeps: ({ search: { vars } }) => ({
     vars,
   }),
   loader: async ({ params: { dashboardId }, deps: { vars } }) => {
-    const searchParams = new URLSearchParams(vars).toString();
+    const urlVars = Object.entries(vars ?? {}).reduce((acc, [key, value]) => {
+      if (Array.isArray(value)) {
+        return [...acc, ...value.map((v) => [key, v])];
+      }
+      return [...acc, [key, value]];
+    }, [] as string[][])
+    const searchParams = new URLSearchParams(urlVars).toString();
+    console.log(searchParams);
     return fetch(`/api/dashboard/${dashboardId}?${searchParams}`)
       .then(async (response) => {
         if (response.status === 401) {
@@ -108,29 +116,61 @@ function DashboardViewComponent() {
                 key={index}
                 className="lg:w-[calc(50vw-5rem)] h-[calc(50vh-4rem)] lg:h-[calc(100vh-12rem)] mb-24"
               >
-                <h2 className="text-lg mb-10 text-center">{render.label}</h2>
                 {render.type === "linechart" ? (
-                  <DashboardLineChart headers={columns} data={rows} />
+                  <>
+                    <h2 className="text-lg mb-10 text-center">
+                      {render.label}
+                    </h2>
+                    <DashboardLineChart headers={columns} data={rows} />
+                  </>
                 ) : render.type === "barchart" ? (
-                  <DashboardBarChart headers={columns} data={rows} />
+                  <>
+                    <h2 className="text-lg mb-10 text-center">
+                      {render.label}
+                    </h2>
+                    <DashboardBarChart headers={columns} data={rows} />
+                  </>
                 ) : render.type === "dropdown" ? (
-                  <DashboardDropdown
+                  <>
+                    <h2 className="text-lg mb-10 text-center">
+                      {render.label}
+                    </h2>
+                    <DashboardDropdown
+                      headers={columns}
+                      data={rows}
+                      vars={vars}
+                      onChange={(newVarz) => {
+                        navigate({
+                          search: (old: any) => ({
+                            ...old,
+                            vars: newVarz,
+                          }),
+                        });
+                      }}
+                    />
+                  </>
+                ) : render.type === "dropdownMulti" ? (
+                  <DashboardDropdownMulti
+                    label={render.label}
                     headers={columns}
                     data={rows}
                     vars={vars}
-                    onChange={(value, varName) => {
+                    onChange={(newVarz) => {
                       navigate({
                         search: (old: any) => ({
                           ...old,
-                          vars: {
-                            [varName]: value,
-                          },
+                          vars: newVarz,
                         }),
                       });
                     }}
                   />
                 ) : (
-                  <DashboardTable headers={columns} data={rows} />
+                  <>
+                    <h2 className="text-lg mb-10 text-center">
+                      {render.label}
+                    </h2>
+                    <DashboardTable headers={columns} data={rows} />
+                  </>
                 )}
               </div>
             );

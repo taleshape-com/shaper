@@ -1,13 +1,10 @@
-import { Column } from "../../lib/dashboard";
+import { Column, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
+import { formatValue, toYear } from "../../lib/render";
 
 type LineProps = {
   headers: Column[];
-  data: (string | number)[][];
-};
-
-const toYear = (value: string | number) => {
-  return new Date(value).getFullYear();
+  data: Result['queries'][0]['rows']
 };
 
 const DashboardLineChart = ({ headers, data }: LineProps) => {
@@ -25,7 +22,7 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
   const xaxis = headers[xaxisIndex].name;
   const dataByXaxis = data.reduce(
     (acc, row) => {
-      let key = row[xaxisIndex];
+      let key = formatValue(row[xaxisIndex]);
       if (headers[xaxisIndex].type === "year") {
         key = toYear(key);
       }
@@ -33,19 +30,20 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
         acc[key] = {};
       }
       row.forEach((cell, i) => {
+        let c = formatValue(cell)
         if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
         if (headers[i].type === "year") {
-          cell = toYear(cell);
+          c = toYear(cell);
         }
         if (categoryIndex === -1) {
-          acc[key][yaxis] = cell;
+          acc[key][yaxis] = c;
           return;
         }
         const category = row[categoryIndex].toString();
         categories.add(category);
-        acc[key][category] = cell;
+        acc[key][category] = c;
       });
       return acc;
     },
