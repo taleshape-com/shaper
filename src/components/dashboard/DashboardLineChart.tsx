@@ -1,13 +1,15 @@
 import { Column, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
 import { formatValue, toYear } from "../../lib/render";
+import { Card } from "../tremor/Card";
 
 type LineProps = {
+  label?: string;
   headers: Column[];
   data: Result['queries'][0]['rows']
 };
 
-const DashboardLineChart = ({ headers, data }: LineProps) => {
+const DashboardLineChart = ({ label, headers, data }: LineProps) => {
   const yaxisHeader = headers.find((c) => c.tag === "yAxis");
   if (!yaxisHeader) {
     throw new Error("No yaxis header found");
@@ -34,9 +36,6 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
         if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
-        if (headers[i].type === "year") {
-          c = toYear(cell);
-        }
         if (categoryIndex === -1) {
           acc[key][yaxis] = c;
           return;
@@ -55,19 +54,27 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
       ...value,
     };
   });
+
   return (
-    <LineChart
-      className="h-full w-full"
-      data={chartdata}
-      index={xaxis}
-      categories={Array.from(categories)}
-      valueFormatter={(number: number) => {
-        return number.toLocaleString();
-      }}
-      xAxisLabel={xaxis}
-      yAxisLabel={yaxis}
-      showLegend={categoryIndex !== -1}
-    />
+    <div className="h-[calc(50vh-2rem)] p-2 mb-10">
+      <h2 className="text-sm mb-2 text-center">
+        {label}
+      </h2>
+      <Card className="h-full py-1 px-3">
+        <LineChart
+          className="h-full"
+          data={chartdata}
+          index={xaxis}
+          categories={Array.from(categories)}
+          valueFormatter={(number: number) => {
+            return number.toLocaleString();
+          }}
+          xAxisLabel={xaxis}
+          yAxisLabel={yaxis}
+          showLegend={categoryIndex !== -1}
+        />
+      </Card>
+    </div>
   );
 };
 

@@ -9,43 +9,58 @@ import {
   TableRoot,
   TableRow,
 } from "../tremor/Table";
+import { Card } from "../tremor/Card";
+import { cx } from "../../lib/utils";
 
 type TableProps = {
+  label?: string;
   headers: Column[];
   data: Result['queries'][0]['rows']
 };
 
-function DashboardTable({ headers, data }: TableProps) {
+function DashboardTable({ label, headers, data }: TableProps) {
   if (!data) {
     return <div>No data</div>;
   }
   return (
-    <TableRoot className="max-h-screen overflow-auto w-full">
-      <Table>
-        <TableHead>
-          <TableRow>
-            {headers.map((header) => (
-              <TableHeaderCell key={header.name}>{header.name}</TableHeaderCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((items, index) => (
-            <TableRow key={index}>
-              {items.map((item, index) => {
-                const classes =
-                  typeof item === "number" ? "text-right" : "text-left";
-                return (
-                  <TableCell key={index} className={classes}>
-                    {formatValue(item)}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableRoot>
+    <div className={cx({
+      "col-span-3": headers.length > 5,
+      "col-span-2": headers.length > 2 && headers.length <= 5,
+    })}>
+      {label &&
+        <h2 className="text-sm mb-2 text-center">
+          {label}
+        </h2>
+      }
+      <Card className="h-full p-2">
+        <TableRoot className="max-h-[calc(100vh-6rem)] overflow-auto">
+          <Table>
+            <TableHead className="sticky top-0 bg-white shadow-sm">
+              <TableRow>
+                {headers.map((header) => (
+                  <TableHeaderCell key={header.name}>{header.name}</TableHeaderCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data.map((items, index) => (
+                <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50" : undefined}>
+                  {items.map((item, index) => {
+                    const classes =
+                      typeof item === "number" ? "text-right" : "text-left";
+                    return (
+                      <TableCell key={index} className={classes}>
+                        {formatValue(item)}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableRoot>
+      </Card>
+    </div>
   );
 }
 

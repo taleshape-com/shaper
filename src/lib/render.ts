@@ -1,6 +1,6 @@
-export const formatValue = (value: string | number | boolean): string => {
+export const formatValue = (value: string | number | boolean) => {
   if (typeof value === "number") {
-    return value.toLocaleString();
+    return value;
   }
   if (typeof value === "boolean") {
     return value ? "YES" : "NO";

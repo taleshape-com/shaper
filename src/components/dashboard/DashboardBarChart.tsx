@@ -1,13 +1,15 @@
 import { Column, Result } from "../../lib/dashboard";
 import { formatValue, toYear } from "../../lib/render";
 import { BarChart } from "../tremor/BarChart";
+import { Card } from "../tremor/Card";
 
 type BarProps = {
+  label?: string;
   headers: Column[];
   data: Result['queries'][0]['rows']
 };
 
-const DashboardBarChart = ({ headers, data }: BarProps) => {
+const DashboardBarChart = ({ label, headers, data }: BarProps) => {
   const yaxisHeader = headers.find((c) => c.tag === "yAxis");
   if (!yaxisHeader) {
     throw new Error("No yaxis header found");
@@ -56,19 +58,26 @@ const DashboardBarChart = ({ headers, data }: BarProps) => {
     };
   });
   return (
-    <BarChart
-      className="h-full w-full"
-      type="stacked"
-      data={chartdata}
-      index={xaxis}
-      categories={Array.from(categories)}
-      valueFormatter={(number: number) => {
-        return number.toLocaleString();
-      }}
-      xAxisLabel={xaxis}
-      yAxisLabel={yaxis}
-      showLegend={categoryIndex !== -1}
-    />
+    <div className="h-[calc(50vh-2rem)] p-2 mb-10">
+      <h2 className="text-sm mb-2 text-center">
+        {label}
+      </h2>
+      <Card className="h-full py-1 px-3">
+        <BarChart
+          className="h-full"
+          type="stacked"
+          data={chartdata}
+          index={xaxis}
+          categories={Array.from(categories)}
+          valueFormatter={(number: number) => {
+            return number.toLocaleString();
+          }}
+          xAxisLabel={xaxis}
+          yAxisLabel={yaxis}
+          showLegend={categoryIndex !== -1}
+        />
+      </Card>
+    </div>
   );
 };
 
