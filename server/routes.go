@@ -9,16 +9,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-// CacheControl middleware adds cache headers based on path
-func CacheControl(duration string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Response().Header().Set("Cache-Control", duration)
-			return next(c)
-		}
-	}
-}
-
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	apiWithAuth := e.Group("/api", middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
 		KeyLookup: "cookie:shaper-token",
@@ -34,14 +24,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	apiWithAuth.GET("/login/cookie/test", handler.TestCookie)
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
 	apiWithAuth.GET("/dashboard/:name", handler.GetDashboard(app))
-
-	assetsGroup := e.Group("/assets")
-	assetsGroup.Use(CacheControl("public, max-age=31536000, immutable")) // 1 year
-	assetsGroup.GET("/*", frontend(frontendFS))
-
-	iconGroup := e.Group("")
-	iconGroup.Use(CacheControl("public, max-age=86400")) // 1 day
-	iconGroup.GET("/icon.svg", frontend(frontendFS))
-
-	e.GET("/*", indexHTMLWithCache(frontendFS))
+	e.GET("/assets/*", frontend(frontendFS))
+	e.GET("/icon.svg", frontend(frontendFS))
+	e.GET("/*", indexHTML(frontendFS))
 }
