@@ -116,7 +116,7 @@ function DashboardViewComponent() {
     queries: []
   }, ...data.sections] : data.sections;
   return (
-    <div className="mx-2 mt-2 mb-10 sm:mx-2 sm:mt-2">
+    <div className="mx-2 mt-2 mb-16 sm:mx-2 sm:mt-2">
       <Helmet>
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
