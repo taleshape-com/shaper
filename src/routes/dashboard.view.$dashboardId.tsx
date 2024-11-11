@@ -107,13 +107,20 @@ function DashboardViewComponent() {
     });
   }
 
+  const sections: Result['sections'] = data.sections.length === 0 ? [{
+    type: "header",
+    queries: []
+  }] : data.sections[0].type !== "header" ? [{
+    type: "header",
+    queries: []
+  }, ...data.sections] : data.sections;
   return (
     <div className="mx-2 mt-2 mb-10 sm:mx-2 sm:mt-2">
       <Helmet>
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
       </Helmet>
-      {data.sections.map((section, index) => {
+      {sections.map((section, index) => {
         if (section.type === 'header') {
           return <section key={index} className={cx(["flex items-center mx-2 pb-8", index !== 0 ? "pt-8 border-t" : ""])}>
             {index === 0 ? (
@@ -195,7 +202,7 @@ function DashboardViewComponent() {
           })}
         </section>
       })}
-      {data.sections.length === 1 ? (
+      {sections.length === 1 ? (
         <div className="text-center text-slate-600 leading-[calc(70vh)]">
           Nothing to show yet ...
         </div>
