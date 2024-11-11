@@ -200,6 +200,7 @@ function DashboardViewComponent() {
                 label={render.label}
                 headers={columns}
                 data={rows}
+                sectionCount={queries.length}
               />
             );
           })}

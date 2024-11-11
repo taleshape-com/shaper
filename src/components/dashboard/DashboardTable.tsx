@@ -16,17 +16,18 @@ type TableProps = {
   label?: string;
   headers: Column[];
   data?: Result['queries'][0]['rows']
+  sectionCount: number;
 };
 
-function DashboardTable({ label, headers, data }: TableProps) {
+function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
   if (!data) {
     return <div>No data</div>;
   }
   return (
     <div className={cx({
       "p-2 mb-3": true,
-      "col-span-3": headers.length > 5,
-      "col-span-2": headers.length > 2 && headers.length <= 5,
+      "col-span-2": headers.length === 2 && sectionCount >= 2,
+      "col-span-4": headers.length >= 3 || sectionCount === 1,
     })}>
       {label &&
         <h2 className="text-sm mb-2 text-center">
@@ -34,7 +35,11 @@ function DashboardTable({ label, headers, data }: TableProps) {
         </h2>
       }
       <Card className="p-2">
-        <TableRoot className="max-h-[calc(100vh-6rem)]  overflow-auto">
+        <TableRoot className={cx({
+          "overflow-auto": true,
+          ["max-h-[calc(100vh-10rem)]"]: label,
+          ["max-h-[calc(100vh-8rem)]"]: !label,
+        })}>
           <Table>
             <TableHead className="sticky top-0 bg-white shadow-sm">
               <TableRow>

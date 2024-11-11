@@ -58,17 +58,23 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
   });
 
   return (
-    <div className={cx({
-      "p-2 mb-10": true,
-      "h-[calc(45vh)] sm:h-[calc(100vh-8rem)]": sectionCount === 1,
-      "h-[calc(50vh-6rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(55vh)] xl:h-[calc(100vh-10rem)]": sectionCount === 2,
-      "h-[calc(50vh-6rem)] sm:h-[calc(96vh-8rem)] md:h-[calc(50vh-6rem)]": sectionCount >= 3,
-      "2xl:h-[calc(50vh)]": sectionCount === 3,
-    })}>
-      <h2 className="text-sm mb-2 text-center">
+    <div className="p-2 mb-6">
+      {label ? <h2 className="text-sm mb-2 text-center">
         {label}
       </h2>
-      <Card className="h-full py-1 px-3">
+        : null
+      }
+      <Card className={cx({
+        "py-1 px-3": true,
+        "h-[calc(45vh)] sm:h-[calc(100vh-8.25rem)]": sectionCount === 1 && label,
+        "h-[calc(45vh)] sm:h-[calc(100vh-6.5rem)]": sectionCount === 1 && !label,
+        "h-[calc(50vh-6rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(55vh)] xl:h-[calc(100vh-8.25rem)]": sectionCount === 2 && label,
+        "h-[calc(50vh-5rem)] sm:h-[calc(100vh-6.5rem)] lg:h-[calc(55vh+1.75rem)] xl:h-[calc(100vh-6.5rem)]": sectionCount === 2 && !label,
+        "h-[calc(50vh-6.4rem)] sm:h-[calc(96vh-6.25rem)] md:h-[calc(50vh-6.25rem)]": sectionCount >= 3 && label,
+        "h-[calc(50vh-4.6rem)] sm:h-[calc(96vh-4.5rem)] md:h-[calc(50vh-4.5rem)]": sectionCount >= 3 && !label,
+        "2xl:h-[calc(50vh)]": sectionCount === 3 && label,
+        "2xl:h-[calc(50vh+1.75rem)]": sectionCount === 3 && !label,
+      })}>
         {!data ?
           (
             <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
