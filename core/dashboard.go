@@ -86,20 +86,21 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 	}
 	nextLabel := ""
 	sqls := strings.Split(string(sqlFile), ";")
-	// TODO: support multiple values
-	// TODO: currently variables have to be defined in the order they are used. create a dependency graph instead
+	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars := map[string]string{}
 	multiVars := map[string][]string{}
-	for i, sql := range sqls {
+
+	for i, sqlString := range sqls {
 		if i == len(sqls)-1 {
+			// Ignore text after last semicolon
 			continue
 		}
 		// TODO: assert that variable names are alphanumeric
-		// TODO: escape variable values
+		// TODO: test and harden variable escaping
 		// TODO: assert that variables in query are set. otherwise it silently falls back to empty string
-		varPrefix := ""
+		var varPrefix strings.Builder
 		for k, v := range singleVars {
-			varPrefix += fmt.Sprintf("SET VARIABLE %s = '%s';\n", k, v)
+			varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = '%s';\n", escapeSQLIdentifier(k), escapeSQLString(v)))
 		}
 		for k, v := range multiVars {
 			l := ""
@@ -108,13 +109,13 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 				if i == 0 {
 					prefix = ""
 				}
-				l += fmt.Sprintf("%s'%s'", prefix, p)
+				l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
 			}
-			varPrefix += fmt.Sprintf("SET VARIABLE %s = [%s];\n", k, l)
+			varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR;\n", escapeSQLIdentifier(k), l))
 		}
 		query := Query{Columns: []Column{}}
 		// run query
-		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sql)+";")
+		rows, err := app.db.QueryxContext(ctx, varPrefix.String()+string(sqlString)+";")
 		if err != nil {
 			return result, err
 		}
@@ -143,11 +144,11 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 		// 	}
 		// 	query.Columns = append(query.Columns, col)
 		// }
-		if isLabel(sql, query.Rows) {
+		if isLabel(sqlString, query.Rows) {
 			nextLabel = query.Rows[0][0].(string)
 			continue
 		}
-		rInfo := getRenderInfo(colTypes, query.Rows, sql, nextLabel)
+		rInfo := getRenderInfo(colTypes, query.Rows, sqlString, nextLabel)
 		query.Render = Render{
 			Type:  rInfo.Type,
 			Label: rInfo.Label,
@@ -166,6 +167,10 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 				param := queryParams.Get(col.Name)
 				if param == "" {
 					// Set default value to first row
+					if len(query.Rows) == 0 {
+						// Hide dropdown if now rows to select from
+						continue
+					}
 					param = query.Rows[0][i].(string)
 				} else {
 					isValidVar := false
@@ -217,6 +222,32 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 		nextLabel = ""
 	}
 	return result, err
+}
+
+func escapeSQLString(str string) string {
+	// Replace single quotes with doubled single quotes
+	escaped := strings.Replace(str, "'", "''", -1)
+
+	// Optional: Replace other potentially dangerous characters
+	escaped = strings.Replace(escaped, "\x00", "", -1) // Remove null bytes
+	escaped = strings.Replace(escaped, "\n", " ", -1)  // Replace newlines
+	escaped = strings.Replace(escaped, "\r", " ", -1)  // Replace carriage returns
+	escaped = strings.Replace(escaped, "\x1a", "", -1) // Remove ctrl+Z
+
+	return escaped
+}
+
+func escapeSQLIdentifier(str string) string {
+	// Replace single quotes with doubled single quotes
+	escaped := strings.Replace(str, "\"", "\"\"", -1)
+
+	// Optional: Replace other potentially dangerous characters
+	escaped = strings.Replace(escaped, "\x00", "", -1) // Remove null bytes
+	escaped = strings.Replace(escaped, "\n", " ", -1)  // Replace newlines
+	escaped = strings.Replace(escaped, "\r", " ", -1)  // Replace carriage returns
+	escaped = strings.Replace(escaped, "\x1a", "", -1) // Remove ctrl+Z
+
+	return escaped
 }
 
 func mapTag(index int, rInfo renderInfo) string {

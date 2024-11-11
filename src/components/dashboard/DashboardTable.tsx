@@ -15,7 +15,7 @@ import { cx } from "../../lib/utils";
 type TableProps = {
   label?: string;
   headers: Column[];
-  data: Result['queries'][0]['rows']
+  data?: Result['queries'][0]['rows']
 };
 
 function DashboardTable({ label, headers, data }: TableProps) {
@@ -24,6 +24,7 @@ function DashboardTable({ label, headers, data }: TableProps) {
   }
   return (
     <div className={cx({
+      "p-2 mb-3": true,
       "col-span-3": headers.length > 5,
       "col-span-2": headers.length > 2 && headers.length <= 5,
     })}>
@@ -32,8 +33,8 @@ function DashboardTable({ label, headers, data }: TableProps) {
           {label}
         </h2>
       }
-      <Card className="h-full p-2">
-        <TableRoot className="max-h-[calc(100vh-6rem)] overflow-auto">
+      <Card className="p-2">
+        <TableRoot className="max-h-[calc(100vh-6rem)]  overflow-auto">
           <Table>
             <TableHead className="sticky top-0 bg-white shadow-sm">
               <TableRow>

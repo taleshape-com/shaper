@@ -6,7 +6,7 @@ import { Card } from "../tremor/Card";
 type LineProps = {
   label?: string;
   headers: Column[];
-  data: Result['queries'][0]['rows']
+  data?: Result['queries'][0]['rows']
 };
 
 const DashboardLineChart = ({ label, headers, data }: LineProps) => {
@@ -22,7 +22,7 @@ const DashboardLineChart = ({ label, headers, data }: LineProps) => {
   }
   const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
   const xaxis = headers[xaxisIndex].name;
-  const dataByXaxis = data.reduce(
+  const dataByXaxis = (data ?? []).reduce(
     (acc, row) => {
       let key = formatValue(row[xaxisIndex]);
       if (headers[xaxisIndex].type === "year") {
@@ -61,18 +61,25 @@ const DashboardLineChart = ({ label, headers, data }: LineProps) => {
         {label}
       </h2>
       <Card className="h-full py-1 px-3">
-        <LineChart
-          className="h-full"
-          data={chartdata}
-          index={xaxis}
-          categories={Array.from(categories)}
-          valueFormatter={(number: number) => {
-            return number.toLocaleString();
-          }}
-          xAxisLabel={xaxis}
-          yAxisLabel={yaxis}
-          showLegend={categoryIndex !== -1}
-        />
+        {!data ?
+          (
+            <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
+              no data
+            </div>
+          ) :
+          <LineChart
+            className="h-full"
+            data={chartdata}
+            index={xaxis}
+            categories={Array.from(categories)}
+            valueFormatter={(number: number) => {
+              return number.toLocaleString();
+            }}
+            xAxisLabel={xaxis}
+            yAxisLabel={yaxis}
+            showLegend={categoryIndex !== -1}
+          />
+        }
       </Card>
     </div>
   );

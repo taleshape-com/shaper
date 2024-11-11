@@ -6,7 +6,7 @@ import { Card } from "../tremor/Card";
 type BarProps = {
   label?: string;
   headers: Column[];
-  data: Result['queries'][0]['rows']
+  data?: Result['queries'][0]['rows']
 };
 
 const DashboardBarChart = ({ label, headers, data }: BarProps) => {
@@ -22,7 +22,7 @@ const DashboardBarChart = ({ label, headers, data }: BarProps) => {
   }
   const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
   const xaxis = headers[xaxisIndex].name;
-  const dataByXaxis = data.reduce(
+  const dataByXaxis = (data ?? []).reduce(
     (acc, row) => {
       let key = formatValue(row[xaxisIndex]);
       if (headers[xaxisIndex].type === "year") {
@@ -63,19 +63,26 @@ const DashboardBarChart = ({ label, headers, data }: BarProps) => {
         {label}
       </h2>
       <Card className="h-full py-1 px-3">
-        <BarChart
-          className="h-full"
-          type="stacked"
-          data={chartdata}
-          index={xaxis}
-          categories={Array.from(categories)}
-          valueFormatter={(number: number) => {
-            return number.toLocaleString();
-          }}
-          xAxisLabel={xaxis}
-          yAxisLabel={yaxis}
-          showLegend={categoryIndex !== -1}
-        />
+        {!data ?
+          (
+            <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
+              no data
+            </div>
+          ) :
+          <BarChart
+            className="h-full"
+            type="stacked"
+            data={chartdata}
+            index={xaxis}
+            categories={Array.from(categories)}
+            valueFormatter={(number: number) => {
+              return number.toLocaleString();
+            }}
+            xAxisLabel={xaxis}
+            yAxisLabel={yaxis}
+            showLegend={categoryIndex !== -1}
+          />
+        }
       </Card>
     </div>
   );
