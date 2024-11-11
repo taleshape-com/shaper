@@ -57,6 +57,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
     };
   });
 
+
   return (
     <div className="p-2 mb-6">
       {label ? <h2 className="text-sm mb-2 text-center">
@@ -84,6 +85,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
           <LineChart
             className="h-full"
             startEndOnly
+            connectNulls
             data={chartdata}
             index={xaxis}
             categories={Array.from(categories)}
