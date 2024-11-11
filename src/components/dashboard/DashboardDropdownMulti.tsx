@@ -1,7 +1,5 @@
 import * as SelectPrimitives from "@radix-ui/react-select";
-import {
-  RiExpandUpDownLine,
-} from "@remixicon/react";
+import { RiExpandUpDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 import { Button } from "../tremor/Button";
 import {

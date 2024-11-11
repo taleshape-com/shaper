@@ -11,6 +11,7 @@ import DashboardDropdown from "../components/dashboard/DashboardDropdown";
 import { useNavigate } from "@tanstack/react-router";
 import DashboardDropdownMulti from "../components/dashboard/DashboardDropdownMulti";
 import { cx } from "../lib/utils";
+import DashboardButton from "../components/dashboard/DashboardButton";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   validateSearch: z.object({
@@ -152,6 +153,16 @@ function DashboardViewComponent() {
                     data={rows}
                     vars={vars}
                     onChange={onDropdownChange}
+                  />
+                );
+              }
+              if (render.type === "button") {
+                return (
+                  <DashboardButton
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
                   />
                 );
               }

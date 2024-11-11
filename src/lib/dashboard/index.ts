@@ -2,7 +2,7 @@ export type Column = {
   name: string;
   type: "year" | "number" | "string" | "boolean";
   nullable: boolean;
-  tag: "xAxis" | "yAxis" | "category" | "value" | "label" | "hint" | "";
+  tag: "xAxis" | "yAxis" | "category" | "value" | "label" | "hint" | "download" | "";
 };
 
 export type Result = {
@@ -12,7 +12,7 @@ export type Result = {
     title?: string;
     queries: {
       render: {
-        type: "dropdown" | "dropdownMulti";
+        type: "dropdown" | "dropdownMulti" | "button";
         label?: string;
       }
       columns: Column[];
