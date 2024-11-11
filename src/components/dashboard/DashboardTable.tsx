@@ -15,7 +15,7 @@ import { cx } from "../../lib/utils";
 type TableProps = {
   label?: string;
   headers: Column[];
-  data?: Result['queries'][0]['rows']
+  data?: Result['sections'][0]['queries'][0]['rows']
   sectionCount: number;
 };
 

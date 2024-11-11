@@ -7,7 +7,7 @@ export type Column = {
 
 export type Result = {
   title: string;
-  sections: {
+  sections: ({
     type: 'header';
     title?: string;
     queries: {
@@ -28,5 +28,5 @@ export type Result = {
       columns: Column[];
       rows: (string | number | boolean)[][];
     }[];
-  }[]
+  })[]
 };
