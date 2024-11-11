@@ -85,6 +85,7 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
           ) :
           <BarChart
             className="h-full"
+            startEndOnly
             type="stacked"
             data={chartdata}
             index={xaxis}

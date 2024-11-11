@@ -83,6 +83,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
           ) :
           <LineChart
             className="h-full"
+            startEndOnly
             data={chartdata}
             index={xaxis}
             categories={Array.from(categories)}
