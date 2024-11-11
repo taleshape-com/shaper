@@ -173,9 +173,9 @@ function DashboardViewComponent() {
           key={index}
           className={cx({
             ["grid grid-cols-1"]: true,
-            ["lg:grid-cols-2"]: section.queries.length === 2,
-            ["md:grid-cols-2 xl:grid-cols-3"]: section.queries.length >= 3,
-            ["xl:grid-cols-4"]: section.queries.length >= 4,
+            ["lg:grid-cols-2"]: section.queries.length === 2 || section.queries.length === 4,
+            ["md:grid-cols-2 lg:grid-cols-3"]: section.queries.length === 3 || section.queries.length >= 5,
+            ["xl:grid-cols-4"]: section.queries.length >= 5,
           })}
         >
           {section.queries.map(({ render, columns, rows }, index) => {
