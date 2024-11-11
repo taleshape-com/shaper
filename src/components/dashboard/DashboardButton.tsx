@@ -17,7 +17,7 @@ function DashboardButton({
   headers,
 }: ButtonProps) {
   return (
-    <div className="ml-4">
+    <div className="ml-2">
       <a href={formatValue((data ?? [])[0][0]).toString()} download>
         <Button variant="secondary" className="font-normal flex w-full items-center justify-between">
           {label}
