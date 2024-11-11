@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"shaper/core"
 	"strings"
@@ -66,7 +67,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 			// If headers haven't been sent yet, return JSON error
 			if c.Response().Committed {
 				// If we've already started streaming, log the error since we can't modify the response
-				app.Logger.Error("streaming error after response started:", err)
+				app.Logger.Error("streaming error after response started:", slog.String("error", err.Error()))
 				return err
 			}
 			return c.JSONPretty(
