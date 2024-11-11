@@ -2,14 +2,16 @@ import { Column, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
 import { formatValue, toYear } from "../../lib/render";
 import { Card } from "../tremor/Card";
+import { cx } from "../../lib/utils";
 
 type LineProps = {
   label?: string;
   headers: Column[];
   data?: Result['queries'][0]['rows']
+  sectionCount: number;
 };
 
-const DashboardLineChart = ({ label, headers, data }: LineProps) => {
+const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) => {
   const yaxisHeader = headers.find((c) => c.tag === "yAxis");
   if (!yaxisHeader) {
     throw new Error("No yaxis header found");
@@ -56,7 +58,13 @@ const DashboardLineChart = ({ label, headers, data }: LineProps) => {
   });
 
   return (
-    <div className="h-[calc(50vh-2rem)] p-2 mb-10">
+    <div className={cx({
+      "p-2 mb-10": true,
+      "h-[calc(45vh)] sm:h-[calc(100vh-8rem)]": sectionCount === 1,
+      "h-[calc(50vh-6rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(55vh)] xl:h-[calc(100vh-10rem)]": sectionCount === 2,
+      "h-[calc(50vh-6rem)] sm:h-[calc(96vh-8rem)] md:h-[calc(50vh-6rem)]": sectionCount >= 3,
+      "2xl:h-[calc(50vh)]": sectionCount === 3,
+    })}>
       <h2 className="text-sm mb-2 text-center">
         {label}
       </h2>

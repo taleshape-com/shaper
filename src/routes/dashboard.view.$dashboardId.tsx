@@ -10,6 +10,7 @@ import DashboardBarChart from "../components/dashboard/DashboardBarChart";
 import DashboardDropdown from "../components/dashboard/DashboardDropdown";
 import { useNavigate } from "@tanstack/react-router";
 import DashboardDropdownMulti from "../components/dashboard/DashboardDropdownMulti";
+import { cx } from "../lib/utils";
 
 export const Route = createFileRoute("/dashboard/view/$dashboardId")({
   validateSearch: z.object({
@@ -132,8 +133,8 @@ function DashboardViewComponent() {
       </Helmet>
       {sections.map(([sectionType, queries], index) => {
         if (sectionType === 'menu') {
-          return <section key={index} className="flex items-center mx-2 pb-8">
-            {index === 0 ? <h1 className="text-lg text-slate-700 flex-grow">{data.title}</h1> : null}
+          return <section key={index} className={cx(["flex items-center mx-2 pb-8", index !== 0 ? "pt-8 border-t" : ""])}>
+            {index === 0 ? <h1 className="text-lg text-slate-700 flex-grow">{data.title}</h1> : <div className="flex-grow"></div>}
             {queries.map(({ render, columns, rows }, index) => {
               if (render.type === "dropdown") {
                 return (
@@ -161,7 +162,15 @@ function DashboardViewComponent() {
             })}
           </section>
         }
-        return <section key={index} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+        return <section
+          key={index}
+          className={cx({
+            ["grid grid-cols-1"]: true,
+            ["lg:grid-cols-2"]: queries.length === 2,
+            ["md:grid-cols-2 xl:grid-cols-3"]: queries.length >= 3,
+            ["xl:grid-cols-4"]: queries.length >= 4,
+          })}
+        >
           {queries.map(({ render, columns, rows }, index) => {
             if (render.type === "linechart") {
               return (
@@ -170,6 +179,7 @@ function DashboardViewComponent() {
                   label={render.label}
                   headers={columns}
                   data={rows}
+                  sectionCount={queries.length}
                 />
               );
             }
@@ -180,6 +190,7 @@ function DashboardViewComponent() {
                   label={render.label}
                   headers={columns}
                   data={rows}
+                  sectionCount={queries.length}
                 />
               );
             }
