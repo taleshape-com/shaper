@@ -106,24 +106,6 @@ function DashboardViewComponent() {
       }),
     });
   }
-  const sections: ['menu' | 'content', Result['queries']][] = [['menu', []]];
-  data.queries.forEach((query) => {
-    const lastSection = sections[sections.length - 1];
-    if (query.render.type === 'dropdown' || query.render.type === 'dropdownMulti') {
-      if (lastSection[0] === 'menu') {
-        lastSection[1].push(query);
-        return;
-      }
-      sections.push(['menu', [query]]);
-      return;
-    }
-    if (lastSection[0] === 'content') {
-      lastSection[1].push(query);
-      return;
-    }
-    sections.push(['content', [query]]);
-    return;
-  });
 
   return (
     <div className="mx-2 mt-2 mb-10 sm:mx-2 sm:mt-2">
@@ -131,11 +113,18 @@ function DashboardViewComponent() {
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
       </Helmet>
-      {sections.map(([sectionType, queries], index) => {
-        if (sectionType === 'menu') {
+      {data.sections.map((section, index) => {
+        if (section.type === 'header') {
           return <section key={index} className={cx(["flex items-center mx-2 pb-8", index !== 0 ? "pt-8 border-t" : ""])}>
-            {index === 0 ? <h1 className="text-lg text-slate-700 flex-grow py-1">{data.title}</h1> : <div className="flex-grow"></div>}
-            {queries.map(({ render, columns, rows }, index) => {
+            {index === 0 ? (
+              <h1 className="text-xl text-slate-700 flex-grow py-1">{data.title}</h1>
+            ) : null}
+            {section.title ? (
+              <h1 className="text-md text-slate-700 flex-grow text-left py-1">{section.title}</h1>
+            ) : (
+              <div className="flex-grow"></div>
+            )}
+            {section.queries.map(({ render, columns, rows }, index) => {
               if (render.type === "dropdown") {
                 return (
                   <DashboardDropdown
@@ -166,12 +155,12 @@ function DashboardViewComponent() {
           key={index}
           className={cx({
             ["grid grid-cols-1"]: true,
-            ["lg:grid-cols-2"]: queries.length === 2,
-            ["md:grid-cols-2 xl:grid-cols-3"]: queries.length >= 3,
-            ["xl:grid-cols-4"]: queries.length >= 4,
+            ["lg:grid-cols-2"]: section.queries.length === 2,
+            ["md:grid-cols-2 xl:grid-cols-3"]: section.queries.length >= 3,
+            ["xl:grid-cols-4"]: section.queries.length >= 4,
           })}
         >
-          {queries.map(({ render, columns, rows }, index) => {
+          {section.queries.map(({ render, columns, rows }, index) => {
             if (render.type === "linechart") {
               return (
                 <DashboardLineChart
@@ -179,7 +168,7 @@ function DashboardViewComponent() {
                   label={render.label}
                   headers={columns}
                   data={rows}
-                  sectionCount={queries.length}
+                  sectionCount={section.queries.length}
                 />
               );
             }
@@ -190,7 +179,7 @@ function DashboardViewComponent() {
                   label={render.label}
                   headers={columns}
                   data={rows}
-                  sectionCount={queries.length}
+                  sectionCount={section.queries.length}
                 />
               );
             }
@@ -200,13 +189,13 @@ function DashboardViewComponent() {
                 label={render.label}
                 headers={columns}
                 data={rows}
-                sectionCount={queries.length}
+                sectionCount={section.queries.length}
               />
             );
           })}
         </section>
       })}
-      {sections.length === 1 ? (
+      {data.sections.length === 1 ? (
         <div className="text-center text-slate-600 leading-[calc(70vh)]">
           Nothing to show yet ...
         </div>

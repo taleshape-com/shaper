@@ -7,26 +7,26 @@ export type Column = {
 
 export type Result = {
   title: string;
-  queries: {
-    render:
-    | { type: "table"; label?: string }
-    | {
-      type: "linechart";
-      label?: string;
-    }
-    | {
-      type: "barchart";
-      label?: string;
-    }
-    | {
-      type: "dropdown";
-      label?: string;
-    }
-    | {
-      type: "dropdownMulti";
-      label?: string;
-    };
-    columns: Column[];
-    rows: (string | number | boolean)[][];
-  }[];
+  sections: {
+    type: 'header';
+    title?: string;
+    queries: {
+      render: {
+        type: "dropdown" | "dropdownMulti";
+        label?: string;
+      }
+      columns: Column[];
+      rows: (string | number | boolean)[][];
+    }[];
+  } | {
+    type: 'content';
+    queries: {
+      render: {
+        type: "table" | "linechart" | "barchart";
+        label?: string;
+      };
+      columns: Column[];
+      rows: (string | number | boolean)[][];
+    }[];
+  }[]
 };

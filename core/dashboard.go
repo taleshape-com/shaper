@@ -17,7 +17,13 @@ type ListResult struct {
 }
 
 type GetResult struct {
-	Title   string  `json:"title"`
+	Title    string    `json:"title"`
+	Sections []Section `json:"sections"`
+}
+
+type Section struct {
+	Title   *string `json:"title"`
+	Type    string  `json:"type"`
 	Queries []Query `json:"queries"`
 }
 
@@ -76,8 +82,8 @@ func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
 func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Values) (GetResult, error) {
 	fileName := path.Join(app.DashboardDir, name+".sql")
 	result := GetResult{
-		Title:   name,
-		Queries: []Query{},
+		Title:    name,
+		Sections: []Section{},
 	}
 	// read sql file
 	sqlFile, err := os.ReadFile(fileName)
@@ -146,6 +152,22 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 		// }
 		if isLabel(sqlString, query.Rows) {
 			nextLabel = query.Rows[0][0].(string)
+			continue
+		}
+		if isSectionTitle(sqlString, query.Rows) {
+			sectionTitle := query.Rows[0][0].(string)
+			if len(result.Sections) == 0 || result.Sections[len(result.Sections)-1].Type != "header" || result.Sections[len(result.Sections)-1].Title != nil {
+				result.Sections = append(result.Sections, Section{
+					Type:    "header",
+					Queries: []Query{},
+				})
+			}
+			lastSection := &result.Sections[len(result.Sections)-1]
+			if sectionTitle == "" {
+				lastSection.Title = nil
+			} else {
+				lastSection.Title = &sectionTitle
+			}
 			continue
 		}
 		rInfo := getRenderInfo(colTypes, query.Rows, sqlString, nextLabel)
@@ -218,7 +240,21 @@ func GetDashboard(app *App, ctx context.Context, name string, queryParams url.Va
 				multiVars[col.Name] = params
 			}
 		}
-		result.Queries = append(result.Queries, query)
+
+		wantedSectionType := "content"
+		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" {
+			wantedSectionType = "header"
+		}
+		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
+			lastSection := &result.Sections[len(result.Sections)-1]
+			lastSection.Queries = append(lastSection.Queries, query)
+		} else {
+			result.Sections = append(result.Sections, Section{
+				Type:    wantedSectionType,
+				Queries: []Query{query},
+			})
+		}
+
 		nextLabel = ""
 	}
 	return result, err
@@ -325,6 +361,10 @@ func getTagName(sql string, tag string) string {
 // TODO: Once UNION types work, we need a more solid way to detect labels
 func isLabel(sql string, rows [][]interface{}) bool {
 	return strings.Contains(sql, "::LABEL") && len(rows) == 1 && len(rows[0]) == 1
+}
+
+func isSectionTitle(sql string, rows [][]interface{}) bool {
+	return strings.Contains(sql, "::SECTION") && len(rows) == 1 && len(rows[0]) == 1
 }
 
 // TODO: Line charts should assert that only one XAXIS/LINECHART_YAXIS/LINECHART_CATEGORY is present and no columns without a tag
