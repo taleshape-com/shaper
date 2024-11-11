@@ -134,7 +134,7 @@ function DashboardViewComponent() {
       {sections.map(([sectionType, queries], index) => {
         if (sectionType === 'menu') {
           return <section key={index} className={cx(["flex items-center mx-2 pb-8", index !== 0 ? "pt-8 border-t" : ""])}>
-            {index === 0 ? <h1 className="text-lg text-slate-700 flex-grow">{data.title}</h1> : <div className="flex-grow"></div>}
+            {index === 0 ? <h1 className="text-lg text-slate-700 flex-grow py-1">{data.title}</h1> : <div className="flex-grow"></div>}
             {queries.map(({ render, columns, rows }, index) => {
               if (render.type === "dropdown") {
                 return (
