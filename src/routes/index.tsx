@@ -67,7 +67,7 @@ function Index() {
           {data.dashboards.map((dashboard) => (
             <li key={dashboard} className="bg-gray-100 p-2 rounded">
               <Link
-                to="/dashboard/view/$dashboardId"
+                to="/dashboards/$dashboardId"
                 params={{ dashboardId: dashboard }}
                 className="text-blue-600 hover:underline"
               >
