@@ -17,16 +17,7 @@ func frontend(frontendFS fs.FS) echo.HandlerFunc {
 		panic(err)
 	}
 	assetHandler := http.FileServer(http.FS(fsys))
-	return echo.WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Add Last-Modified header
-		if f, err := fsys.Open(strings.TrimPrefix(r.URL.Path, "/assets/")); err == nil {
-			if stat, err := f.Stat(); err == nil {
-				w.Header().Set("Last-Modified", stat.ModTime().UTC().Format(http.TimeFormat))
-			}
-			f.Close()
-		}
-		assetHandler.ServeHTTP(w, r)
-	}))
+	return echo.WrapHandler(http.HandlerFunc(assetHandler.ServeHTTP))
 }
 
 func indexHTMLWithCache(frontendFS fs.FS) echo.HandlerFunc {
@@ -52,7 +43,6 @@ func indexHTMLWithCache(frontendFS fs.FS) echo.HandlerFunc {
 		// Add cache headers for index.html
 		c.Response().Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 		c.Response().Header().Set("Expires", time.Now().UTC().Format(http.TimeFormat)) // Immediate expiration
-		c.Response().Header().Set("Last-Modified", stat.ModTime().UTC().Format(http.TimeFormat))
 		c.Response().Header().Set("ETag", `"`+generateETag(stat.ModTime(), stat.Size())+`"`)
 
 		// Check If-None-Match header
