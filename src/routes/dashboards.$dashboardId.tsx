@@ -94,7 +94,7 @@ function DashboardErrorComponent({ error }: ErrorComponentProps) {
 function DashboardViewComponent() {
   const { vars } = Route.useSearch()
   const data = Route.useLoaderData()
-  const navigate = useNavigate({ from: '/dashboard/view/$dashboardId' })
+  const navigate = useNavigate({ from: '/dashboards/$dashboardId' })
 
   if (!data) {
     return <div>Loading...</div>
@@ -111,19 +111,19 @@ function DashboardViewComponent() {
   const sections: Result['sections'] =
     data.sections.length === 0
       ? [
+        {
+          type: 'header',
+          queries: [],
+        },
+      ]
+      : data.sections[0].type !== 'header'
+        ? [
           {
             type: 'header',
             queries: [],
           },
+          ...data.sections,
         ]
-      : data.sections[0].type !== 'header'
-        ? [
-            {
-              type: 'header',
-              queries: [],
-            },
-            ...data.sections,
-          ]
         : data.sections
   return (
     <div className="mx-2 mt-2 mb-16 sm:mx-2 sm:mt-2">
