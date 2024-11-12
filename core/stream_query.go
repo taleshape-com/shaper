@@ -163,60 +163,9 @@ func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParam
 		for colIndex, c := range colTypes {
 			colName := c.Name()
 			colTag := mapTag(colIndex, rInfo)
-			// Fetch vars from dropdown
-			if rInfo.Type == "dropdown" && colTag == "value" {
-				param := queryParams.Get(colName)
-				if param == "" {
-					// Set default value to first row
-					if len(data) == 0 {
-						// Hide dropdown if now rows to select from
-						continue
-					}
-					param = data[0][colIndex].(string)
-				} else {
-					isValidVar := false
-					for _, row := range data {
-						if row[colIndex].(string) == param {
-							isValidVar = true
-							break
-						}
-					}
-					if !isValidVar {
-						return "", fmt.Errorf("invalid value for query param '%s': %s", colName, param)
-					}
-				}
-				singleVars[colName] = param
-			}
-			// Fetch vars from dropdownMulti
-			if rInfo.Type == "dropdownMulti" && colTag == "value" {
-				params := queryParams[colName]
-				if len(params) == 0 {
-					// Set default value to all rows
-					for _, row := range data {
-						params = append(params, row[colIndex].(string))
-					}
-				} else {
-					isValidVar := false
-					paramsToCheck := map[string]bool{}
-					for _, param := range params {
-						paramsToCheck[param] = true
-					}
-					for _, row := range data {
-						val := row[colIndex].(string)
-						if paramsToCheck[val] {
-							delete(paramsToCheck, val)
-							if len(paramsToCheck) == 0 {
-								isValidVar = true
-								break
-							}
-							continue
-						}
-					}
-					if !isValidVar {
-						return "", fmt.Errorf("invalid value for query param '%s': %s", colName, params)
-					}
-				}
-				multiVars[colName] = params
+			err := collectVars(singleVars, multiVars, rInfo.Type, colIndex, queryParams, colTag, data, colName)
+			if err != nil {
+				return "", err
 			}
 		}
 	}
