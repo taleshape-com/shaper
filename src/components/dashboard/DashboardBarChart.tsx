@@ -26,7 +26,7 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
   const xaxisHeader = headers[xaxisIndex];
   const dataByXaxis = (data ?? []).reduce(
     (acc, row) => {
-      const = formatValue(row[xaxisIndex], xaxisHeader.type);
+      const key = formatValue(row[xaxisIndex], xaxisHeader.type);
       if (!acc[key]) {
         acc[key] = {};
       }
