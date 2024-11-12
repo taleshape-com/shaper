@@ -15,10 +15,12 @@ type Section struct {
 	Queries []Query `json:"queries"`
 }
 
+type Rows [][]interface{}
+
 type Query struct {
-	Render  Render          `json:"render"`
-	Columns []Column        `json:"columns"`
-	Rows    [][]interface{} `json:"rows"`
+	Render  Render   `json:"render"`
+	Columns []Column `json:"columns"`
+	Rows    Rows     `json:"rows"`
 }
 
 type Render struct {

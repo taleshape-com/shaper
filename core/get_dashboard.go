@@ -40,7 +40,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			continue
 		}
 		varPrefix := buildVarPrefix(singleVars, multiVars)
-		query := Query{Columns: []Column{}}
+		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
 		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
 		if err != nil {
@@ -198,7 +198,7 @@ func mapTag(index int, rInfo renderInfo) string {
 }
 
 // TODO: map all types
-func mapDBType(dbType string, index int, rows [][]interface{}) string {
+func mapDBType(dbType string, index int, rows Rows) string {
 	// t := getTypeByDefinition(dbType)
 	// if t == "" {
 	// t = dbType
@@ -257,17 +257,17 @@ func getTagName(sql string, tag string) string {
 }
 
 // TODO: Once UNION types work, we need a more solid way to detect labels
-func isLabel(sqlString string, rows [][]interface{}) bool {
+func isLabel(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::LABEL") && len(rows) == 1 && len(rows[0]) == 1
 }
 
 // TODO: Once UNION types work, we need a more solid way to detect labels
-func isSectionTitle(sqlString string, rows [][]interface{}) bool {
+func isSectionTitle(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::SECTION") && len(rows) == 1 && len(rows[0]) == 1
 }
 
 // TODO: Line charts should assert that only one XAXIS/LINECHART_YAXIS/LINECHART_CATEGORY is present and no columns without a tag
-func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sqlString string, label string) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
@@ -390,7 +390,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sqlString st
 }
 
 // TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-func onlyDates(rows [][]interface{}, index int) bool {
+func onlyDates(rows Rows, index int) bool {
 	for _, row := range rows {
 		s, ok := row[index].(string)
 		if !ok {
@@ -405,7 +405,7 @@ func onlyDates(rows [][]interface{}, index int) bool {
 }
 
 // TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-func onlyTimestamps(rows [][]interface{}, index int) bool {
+func onlyTimestamps(rows Rows, index int) bool {
 	for _, row := range rows {
 		s, ok := row[index].(string)
 		if !ok {
@@ -419,7 +419,7 @@ func onlyTimestamps(rows [][]interface{}, index int) bool {
 	return true
 }
 
-func onlyYears(rows [][]interface{}, index int) bool {
+func onlyYears(rows Rows, index int) bool {
 	for _, row := range rows {
 		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
 		s, ok := row[index].(string)
@@ -440,7 +440,7 @@ func onlyYears(rows [][]interface{}, index int) bool {
 	return true
 }
 
-func onlyMonths(rows [][]interface{}, index int) bool {
+func onlyMonths(rows Rows, index int) bool {
 	for _, row := range rows {
 		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
 		s, ok := row[index].(string)
@@ -461,7 +461,7 @@ func onlyMonths(rows [][]interface{}, index int) bool {
 	return true
 }
 
-func onlyHours(rows [][]interface{}, index int) bool {
+func onlyHours(rows Rows, index int) bool {
 	for _, row := range rows {
 		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
 		s, ok := row[index].(string)
@@ -482,7 +482,7 @@ func onlyHours(rows [][]interface{}, index int) bool {
 	return true
 }
 
-func hasOnlyUniqueValues(rows [][]interface{}, columnIndex int) bool {
+func hasOnlyUniqueValues(rows Rows, columnIndex int) bool {
 	seen := make(map[interface{}]bool)
 	for _, row := range rows {
 		value := row[columnIndex]
@@ -516,7 +516,7 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 	return varPrefix.String()
 }
 
-func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, columnIndex int, queryParams url.Values, columnTag string, data [][]interface{}, columnName string) error {
+func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, columnIndex int, queryParams url.Values, columnTag string, data Rows, columnName string) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" && columnTag == "value" {
 		param := queryParams.Get(columnName)

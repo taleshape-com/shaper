@@ -7,7 +7,7 @@ import { formatValue } from "../../lib/render";
 type ButtonProps = {
   label?: string;
   headers: Column[];
-  data?: Result['sections'][0]['queries'][0]['rows']
+  data: Result['sections'][0]['queries'][0]['rows']
   searchParams: string;
 };
 
@@ -18,6 +18,9 @@ function DashboardButton({
   headers,
   searchParams,
 }: ButtonProps) {
+  if (data.length === 0) {
+    return null;
+  }
   return (
     <div className="ml-2">
       <a href={formatValue(`${(data ?? [])[0][0]}?${searchParams}`, headers[0].type).toString()} download>

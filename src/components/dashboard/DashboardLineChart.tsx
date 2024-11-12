@@ -7,11 +7,14 @@ import { cx } from "../../lib/utils";
 type LineProps = {
   label?: string;
   headers: Column[];
-  data?: Result['sections'][0]['queries'][0]['rows']
+  data: Result['sections'][0]['queries'][0]['rows']
   sectionCount: number;
 };
 
 const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) => {
+  if (data.length === 0) {
+    return null;
+  }
   const yaxisHeader = headers.find((c) => c.tag === "yAxis");
   if (!yaxisHeader) {
     throw new Error("No yaxis header found");
@@ -24,7 +27,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
   }
   const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
   const xaxisHeader = headers[xaxisIndex];
-  const dataByXaxis = (data ?? []).reduce(
+  const dataByXaxis = data.reduce(
     (acc, row) => {
       const key = formatValue(row[xaxisIndex], xaxisHeader.type);
       if (!acc[key]) {
@@ -74,28 +77,21 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
         "2xl:h-[calc(50vh)]": sectionCount === 3 && label,
         "2xl:h-[calc(50vh+1.75rem)]": sectionCount === 3 && !label,
       })}>
-        {!data ?
-          (
-            <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
-              no data
-            </div>
-          ) :
-          <LineChart
-            className="h-full"
-            enableLegendSlider
-            startEndOnly
-            connectNulls
-            data={chartdata}
-            index={xaxisHeader.name}
-            categories={Array.from(categories)}
-            valueFormatter={(number: number) => {
-              return number.toLocaleString();
-            }}
-            xAxisLabel={xaxisHeader.name}
-            yAxisLabel={yaxis}
-            showLegend={categoryIndex !== -1}
-          />
-        }
+        <LineChart
+          className="h-full"
+          enableLegendSlider
+          startEndOnly
+          connectNulls
+          data={chartdata}
+          index={xaxisHeader.name}
+          categories={Array.from(categories)}
+          valueFormatter={(number: number) => {
+            return number.toLocaleString();
+          }}
+          xAxisLabel={xaxisHeader.name}
+          yAxisLabel={yaxis}
+          showLegend={categoryIndex !== -1}
+        />
       </Card>
     </div>
   );

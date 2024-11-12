@@ -132,7 +132,7 @@ func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParam
 		}
 		varPrefix := buildVarPrefix(singleVars, multiVars)
 		// run query
-		data := [][]interface{}{}
+		data := Rows{}
 		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
 		if err != nil {
 			return "", err

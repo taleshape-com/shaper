@@ -7,11 +7,14 @@ import { cx } from "../../lib/utils";
 type BarProps = {
   label?: string;
   headers: Column[];
-  data?: Result['sections'][0]['queries'][0]['rows']
+  data: Result['sections'][0]['queries'][0]['rows']
   sectionCount: number;
 };
 
 const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => {
+  if (data.length === 0) {
+    return null;
+  }
   const yaxisHeader = headers.find((c) => c.tag === "yAxis");
   if (!yaxisHeader) {
     throw new Error("No yaxis header found");
@@ -24,7 +27,7 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
   }
   const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
   const xaxisHeader = headers[xaxisIndex];
-  const dataByXaxis = (data ?? []).reduce(
+  const dataByXaxis = data.reduce(
     (acc, row) => {
       const key = formatValue(row[xaxisIndex], xaxisHeader.type);
       if (!acc[key]) {
