@@ -10,6 +10,7 @@ import (
 	"shaper/core"
 	"shaper/server"
 	"shaper/util/signals"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/marcboeker/go-duckdb"
@@ -21,11 +22,12 @@ import (
 var frontendFS embed.FS
 
 type Config struct {
-	Address      string
-	Port         int
-	DBFile       string
-	LoginToken   string
-	DashboardDir string
+	Address           string
+	Port              int
+	DBFile            string
+	LoginToken        string
+	DashboardDir      string
+	ExecutableModTime time.Time
 }
 
 func main() {
@@ -62,12 +64,18 @@ func loadConfig() Config {
 		os.Exit(0)
 	}
 
+	executableModTime, err := getExecutableModTime()
+	if err != nil {
+		panic(err)
+	}
+
 	config := Config{
-		Address:      *addr,
-		Port:         *port,
-		DBFile:       *dbFile,
-		LoginToken:   *loginToken,
-		DashboardDir: *dashboardDir,
+		Address:           *addr,
+		Port:              *port,
+		DBFile:            *dbFile,
+		LoginToken:        *loginToken,
+		DashboardDir:      *dashboardDir,
+		ExecutableModTime: executableModTime,
 	}
 	return config
 }
@@ -90,7 +98,7 @@ func Run(config Config) func(context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	e := server.Start(config.Address, config.Port, app, frontendFS)
+	e := server.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime)
 
 	return func(ctx context.Context) {
 		if err := db.Close(); err != nil {
@@ -101,4 +109,14 @@ func Run(config Config) func(context.Context) {
 			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
 		}
 	}
+}
+
+func getExecutableModTime() (time.Time, error) {
+
+	ex, err := os.Executable()
+	if err != nil {
+		return time.Time{}, err
+	}
+	stat, err := os.Stat(ex)
+	return stat.ModTime(), err
 }

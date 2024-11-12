@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
+func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time) {
 	apiWithAuth := e.Group("/api", middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
 		KeyLookup: "cookie:shaper-token",
 		Validator: func(key string, c echo.Context) (bool, error) {
@@ -43,5 +43,5 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	}))
 
 	// Index HTML - light caching with revalidation
-	e.GET("/*", indexHTMLWithCache(frontendFS))
+	e.GET("/*", indexHTMLWithCache(frontendFS, modTime))
 }

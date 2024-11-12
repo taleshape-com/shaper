@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net/http"
 	"shaper/core"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -17,7 +18,7 @@ import (
 	slogecho "github.com/samber/slog-echo"
 )
 
-func Start(host string, port int, app *core.App, frontendFS fs.FS) *echo.Echo {
+func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.Time) *echo.Echo {
 	// Echo instance
 	e := echo.New()
 	e.HideBanner = true
@@ -38,7 +39,7 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS) *echo.Echo {
 	}))
 
 	// Routes
-	routes(e, app, frontendFS)
+	routes(e, app, frontendFS, modTime)
 
 	// Start server
 	go func() {
