@@ -27,12 +27,13 @@ function DashboardDropdown({ label, data, headers, onChange, vars }: DropdownPro
   const varName = headers[valueIndex].name;
   const varField = (vars ?? {})[varName]
   const selectedValue = Array.isArray(varField) ? varField[0] : varField
+
   return (
     <>
       {label && <Label htmlFor={label} className="ml-2 pr-2">{label}:</Label>}
       <div className={cx({ ["ml-2"]: !label })}>
         <Select
-          defaultValue={formatValue(data[0][valueIndex]).toString()}
+          defaultValue={formatValue(data[0][valueIndex], headers[valueIndex].type).toString()}
           onValueChange={(value) => {
             onChange({ ...vars, [varName]: value });
           }}
@@ -47,8 +48,8 @@ function DashboardDropdown({ label, data, headers, onChange, vars }: DropdownPro
           <SelectContent>
             {data.map((row) => (
               <SelectItem
-                key={formatValue(row[valueIndex])}
-                value={formatValue(row[valueIndex]).toString()}
+                key={formatValue(row[valueIndex], headers[valueIndex].type)}
+                value={formatValue(row[valueIndex], headers[valueIndex].type).toString()}
               >
                 {row[labelIndex !== -1 ? labelIndex : valueIndex]}
               </SelectItem>

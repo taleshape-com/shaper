@@ -169,6 +169,7 @@ function DashboardViewComponent() {
                       label={render.label}
                       headers={columns}
                       data={rows}
+                      vars={vars}
                       onChange={onDropdownChange}
                     />
                   )

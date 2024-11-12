@@ -1,6 +1,6 @@
 export type Column = {
   name: string;
-  type: "year" | "number" | "string" | "boolean";
+  type: "year" | "month" | "hour" | "date" | "timestamp" | "number" | "string" | "boolean";
   nullable: boolean;
   tag: "xAxis" | "yAxis" | "category" | "value" | "label" | "hint" | "download" | "";
 };

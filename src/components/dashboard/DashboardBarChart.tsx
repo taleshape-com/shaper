@@ -1,5 +1,5 @@
 import { Column, Result } from "../../lib/dashboard";
-import { formatValue, toYear } from "../../lib/render";
+import { formatValue } from "../../lib/render";
 import { BarChart } from "../tremor/BarChart";
 import { Card } from "../tremor/Card";
 import { cx } from "../../lib/utils";
@@ -23,24 +23,18 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
     categories.add(yaxis);
   }
   const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
-  const xaxis = headers[xaxisIndex].name;
+  const xaxisHeader = headers[xaxisIndex];
   const dataByXaxis = (data ?? []).reduce(
     (acc, row) => {
-      let key = formatValue(row[xaxisIndex]);
-      if (headers[xaxisIndex].type === "year") {
-        key = toYear(key);
-      }
+      let key = formatValue(row[xaxisIndex], xaxisHeader.type);
       if (!acc[key]) {
         acc[key] = {};
       }
       row.forEach((cell, i) => {
-        let c = formatValue(cell)
         if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
-        if (headers[i].type === "year") {
-          c = toYear(cell);
-        }
+        let c = formatValue(cell, headers[i].type)
         if (categoryIndex === -1) {
           acc[key][yaxis] = c;
           return;
@@ -55,7 +49,7 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
   );
   const chartdata = Object.entries(dataByXaxis).map(([key, value]) => {
     return {
-      [xaxis]: key,
+      [xaxisHeader.name]: key,
       ...value,
     };
   });
@@ -90,12 +84,12 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
             enableLegendSlider
             type="stacked"
             data={chartdata}
-            index={xaxis}
+            index={xaxisHeader.name}
             categories={Array.from(categories)}
             valueFormatter={(number: number) => {
               return number.toLocaleString();
             }}
-            xAxisLabel={xaxis}
+            xAxisLabel={xaxisHeader.name}
             yAxisLabel={yaxis}
             showLegend={categoryIndex !== -1}
           />

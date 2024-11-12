@@ -1,6 +1,6 @@
 import { Column, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
-import { formatValue, toYear } from "../../lib/render";
+import { formatValue } from "../../lib/render";
 import { Card } from "../tremor/Card";
 import { cx } from "../../lib/utils";
 
@@ -23,21 +23,18 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
     categories.add(yaxis);
   }
   const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
-  const xaxis = headers[xaxisIndex].name;
+  const xaxisHeader = headers[xaxisIndex];
   const dataByXaxis = (data ?? []).reduce(
     (acc, row) => {
-      let key = formatValue(row[xaxisIndex]);
-      if (headers[xaxisIndex].type === "year") {
-        key = toYear(key);
-      }
+      let key = formatValue(row[xaxisIndex], xaxisHeader.type);
       if (!acc[key]) {
         acc[key] = {};
       }
       row.forEach((cell, i) => {
-        const c = formatValue(cell)
         if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
+        let c = formatValue(cell, headers[i].type)
         if (categoryIndex === -1) {
           acc[key][yaxis] = c;
           return;
@@ -52,7 +49,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
   );
   const chartdata = Object.entries(dataByXaxis).map(([key, value]) => {
     return {
-      [xaxis]: key,
+      [xaxisHeader.name]: key,
       ...value,
     };
   });
@@ -89,12 +86,12 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
             startEndOnly
             connectNulls
             data={chartdata}
-            index={xaxis}
+            index={xaxisHeader.name}
             categories={Array.from(categories)}
             valueFormatter={(number: number) => {
               return number.toLocaleString();
             }}
-            xAxisLabel={xaxis}
+            xAxisLabel={xaxisHeader.name}
             yAxisLabel={yaxis}
             showLegend={categoryIndex !== -1}
           />

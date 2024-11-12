@@ -64,7 +64,7 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
                           typeof item === "number" ? "text-right" : "text-left";
                         return (
                           <TableCell key={index} className={classes}>
-                            {formatValue(item)}
+                            {formatValue(item, headers[index].type)}
                           </TableCell>
                         );
                       })}

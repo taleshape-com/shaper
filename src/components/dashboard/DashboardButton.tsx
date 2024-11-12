@@ -20,7 +20,7 @@ function DashboardButton({
 }: ButtonProps) {
   return (
     <div className="ml-2">
-      <a href={formatValue(`${(data ?? [])[0][0]}?${searchParams}`).toString()} download>
+      <a href={formatValue(`${(data ?? [])[0][0]}?${searchParams}`, headers[0].type).toString()} download>
         <Button variant="secondary" className="font-normal flex w-full items-center justify-between">
           {label}
           {headers[0].name}

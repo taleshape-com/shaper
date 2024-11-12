@@ -51,7 +51,7 @@ function DashboardDropdownMulti({
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           {data.map((row) => {
-            const value = formatValue(row[valueIndex]);
+            const value = formatValue(row[valueIndex], headers[valueIndex].type);
             return (
               <DropdownMenuCheckboxItem
                 key={value}
@@ -66,7 +66,7 @@ function DashboardDropdownMulti({
                   onChange({ ...vars, [varName]: Array.from(valSet) });
                 }}
                 hint={
-                  hintIndex !== -1 ? formatValue(row[hintIndex]).toString() : undefined
+                  hintIndex !== -1 ? formatValue(row[hintIndex], headers[hintIndex].type).toString() : undefined
                 }
               >
                 {row[labelIndex !== -1 ? labelIndex : valueIndex]}

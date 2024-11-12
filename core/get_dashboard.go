@@ -208,6 +208,22 @@ func mapDBType(dbType string, index int, rows [][]interface{}) string {
 	case "BOOLEAN":
 		return "boolean"
 	case "VARCHAR":
+		// TODO: Once we have union types, VARCHAR cannot be date anymore. We can use actual TIMESTAMP AND DATE types
+		if onlyYears(rows, index) {
+			return "year"
+		}
+		if onlyMonths(rows, index) {
+			return "month"
+		}
+		if onlyDates(rows, index) {
+			return "date"
+		}
+		if onlyHours(rows, index) {
+			return "hour"
+		}
+		if onlyTimestamps(rows, index) {
+			return "timestamp"
+		}
 		return "string"
 	case "DOUBLE":
 		return "number"
@@ -216,9 +232,6 @@ func mapDBType(dbType string, index int, rows [][]interface{}) string {
 	case "BIGINT":
 		return "number"
 	case "DATE":
-		if onlyYears(rows, index) {
-			return "year"
-		}
 		return "date"
 	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPZ":
 		return "timestamp"
@@ -376,10 +389,93 @@ func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sqlString st
 	}
 }
 
+// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
+func onlyDates(rows [][]interface{}, index int) bool {
+	for _, row := range rows {
+		s, ok := row[index].(string)
+		if !ok {
+			return false
+		}
+		_, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
+func onlyTimestamps(rows [][]interface{}, index int) bool {
+	for _, row := range rows {
+		s, ok := row[index].(string)
+		if !ok {
+			return false
+		}
+		_, err := time.Parse(time.DateTime, s)
+		if err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func onlyYears(rows [][]interface{}, index int) bool {
 	for _, row := range rows {
-		t := row[index].(time.Time)
-		if t.Month() != 1 || t.Day() != 1 {
+		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
+		s, ok := row[index].(string)
+		if !ok {
+			return false
+		}
+		t, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			t, err = time.Parse(time.DateTime, s)
+			if err != nil {
+				return false
+			}
+		}
+		if t.Month() != 1 || t.Day() != 1 || t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func onlyMonths(rows [][]interface{}, index int) bool {
+	for _, row := range rows {
+		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
+		s, ok := row[index].(string)
+		if !ok {
+			return false
+		}
+		t, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			t, err = time.Parse(time.DateTime, s)
+			if err != nil {
+				return false
+			}
+		}
+		if t.Day() != 1 || t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func onlyHours(rows [][]interface{}, index int) bool {
+	for _, row := range rows {
+		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
+		s, ok := row[index].(string)
+		if !ok {
+			return false
+		}
+		t, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			t, err = time.Parse(time.DateTime, s)
+			if err != nil {
+				return false
+			}
+		}
+		if t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
 			return false
 		}
 	}
