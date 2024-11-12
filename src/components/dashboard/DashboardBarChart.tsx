@@ -9,9 +9,10 @@ type BarProps = {
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
   sectionCount: number;
+  stacked?: boolean;
 };
 
-const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => {
+const DashboardBarChart = ({ label, headers, data, sectionCount, stacked }: BarProps) => {
   if (data.length === 0) {
     return null;
   }
@@ -85,7 +86,8 @@ const DashboardBarChart = ({ label, headers, data, sectionCount }: BarProps) => 
             className="h-full"
             startEndOnly
             enableLegendSlider
-            type="stacked"
+            type={stacked ? "stacked" : "default"}
+            layout="horizontal"
             data={chartdata}
             index={xaxisHeader.name}
             categories={Array.from(categories)}

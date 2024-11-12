@@ -22,7 +22,7 @@ export type Result = {
     type: 'content';
     queries: {
       render: {
-        type: "table" | "linechart" | "barchart";
+        type: "table" | "linechart" | "barchartHorizontal" | "barchartHorizontalStacked" | "barchartVertical" | "barchartVerticalStacked";
         label?: string;
       };
       columns: Column[];

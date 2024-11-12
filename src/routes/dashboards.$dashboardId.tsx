@@ -225,9 +225,21 @@ function DashboardViewComponent() {
                   />
                 )
               }
-              if (render.type === 'barchart') {
+              if (render.type === 'barchartHorizontal') {
                 return (
                   <DashboardBarChart
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
+                    sectionCount={section.queries.length}
+                  />
+                )
+              }
+              if (render.type === 'barchartHorizontalStacked') {
+                return (
+                  <DashboardBarChart
+                    stacked
                     key={index}
                     label={render.label}
                     headers={columns}
