@@ -39,27 +39,10 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			nextIsDownload = false
 			continue
 		}
-		// TODO: assert that variable names are alphanumeric
-		// TODO: test and harden variable escaping
-		// TODO: assert that variables in query are set. otherwise it silently falls back to empty string
-		var varPrefix strings.Builder
-		for k, v := range singleVars {
-			varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = '%s';\n", escapeSQLIdentifier(k), escapeSQLString(v)))
-		}
-		for k, v := range multiVars {
-			l := ""
-			for i, p := range v {
-				prefix := ", "
-				if i == 0 {
-					prefix = ""
-				}
-				l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
-			}
-			varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR;\n", escapeSQLIdentifier(k), l))
-		}
+		varPrefix := buildVarPrefix(singleVars, multiVars)
 		query := Query{Columns: []Column{}}
 		// run query
-		rows, err := app.db.QueryxContext(ctx, varPrefix.String()+string(sqlString)+";")
+		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
 		if err != nil {
 			return result, err
 		}
@@ -312,26 +295,26 @@ func getTagName(sql string, tag string) string {
 }
 
 // TODO: Once UNION types work, we need a more solid way to detect labels
-func isLabel(sql string, rows [][]interface{}) bool {
-	return strings.Contains(sql, "::LABEL") && len(rows) == 1 && len(rows[0]) == 1
+func isLabel(sqlString string, rows [][]interface{}) bool {
+	return strings.Contains(sqlString, "::LABEL") && len(rows) == 1 && len(rows[0]) == 1
 }
 
 // TODO: Once UNION types work, we need a more solid way to detect labels
-func isSectionTitle(sql string, rows [][]interface{}) bool {
-	return strings.Contains(sql, "::SECTION") && len(rows) == 1 && len(rows[0]) == 1
+func isSectionTitle(sqlString string, rows [][]interface{}) bool {
+	return strings.Contains(sqlString, "::SECTION") && len(rows) == 1 && len(rows[0]) == 1
 }
 
 // TODO: Line charts should assert that only one XAXIS/LINECHART_YAXIS/LINECHART_CATEGORY is present and no columns without a tag
-func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sql string, label string) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sqlString string, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
 	}
-	xaxis := getTagName(sql, "XAXIS")
+	xaxis := getTagName(sqlString, "XAXIS")
 
-	lineY := getTagName(sql, "LINECHART_YAXIS")
+	lineY := getTagName(sqlString, "LINECHART_YAXIS")
 	if lineY != "" && xaxis != "" {
-		lineCat := getTagName(sql, "LINECHART_CATEGORY")
+		lineCat := getTagName(sqlString, "LINECHART_CATEGORY")
 		r := renderInfo{
 			Label: labelValue,
 			Type:  "linechart",
@@ -352,9 +335,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sql string, 
 		return r
 	}
 
-	barY := getTagName(sql, "BARCHART_YAXIS")
+	barY := getTagName(sqlString, "BARCHART_YAXIS")
 	if barY != "" && xaxis != "" {
-		barCat := getTagName(sql, "BARCHART_CATEGORY")
+		barCat := getTagName(sqlString, "BARCHART_CATEGORY")
 		r := renderInfo{
 			Label: labelValue,
 			Type:  "barchart",
@@ -375,9 +358,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sql string, 
 		return r
 	}
 
-	dropdown := getTagName(sql, "DROPDOWN")
+	dropdown := getTagName(sqlString, "DROPDOWN")
 	if dropdown != "" {
-		label := getTagName(sql, "LABEL")
+		label := getTagName(sqlString, "LABEL")
 		valueIndex := -1
 		var labelIndex *int
 		for i, c := range columns {
@@ -399,10 +382,10 @@ func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sql string, 
 		}
 	}
 
-	dropdownMulti := getTagName(sql, "DROPDOWN_MULTI")
+	dropdownMulti := getTagName(sqlString, "DROPDOWN_MULTI")
 	if dropdownMulti != "" {
-		label := getTagName(sql, "LABEL")
-		hint := getTagName(sql, "HINT")
+		label := getTagName(sqlString, "LABEL")
+		hint := getTagName(sqlString, "HINT")
 		valueIndex := -1
 		var labelIndex *int
 		var hintIndex *int
@@ -429,7 +412,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows [][]interface{}, sql string, 
 		}
 	}
 
-	downloadCSV := getTagName(sql, "DOWNLOAD_CSV")
+	downloadCSV := getTagName(sqlString, "DOWNLOAD_CSV")
 	if downloadCSV != "" {
 		return renderInfo{
 			Label:    labelValue,
@@ -464,4 +447,26 @@ func hasOnlyUniqueValues(rows [][]interface{}, columnIndex int) bool {
 		seen[value] = true
 	}
 	return true
+}
+
+// TODO: assert that variable names are alphanumeric
+// TODO: test and harden variable escaping
+// TODO: assert that variables in query are set. otherwise it silently falls back to empty string
+func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) string {
+	varPrefix := strings.Builder{}
+	for k, v := range singleVars {
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = '%s';\n", escapeSQLIdentifier(k), escapeSQLString(v)))
+	}
+	for k, v := range multiVars {
+		l := ""
+		for i, p := range v {
+			prefix := ", "
+			if i == 0 {
+				prefix = ""
+			}
+			l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
+		}
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR;\n", escapeSQLIdentifier(k), l))
+	}
+	return varPrefix.String()
 }

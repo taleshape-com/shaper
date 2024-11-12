@@ -8,6 +8,7 @@ type ButtonProps = {
   label?: string;
   headers: Column[];
   data?: Result['sections'][0]['queries'][0]['rows']
+  searchParams: string;
 };
 
 // TODO: Support multiple buttons in one select to download different file formats
@@ -15,10 +16,11 @@ function DashboardButton({
   label,
   data,
   headers,
+  searchParams,
 }: ButtonProps) {
   return (
     <div className="ml-2">
-      <a href={formatValue((data ?? [])[0][0]).toString()} download>
+      <a href={formatValue(`${(data ?? [])[0][0]}?${searchParams}`).toString()} download>
         <Button variant="secondary" className="font-normal flex w-full items-center justify-between">
           {label}
           {headers[0].name}

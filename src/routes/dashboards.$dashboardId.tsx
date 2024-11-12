@@ -13,21 +13,17 @@ import DashboardDropdownMulti from '../components/dashboard/DashboardDropdownMul
 import { cx } from '../lib/utils'
 import DashboardButton from '../components/dashboard/DashboardButton'
 
+const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
+
 export const Route = createFileRoute('/dashboards/$dashboardId')({
   validateSearch: z.object({
-    vars: z.record(z.union([z.string(), z.array(z.string())])).optional(),
+    vars: zVars,
   }),
   loaderDeps: ({ search: { vars } }) => ({
     vars,
   }),
   loader: async ({ params: { dashboardId }, deps: { vars } }) => {
-    const urlVars = Object.entries(vars ?? {}).reduce((acc, [key, value]) => {
-      if (Array.isArray(value)) {
-        return [...acc, ...value.map((v) => [key, v])]
-      }
-      return [...acc, [key, value]]
-    }, [] as string[][])
-    const searchParams = new URLSearchParams(urlVars).toString()
+    const searchParams = getSearchParamString(vars)
     return fetch(`/api/dashboards/${dashboardId}?${searchParams}`)
       .then(async (response) => {
         if (response.status === 401) {
@@ -83,6 +79,16 @@ export const Route = createFileRoute('/dashboards/$dashboardId')({
   component: DashboardViewComponent,
 })
 
+const getSearchParamString = (vars: typeof zVars['_type']) => {
+  const urlVars = Object.entries(vars ?? {}).reduce((acc, [key, value]) => {
+    if (Array.isArray(value)) {
+      return [...acc, ...value.map((v) => [key, v])]
+    }
+    return [...acc, [key, value]]
+  }, [] as string[][])
+  return new URLSearchParams(urlVars).toString()
+}
+
 function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
@@ -107,6 +113,8 @@ function DashboardViewComponent() {
       }),
     })
   }
+
+  const searchParams = getSearchParamString(vars)
 
   const sections: Result['sections'] =
     data.sections.length === 0
@@ -184,6 +192,7 @@ function DashboardViewComponent() {
                       label={render.label}
                       headers={columns}
                       data={rows}
+                      searchParams={searchParams}
                     />
                   )
                 }

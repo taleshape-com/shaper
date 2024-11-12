@@ -30,6 +30,7 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	}
 }
 
+// For now only supports .csv
 func DownloadQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Validate filename extension
@@ -54,7 +55,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 		writer := c.Response().Writer
 
 		// Start the streaming query and write directly to response
-		err := core.StreamQuery(
+		err := core.StreamQueryCSV(
 			app,
 			c.Request().Context(),
 			c.Param("name"),

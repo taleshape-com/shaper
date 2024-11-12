@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func StreamQuery(
+func StreamQueryCSV(
 	app *App,
 	ctx context.Context,
 	dashboardName string,
@@ -33,7 +33,9 @@ func StreamQuery(
 	if err != nil {
 		return err
 	}
-	// TODO: handle invalid index
+	if len(sqls) <= queryIndex || queryIndex < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardName, queryIndex)
+	}
 	query := sqls[queryIndex]
 
 	// Create a CSV writer
@@ -41,7 +43,12 @@ func StreamQuery(
 	defer csvWriter.Flush()
 
 	// Execute the query and get rows
-	rows, err := app.db.QueryContext(ctx, query+";")
+	varPrefix, err := getVarPrefix(app, ctx, sqls, params)
+	if err != nil {
+		return err
+	}
+	fmt.Println(varPrefix + query + ";")
+	rows, err := app.db.QueryContext(ctx, varPrefix+query+";")
 	if err != nil {
 		return fmt.Errorf("error executing query: %w", err)
 	}
@@ -107,4 +114,111 @@ func formatValue(value interface{}) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParams url.Values) (string, error) {
+	nextIsDownload := false
+	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
+	singleVars := map[string]string{}
+	multiVars := map[string][]string{}
+
+	for queryIndex, sqlString := range sqlQueries {
+		if queryIndex == len(sqlQueries)-1 {
+			// Ignore text after last semicolon
+			break
+		}
+		if nextIsDownload {
+			nextIsDownload = false
+			continue
+		}
+		varPrefix := buildVarPrefix(singleVars, multiVars)
+		// run query
+		data := [][]interface{}{}
+		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
+		if err != nil {
+			return "", err
+		}
+		colTypes, err := rows.ColumnTypes()
+		if err != nil {
+			return "", err
+		}
+		for rows.Next() {
+			row, err := rows.SliceScan()
+			if err != nil {
+				return "", err
+			}
+			data = append(data, row)
+		}
+
+		if isLabel(sqlString, data) || isSectionTitle(sqlString, data) {
+			continue
+		}
+
+		rInfo := getRenderInfo(colTypes, data, sqlString, "")
+
+		if rInfo.Download != "" {
+			nextIsDownload = true
+		}
+
+		for colIndex, c := range colTypes {
+			colName := c.Name()
+			colTag := mapTag(colIndex, rInfo)
+			// Fetch vars from dropdown
+			if rInfo.Type == "dropdown" && colTag == "value" {
+				param := queryParams.Get(colName)
+				if param == "" {
+					// Set default value to first row
+					if len(data) == 0 {
+						// Hide dropdown if now rows to select from
+						continue
+					}
+					param = data[0][colIndex].(string)
+				} else {
+					isValidVar := false
+					for _, row := range data {
+						if row[colIndex].(string) == param {
+							isValidVar = true
+							break
+						}
+					}
+					if !isValidVar {
+						return "", fmt.Errorf("invalid value for query param '%s': %s", colName, param)
+					}
+				}
+				singleVars[colName] = param
+			}
+			// Fetch vars from dropdownMulti
+			if rInfo.Type == "dropdownMulti" && colTag == "value" {
+				params := queryParams[colName]
+				if len(params) == 0 {
+					// Set default value to all rows
+					for _, row := range data {
+						params = append(params, row[colIndex].(string))
+					}
+				} else {
+					isValidVar := false
+					paramsToCheck := map[string]bool{}
+					for _, param := range params {
+						paramsToCheck[param] = true
+					}
+					for _, row := range data {
+						val := row[colIndex].(string)
+						if paramsToCheck[val] {
+							delete(paramsToCheck, val)
+							if len(paramsToCheck) == 0 {
+								isValidVar = true
+								break
+							}
+							continue
+						}
+					}
+					if !isValidVar {
+						return "", fmt.Errorf("invalid value for query param '%s': %s", colName, params)
+					}
+				}
+				multiVars[colName] = params
+			}
+		}
+	}
+	return buildVarPrefix(singleVars, multiVars), nil
 }
