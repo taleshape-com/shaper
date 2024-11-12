@@ -26,7 +26,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
   const xaxisHeader = headers[xaxisIndex];
   const dataByXaxis = (data ?? []).reduce(
     (acc, row) => {
-      let key = formatValue(row[xaxisIndex], xaxisHeader.type);
+      const key = formatValue(row[xaxisIndex], xaxisHeader.type);
       if (!acc[key]) {
         acc[key] = {};
       }
@@ -34,7 +34,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
         if (i === xaxisIndex || i === categoryIndex) {
           return;
         }
-        let c = formatValue(cell, headers[i].type)
+        const c = formatValue(cell, headers[i].type)
         if (categoryIndex === -1) {
           acc[key][yaxis] = c;
           return;
