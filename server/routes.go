@@ -25,8 +25,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS) {
 	e.POST("/api/login/cookie", handler.CookieLogin(app))
 	apiWithAuth.GET("/login/cookie/test", handler.TestCookie)
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
-	apiWithAuth.GET("/dashboard/:name", handler.GetDashboard(app))
-	apiWithAuth.GET("/dashboard/:name/query/:query/:filename", handler.DownloadQuery(app))
+	apiWithAuth.GET("/dashboards/:name", handler.GetDashboard(app))
+	apiWithAuth.GET("/dashboards/:name/query/:query/:filename", handler.DownloadQuery(app))
 
 	// Static assets - aggressive caching
 	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{
