@@ -42,7 +42,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
           acc[key][yaxis] = c;
           return;
         }
-        const category = row[categoryIndex].toString();
+        const category = (row[categoryIndex] ?? '').toString();
         categories.add(category);
         acc[key][category] = c;
       });
@@ -67,7 +67,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
       }
       <Card className={cx({
         "py-1 px-3": true,
-        "pt-2": categoryIndex === -1,
+        "pt-10": categoryIndex === -1,
         "h-[calc(45vh)] sm:h-[calc(100vh-8.25rem)]": sectionCount === 1 && label,
         "h-[calc(45vh)] sm:h-[calc(100vh-6.5rem)]": sectionCount === 1 && !label,
         "h-[calc(50vh-6rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(55vh)] xl:h-[calc(100vh-8.25rem)]": sectionCount === 2 && label,
@@ -85,6 +85,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
           ) :
           <LineChart
             className="h-full"
+            enableLegendSlider
             startEndOnly
             connectNulls
             data={chartdata}

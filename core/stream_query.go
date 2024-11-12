@@ -47,7 +47,6 @@ func StreamQueryCSV(
 	if err != nil {
 		return err
 	}
-	fmt.Println(varPrefix + query + ";")
 	rows, err := app.db.QueryContext(ctx, varPrefix+query+";")
 	if err != nil {
 		return fmt.Errorf("error executing query: %w", err)
