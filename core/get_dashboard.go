@@ -169,12 +169,12 @@ func escapeSQLIdentifier(str string) string {
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" {
-		if rInfo.XAxisIndex != nil && index == *rInfo.XAxisIndex {
-			return "xAxis"
+	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" {
+		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
+			return "index"
 		}
-		if rInfo.YAxisIndex != nil && index == *rInfo.YAxisIndex {
-			return "yAxis"
+		if rInfo.ValueAxisIndex != nil && index == *rInfo.ValueAxisIndex {
+			return "value"
 		}
 		if rInfo.CategoryIndex != nil && index == *rInfo.CategoryIndex {
 			return "category"
@@ -235,12 +235,6 @@ func mapDBType(dbType string, index int, rows Rows) string {
 		return "date"
 	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPZ":
 		return "timestamp"
-		// case "LINECHART_CATEGORY":
-		// 	return "string"
-		// case "LINECHART_YAXIS":
-		// 	return "number"
-		// case "XAXIS":
-		// 	return "string"
 	}
 	panic(fmt.Sprintf("unsupported type: %s", t))
 }
@@ -266,7 +260,8 @@ func isSectionTitle(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::SECTION") && len(rows) == 1 && len(rows[0]) == 1
 }
 
-// TODO: Line charts should assert that only one XAXIS/LINECHART_YAXIS/LINECHART_CATEGORY is present and no columns without a tag
+// TODO: Charts should assert that only the required columns are present.
+// TODO: BARCHART_STACKED must have CATEGORY column
 func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
@@ -274,8 +269,8 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 	}
 	xaxis := getTagName(sqlString, "XAXIS")
 
-	lineY := getTagName(sqlString, "LINECHART_YAXIS")
-	if lineY != "" && xaxis != "" {
+	linechart := getTagName(sqlString, "LINECHART")
+	if linechart != "" && xaxis != "" {
 		lineCat := getTagName(sqlString, "LINECHART_CATEGORY")
 		r := renderInfo{
 			Label: labelValue,
@@ -288,18 +283,18 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 				}
 			}
 			if c.Name() == xaxis {
-				r.XAxisIndex = &i
+				r.IndexAxisIndex = &i
 			}
-			if c.Name() == lineY {
-				r.YAxisIndex = &i
+			if c.Name() == linechart {
+				r.ValueAxisIndex = &i
 			}
 		}
 		return r
 	}
 
-	barY := getTagName(sqlString, "BARCHART_YAXIS")
-	if barY != "" && xaxis != "" {
-		barCat := getTagName(sqlString, "BARCHART_CATEGORY")
+	barchart := getTagName(sqlString, "BARCHART")
+	barCat := getTagName(sqlString, "BARCHART_CATEGORY")
+	if barchart != "" && xaxis != "" {
 		r := renderInfo{
 			Label: labelValue,
 			Type:  "barchartHorizontal",
@@ -311,21 +306,39 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 				}
 			}
 			if c.Name() == xaxis {
-				r.XAxisIndex = &i
+				r.IndexAxisIndex = &i
 			}
-			if c.Name() == barY {
-				r.YAxisIndex = &i
+			if c.Name() == barchart {
+				r.ValueAxisIndex = &i
+			}
+		}
+		return r
+	}
+	barchartStacked := getTagName(sqlString, "BARCHART_STACKED")
+	if barchartStacked != "" && xaxis != "" && barCat != "" {
+		r := renderInfo{
+			Label: labelValue,
+			Type:  "barchartHorizontalStacked",
+		}
+		for i, c := range columns {
+			if c.Name() == barCat {
+				r.CategoryIndex = &i
+			}
+			if c.Name() == xaxis {
+				r.IndexAxisIndex = &i
+			}
+			if c.Name() == barchartStacked {
+				r.ValueAxisIndex = &i
 			}
 		}
 		return r
 	}
 
-	barYStacked := getTagName(sqlString, "BARCHART_YAXIS_STACKED")
-	if barYStacked != "" && xaxis != "" {
-		barCat := getTagName(sqlString, "BARCHART_CATEGORY")
+	yaxis := getTagName(sqlString, "YAXIS")
+	if barchart != "" && yaxis != "" {
 		r := renderInfo{
 			Label: labelValue,
-			Type:  "barchartHorizontalStacked",
+			Type:  "barchartVertical",
 		}
 		for i, c := range columns {
 			if barCat != "" {
@@ -333,11 +346,29 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 					r.CategoryIndex = &i
 				}
 			}
-			if c.Name() == xaxis {
-				r.XAxisIndex = &i
+			if c.Name() == yaxis {
+				r.IndexAxisIndex = &i
 			}
-			if c.Name() == barYStacked {
-				r.YAxisIndex = &i
+			if c.Name() == barchart {
+				r.ValueAxisIndex = &i
+			}
+		}
+		return r
+	}
+	if barchartStacked != "" && yaxis != "" && barCat != "" {
+		r := renderInfo{
+			Label: labelValue,
+			Type:  "barchartVerticalStacked",
+		}
+		for i, c := range columns {
+			if c.Name() == barCat {
+				r.CategoryIndex = &i
+			}
+			if c.Name() == yaxis {
+				r.IndexAxisIndex = &i
+			}
+			if c.Name() == barchartStacked {
+				r.ValueAxisIndex = &i
 			}
 		}
 		return r

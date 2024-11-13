@@ -1,4 +1,4 @@
-import { Column, Result } from "../../lib/dashboard";
+import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { BarChart } from "../tremor/BarChart";
 import { Card } from "../tremor/Card";
@@ -10,37 +10,38 @@ type BarProps = {
   data: Result['sections'][0]['queries'][0]['rows']
   sectionCount: number;
   stacked?: boolean;
+  vertical?: boolean;
 };
 
-const DashboardBarChart = ({ label, headers, data, sectionCount, stacked }: BarProps) => {
+const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertical }: BarProps) => {
   if (data.length === 0) {
     return null;
   }
-  const yaxisHeader = headers.find((c) => c.tag === "yAxis");
-  if (!yaxisHeader) {
-    throw new Error("No yaxis header found");
+  const valueAxisHeader = headers.find((c) => c.tag === "value");
+  if (!valueAxisHeader) {
+    throw new Error("No column with tag 'value'");
   }
-  const yaxis = yaxisHeader.name;
+  const valueAxisName = valueAxisHeader.name;
   const categoryIndex = headers.findIndex((c) => c.tag === "category");
   const categories = new Set<string>();
   if (categoryIndex === -1) {
-    categories.add(yaxis);
+    categories.add(valueAxisName);
   }
-  const xaxisIndex = headers.findIndex((c) => c.tag === "xAxis");
-  const xaxisHeader = headers[xaxisIndex];
-  const dataByXaxis = data.reduce(
+  const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
+  const indexAxisHeader = headers[indexAxisIndex];
+  const dataByIndexAxis = data.reduce(
     (acc, row) => {
-      const key = formatValue(row[xaxisIndex], xaxisHeader.type);
+      const key = formatValue(row[indexAxisIndex], indexAxisHeader.type);
       if (!acc[key]) {
         acc[key] = {};
       }
       row.forEach((cell, i) => {
-        if (i === xaxisIndex || i === categoryIndex) {
+        if (i === indexAxisIndex || i === categoryIndex) {
           return;
         }
         const c = formatValue(cell, headers[i].type)
         if (categoryIndex === -1) {
-          acc[key][yaxis] = c;
+          acc[key][valueAxisName] = c;
           return;
         }
         const category = (row[categoryIndex] ?? '').toString();
@@ -51,9 +52,9 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked }: BarP
     },
     {} as Record<string, Record<string, string | number>>,
   );
-  const chartdata = Object.entries(dataByXaxis).map(([key, value]) => {
+  const chartdata = Object.entries(dataByIndexAxis).map(([key, value]) => {
     return {
-      [xaxisHeader.name]: key,
+      [indexAxisHeader.name]: key,
       ...value,
     };
   });
@@ -84,18 +85,18 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked }: BarP
           ) :
           <BarChart
             className="h-full"
-            startEndOnly
             enableLegendSlider
+            startEndOnly={chartdata.length > (vertical ? 20 : 10)}
             type={stacked ? "stacked" : "default"}
-            layout="horizontal"
+            layout={vertical ? "vertical" : "horizontal"}
             data={chartdata}
-            index={xaxisHeader.name}
+            index={indexAxisHeader.name}
             categories={Array.from(categories)}
             valueFormatter={(number: number) => {
               return number.toLocaleString();
             }}
-            xAxisLabel={xaxisHeader.name}
-            yAxisLabel={yaxis}
+            xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
+            yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
             showLegend={categoryIndex !== -1}
           />
         }

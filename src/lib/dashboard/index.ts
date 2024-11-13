@@ -2,8 +2,12 @@ export type Column = {
   name: string;
   type: "year" | "month" | "hour" | "date" | "timestamp" | "number" | "string" | "boolean";
   nullable: boolean;
-  tag: "xAxis" | "yAxis" | "category" | "value" | "label" | "hint" | "download" | "";
+  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "";
 };
+
+export const isTimeType = (t: Column['type']) => {
+  return t === "year" || t === "month" || t === "hour" || t === "date" || t === "timestamp";
+}
 
 export type Result = {
   title: string;
@@ -22,7 +26,13 @@ export type Result = {
     type: 'content';
     queries: {
       render: {
-        type: "table" | "linechart" | "barchartHorizontal" | "barchartHorizontalStacked" | "barchartVertical" | "barchartVerticalStacked";
+        type:
+        | "table"
+        | "linechart"
+        | "barchartHorizontal"
+        | "barchartHorizontalStacked"
+        | "barchartVertical"
+        | "barchartVerticalStacked";
         label?: string;
       };
       columns: Column[];

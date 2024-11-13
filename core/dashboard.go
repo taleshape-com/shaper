@@ -29,15 +29,15 @@ type Render struct {
 }
 
 type renderInfo struct {
-	Type          string
-	Label         *string
-	XAxisIndex    *int
-	YAxisIndex    *int
-	CategoryIndex *int
-	ValueIndex    *int
-	LabelIndex    *int
-	HintIndex     *int
-	Download      string
+	Type           string
+	Label          *string
+	IndexAxisIndex *int
+	ValueAxisIndex *int
+	CategoryIndex  *int
+	ValueIndex     *int
+	LabelIndex     *int
+	HintIndex      *int
+	Download       string
 }
 
 //	type Desc struct {

@@ -248,6 +248,31 @@ function DashboardViewComponent() {
                   />
                 )
               }
+              if (render.type === 'barchartVertical') {
+                return (
+                  <DashboardBarChart
+                    vertical
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
+                    sectionCount={section.queries.length}
+                  />
+                )
+              }
+              if (render.type === 'barchartVerticalStacked') {
+                return (
+                  <DashboardBarChart
+                    stacked
+                    vertical
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
+                    sectionCount={section.queries.length}
+                  />
+                )
+              }
               return (
                 <DashboardTable
                   key={index}
