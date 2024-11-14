@@ -694,7 +694,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               )}
             </YAxis>
             <Tooltip
-              wrapperStyle={{ outline: "none", zIndex: 100 }}
+              wrapperStyle={{ outline: "none", zIndex: 30 }}
               isAnimationActive={true}
               animationDuration={100}
               cursor={{ stroke: "#d1d5db", strokeWidth: 1 }}

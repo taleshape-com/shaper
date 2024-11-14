@@ -134,7 +134,7 @@ function DashboardViewComponent() {
         ]
         : data.sections
   return (
-    <div className="mx-2 mt-2 mb-16 sm:mx-2 sm:mt-2">
+    <div className="mx-2 mb-16">
       <Helmet>
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
@@ -145,8 +145,8 @@ function DashboardViewComponent() {
             <section
               key={index}
               className={cx([
-                'flex items-center mx-2 pb-8',
-                index !== 0 ? 'pt-8 border-t' : '',
+                'flex items-center mx-2 py-1 mb-7',
+                index === 0 ? 'sticky top-0 z-40 bg-slate-50' : 'pt-8 border-t',
               ])}
             >
               {index === 0 ? (

@@ -86,7 +86,7 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
           <BarChart
             className="h-full"
             enableLegendSlider
-            startEndOnly={chartdata.length > (vertical ? 20 : 10)}
+            startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexAxisHeader.type) ? 10 : 15)}
             type={stacked ? "stacked" : "default"}
             layout={vertical ? "vertical" : "horizontal"}
             data={chartdata}
