@@ -12,16 +12,16 @@ export const formatValue = (value: string | number | boolean, columnType: Column
     return d.getFullYear().toString();
   }
   if (columnType === "month") {
-    return d.toISOString().substring(0, 7)
+    return d.getFullYear().toString() + '-' + d.getMonth().toString().padStart(2, '0')
   }
   if (columnType === "date") {
-    return d.toISOString().substring(0, 10)
+    return d.getFullYear().toString() + '-' + d.getMonth().toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0')
   }
   if (columnType === "hour") {
-    return d.toISOString().substring(0, 16).replace('T', ' ')
+    return d.getFullYear().toString() + '-' + d.getMonth().toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0') + ' ' + d.getHours().toString().padStart(2, '0') + ':00'
   }
   if (columnType === "timestamp") {
-    return d.toISOString().substring(0, 19).replace('T', ' ')
+    return d.getFullYear().toString() + '-' + d.getMonth().toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0') + ' ' + d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0') + ':' + d.getSeconds().toString().padStart(2, '0')
   }
   return value;
 };

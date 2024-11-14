@@ -26,15 +26,15 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
   return (
     <div className={cx({
       "p-2 mb-3": true,
-      "col-span-2": headers.length === 2 && sectionCount >= 2,
-      "col-span-4": headers.length >= 3 || sectionCount === 1,
+      "col-span-2": headers.length >= 3 && sectionCount >= 5,
+      "col-span-4": headers.length >= 6 || (headers.length >= 3 && sectionCount <= 4) || sectionCount === 1,
     })}>
       {label &&
         <h2 className="text-sm mb-2 text-center">
           {label}
         </h2>
       }
-      <Card className="p-2">
+      <Card className="px-2 pt-2 pb-4">
         <TableRoot className={cx({
           "overflow-auto": true,
           ["max-h-[calc(100vh-9.4rem)]"]: label,
