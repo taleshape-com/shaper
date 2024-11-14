@@ -113,14 +113,15 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 				Tag:      mapTag(colIndex, rInfo),
 			}
 			query.Columns = append(query.Columns, col)
-			err := collectVars(singleVars, multiVars, rInfo.Type, colIndex, queryParams, col.Tag, query.Rows, col.Name)
-			if err != nil {
-				return result, err
-			}
 			if rInfo.Download == "csv" {
 				filename := query.Rows[0][colIndex].(string)
 				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv", dashboardName, queryIndex+1, url.QueryEscape(filename))
 			}
+		}
+
+		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		if err != nil {
+			return result, err
 		}
 
 		wantedSectionType := "content"
@@ -570,9 +571,26 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 	return varPrefix.String()
 }
 
-func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, columnIndex int, queryParams url.Values, columnTag string, data Rows, columnName string) error {
+func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
-	if renderType == "dropdown" && columnTag == "value" {
+	if renderType == "dropdown" {
+		columnName := ""
+		columnIndex := -1
+		labelName := ""
+		labelIndex := -1
+		for i, col := range columns {
+			if col.Tag == "value" {
+				columnName = col.Name
+				columnIndex = i
+			}
+			if col.Tag == "label" {
+				labelName = col.Name
+				labelIndex = i
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing value column for dropdownMulti")
+		}
 		param := queryParams.Get(columnName)
 		if param == "" {
 			// Set default value to first row
@@ -582,6 +600,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 			param = data[0][columnIndex].(string)
 		} else {
+			// Check if param actually exists in the dropdown
 			isValidVar := false
 			for _, row := range data {
 				if row[columnIndex].(string) == param {
@@ -594,9 +613,38 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		singleVars[columnName] = param
+		if labelIndex != -1 {
+			for _, row := range data {
+				val := row[columnIndex].(string)
+				// Checking len of row to avoid out of bounds error in case of label being NULL
+				if val == param && len(row) > labelIndex {
+					label := row[labelIndex].(string)
+					singleVars[labelName] = label
+					break
+				}
+			}
+		}
 	}
+
 	// Fetch vars from dropdownMulti
-	if renderType == "dropdownMulti" && columnTag == "value" {
+	if renderType == "dropdownMulti" {
+		columnName := ""
+		columnIndex := -1
+		labelName := ""
+		labelIndex := -1
+		for i, col := range columns {
+			if col.Tag == "value" {
+				columnName = col.Name
+				columnIndex = i
+			}
+			if col.Tag == "label" {
+				labelName = col.Name
+				labelIndex = i
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing value column for dropdownMulti")
+		}
 		params := queryParams[columnName]
 		if len(params) == 0 {
 			// Set default value to all rows
@@ -604,6 +652,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				params = append(params, row[columnIndex].(string))
 			}
 		} else {
+			// Check if all params actually exist in the dropdown
 			isValidVar := false
 			paramsToCheck := map[string]bool{}
 			for _, param := range params {
@@ -617,7 +666,6 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 						isValidVar = true
 						break
 					}
-					continue
 				}
 			}
 			if !isValidVar {
@@ -625,6 +673,20 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		multiVars[columnName] = params
+		labels := []string{}
+		if labelIndex != -1 {
+			for _, param := range params {
+				for _, row := range data {
+					val := row[columnIndex].(string)
+					// Checking len of row to avoid out of bounds error in case of label being NULL
+					if val == param && len(row) > labelIndex {
+						label := row[labelIndex].(string)
+						labels = append(labels, label)
+					}
+				}
+			}
+			multiVars[labelName] = labels
+		}
 	}
 	return nil
 }

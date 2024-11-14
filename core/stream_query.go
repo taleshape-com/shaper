@@ -159,13 +159,17 @@ func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParam
 			nextIsDownload = true
 		}
 
+		columns := []Column{}
 		for colIndex, c := range colTypes {
-			colName := c.Name()
-			colTag := mapTag(colIndex, rInfo)
-			err := collectVars(singleVars, multiVars, rInfo.Type, colIndex, queryParams, colTag, data, colName)
-			if err != nil {
-				return "", err
+			col := Column{
+				Name: c.Name(),
+				Tag:  mapTag(colIndex, rInfo),
 			}
+			columns = append(columns, col)
+		}
+		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, data)
+		if err != nil {
+			return "", err
 		}
 	}
 	return buildVarPrefix(singleVars, multiVars), nil
