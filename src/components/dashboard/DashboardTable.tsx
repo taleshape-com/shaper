@@ -44,7 +44,7 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
             <TableHead className="sticky top-0 bg-white shadow-sm">
               <TableRow>
                 {headers.map((header) => (
-                  <TableHeaderCell key={header.name}>{header.name}</TableHeaderCell>
+                  <TableHeaderCell className={header.type === 'number' ? 'text-center' : 'text-left'} key={header.name}>{header.name}</TableHeaderCell>
                 ))}
               </TableRow>
             </TableHead>
@@ -53,11 +53,11 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
                 data.map((items, index) => (
                   <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50" : undefined}>
                     {items.map((item, index) => {
-                      const classes =
-                        typeof item === "number" ? "text-right" : "text-left";
+                      const headerType = headers[index].type
+                      const classes = headerType === 'number' ? 'text-center' : 'text-left';
                       return (
                         <TableCell key={index} className={classes}>
-                          {formatValue(item, headers[index].type)}
+                          {formatValue(item, headerType)}
                         </TableCell>
                       );
                     })}
