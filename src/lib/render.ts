@@ -12,16 +12,16 @@ export const formatValue = (value: string | number | boolean, columnType: Column
     return d.getFullYear().toString();
   }
   if (columnType === "month") {
-    return d.getFullYear().toString() + '-' + (d.getMonth() + 1).toString().padStart(2, '0')
+    return d.toLocaleString(navigator.languages, { month: 'short' });
   }
   if (columnType === "date") {
-    return d.getFullYear().toString() + '-' + (d.getMonth() + 1).toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0')
+    return d.toLocaleDateString();
   }
   if (columnType === "hour") {
-    return d.getFullYear().toString() + '-' + (d.getMonth() + 1).toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0') + ' ' + d.getHours().toString().padStart(2, '0') + ':00'
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
   if (columnType === "timestamp") {
-    return d.getFullYear().toString() + '-' + (d.getMonth() + 1).toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0') + ' ' + d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0') + ':' + d.getSeconds().toString().padStart(2, '0')
+    return d.toLocaleString();
   }
   return value;
 };
