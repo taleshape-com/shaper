@@ -146,16 +146,16 @@ function DashboardViewComponent() {
               key={index}
               className={cx([
                 'flex items-center mx-2 py-1 mb-7',
-                index === 0 ? 'sticky top-0 z-40 bg-slate-50' : 'pt-8 border-t',
+                index === 0 ? '' : 'pt-8 border-t',
               ])}
             >
               {index === 0 ? (
-                <h1 className="text-xl text-slate-700 flex-grow py-1">
+                <h1 className="text-2xl text-slate-700 flex-grow py-1">
                   {data.title}
                 </h1>
               ) : null}
               {section.title ? (
-                <h1 className="text-md text-slate-700 flex-grow text-left py-1">
+                <h1 className="text-lg text-slate-700 flex-grow text-left py-1">
                   {section.title}
                 </h1>
               ) : (
