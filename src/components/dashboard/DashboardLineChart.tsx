@@ -66,7 +66,7 @@ const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) =
         : null
       }
       <Card className={cx({
-        "py-1 px-3": true,
+        "py-1 px-3 min-h-[250px]": true,
         "pt-10": categoryIndex === -1,
         "h-[calc(45vh)] sm:h-[calc(100vh-8.25rem)]": sectionCount === 1 && label,
         "h-[calc(45vh)] sm:h-[calc(100vh-6.5rem)]": sectionCount === 1 && !label,
