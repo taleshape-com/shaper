@@ -1,5 +1,4 @@
 // TODO: https://echo.labstack.com/docs/middleware/secure
-// TODO: GZIP https://echo.labstack.com/docs/middleware/gzip
 // TODO: metrics https://echo.labstack.com/docs/middleware/prometheus
 // TODO: rate limit https://echo.labstack.com/docs/middleware/rate-limiter
 // TODO: TLS https://echo.labstack.com/docs/cookbook/auto-tls#server
@@ -26,6 +25,7 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	// Middlewares
 	e.Use(slogecho.New(app.Logger))
 	e.Use(middleware.BodyLimit("2M"))
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 5}))
 	// CORS restricted
 	// Allows requests from any `https://labstack.com` or `https://labstack.net` origin
 	// wth GET, PUT, POST or DELETE method.
