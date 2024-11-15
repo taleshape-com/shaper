@@ -14,6 +14,7 @@ func ListDashboards(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		result, err := core.ListDashboards(app, c.Request().Context())
 		if err != nil {
+			app.Logger.Error("error listing dashboards:", slog.String("error", err.Error()))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
@@ -24,6 +25,7 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"), c.QueryParams())
 		if err != nil {
+			app.Logger.Error("error getting dashboard:", slog.String("error", err.Error()))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
@@ -71,6 +73,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 				app.Logger.Error("streaming error after response started:", slog.String("error", err.Error()))
 				return err
 			}
+			app.Logger.Error("error downloading CSV:", slog.String("error", err.Error()))
 			return c.JSONPretty(
 				http.StatusBadRequest,
 				struct{ Error string }{Error: err.Error()},
