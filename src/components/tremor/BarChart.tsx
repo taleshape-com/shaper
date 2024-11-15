@@ -530,6 +530,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[];
   colors?: AvailableChartColorsKeys[];
   valueFormatter?: (value: number) => string;
+  indexFormatter?: (value: number) => string;
   startEndOnly?: boolean;
   showXAxis?: boolean;
   showYAxis?: boolean;
@@ -563,6 +564,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       index,
       colors = AvailableChartColors,
       valueFormatter = (value: number) => value.toString(),
+      indexFormatter = (value: number) => value.toString(),
       startEndOnly = false,
       showXAxis = true,
       showYAxis = true,
@@ -712,12 +714,15 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   ticks: startEndOnly
                     ? [data[0][index], data[data.length - 1][index]]
                     : undefined,
+                  tickFormatter:
+                    type === "percent" ? valueToPercent : indexFormatter,
+                  type: typeof data[0][index] === 'number' ? "number" : 'category',
+                  domain: ['auto', 'auto'] as AxisDomain,
                 }
                 : {
                   type: "number",
-                  domain: yAxisDomain as AxisDomain,
                   tickFormatter:
-                    type === "percent" ? valueToPercent : valueFormatter,
+                    type === "percent" ? valueToPercent : indexFormatter,
                   allowDecimals: allowDecimals,
                 })}
             >
@@ -824,7 +829,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     <ChartTooltip
                       active={active}
                       payload={cleanPayload}
-                      label={label}
+                      label={indexFormatter(label)}
                       valueFormatter={valueFormatter}
                     />
                   )

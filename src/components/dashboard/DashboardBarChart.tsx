@@ -31,9 +31,17 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
   const indexAxisHeader = headers[indexAxisIndex];
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
-      const key = formatValue(row[indexAxisIndex], indexAxisHeader.type);
+      const key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
       if (!acc[key]) {
-        acc[key] = {};
+        acc[key] = {
+          [indexAxisHeader.name]:
+            indexAxisHeader.type === 'year' ||
+              indexAxisHeader.type === 'month' ||
+              indexAxisHeader.type === 'date' ||
+              indexAxisHeader.type === 'timestamp' ||
+              indexAxisHeader.type === 'hour' ?
+              (new Date(key)).getTime() : key,
+        };
       }
       row.forEach((cell, i) => {
         if (i === indexAxisIndex || i === categoryIndex) {
@@ -52,9 +60,8 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
     },
     {} as Record<string, Record<string, string | number>>,
   );
-  const chartdata = Object.entries(dataByIndexAxis).map(([key, value]) => {
+  const chartdata = Object.values(dataByIndexAxis).map((value) => {
     return {
-      [indexAxisHeader.name]: key,
       ...value,
     };
   });
@@ -66,7 +73,9 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
         : null
       }
       <Card className={cx({
-        "py-1 px-3 min-h-[250px]": true,
+        "py-1 px-3": true,
+        "min-h-[250px]": !!label,
+        "min-h-[calc(250px+1.75rem)]": !label,
         "pt-10": categoryIndex === -1,
         "h-[calc(45vh)] sm:h-[calc(100vh-8.25rem)]": sectionCount === 1 && label,
         "h-[calc(45vh)] sm:h-[calc(100vh-6.5rem)]": sectionCount === 1 && !label,
@@ -92,8 +101,11 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
             data={chartdata}
             index={indexAxisHeader.name}
             categories={Array.from(categories)}
-            valueFormatter={(number: number) => {
-              return number.toLocaleString();
+            valueFormatter={(n: number) => {
+              return n.toLocaleString();
+            }}
+            indexFormatter={(n: number) => {
+              return formatValue(n, indexAxisHeader.type).toString();
             }}
             xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
             yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
