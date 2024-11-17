@@ -135,7 +135,7 @@ function DashboardViewComponent() {
         ]
         : data.sections
   return (
-    <div className="mx-2 mb-16">
+    <div className="sm:mx-1 lg:mx-2 mb-16">
       <Helmet>
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
@@ -148,7 +148,7 @@ function DashboardViewComponent() {
             <section
               key={index}
               className={cx([
-                'flex flex-wrap items-center py-1 mb-7',
+                'flex flex-wrap items-center py-1 mb-7 pr-2',
                 index === 0 ? '' : 'pt-8 border-t',
               ])}
             >
