@@ -35,6 +35,8 @@ type renderInfo struct {
 	ValueAxisIndex *int
 	CategoryIndex  *int
 	ValueIndex     *int
+	FromIndex      *int
+	ToIndex        *int
 	LabelIndex     *int
 	HintIndex      *int
 	Download       string

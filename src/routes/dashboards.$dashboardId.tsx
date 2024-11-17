@@ -13,6 +13,7 @@ import DashboardDropdownMulti from '../components/dashboard/DashboardDropdownMul
 import { cx } from '../lib/utils'
 import DashboardButton from '../components/dashboard/DashboardButton'
 import DashboardDatePicker from '../components/dashboard/DashboardDatePicker'
+import DashboardDateRangePicker from '../components/dashboard/DashboardDateRangePicker'
 
 const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
 
@@ -203,6 +204,18 @@ function DashboardViewComponent() {
                 if (render.type === 'datepicker') {
                   return (
                     <DashboardDatePicker
+                      key={index}
+                      label={render.label}
+                      headers={columns}
+                      data={rows}
+                      vars={vars}
+                      onChange={onDropdownChange}
+                    />
+                  )
+                }
+                if (render.type === 'daterangePicker') {
+                  return (
+                    <DashboardDateRangePicker
                       key={index}
                       label={render.label}
                       headers={columns}

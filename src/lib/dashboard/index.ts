@@ -2,7 +2,7 @@ export type Column = {
   name: string;
   type: "year" | "month" | "hour" | "date" | "timestamp" | "number" | "string" | "boolean";
   nullable: boolean;
-  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "";
+  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "defaultFrom" | "defaultTo" | "";
 };
 
 export const isTimeType = (t: Column['type']) => {
@@ -20,7 +20,8 @@ export type Result = {
         | "dropdown"
         | "dropdownMulti"
         | "button"
-        | "datepicker";
+        | "datepicker"
+        | "daterangePicker";
         label?: string;
       }
       columns: Column[];

@@ -125,7 +125,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		}
 
 		wantedSectionType := "content"
-		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" {
+		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" {
 			wantedSectionType = "header"
 		}
 		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
@@ -195,6 +195,14 @@ func mapTag(index int, rInfo renderInfo) string {
 	if rInfo.Type == "datepicker" {
 		if rInfo.ValueIndex != nil && index == *rInfo.ValueIndex {
 			return "default"
+		}
+	}
+	if rInfo.Type == "daterangePicker" {
+		if rInfo.FromIndex != nil && index == *rInfo.FromIndex {
+			return "defaultFrom"
+		}
+		if rInfo.ToIndex != nil && index == *rInfo.ToIndex {
+			return "defaultTo"
 		}
 	}
 	if rInfo.Download != "" {
@@ -443,12 +451,39 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 			}
 		}
 		if defaultValueIndex == -1 {
-			panic(fmt.Sprintf("column %s not found", dropdown))
+			panic(fmt.Sprintf("column %s not found", datepicker))
 		}
 		return renderInfo{
 			Label:      labelValue,
 			Type:       "datepicker",
 			ValueIndex: &defaultValueIndex,
+		}
+	}
+
+	daterangeFrom := getTagName(sqlString, "DATEPICKER_FROM")
+	daterangeTo := getTagName(sqlString, "DATEPICKER_TO")
+	if daterangeFrom != "" && daterangeTo != "" {
+		fromIndex := -1
+		toIndex := -1
+		for i, c := range columns {
+			if c.Name() == daterangeFrom {
+				fromIndex = i
+			}
+			if c.Name() == daterangeTo {
+				toIndex = i
+			}
+		}
+		if fromIndex == -1 {
+			panic(fmt.Sprintf("column %s not found", daterangeFrom))
+		}
+		if toIndex == -1 {
+			panic(fmt.Sprintf("column %s not found", daterangeFrom))
+		}
+		return renderInfo{
+			Label:     labelValue,
+			Type:      "daterangePicker",
+			FromIndex: &fromIndex,
+			ToIndex:   &toIndex,
 		}
 	}
 
@@ -747,6 +782,71 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if param != "" {
 			singleVars[columnName] = "DATE '" + escapeSQLString(param) + "'"
+		}
+	}
+
+	// Fetch vars from daterangePicker
+	if renderType == "daterangePicker" {
+		if len(data) == 0 {
+			return nil
+		}
+		fromColumnName := ""
+		toColumnName := ""
+		fromDefaultValueIndex := -1
+		toDefaultValueIndex := -1
+		for i, col := range columns {
+			if col.Tag == "defaultFrom" {
+				fromColumnName = col.Name
+				fromDefaultValueIndex = i
+			}
+			if col.Tag == "defaultTo" {
+				toColumnName = col.Name
+				toDefaultValueIndex = i
+			}
+		}
+		if fromColumnName == "" {
+			return fmt.Errorf("missing DATEPICKER_FROM column")
+		}
+		if toColumnName == "" {
+			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		fromParam := queryParams.Get(fromColumnName)
+		if fromParam == "" {
+			// Set default value
+			if fromDefaultValueIndex != -1 {
+				val := data[0][fromDefaultValueIndex]
+				if val != nil {
+					date := val.(time.Time)
+					fromParam = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if fromParam is a valid date
+			if !isDateValue(fromParam) {
+				return fmt.Errorf("invalid date for datepicker query fromParam '%s': %s", fromColumnName, fromParam)
+			}
+		}
+		if fromParam != "" {
+			singleVars[fromColumnName] = "DATE '" + escapeSQLString(fromParam) + "'"
+		}
+		toParam := queryParams.Get(toColumnName)
+		if toParam == "" {
+			// Set default value
+			if toDefaultValueIndex != -1 {
+				val := data[0][toDefaultValueIndex]
+				if val != nil {
+					date := val.(time.Time)
+					toParam = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if toParam is a valid date
+			if !isDateValue(toParam) {
+				return fmt.Errorf("invalid date for datepicker query toParam '%s': %s", toColumnName, toParam)
+			}
+		}
+		if toParam != "" {
+			singleVars[toColumnName] = "DATE '" + escapeSQLString(toParam) + "'"
 		}
 	}
 	return nil

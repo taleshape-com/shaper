@@ -23,7 +23,6 @@ import { tv, VariantProps } from "tailwind-variants"
 
 import { cx, focusInput, focusRing, hasErrorInput } from "../../lib/utils"
 
-import { Button } from "./Button"
 import { Calendar as CalendarPrimitive, type Matcher } from "./Calendar"
 
 //#region TimeInput
@@ -765,6 +764,11 @@ const RangeDatePicker = ({
       }
     }
 
+    if (range && range.to && range.from) {
+      setOpen(false)
+      onChange?.(range)
+    }
+
     setRange(newRange)
   }
 
@@ -879,11 +883,6 @@ const RangeDatePicker = ({
       }`
   }, [range, locale, showTimePicker])
 
-  const onApply = () => {
-    setOpen(false)
-    onChange?.(range)
-  }
-
   return (
     <PopoverPrimitives.Root
       tremor-id="tremor-raw"
@@ -893,12 +892,13 @@ const RangeDatePicker = ({
       <Trigger
         placeholder={placeholder}
         disabled={disabled}
-        className={className}
+        className={cx({ "border-blue-500": open }, className)}
         hasError={hasError}
         aria-required={props.required || props["aria-required"]}
         aria-invalid={props["aria-invalid"]}
         aria-label={props["aria-label"]}
         aria-labelledby={props["aria-labelledby"]}
+        isDefaultValue={!value && !!defaultValue}
       >
         {displayRange}
       </Trigger>
@@ -970,32 +970,6 @@ const RangeDatePicker = ({
                   </div>
                 </div>
               )}
-              <div className="border-t border-gray-200 p-3 sm:flex sm:items-center sm:justify-between dark:border-gray-800">
-                <p className="tabular-nums text-gray-900 dark:text-gray-50">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {translations?.range ?? "Range"}:
-                  </span>{" "}
-                  <span className="font-medium">{displayRange}</span>
-                </p>
-                <div className="mt-2 flex items-center gap-x-2 sm:mt-0">
-                  <Button
-                    variant="secondary"
-                    className="h-8 w-full sm:w-fit"
-                    type="button"
-                    onClick={onCancel}
-                  >
-                    {translations?.cancel ?? "Cancel"}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    className="h-8 w-full sm:w-fit"
-                    type="button"
-                    onClick={onApply}
-                  >
-                    {translations?.apply ?? "Apply"}
-                  </Button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
