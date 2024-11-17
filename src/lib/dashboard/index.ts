@@ -2,7 +2,7 @@ export type Column = {
   name: string;
   type: "year" | "month" | "hour" | "date" | "timestamp" | "number" | "string" | "boolean";
   nullable: boolean;
-  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "";
+  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "";
 };
 
 export const isTimeType = (t: Column['type']) => {
@@ -16,7 +16,11 @@ export type Result = {
     title?: string;
     queries: {
       render: {
-        type: "dropdown" | "dropdownMulti" | "button";
+        type:
+        | "dropdown"
+        | "dropdownMulti"
+        | "button"
+        | "datepicker";
         label?: string;
       }
       columns: Column[];

@@ -12,6 +12,7 @@ import { useNavigate } from '@tanstack/react-router'
 import DashboardDropdownMulti from '../components/dashboard/DashboardDropdownMulti'
 import { cx } from '../lib/utils'
 import DashboardButton from '../components/dashboard/DashboardButton'
+import DashboardDatePicker from '../components/dashboard/DashboardDatePicker'
 
 const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
 
@@ -194,6 +195,18 @@ function DashboardViewComponent() {
                       headers={columns}
                       data={rows}
                       searchParams={searchParams}
+                    />
+                  )
+                }
+                if (render.type === 'datepicker') {
+                  return (
+                    <DashboardDatePicker
+                      key={index}
+                      label={render.label}
+                      headers={columns}
+                      data={rows}
+                      vars={vars}
+                      onChange={onDropdownChange}
                     />
                   )
                 }

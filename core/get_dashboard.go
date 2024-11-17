@@ -125,7 +125,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		}
 
 		wantedSectionType := "content"
-		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" {
+		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" {
 			wantedSectionType = "header"
 		}
 		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
@@ -190,6 +190,11 @@ func mapTag(index int, rInfo renderInfo) string {
 		}
 		if rInfo.HintIndex != nil && index == *rInfo.HintIndex {
 			return "hint"
+		}
+	}
+	if rInfo.Type == "datepicker" {
+		if rInfo.ValueIndex != nil && index == *rInfo.ValueIndex {
+			return "default"
 		}
 	}
 	if rInfo.Download != "" {
@@ -429,6 +434,24 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
+	datepicker := getTagName(sqlString, "DATEPICKER")
+	if datepicker != "" {
+		defaultValueIndex := -1
+		for i, c := range columns {
+			if c.Name() == datepicker {
+				defaultValueIndex = i
+			}
+		}
+		if defaultValueIndex == -1 {
+			panic(fmt.Sprintf("column %s not found", dropdown))
+		}
+		return renderInfo{
+			Label:      labelValue,
+			Type:       "datepicker",
+			ValueIndex: &defaultValueIndex,
+		}
+	}
+
 	downloadCSV := getTagName(sqlString, "DOWNLOAD_CSV")
 	if downloadCSV != "" {
 		return renderInfo{
@@ -555,7 +578,7 @@ func hasOnlyUniqueValues(rows Rows, columnIndex int) bool {
 func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) string {
 	varPrefix := strings.Builder{}
 	for k, v := range singleVars {
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = '%s';\n", escapeSQLIdentifier(k), escapeSQLString(v)))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = %s;\n", escapeSQLIdentifier(k), v))
 	}
 	for k, v := range multiVars {
 		l := ""
@@ -566,7 +589,7 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 			}
 			l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
 		}
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR;\n", escapeSQLIdentifier(k), l))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s];\n", escapeSQLIdentifier(k), l))
 	}
 	return varPrefix.String()
 }
@@ -589,15 +612,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		if columnName == "" {
-			return fmt.Errorf("missing value column for dropdownMulti")
+			return fmt.Errorf("missing value column for dropdown")
 		}
 		param := queryParams.Get(columnName)
 		if param == "" {
-			// Set default value to first row
 			if len(data) == 0 {
-				// Hide dropdown if now rows to select from
+				// No vars for dropdown without options
 				return nil
 			}
+			// Set default value to first row
 			param = data[0][columnIndex].(string)
 		} else {
 			// Check if param actually exists in the dropdown
@@ -612,14 +635,14 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				return fmt.Errorf("invalid value for query param '%s': %s", columnName, param)
 			}
 		}
-		singleVars[columnName] = param
+		singleVars[columnName] = "'" + escapeSQLString(param) + "'"
 		if labelIndex != -1 {
 			for _, row := range data {
 				val := row[columnIndex].(string)
 				// Checking len of row to avoid out of bounds error in case of label being NULL
 				if val == param && len(row) > labelIndex {
 					label := row[labelIndex].(string)
-					singleVars[labelName] = label
+					singleVars[labelName] = "'" + escapeSQLString(label) + "'"
 					break
 				}
 			}
@@ -688,5 +711,48 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			multiVars[labelName] = labels
 		}
 	}
+
+	// Fetch vars from datepicker
+	if renderType == "datepicker" {
+		if len(data) == 0 {
+			return nil
+		}
+		columnName := ""
+		defaultValueIndex := -1
+		for i, col := range columns {
+			if col.Tag == "default" {
+				columnName = col.Name
+				defaultValueIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing datepicker column")
+		}
+		param := queryParams.Get(columnName)
+		if param == "" {
+			// Set default value
+			if defaultValueIndex != -1 {
+				val := data[0][defaultValueIndex]
+				if val != nil {
+					date := val.(time.Time)
+					param = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if param is a valid date
+			if !isDateValue(param) {
+				return fmt.Errorf("invalid date for datepicker query param '%s': %s", columnName, param)
+			}
+		}
+		if param != "" {
+			singleVars[columnName] = "DATE '" + escapeSQLString(param) + "'"
+		}
+	}
 	return nil
+}
+
+func isDateValue(stringDate string) bool {
+	_, err := time.Parse(time.DateOnly, stringDate)
+	return err == nil
 }

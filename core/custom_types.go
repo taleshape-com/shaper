@@ -19,6 +19,7 @@ var dbTypes = []struct {
 	{"HINT", "VARCHAR"},
 	{"SECTION", "VARCHAR"},
 	{"DOWNLOAD_CSV", "VARCHAR"},
+	{"DATEPICKER", "DATE"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

@@ -14,7 +14,7 @@ func ListDashboards(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		result, err := core.ListDashboards(app, c.Request().Context())
 		if err != nil {
-			app.Logger.Error("error listing dashboards:", slog.String("error", err.Error()))
+			app.Logger.Error("error listing dashboards:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
@@ -25,7 +25,7 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"), c.QueryParams())
 		if err != nil {
-			app.Logger.Error("error getting dashboard:", slog.String("error", err.Error()))
+			app.Logger.Error("error getting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
@@ -70,10 +70,10 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 			// If headers haven't been sent yet, return JSON error
 			if c.Response().Committed {
 				// If we've already started streaming, log the error since we can't modify the response
-				app.Logger.Error("streaming error after response started:", slog.String("error", err.Error()))
+				app.Logger.Error("streaming error after response started:", slog.Any("error", err))
 				return err
 			}
-			app.Logger.Error("error downloading CSV:", slog.String("error", err.Error()))
+			app.Logger.Error("error downloading CSV:", slog.Any("error", err))
 			return c.JSONPretty(
 				http.StatusBadRequest,
 				struct{ Error string }{Error: err.Error()},
