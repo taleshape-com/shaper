@@ -67,7 +67,7 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
   });
   return (
     <div className="p-2 mb-2">
-      {label ? <h2 className="text-sm mb-2 text-center">
+      {label ? <h2 className="text-md mb-2 text-center text-slate-700">
         {label}
       </h2>
         : null

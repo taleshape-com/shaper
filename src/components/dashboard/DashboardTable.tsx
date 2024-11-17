@@ -27,10 +27,10 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
     <div className={cx({
       "p-2 mb-3": true,
       "col-span-2": headers.length >= 3 && sectionCount >= 5,
-      "col-span-4": headers.length >= 6 || (headers.length >= 3 && sectionCount <= 4) || sectionCount === 1,
+      "col-span-4": headers.length >= 6 || (headers.length >= 5 && sectionCount <= 4) || sectionCount === 1,
     })}>
       {label &&
-        <h2 className="text-sm mb-2 text-center">
+        <h2 className="text-md mb-2 text-center text-slate-700">
           {label}
         </h2>
       }
