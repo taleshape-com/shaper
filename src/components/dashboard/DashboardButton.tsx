@@ -24,7 +24,7 @@ function DashboardButton({
   return (
     <div className="ml-2">
       <a href={formatValue(`${(data ?? [])[0][0]}?${searchParams}`, headers[0].type).toString()} download>
-        <Button variant="secondary" className="font-normal flex w-full items-center justify-between">
+        <Button variant="secondary" className="font-normal flex w-full items-center justify-between my-1">
           {label}
           {headers[0].name}
           <SelectPrimitives.Icon asChild>

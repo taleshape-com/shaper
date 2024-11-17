@@ -70,7 +70,7 @@ function DashboardDatePicker({
             const dateString = `${value.getFullYear()}-${value.toLocaleDateString([], { month: "2-digit" })}-${value.toLocaleDateString([], { day: "2-digit" })}`
             onChange({ ...vars, [varName]: dateString });
           }}
-          className={"min-w-28"}
+          className={"min-w-28 my-1"}
         />
       </div>
     </>

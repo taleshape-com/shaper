@@ -146,21 +146,21 @@ function DashboardViewComponent() {
             <section
               key={index}
               className={cx([
-                'flex items-center mx-2 py-1 mb-7',
+                'flex flex-wrap items-center py-1 mb-7',
                 index === 0 ? '' : 'pt-8 border-t',
               ])}
             >
               {index === 0 ? (
-                <h1 className="text-2xl text-slate-700 flex-grow py-1">
+                <h1 className="text-2xl text-slate-700 flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
                   {data.title}
                 </h1>
               ) : null}
               {section.title ? (
-                <h1 className="text-lg text-slate-700 flex-grow text-left py-1">
+                <h1 className="text-lg text-slate-700 flex-grow text-left py-1 ml-2 mr-4 w-full sm:w-fit">
                   {section.title}
                 </h1>
               ) : (
-                <div className="flex-grow"></div>
+                <div className="sm:flex-grow"></div>
               )}
               {section.queries.map(({ render, columns, rows }, index) => {
                 if (render.type === 'dropdown') {
