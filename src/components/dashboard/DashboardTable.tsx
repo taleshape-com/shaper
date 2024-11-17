@@ -20,9 +20,6 @@ type TableProps = {
 };
 
 function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
-  if (data.length === 0) {
-    return null;
-  }
   return (
     <div className={cx({
       "p-2 mb-3": true,

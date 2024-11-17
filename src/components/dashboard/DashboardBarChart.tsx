@@ -14,9 +14,6 @@ type BarProps = {
 };
 
 const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertical }: BarProps) => {
-  if (data.length === 0) {
-    return null;
-  }
   const valueAxisHeader = headers.find((c) => c.tag === "value");
   if (!valueAxisHeader) {
     throw new Error("No column with tag 'value'");

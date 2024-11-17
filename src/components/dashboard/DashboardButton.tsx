@@ -18,9 +18,6 @@ function DashboardButton({
   headers,
   searchParams,
 }: ButtonProps) {
-  if (data.length === 0) {
-    return null;
-  }
   return (
     <div className="ml-2">
       <a href={formatValue(`${(data ?? [])[0][0]}?${searchParams}`, headers[0].type).toString()} download>

@@ -25,9 +25,6 @@ function DashboardDropdownMulti({
   onChange,
   vars,
 }: DropdownProps) {
-  if (data.length === 0) {
-    return null;
-  }
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
   const hintIndex = headers.findIndex((header) => header.tag === "hint");

@@ -19,9 +19,6 @@ type DropdownProps = {
 };
 
 function DashboardDropdown({ label, data, headers, onChange, vars }: DropdownProps) {
-  if (data.length === 0) {
-    return null;
-  }
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
   const varName = headers[valueIndex].name;

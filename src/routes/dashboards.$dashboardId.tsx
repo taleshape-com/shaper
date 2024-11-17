@@ -141,6 +141,8 @@ function DashboardViewComponent() {
         <meta name="description" content={data.title} />
       </Helmet>
       {sections.map((section, index) => {
+        const queries = section.queries.filter(query => query.rows.length > 0)
+        const sectionCount = queries.length
         if (section.type === 'header') {
           return (
             <section
@@ -162,7 +164,7 @@ function DashboardViewComponent() {
               ) : (
                 <div className="sm:flex-grow"></div>
               )}
-              {section.queries.map(({ render, columns, rows }, index) => {
+              {queries.map(({ render, columns, rows }, index) => {
                 if (render.type === 'dropdown') {
                   return (
                     <DashboardDropdown
@@ -220,13 +222,13 @@ function DashboardViewComponent() {
             className={cx({
               ['grid grid-cols-1']: true,
               ['lg:grid-cols-2']:
-                section.queries.length === 2 || section.queries.length === 4,
+                sectionCount === 2 || sectionCount === 4,
               ['md:grid-cols-2 lg:grid-cols-3']:
-                section.queries.length === 3 || section.queries.length >= 5,
-              ['xl:grid-cols-4']: section.queries.length >= 5,
+                sectionCount === 3 || sectionCount >= 5,
+              ['xl:grid-cols-4']: sectionCount >= 5,
             })}
           >
-            {section.queries.map(({ render, columns, rows }, index) => {
+            {queries.map(({ render, columns, rows }, index) => {
               if (render.type === 'linechart') {
                 return (
                   <DashboardLineChart
@@ -234,7 +236,7 @@ function DashboardViewComponent() {
                     label={render.label}
                     headers={columns}
                     data={rows}
-                    sectionCount={section.queries.length}
+                    sectionCount={sectionCount}
                   />
                 )
               }
@@ -245,7 +247,7 @@ function DashboardViewComponent() {
                     label={render.label}
                     headers={columns}
                     data={rows}
-                    sectionCount={section.queries.length}
+                    sectionCount={sectionCount}
                   />
                 )
               }
@@ -257,7 +259,7 @@ function DashboardViewComponent() {
                     label={render.label}
                     headers={columns}
                     data={rows}
-                    sectionCount={section.queries.length}
+                    sectionCount={sectionCount}
                   />
                 )
               }
@@ -269,7 +271,7 @@ function DashboardViewComponent() {
                     label={render.label}
                     headers={columns}
                     data={rows}
-                    sectionCount={section.queries.length}
+                    sectionCount={sectionCount}
                   />
                 )
               }
@@ -282,7 +284,7 @@ function DashboardViewComponent() {
                     label={render.label}
                     headers={columns}
                     data={rows}
-                    sectionCount={section.queries.length}
+                    sectionCount={sectionCount}
                   />
                 )
               }
@@ -292,7 +294,7 @@ function DashboardViewComponent() {
                   label={render.label}
                   headers={columns}
                   data={rows}
-                  sectionCount={section.queries.length}
+                  sectionCount={sectionCount}
                 />
               )
             })}

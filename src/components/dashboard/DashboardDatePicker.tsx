@@ -38,7 +38,7 @@ function DashboardDatePicker({
   vars,
 }: PickerProps) {
   const defaultValueIndex = headers.findIndex((header) => header.tag === "default");
-  if (data.length === 0 || defaultValueIndex === -1) {
+  if (defaultValueIndex === -1) {
     return null;
   }
   const defaultValueHeader = headers[defaultValueIndex];

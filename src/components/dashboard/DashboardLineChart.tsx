@@ -12,9 +12,6 @@ type LineProps = {
 };
 
 const DashboardLineChart = ({ label, headers, data, sectionCount }: LineProps) => {
-  if (data.length === 0) {
-    return null;
-  }
   const valueAxisHeader = headers.find((c) => c.tag === "value");
   if (!valueAxisHeader) {
     throw new Error("No  header with tag 'value'");
