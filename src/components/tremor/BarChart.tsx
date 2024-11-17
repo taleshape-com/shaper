@@ -716,7 +716,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     : undefined,
                   tickFormatter:
                     type === "percent" ? valueToPercent : indexFormatter,
-                  type: typeof data[0][index] === 'number' && data.length > 3 ? "number" : 'category',
+                  type: typeof data[0][index] === 'number' && data.length > 7 ? "number" : 'category',
                   domain: ['auto', 'auto'] as AxisDomain,
                 }
                 : {
