@@ -44,7 +44,7 @@ function DashboardDatePicker({
   const defaultValueHeader = headers[defaultValueIndex];
   const varName = defaultValueHeader.name;
   const varField = (vars ?? {})[varName]
-  let defaultValue = data[0][defaultValueIndex]
+  const defaultValue = data[0][defaultValueIndex]
   const selectedDate = Array.isArray(varField) ? varField[0] : varField
 
   return (
@@ -62,8 +62,9 @@ function DashboardDatePicker({
               if (!vars) {
                 return
               }
-              const { [varName]: _, ...rest } = vars;
-              onChange(rest);
+              const varsCopy = { ...vars }
+              delete varsCopy[varName]
+              onChange(varsCopy);
               return
             }
             const dateString = `${value.getFullYear()}-${value.toLocaleDateString([], { month: "2-digit" })}-${value.toLocaleDateString([], { day: "2-digit" })}`
