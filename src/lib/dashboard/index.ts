@@ -33,6 +33,7 @@ export type Result = {
       render: {
         type:
         | "table"
+        | "value"
         | "linechart"
         | "barchartHorizontal"
         | "barchartHorizontalStacked"

@@ -78,10 +78,10 @@ const DashboardBarChart = ({ label, headers, data, sectionCount, stacked, vertic
         "h-[calc(45vh)] sm:h-[calc(100vh-6.5rem)]": sectionCount === 1 && !label,
         "h-[calc(50vh-6rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(55vh)] xl:h-[calc(100vh-8.25rem)]": sectionCount === 2 && label,
         "h-[calc(50vh-5rem)] sm:h-[calc(100vh-6.5rem)] lg:h-[calc(55vh+1.75rem)] xl:h-[calc(100vh-6.5rem)]": sectionCount === 2 && !label,
-        "h-[calc(50vh-6.4rem)] sm:h-[calc(96vh-6.25rem)] md:h-[calc(50vh-5.75rem)]": sectionCount >= 3 && label,
-        "h-[calc(50vh-4.6rem)] sm:h-[calc(96vh-4.5rem)] md:h-[calc(50vh-4rem)]": sectionCount >= 3 && !label,
         "2xl:h-[calc(50vh)]": sectionCount === 3 && label,
         "2xl:h-[calc(50vh+1.75rem)]": sectionCount === 3 && !label,
+        "h-[calc(50vh-6.4rem)] sm:h-[calc(96vh-6.25rem)] md:h-[calc(50vh-5.75rem)]": sectionCount >= 3 && label,
+        "h-[calc(50vh-4.6rem)] sm:h-[calc(96vh-4.5rem)] md:h-[calc(50vh-4rem)]": sectionCount >= 3 && !label,
       })}>
         {!data ?
           (

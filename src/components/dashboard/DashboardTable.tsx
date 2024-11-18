@@ -36,10 +36,10 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
           "overflow-auto": true,
           ["max-h-[calc(100vh-9.4rem)] lg:min-h-[calc(60vh-4.1rem)] xl:min-h-[calc(100vh-9.8rem)]"]: label && sectionCount === 2,
           ["max-h-[calc(100vh-7.6rem)] lg:min-h-[calc(60vh-2.1rem)]"]: !label && sectionCount === 2,
-          ["max-h-[calc(100vh-9.4rem)] md:min-h-[calc(50vh-7.4rem)]"]: label && sectionCount > 3,
-          ["max-h-[calc(100vh-7.6rem)] md:min-h-[calc(50vh-5.3rem)]"]: !label && sectionCount > 3,
           ["max-h-[calc(100vh-9.4rem)] md:min-h-[calc(50vh-1.6rem)]"]: label && sectionCount === 3,
           ["max-h-[calc(100vh-7.6rem)] md:min-h-[calc(50vh+0.45rem)]"]: !label && sectionCount === 3,
+          ["max-h-[calc(100vh-9.4rem)] md:min-h-[calc(50vh-7.4rem)]"]: label && sectionCount >= 4,
+          ["max-h-[calc(100vh-7.6rem)] md:min-h-[calc(50vh-5.3rem)]"]: !label && sectionCount >= 4,
         })}>
           <Table>
             <TableHead className="sticky top-0 bg-white shadow-sm">

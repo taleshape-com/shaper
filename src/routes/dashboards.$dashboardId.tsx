@@ -14,6 +14,7 @@ import { cx } from '../lib/utils'
 import DashboardButton from '../components/dashboard/DashboardButton'
 import DashboardDatePicker from '../components/dashboard/DashboardDatePicker'
 import DashboardDateRangePicker from '../components/dashboard/DashboardDateRangePicker'
+import DashboardValue from '../components/dashboard/DashboardValue'
 
 const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
 
@@ -293,6 +294,17 @@ function DashboardViewComponent() {
                   <DashboardBarChart
                     stacked
                     vertical
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
+                    sectionCount={sectionCount}
+                  />
+                )
+              }
+              if (render.type === 'value') {
+                return (
+                  <DashboardValue
                     key={index}
                     label={render.label}
                     headers={columns}

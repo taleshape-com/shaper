@@ -496,6 +496,13 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
+	if len(rows) == 1 && len(rows[0]) == 1 {
+		return renderInfo{
+			Label: labelValue,
+			Type:  "value",
+		}
+	}
+
 	return renderInfo{
 		Label: labelValue,
 		Type:  "table",
