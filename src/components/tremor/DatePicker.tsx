@@ -24,6 +24,7 @@ import { tv, VariantProps } from "tailwind-variants"
 import { cx, focusInput, focusRing, hasErrorInput } from "../../lib/utils"
 
 import { Calendar as CalendarPrimitive, type Matcher } from "./Calendar"
+import { Button } from "./Button"
 
 //#region TimeInput
 // ============================================================================
@@ -764,12 +765,12 @@ const RangeDatePicker = ({
       }
     }
 
-    if (range && range.to && range.from) {
-      setOpen(false)
-      onChange?.(range)
-    }
-
     setRange(newRange)
+  }
+
+  const onApply = () => {
+    setOpen(false)
+    onChange?.(range)
   }
 
   const onCancel = () => {
@@ -970,6 +971,27 @@ const RangeDatePicker = ({
                   </div>
                 </div>
               )}
+              <div className="border-t border-gray-200 p-3 sm:flex sm:items-center sm:justify-between dark:border-gray-800">
+                <div></div>
+                <div className="mt-2 flex items-center gap-x-2 sm:mt-0">
+                  <Button
+                    variant="secondary"
+                    className="h-8 w-full sm:w-fit"
+                    type="button"
+                    onClick={onCancel}
+                  >
+                    {translations?.cancel ?? "Cancel"}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="h-8 w-full sm:w-fit"
+                    type="button"
+                    onClick={onApply}
+                  >
+                    {translations?.apply ?? "Apply"}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

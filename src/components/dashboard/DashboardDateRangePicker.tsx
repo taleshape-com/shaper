@@ -12,6 +12,12 @@ type PickerProps = {
 };
 
 const translations: Record<string, Record<string, string>> = {
+  'Apply': {
+    de: 'Bestätigen'
+  },
+  'Cancel': {
+    de: 'Abbrechen'
+  },
   'Select date range': {
     de: 'Zeitraum wählen'
   },
@@ -139,6 +145,10 @@ function DashboardDateRangePicker({
           presets={presets}
           enableYearNavigation
           placeholder={translate('Select date range')}
+          translations={{
+            cancel: translate('Cancel'),
+            apply: translate('Apply'),
+          }}
           defaultValue={!fromDefaultValue && !toDefaultValue ? undefined : {
             from: typeof fromDefaultValue === 'boolean' || !fromDefaultValue ? undefined : new Date(fromDefaultValue),
             to: typeof toDefaultValue === 'boolean' || !toDefaultValue ? undefined : new Date(toDefaultValue),
