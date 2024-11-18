@@ -20,14 +20,14 @@ function DashboardValue({ headers, data }: ValueProps) {
     Math.round(-1 * (1 - (value / compareValue)) * 100) : undefined
   return (
     <div className="items-center h-full flex flex-col justify-center">
-      <div className={"text-7xl text-slate-800"}>
+      <div className={"text-7xl text-slate-900"}>
         {formatValue(value, valueHeader.type)}
       </div>
-      <div className="text-xl mt-1 text-slate-800">
+      <div className="text-xl mt-1 text-slate-900">
         {valueHeader.name}
       </div>
       {compareValue && compareHeader ? (
-        <div className="text-sm text-slate-800 mt-2 flex items-center justify-center">
+        <div className="text-sm text-slate-900 mt-2 flex items-center justify-center font-medium">
           <span>{compareHeader.name}:</span>
           <span className="ml-1">{formatValue(compareValue, compareHeader.type)}</span>
           {percent && <div
