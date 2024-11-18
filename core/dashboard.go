@@ -40,6 +40,7 @@ type renderInfo struct {
 	LabelIndex     *int
 	HintIndex      *int
 	Download       string
+	CompareIndex   *int
 }
 
 //	type Desc struct {

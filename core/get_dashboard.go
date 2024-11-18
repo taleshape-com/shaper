@@ -208,6 +208,12 @@ func mapTag(index int, rInfo renderInfo) string {
 	if rInfo.Download != "" {
 		return "download"
 	}
+	if rInfo.Type == "value" {
+		if rInfo.CompareIndex != nil && index == *rInfo.CompareIndex {
+			return "compare"
+		}
+		return "value"
+	}
 	return ""
 }
 
@@ -496,10 +502,37 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
-	if len(rows) == 1 && len(rows[0]) == 1 {
-		return renderInfo{
-			Label: labelValue,
-			Type:  "value",
+	// TODO: assert that COMPARE can only be used if both values are the same type
+	if len(rows) == 1 {
+		firstRow := rows[0]
+		if len(firstRow) == 1 {
+			return renderInfo{
+				Label: labelValue,
+				Type:  "value",
+			}
+		}
+		compareTag := getTagName(sqlString, "COMPARE")
+		if compareTag != "" && len(firstRow) == 2 {
+			valueIndex := -1
+			compareIndex := -1
+			for i, c := range columns {
+				if c.Name() == compareTag {
+					compareIndex = i
+				} else {
+					valueIndex = i
+				}
+			}
+			if valueIndex == -1 {
+				panic("value index not found")
+			}
+			if compareIndex == -1 {
+				panic(fmt.Sprintf("column %s not found", compareTag))
+			}
+			return renderInfo{
+				Label:        labelValue,
+				CompareIndex: &compareIndex,
+				Type:         "value",
+			}
 		}
 	}
 

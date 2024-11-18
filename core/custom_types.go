@@ -22,6 +22,7 @@ var dbTypes = []struct {
 	{"DATEPICKER", "DATE"},
 	{"DATEPICKER_FROM", "DATE"},
 	{"DATEPICKER_TO", "DATE"},
+	{"COMPARE", "DOUBLE"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
