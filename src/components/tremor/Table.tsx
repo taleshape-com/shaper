@@ -12,6 +12,7 @@ const TableRoot = React.forwardRef<
     ref={forwardedRef}
     // Activate if table is used in a float environment
     // className="flow-root"
+    className="h-full"
   >
     <div
       // make table scrollable on mobile

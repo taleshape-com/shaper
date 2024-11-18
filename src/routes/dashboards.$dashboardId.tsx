@@ -15,6 +15,7 @@ import DashboardButton from '../components/dashboard/DashboardButton'
 import DashboardDatePicker from '../components/dashboard/DashboardDatePicker'
 import DashboardDateRangePicker from '../components/dashboard/DashboardDateRangePicker'
 import DashboardValue from '../components/dashboard/DashboardValue'
+import { Card } from "../components/tremor/Card";
 
 const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
 
@@ -136,23 +137,24 @@ function DashboardViewComponent() {
           ...data.sections,
         ]
         : data.sections
+  const numContentSections = sections.filter(section => section.type === 'content').length
   return (
-    <div className="sm:mx-1 lg:mx-2 mb-16">
+    <div className="mb-16 mt-1">
       <Helmet>
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
       </Helmet>
       {sections.map((section, index) => {
         const queries = section.queries.filter(query => query.rows.length > 0)
-        const sectionCount = queries.length
+        const numQueriesInSection = queries.length
         if (section.type === 'header') {
           return (
             <section
               key={index}
-              className={cx([
-                'flex flex-wrap items-center py-1 mb-7 pr-2',
-                index === 0 ? '' : 'pt-8 border-t',
-              ])}
+              className={cx('flex flex-wrap items-center pr-2 mx-1', {
+                'mt-1 border-t': index !== 0 && section.title,
+                'py-1 mb-2': section.queries.length > 0 || section.title,
+              })}
             >
               {index === 0 ? (
                 <h1 className="text-2xl text-slate-700 flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
@@ -160,7 +162,7 @@ function DashboardViewComponent() {
                 </h1>
               ) : null}
               {section.title ? (
-                <h1 className="text-lg text-slate-700 flex-grow text-left py-1 ml-2 mr-4 w-full sm:w-fit">
+                <h1 className="text-lg text-slate-700 flex-grow text-left py-1 ml-2 mr-4 mt-5 w-full sm:w-fit">
                   {section.title}
                 </h1>
               ) : (
@@ -233,100 +235,69 @@ function DashboardViewComponent() {
         return (
           <section
             key={index}
-            className={cx({
-              ['grid grid-cols-1']: true,
-              ['lg:grid-cols-2']:
-                sectionCount === 2 || sectionCount === 4,
-              ['md:grid-cols-2 lg:grid-cols-3']:
-                sectionCount === 3 || sectionCount >= 5,
-              ['xl:grid-cols-4']: sectionCount >= 5,
+            className={cx(
+              'grid grid-cols-1 ml-3', {
+              'sm:grid-cols-2': numQueriesInSection > 1,
+              'lg:grid-cols-2': numQueriesInSection === 2 || (numContentSections === 1 && numQueriesInSection === 4),
+              'lg:grid-cols-3': numQueriesInSection > 4 || numQueriesInSection === 3 || (numQueriesInSection === 4 && numContentSections > 1),
+              'xl:grid-cols-4': (numQueriesInSection === 4 && numContentSections > 1) || numQueriesInSection === 7 || numQueriesInSection === 8 || numQueriesInSection > 9
             })}
           >
             {queries.map(({ render, columns, rows }, index) => {
-              if (render.type === 'linechart') {
-                return (
-                  <DashboardLineChart
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    sectionCount={sectionCount}
-                  />
-                )
-              }
-              if (render.type === 'barchartHorizontal') {
-                return (
-                  <DashboardBarChart
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    sectionCount={sectionCount}
-                  />
-                )
-              }
-              if (render.type === 'barchartHorizontalStacked') {
-                return (
-                  <DashboardBarChart
-                    stacked
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    sectionCount={sectionCount}
-                  />
-                )
-              }
-              if (render.type === 'barchartVertical') {
-                return (
-                  <DashboardBarChart
-                    vertical
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    sectionCount={sectionCount}
-                  />
-                )
-              }
-              if (render.type === 'barchartVerticalStacked') {
-                return (
-                  <DashboardBarChart
-                    stacked
-                    vertical
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    sectionCount={sectionCount}
-                  />
-                )
-              }
-              if (render.type === 'value') {
-                return (
-                  <DashboardValue
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    sectionCount={sectionCount}
-                  />
-                )
-              }
               return (
-                <DashboardTable
-                  key={index}
-                  label={render.label}
-                  headers={columns}
-                  data={rows}
-                  sectionCount={sectionCount}
-                />
+                <Card className={cx(
+                  "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)]",
+                  {
+                    'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
+                    'lg:h-[calc(100vh-4.7rem)]': numContentSections === 1 && numQueriesInSection === 2,
+                  })}>
+                  {render.label ? <h2 className="text-md mb-2 text-center text-slate-700">
+                    {render.label}
+                  </h2>
+                    : null
+                  }
+                  <div className={cx({
+                    'h-[calc(100%-2rem)]': render.label,
+                    'h-full': !render.label,
+                  })}>
+                    {
+                      render.type === 'linechart' ?
+                        <DashboardLineChart
+                          key={index}
+                          headers={columns}
+                          data={rows}
+                        /> :
+                        render.type === 'barchartHorizontal' || render.type === 'barchartHorizontalStacked' || render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked' ? (
+                          <DashboardBarChart
+                            stacked={render.type === 'barchartHorizontalStacked' || render.type === 'barchartVerticalStacked'}
+                            vertical={render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked'}
+                            key={index}
+                            headers={columns}
+                            data={rows}
+                          />
+                        )
+                          : render.type === 'value' ? (
+                            <DashboardValue
+                              key={index}
+                              headers={columns}
+                              data={rows}
+                            />
+                          ) :
+                            (
+                              <DashboardTable
+                                key={index}
+                                headers={columns}
+                                data={rows}
+                              />
+                            )}
+                  </div>
+                </Card>
               )
             })}
           </section>
         )
       })}
-      {sections.length === 1 ? (
+      {numContentSections === 0 ? (
         <div className="text-center text-slate-600 leading-[calc(70vh)]">
           Nothing to show yet ...
         </div>
