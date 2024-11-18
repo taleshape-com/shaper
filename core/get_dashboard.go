@@ -867,7 +867,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		if fromParam != "" {
-			singleVars[fromColumnName] = "DATE '" + escapeSQLString(fromParam) + "'"
+			singleVars[fromColumnName] = "TIMESTAMP '" + escapeSQLString(fromParam) + "'"
 		}
 		toParam := queryParams.Get(toColumnName)
 		if toParam == "" {
@@ -886,7 +886,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		if toParam != "" {
-			singleVars[toColumnName] = "DATE '" + escapeSQLString(toParam) + "'"
+			singleVars[toColumnName] = "TIMESTAMP '" + escapeSQLString(toParam) + " 23:59:59.999999'"
 		}
 	}
 	return nil
