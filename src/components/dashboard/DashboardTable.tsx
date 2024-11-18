@@ -34,8 +34,12 @@ function DashboardTable({ label, headers, data, sectionCount }: TableProps) {
       <Card className="px-2 pt-2 pb-4">
         <TableRoot className={cx({
           "overflow-auto": true,
-          ["max-h-[calc(100vh-9.4rem)] md:min-h-[calc(50vh-1.6rem)]"]: label,
-          ["max-h-[calc(100vh-7.6rem)] md:min-h-[calc(50vh+0.45rem)]"]: !label,
+          ["max-h-[calc(100vh-9.4rem)] lg:min-h-[calc(60vh-4.1rem)] xl:min-h-[calc(100vh-9.8rem)]"]: label && sectionCount === 2,
+          ["max-h-[calc(100vh-7.6rem)] lg:min-h-[calc(60vh-2.1rem)]"]: !label && sectionCount === 2,
+          ["max-h-[calc(100vh-9.4rem)] md:min-h-[calc(50vh-7.4rem)]"]: label && sectionCount > 3,
+          ["max-h-[calc(100vh-7.6rem)] md:min-h-[calc(50vh-5.3rem)]"]: !label && sectionCount > 3,
+          ["max-h-[calc(100vh-9.4rem)] md:min-h-[calc(50vh-1.6rem)]"]: label && sectionCount === 3,
+          ["max-h-[calc(100vh-7.6rem)] md:min-h-[calc(50vh+0.45rem)]"]: !label && sectionCount === 3,
         })}>
           <Table>
             <TableHead className="sticky top-0 bg-white shadow-sm">
