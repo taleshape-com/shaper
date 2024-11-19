@@ -598,8 +598,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       setActiveDot(undefined);
     }
 
-    console.log(typeof data[0][index]);
-
     return (
       <div
         ref={ref}

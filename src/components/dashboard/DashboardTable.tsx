@@ -34,11 +34,10 @@ function DashboardTable({ headers, data }: TableProps) {
               <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50" : undefined}>
                 {items.map((item, index) => {
                   const header = headers[index]
-                  const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-1 * (1 - item) * 100) : undefined
-
+                  const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
                   return (
                     <TableCell key={index} className="text-center">
-                      {percent ? (
+                      {percent !== undefined ? percent === 0 ? '-' : (
                         <div
                           className={cx(
                             "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center justify-center bg-slate-800",

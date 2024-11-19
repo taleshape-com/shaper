@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path"
@@ -130,6 +131,9 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		// TODO: Once UNION types work, we can return floats from the DB directly and don't have to guess
 		for _, row := range query.Rows {
 			for i, cell := range row {
+				if n, ok := cell.(float64); ok && math.IsNaN(n) {
+					row[i] = nil
+				}
 				if colTypes[i].DatabaseTypeName() == "VARCHAR" && query.Columns[i].Type == "number" {
 					if n, err := strconv.ParseFloat(cell.(string), 64); err == nil {
 						row[i] = n

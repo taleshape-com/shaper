@@ -245,7 +245,7 @@ function DashboardViewComponent() {
           >
             {queries.map(({ render, columns, rows }, index) => {
               return (
-                <Card className={cx(
+                <Card key={index} className={cx(
                   "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
                   {
                     'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
