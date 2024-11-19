@@ -16,6 +16,7 @@ import DashboardDatePicker from '../components/dashboard/DashboardDatePicker'
 import DashboardDateRangePicker from '../components/dashboard/DashboardDateRangePicker'
 import DashboardValue from '../components/dashboard/DashboardValue'
 import { Card } from "../components/tremor/Card";
+import { translate } from '../lib/translate'
 
 const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
 
@@ -145,9 +146,8 @@ function DashboardViewComponent() {
         <meta name="description" content={data.title} />
       </Helmet>
       {sections.map((section, index) => {
-        const queries = section.queries.filter(query => query.rows.length > 0)
-        const numQueriesInSection = queries.length
         if (section.type === 'header') {
+          const queries = section.queries.filter(query => query.rows.length > 0)
           return (
             <section
               key={index}
@@ -232,6 +232,7 @@ function DashboardViewComponent() {
             </section>
           )
         }
+        const numQueriesInSection = section.queries.length
         return (
           <section
             key={index}
@@ -243,7 +244,7 @@ function DashboardViewComponent() {
               'xl:grid-cols-4': (numQueriesInSection === 4 && numContentSections > 1) || numQueriesInSection === 7 || numQueriesInSection === 8 || numQueriesInSection > 9
             })}
           >
-            {queries.map(({ render, columns, rows }, index) => {
+            {section.queries.map(({ render, columns, rows }, index) => {
               return (
                 <Card key={index} className={cx(
                   "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
@@ -261,35 +262,40 @@ function DashboardViewComponent() {
                     'h-full': !render.label,
                   })}>
                     {
-                      render.type === 'linechart' ?
-                        <DashboardLineChart
-                          key={index}
-                          headers={columns}
-                          data={rows}
-                        /> :
-                        render.type === 'barchartHorizontal' || render.type === 'barchartHorizontalStacked' || render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked' ? (
-                          <DashboardBarChart
-                            stacked={render.type === 'barchartHorizontalStacked' || render.type === 'barchartVerticalStacked'}
-                            vertical={render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked'}
+                      rows.length === 0 ? (
+                        <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
+                          {translate('No data available')}
+                        </div>
+                      ) :
+                        render.type === 'linechart' ?
+                          <DashboardLineChart
                             key={index}
                             headers={columns}
                             data={rows}
-                          />
-                        )
-                          : render.type === 'value' ? (
-                            <DashboardValue
+                          /> :
+                          render.type === 'barchartHorizontal' || render.type === 'barchartHorizontalStacked' || render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked' ? (
+                            <DashboardBarChart
+                              stacked={render.type === 'barchartHorizontalStacked' || render.type === 'barchartVerticalStacked'}
+                              vertical={render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked'}
                               key={index}
                               headers={columns}
                               data={rows}
                             />
-                          ) :
-                            (
-                              <DashboardTable
+                          )
+                            : render.type === 'value' ? (
+                              <DashboardValue
                                 key={index}
                                 headers={columns}
                                 data={rows}
                               />
-                            )}
+                            ) :
+                              (
+                                <DashboardTable
+                                  key={index}
+                                  headers={columns}
+                                  data={rows}
+                                />
+                              )}
                   </div>
                 </Card>
               )

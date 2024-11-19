@@ -2,6 +2,7 @@ import { Column, Result } from "../../lib/dashboard";
 import { DatePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label"
 import { cx } from "../../lib/utils";
+import { translate } from "../../lib/translate";
 
 type PickerProps = {
   label?: string;
@@ -10,25 +11,6 @@ type PickerProps = {
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
 };
-
-const translations: Record<string, Record<string, string>> = {
-  'Select date': {
-    'de': 'Datum wählen'
-  }
-}
-function translate(s: string) {
-  const available = translations[s] ?? {}
-  for (const lang of navigator.languages) {
-    if (lang === 'en' || lang === 'en-US') {
-      return s
-    }
-    const t = available[lang]
-    if (t) {
-      return t
-    }
-  }
-  return s
-}
 
 function DashboardDatePicker({
   label,

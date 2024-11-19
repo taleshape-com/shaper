@@ -28,6 +28,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		return result, err
 	}
 	nextLabel := ""
+	hideNextContentSection := false
 	nextIsDownload := false
 	sqls := strings.Split(string(sqlFile), ";")
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
@@ -82,14 +83,17 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		}
 
 		if isSectionTitle(sqlString, query.Rows) {
-			sectionTitle := query.Rows[0][0].(string)
-			if len(result.Sections) == 0 || result.Sections[len(result.Sections)-1].Type != "header" || result.Sections[len(result.Sections)-1].Title != nil {
-				result.Sections = append(result.Sections, Section{
-					Type:    "header",
-					Queries: []Query{},
-				})
-			}
+			result.Sections = append(result.Sections, Section{
+				Type:    "header",
+				Queries: []Query{},
+			})
+			hideNextContentSection = false
 			lastSection := &result.Sections[len(result.Sections)-1]
+			if len(query.Rows) == 0 {
+				hideNextContentSection = true
+				continue
+			}
+			sectionTitle := query.Rows[0][0].(string)
 			if sectionTitle == "" {
 				lastSection.Title = nil
 			} else {
@@ -163,10 +167,16 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			lastSection := &result.Sections[len(result.Sections)-1]
 			lastSection.Queries = append(lastSection.Queries, query)
 		} else {
-			result.Sections = append(result.Sections, Section{
-				Type:    wantedSectionType,
-				Queries: []Query{query},
-			})
+			fmt.Println("new", wantedSectionType, hideNextContentSection)
+			if !hideNextContentSection || wantedSectionType != "content" {
+				result.Sections = append(result.Sections, Section{
+					Type:    wantedSectionType,
+					Queries: []Query{query},
+				})
+			}
+			if wantedSectionType == "header" {
+				hideNextContentSection = false
+			}
 		}
 
 		nextLabel = ""
@@ -316,7 +326,7 @@ func isLabel(sqlString string, rows Rows) bool {
 
 // TODO: Once UNION types work, we need a more solid way to detect labels
 func isSectionTitle(sqlString string, rows Rows) bool {
-	return strings.Contains(sqlString, "::SECTION") && len(rows) == 1 && len(rows[0]) == 1
+	return strings.Contains(sqlString, "::SECTION") && (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
 // TODO: Charts should assert that only the required columns are present.

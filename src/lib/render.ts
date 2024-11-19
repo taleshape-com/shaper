@@ -27,6 +27,9 @@ export const formatValue = (value: string | number | boolean, columnType: Column
   if (columnType === "timestamp") {
     return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h24' });
   }
+  if (columnType === "duration" && !value) {
+    return "0"
+  }
   if (typeof value === "number") {
     // duration comes in ms
     if (columnType === "duration") {

@@ -19,6 +19,7 @@ function DashboardValue({ headers, data }: ValueProps) {
   const compareValue = compareIndex !== -1 ? data[0][compareIndex] : undefined
   const percent = typeof value === 'number' && typeof compareValue === 'number' && compareValue !== value ?
     Math.round(-100 * (1 - (value / compareValue))) : undefined
+
   return (
     <div className="items-center h-full flex flex-col justify-center">
       <div className={"text-7xl text-slate-900"}>
