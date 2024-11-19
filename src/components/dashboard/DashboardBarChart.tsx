@@ -53,11 +53,7 @@ const DashboardBarChart = ({ headers, data, stacked, vertical }: BarProps) => {
     },
     {} as Record<string, Record<string, string | number>>,
   );
-  const chartdata = Object.values(dataByIndexAxis).map((value) => {
-    return {
-      ...value,
-    };
-  });
+  const chartdata = Object.values(dataByIndexAxis);
 
   return (
     !data ?

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -106,16 +107,28 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 
 		for colIndex, c := range colTypes {
 			nullable, ok := c.Nullable()
+			tag := mapTag(colIndex, rInfo)
 			col := Column{
 				Name:     c.Name(),
-				Type:     mapDBType(c.DatabaseTypeName(), colIndex, query.Rows),
+				Type:     mapDBType(c.DatabaseTypeName(), colIndex, query.Rows, tag),
 				Nullable: ok && nullable,
-				Tag:      mapTag(colIndex, rInfo),
+				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
 			if rInfo.Download == "csv" {
 				filename := query.Rows[0][colIndex].(string)
 				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv", dashboardName, queryIndex+1, url.QueryEscape(filename))
+			}
+		}
+
+		// TODO: Once UNION types work, we can return floats from the DB directly and don't have to guess
+		for _, row := range query.Rows {
+			for i, cell := range row {
+				if colTypes[i].DatabaseTypeName() == "VARCHAR" && query.Columns[i].Type == "number" {
+					if n, err := strconv.ParseFloat(cell.(string), 64); err == nil {
+						row[i] = n
+					}
+				}
 			}
 		}
 
@@ -218,7 +231,7 @@ func mapTag(index int, rInfo renderInfo) string {
 }
 
 // TODO: map all types
-func mapDBType(dbType string, index int, rows Rows) string {
+func mapDBType(dbType string, index int, rows Rows, tag string) string {
 	// t := getTypeByDefinition(dbType)
 	// if t == "" {
 	// t = dbType
@@ -243,6 +256,9 @@ func mapDBType(dbType string, index int, rows Rows) string {
 		}
 		if onlyTimestamps(rows, index) {
 			return "timestamp"
+		}
+		if tag == "index" && onlyNumbers(rows, index) {
+			return "number"
 		}
 		return "string"
 	case "DOUBLE":
@@ -629,6 +645,19 @@ func onlyHours(rows Rows, index int) bool {
 			}
 		}
 		if t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func onlyNumbers(rows Rows, index int) bool {
+	for _, row := range rows {
+		s, ok := row[index].(string)
+		if !ok {
+			return false
+		}
+		if _, err := strconv.ParseFloat(s, 64); err != nil {
 			return false
 		}
 	}

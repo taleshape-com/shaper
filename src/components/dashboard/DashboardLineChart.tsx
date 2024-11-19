@@ -22,9 +22,17 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
   const indexAxisHeader = headers[indexAxisIndex];
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
-      const key = formatValue(row[indexAxisIndex], indexAxisHeader.type);
+      const key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
       if (!acc[key]) {
-        acc[key] = {};
+        acc[key] = {
+          [indexAxisHeader.name]:
+            indexAxisHeader.type === 'year' ||
+              indexAxisHeader.type === 'month' ||
+              indexAxisHeader.type === 'date' ||
+              indexAxisHeader.type === 'timestamp' ||
+              indexAxisHeader.type === 'hour' ?
+              (new Date(key)).getTime() : key,
+        };
       }
       row.forEach((cell, i) => {
         if (i === indexAxisIndex || i === categoryIndex) {
@@ -43,12 +51,7 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
     },
     {} as Record<string, Record<string, string | number>>,
   );
-  const chartdata = Object.entries(dataByIndexAxis).map(([key, value]) => {
-    return {
-      [indexAxisHeader.name]: key,
-      ...value,
-    };
-  });
+  const chartdata = Object.values(dataByIndexAxis);
 
   return (
     <LineChart
@@ -61,6 +64,9 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
       categories={Array.from(categories)}
       valueFormatter={(number: number) => {
         return number.toLocaleString();
+      }}
+      indexFormatter={(n: number) => {
+        return formatValue(n, indexAxisHeader.type).toString();
       }}
       xAxisLabel={isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
       yAxisLabel={valueAxisName}

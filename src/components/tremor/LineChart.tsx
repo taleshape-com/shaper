@@ -476,6 +476,7 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[];
   colors?: AvailableChartColorsKeys[];
   valueFormatter?: (value: number) => string;
+  indexFormatter?: (value: number) => string;
   startEndOnly?: boolean;
   showXAxis?: boolean;
   showYAxis?: boolean;
@@ -528,6 +529,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       yAxisLabel,
       legendPosition = "right",
       tooltipCallback,
+      indexFormatter = (value: number) => value.toString(),
       customTooltip,
       ...other
     } = props;
@@ -596,6 +598,8 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       setActiveDot(undefined);
     }
 
+    console.log(typeof data[0][index]);
+
     return (
       <div
         ref={ref}
@@ -650,6 +654,9 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               )}
               tickLine={false}
               axisLine={false}
+              type={typeof data[0][index] === 'number' ? "number" : 'category'}
+              domain={['auto', 'auto'] as AxisDomain}
+              tickFormatter={indexFormatter}
               minTickGap={tickGap}
             >
               {xAxisLabel && (
@@ -735,7 +742,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                     <ChartTooltip
                       active={active}
                       payload={cleanPayload}
-                      label={label}
+                      label={indexFormatter(label)}
                       valueFormatter={valueFormatter}
                     />
                   )
@@ -896,7 +903,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               : null}
           </RechartsLineChart>
         </ResponsiveContainer>
-      </div>
+      </div >
     );
   },
 );
