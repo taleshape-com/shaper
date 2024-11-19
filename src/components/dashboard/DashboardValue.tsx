@@ -14,6 +14,7 @@ function DashboardValue({ headers, data }: ValueProps) {
   const valueHeader = headers[valueIndex]
   const value = data[0][valueIndex]
   const compareIndex = headers.findIndex(header => header.tag === 'compare')
+  // TODO: Currently we format compare value by the value header type, but we should use the compare header type once ::COMPARE supports multiple data types
   const compareHeader = compareIndex !== -1 ? headers[compareIndex] : undefined
   const compareValue = compareIndex !== -1 ? data[0][compareIndex] : undefined
   const percent = typeof value === 'number' && typeof compareValue === 'number' && compareValue !== value ?
@@ -29,7 +30,7 @@ function DashboardValue({ headers, data }: ValueProps) {
       {compareValue && compareHeader ? (
         <div className="text-sm text-slate-900 mt-2 flex items-center justify-center font-medium">
           <span>{compareHeader.name}:</span>
-          <span className="ml-1">{formatValue(compareValue, compareHeader.type)}</span>
+          <span className="ml-1">{formatValue(compareValue, valueHeader.type)}</span>
           {percent && <div
             className={cx(
               "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center bg-slate-800",
