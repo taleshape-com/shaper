@@ -21,7 +21,7 @@ function DashboardTable({ headers, data }: TableProps) {
   return (
     <TableRoot className="h-full">
       <Table>
-        <TableHead className="sticky top-0 bg-white shadow-sm">
+        <TableHead className="sticky top-0 bg-white dark:bg-black shadow-sm">
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell className="text-center" key={header.name}>{header.name}</TableHeaderCell>
@@ -31,16 +31,16 @@ function DashboardTable({ headers, data }: TableProps) {
         <TableBody>
           {
             data.map((items, index) => (
-              <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50" : undefined}>
+              <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50 dark:bg-slate-800" : undefined}>
                 {items.map((item, index) => {
                   const header = headers[index]
                   const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
                   return (
-                    <TableCell key={index} className="text-center">
+                    <TableCell key={index} className="text-center dark:text-white">
                       {percent !== undefined ? percent === 0 ? '-' : (
                         <div
                           className={cx(
-                            "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center justify-center bg-slate-800",
+                            "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center justify-center bg-slate-800 dark:bg-slate-600",
                             // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
                           )}
                         >

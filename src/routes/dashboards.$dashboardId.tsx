@@ -157,12 +157,12 @@ function DashboardViewComponent() {
               })}
             >
               {index === 0 ? (
-                <h1 className="text-2xl text-slate-900 flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
+                <h1 className="text-2xl text-slate-900 dark:text-slate-100 flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
                   {data.title}
                 </h1>
               ) : null}
               {section.title ? (
-                <h1 className="text-lg text-slate-900 flex-grow text-left py-1 ml-2 mr-4 mt-5 w-full sm:w-fit">
+                <h1 className="text-lg text-slate-900 dark:text-slate-100 flex-grow text-left py-1 ml-2 mr-4 mt-5 w-full sm:w-fit">
                   {section.title}
                 </h1>
               ) : (
@@ -252,7 +252,7 @@ function DashboardViewComponent() {
                     'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
                     'lg:h-[calc(100vh-4.7rem)]': numContentSections === 1 && numQueriesInSection === 2,
                   })}>
-                  {render.label ? <h2 className="text-md mb-2 text-center text-slate-900">
+                  {render.label ? <h2 className="text-md mb-2 text-center text-slate-900 dark:text-slate-100">
                     {render.label}
                   </h2>
                     : null
@@ -263,7 +263,7 @@ function DashboardViewComponent() {
                   })}>
                     {
                       rows.length === 0 ? (
-                        <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
+                        <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600 dark:text-slate-100">
                           {translate('No data available')}
                         </div>
                       ) :

@@ -167,7 +167,6 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			lastSection := &result.Sections[len(result.Sections)-1]
 			lastSection.Queries = append(lastSection.Queries, query)
 		} else {
-			fmt.Println("new", wantedSectionType, hideNextContentSection)
 			if !hideNextContentSection || wantedSectionType != "content" {
 				result.Sections = append(result.Sections, Section{
 					Type:    wantedSectionType,

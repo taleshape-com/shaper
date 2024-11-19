@@ -22,19 +22,19 @@ function DashboardValue({ headers, data }: ValueProps) {
 
   return (
     <div className="items-center h-full flex flex-col justify-center">
-      <div className={"text-7xl text-slate-900"}>
+      <div className={"text-7xl text-slate-900 dark:text-slate-100"}>
         {formatValue(value, valueHeader.type)}
       </div>
-      <div className="text-xl mt-1 text-slate-900">
+      <div className="text-xl mt-1 text-slate-900 dark:text-slate-100">
         {valueHeader.name}
       </div>
       {compareValue && compareHeader ? (
-        <div className="text-sm text-slate-900 mt-2 flex items-center justify-center font-medium">
+        <div className="text-sm text-slate-900 dark:text-slate-100 mt-2 flex items-center justify-center font-medium">
           <span>{compareHeader.name}:</span>
-          <span className="ml-1">{formatValue(compareValue, valueHeader.type)}</span>
+          <span className="ml-1 dark:text-white">{formatValue(compareValue, valueHeader.type)}</span>
           {percent && <div
             className={cx(
-              "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center bg-slate-800",
+              "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center bg-slate-800 dark:bg-slate-600",
               // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
             )}
           >{percent > 0 && '+'}{percent}%{percent > 0 ? <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-white" /> : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-white" />}</div>}

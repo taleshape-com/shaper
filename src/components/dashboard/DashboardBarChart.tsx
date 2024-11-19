@@ -56,31 +56,25 @@ const DashboardBarChart = ({ headers, data, stacked, vertical }: BarProps) => {
   const chartdata = Object.values(dataByIndexAxis);
 
   return (
-    !data ?
-      (
-        <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600">
-          no data
-        </div>
-      ) :
-      <BarChart
-        className="h-full"
-        enableLegendSlider
-        startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexAxisHeader.type) ? 10 : 15)}
-        type={stacked ? "stacked" : "default"}
-        layout={vertical ? "vertical" : "horizontal"}
-        data={chartdata}
-        index={indexAxisHeader.name}
-        categories={Array.from(categories)}
-        valueFormatter={(n: number) => {
-          return n.toLocaleString();
-        }}
-        indexFormatter={(n: number) => {
-          return formatValue(n, indexAxisHeader.type).toString();
-        }}
-        xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
-        yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
-        showLegend={categoryIndex !== -1}
-      />
+    <BarChart
+      className="h-full"
+      enableLegendSlider
+      startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexAxisHeader.type) ? 10 : 15)}
+      type={stacked ? "stacked" : "default"}
+      layout={vertical ? "vertical" : "horizontal"}
+      data={chartdata}
+      index={indexAxisHeader.name}
+      categories={Array.from(categories)}
+      valueFormatter={(n: number) => {
+        return n.toLocaleString();
+      }}
+      indexFormatter={(n: number) => {
+        return formatValue(n, indexAxisHeader.type).toString();
+      }}
+      xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
+      yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
+      showLegend={categoryIndex !== -1}
+    />
   );
 };
 
