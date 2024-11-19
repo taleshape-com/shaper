@@ -41,6 +41,7 @@ type renderInfo struct {
 	HintIndex      *int
 	Download       string
 	CompareIndex   *int
+	TrendIndex     *int
 }
 
 //	type Desc struct {

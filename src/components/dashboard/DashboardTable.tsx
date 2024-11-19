@@ -1,3 +1,4 @@
+import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import {
@@ -9,6 +10,7 @@ import {
   TableRoot,
   TableRow,
 } from "../tremor/Table";
+import { cx } from "../../lib/utils";
 
 type TableProps = {
   headers: Column[];
@@ -31,10 +33,26 @@ function DashboardTable({ headers, data }: TableProps) {
             data.map((items, index) => (
               <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50" : undefined}>
                 {items.map((item, index) => {
-                  const headerType = headers[index].type
+                  const header = headers[index]
+                  const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-1 * (1 - item) * 100) : undefined
+
                   return (
                     <TableCell key={index} className="text-center">
-                      {formatValue(item, headerType)}
+                      {percent ? (
+                        <div
+                          className={cx(
+                            "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center justify-center bg-slate-800",
+                            // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
+                          )}
+                        >
+                          {percent > 0 && '+'}{percent}%{
+                            percent > 0 ?
+                              <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-white" />
+                              : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-white" />
+                          }
+                        </div>) :
+                        formatValue(item, header.type)
+                      }
                     </TableCell>
                   );
                 })}

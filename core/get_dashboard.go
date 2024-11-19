@@ -137,8 +137,11 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 					break
 				}
 				if query.Columns[i].Type == "duration" {
-					// in milliseconds
-					row[i] = (row[i].(duckdb.Interval)).Micros / 1000
+					v := row[i]
+					if v != nil {
+						// in milliseconds
+						row[i] = (v.(duckdb.Interval)).Micros / 1000
+					}
 				}
 			}
 		}
@@ -237,6 +240,9 @@ func mapTag(index int, rInfo renderInfo) string {
 			return "compare"
 		}
 		return "value"
+	}
+	if rInfo.TrendIndex != nil && index == *rInfo.TrendIndex {
+		return "trend"
 	}
 	return ""
 }
@@ -565,9 +571,21 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
+	trendTag := getTagName(sqlString, "TREND")
+	var trendIndex *int
+	if trendTag != "" {
+		for i, c := range columns {
+			if c.Name() == trendTag {
+				trendIndex = &i
+				break
+			}
+		}
+	}
+
 	return renderInfo{
-		Label: labelValue,
-		Type:  "table",
+		Label:      labelValue,
+		Type:       "table",
+		TrendIndex: trendIndex,
 	}
 }
 
