@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/marcboeker/go-duckdb"
 )
 
 func GetDashboard(app *App, ctx context.Context, dashboardName string, queryParams url.Values) (GetResult, error) {
@@ -108,9 +110,13 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		for colIndex, c := range colTypes {
 			nullable, ok := c.Nullable()
 			tag := mapTag(colIndex, rInfo)
+			colType, err := mapDBType(c.DatabaseTypeName(), colIndex, query.Rows, tag)
+			if err != nil {
+				return result, err
+			}
 			col := Column{
 				Name:     c.Name(),
-				Type:     mapDBType(c.DatabaseTypeName(), colIndex, query.Rows, tag),
+				Type:     colType,
 				Nullable: ok && nullable,
 				Tag:      tag,
 			}
@@ -128,6 +134,11 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 					if n, err := strconv.ParseFloat(cell.(string), 64); err == nil {
 						row[i] = n
 					}
+					break
+				}
+				if query.Columns[i].Type == "duration" {
+					// in milliseconds
+					row[i] = (row[i].(duckdb.Interval)).Micros / 1000
 				}
 			}
 		}
@@ -231,7 +242,7 @@ func mapTag(index int, rInfo renderInfo) string {
 }
 
 // TODO: map all types
-func mapDBType(dbType string, index int, rows Rows, tag string) string {
+func mapDBType(dbType string, index int, rows Rows, tag string) (string, error) {
 	// t := getTypeByDefinition(dbType)
 	// if t == "" {
 	// t = dbType
@@ -239,40 +250,42 @@ func mapDBType(dbType string, index int, rows Rows, tag string) string {
 	t := dbType
 	switch t {
 	case "BOOLEAN":
-		return "boolean"
+		return "boolean", nil
 	case "VARCHAR":
 		// TODO: Once we have union types, VARCHAR cannot be date anymore. We can use actual TIMESTAMP AND DATE types
 		if onlyYears(rows, index) {
-			return "year"
+			return "year", nil
 		}
 		if onlyMonths(rows, index) {
-			return "month"
+			return "month", nil
 		}
 		if onlyDates(rows, index) {
-			return "date"
+			return "date", nil
 		}
 		if onlyHours(rows, index) {
-			return "hour"
+			return "hour", nil
 		}
 		if onlyTimestamps(rows, index) {
-			return "timestamp"
+			return "timestamp", nil
 		}
 		if tag == "index" && onlyNumbers(rows, index) {
-			return "number"
+			return "number", nil
 		}
-		return "string"
+		return "string", nil
 	case "DOUBLE":
-		return "number"
+		return "number", nil
 	case "FLOAT":
-		return "number"
+		return "number", nil
 	case "BIGINT":
-		return "number"
+		return "number", nil
 	case "DATE":
-		return "date"
+		return "date", nil
 	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPZ":
-		return "timestamp"
+		return "timestamp", nil
+	case "INTERVAL":
+		return "duration", nil
 	}
-	panic(fmt.Sprintf("unsupported type: %s", t))
+	return "", fmt.Errorf("unsupported type: %s", t)
 }
 
 // TODO: Once UNION types work, we need a more solid way to get tags
