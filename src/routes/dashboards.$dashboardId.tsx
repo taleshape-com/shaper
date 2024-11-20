@@ -245,6 +245,11 @@ function DashboardViewComponent() {
             })}
           >
             {section.queries.map(({ render, columns, rows }, index) => {
+              if (render.type === 'placeholder') {
+                return (
+                  <div></div>
+                )
+              }
               return (
                 <Card key={index} className={cx(
                   "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",

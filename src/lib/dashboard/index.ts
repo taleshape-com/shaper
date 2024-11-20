@@ -34,6 +34,7 @@ export type Result = {
         type:
         | "table"
         | "value"
+        | "placeholder"
         | "linechart"
         | "barchartHorizontal"
         | "barchartHorizontalStacked"

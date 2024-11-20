@@ -328,6 +328,11 @@ func isSectionTitle(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::SECTION") && (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
+// TODO: Once UNION types work, we need a more solid way to detect labels
+func isPlaceholder(sqlString string, rows Rows) bool {
+	return strings.Contains(sqlString, "::PLACEHOLDER") && (len(rows) == 1 && len(rows[0]) == 1)
+}
+
 // TODO: Charts should assert that only the required columns are present.
 // TODO: BARCHART_STACKED must have CATEGORY column
 func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label string) renderInfo {
@@ -547,6 +552,13 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 			Label:    labelValue,
 			Type:     "button",
 			Download: "csv",
+		}
+	}
+
+	if isPlaceholder(sqlString, rows) {
+		return renderInfo{
+			Label: labelValue,
+			Type:  "placeholder",
 		}
 	}
 
