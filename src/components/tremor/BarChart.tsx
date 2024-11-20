@@ -554,6 +554,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   legendPosition?: "left" | "center" | "right";
   tooltipCallback?: (tooltipCallbackContent: TooltipProps) => void;
   customTooltip?: React.ComponentType<TooltipProps>;
+  xAxisDomain?: AxisDomain;
 }
 
 const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
@@ -589,6 +590,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       legendPosition = "right",
       tooltipCallback,
       customTooltip,
+      xAxisDomain = ['auto', 'auto'],
       ...other
     } = props;
     const CustomTooltip = customTooltip;
@@ -717,7 +719,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   tickFormatter:
                     type === "percent" ? valueToPercent : indexFormatter,
                   type: typeof data[0][index] === 'number' && data.length > 7 ? "number" : 'category',
-                  domain: ['auto', 'auto'] as AxisDomain,
+                  domain: xAxisDomain,
                 }
                 : {
                   type: "number",

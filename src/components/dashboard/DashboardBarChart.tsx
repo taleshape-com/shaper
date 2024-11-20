@@ -5,11 +5,20 @@ import { BarChart } from "../tremor/BarChart";
 type BarProps = {
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
+  minTimeValue: number;
+  maxTimeValue: number;
   stacked?: boolean;
   vertical?: boolean;
 };
 
-const DashboardBarChart = ({ headers, data, stacked, vertical }: BarProps) => {
+const DashboardBarChart = ({
+  headers,
+  data,
+  stacked,
+  vertical,
+  minTimeValue,
+  maxTimeValue,
+}: BarProps) => {
   const valueAxisHeader = headers.find((c) => c.tag === "value");
   if (!valueAxisHeader) {
     throw new Error("No column with tag 'value'");
@@ -54,6 +63,7 @@ const DashboardBarChart = ({ headers, data, stacked, vertical }: BarProps) => {
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
+  const xAxisDomain = isTimeType(indexAxisHeader.type) ? [minTimeValue, maxTimeValue] : undefined
 
   return (
     <BarChart
@@ -74,6 +84,7 @@ const DashboardBarChart = ({ headers, data, stacked, vertical }: BarProps) => {
       xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
       yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
       showLegend={categoryIndex !== -1}
+      xAxisDomain={xAxisDomain}
     />
   );
 };

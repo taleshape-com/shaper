@@ -11,6 +11,8 @@ export const isTimeType = (t: Column['type']) => {
 
 export type Result = {
   title: string;
+  minTimeValue: number;
+  maxTimeValue: number;
   sections: ({
     type: 'header';
     title?: string;

@@ -498,6 +498,7 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   legendPosition?: "left" | "center" | "right";
   tooltipCallback?: (tooltipCallbackContent: TooltipProps) => void;
   customTooltip?: React.ComponentType<TooltipProps>;
+  xAxisDomain?: AxisDomain;
 }
 
 const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
@@ -531,6 +532,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       tooltipCallback,
       indexFormatter = (value: number) => value.toString(),
       customTooltip,
+      xAxisDomain = ['auto', 'auto'],
       ...other
     } = props;
     const CustomTooltip = customTooltip;
@@ -653,7 +655,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               tickLine={false}
               axisLine={false}
               type={typeof data[0][index] === 'number' ? "number" : 'category'}
-              domain={['auto', 'auto'] as AxisDomain}
+              domain={xAxisDomain}
               tickFormatter={indexFormatter}
               minTickGap={tickGap}
             >

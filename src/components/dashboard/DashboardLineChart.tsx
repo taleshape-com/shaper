@@ -5,9 +5,16 @@ import { formatValue } from "../../lib/render";
 type LineProps = {
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
+  minTimeValue: number;
+  maxTimeValue: number;
 };
 
-const DashboardLineChart = ({ headers, data }: LineProps) => {
+const DashboardLineChart = ({
+  headers,
+  data,
+  minTimeValue,
+  maxTimeValue,
+}: LineProps) => {
   const valueAxisHeader = headers.find((c) => c.tag === "value");
   if (!valueAxisHeader) {
     throw new Error("No  header with tag 'value'");
@@ -52,6 +59,7 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
+  const xAxisDomain = isTimeType(indexAxisHeader.type) ? [minTimeValue, maxTimeValue] : undefined
 
   return (
     <LineChart
@@ -71,6 +79,7 @@ const DashboardLineChart = ({ headers, data }: LineProps) => {
       xAxisLabel={isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
       yAxisLabel={valueAxisName}
       showLegend={categoryIndex !== -1}
+      xAxisDomain={xAxisDomain}
     />
   );
 };

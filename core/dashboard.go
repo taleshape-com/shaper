@@ -5,8 +5,10 @@ type ListResult struct {
 }
 
 type GetResult struct {
-	Title    string    `json:"title"`
-	Sections []Section `json:"sections"`
+	Title        string    `json:"title"`
+	Sections     []Section `json:"sections"`
+	MinTimeValue int64     `json:"minTimeValue"`
+	MaxTimeValue int64     `json:"maxTimeValue"`
 }
 
 type Section struct {

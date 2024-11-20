@@ -247,7 +247,7 @@ function DashboardViewComponent() {
             {section.queries.map(({ render, columns, rows }, index) => {
               if (render.type === 'placeholder') {
                 return (
-                  <div></div>
+                  <div key={index}></div>
                 )
               }
               return (
@@ -274,29 +274,29 @@ function DashboardViewComponent() {
                       ) :
                         render.type === 'linechart' ?
                           <DashboardLineChart
-                            key={index}
                             headers={columns}
                             data={rows}
+                            minTimeValue={data.minTimeValue}
+                            maxTimeValue={data.maxTimeValue}
                           /> :
                           render.type === 'barchartHorizontal' || render.type === 'barchartHorizontalStacked' || render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked' ? (
                             <DashboardBarChart
                               stacked={render.type === 'barchartHorizontalStacked' || render.type === 'barchartVerticalStacked'}
                               vertical={render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked'}
-                              key={index}
                               headers={columns}
                               data={rows}
+                              minTimeValue={data.minTimeValue}
+                              maxTimeValue={data.maxTimeValue}
                             />
                           )
                             : render.type === 'value' ? (
                               <DashboardValue
-                                key={index}
                                 headers={columns}
                                 data={rows}
                               />
                             ) :
                               (
                                 <DashboardTable
-                                  key={index}
                                   headers={columns}
                                   data={rows}
                                 />

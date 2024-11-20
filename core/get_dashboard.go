@@ -34,6 +34,8 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars := map[string]string{}
 	multiVars := map[string][]string{}
+	var minTimeValue int64 = math.MaxInt64
+	var maxTimeValue int64
 
 	for queryIndex, sqlString := range sqls {
 		if queryIndex == len(sqls)-1 {
@@ -112,12 +114,17 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			nextIsDownload = true
 		}
 
+		timeColumnIndices := map[int]bool{}
+
 		for colIndex, c := range colTypes {
 			nullable, ok := c.Nullable()
 			tag := mapTag(colIndex, rInfo)
 			colType, err := mapDBType(c.DatabaseTypeName(), colIndex, query.Rows, tag)
 			if err != nil {
 				return result, err
+			}
+			if isTimeType(colType) {
+				timeColumnIndices[colIndex] = true
 			}
 			col := Column{
 				Name:     c.Name(),
@@ -132,12 +139,31 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			}
 		}
 
-		// TODO: Once UNION types work, we can return floats from the DB directly and don't have to guess
 		for _, row := range query.Rows {
 			for i, cell := range row {
+				// Convert date and datetime strings to int64 unix timestamp in milliseconds
+				// TODO: Once we can use TIMESTAMP and DATE types in UNION, this parsing can hopefully get easier
+				s, ok := cell.(string)
+				if ok {
+					t, err := time.Parse(time.DateOnly, s)
+					if err != nil {
+						t, err = time.Parse(time.DateTime, s)
+					}
+					if err == nil {
+						ms := t.UnixMilli()
+						// Find min/max time
+						if ms > maxTimeValue {
+							maxTimeValue = ms
+						} else if ms < minTimeValue {
+							minTimeValue = ms
+						}
+						row[i] = ms
+					}
+				}
 				if n, ok := cell.(float64); ok && math.IsNaN(n) {
 					row[i] = nil
 				}
+				// TODO: Once UNION types work, we can return floats from the DB directly and don't have to guess
 				if colTypes[i].DatabaseTypeName() == "VARCHAR" && query.Columns[i].Type == "number" {
 					if n, err := strconv.ParseFloat(cell.(string), 64); err == nil {
 						row[i] = n
@@ -180,6 +206,8 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 
 		nextLabel = ""
 	}
+	result.MinTimeValue = minTimeValue
+	result.MaxTimeValue = maxTimeValue
 	return result, err
 }
 
@@ -305,6 +333,10 @@ func mapDBType(dbType string, index int, rows Rows, tag string) (string, error) 
 		return "duration", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
+}
+
+func isTimeType(columnType string) bool {
+	return columnType == "year" || columnType == "month" || columnType == "date" || columnType == "hour" || columnType == "timestamp"
 }
 
 // TODO: Once UNION types work, we need a more solid way to get tags
