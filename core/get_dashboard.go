@@ -51,7 +51,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		// run query
 		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
 		if err != nil {
-			return result, err
+			return result, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
 		}
 		colTypes, err := rows.ColumnTypes()
 		if err != nil {
@@ -781,7 +781,7 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 			}
 			l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
 		}
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s];\n", escapeSQLIdentifier(k), l))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR[];\n", escapeSQLIdentifier(k), l))
 	}
 	return varPrefix.String()
 }
