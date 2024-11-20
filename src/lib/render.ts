@@ -4,8 +4,7 @@ import { Column } from "./dashboard";
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.
 // The backend returns dates as unix timestamp integers in milliseconds, but this function works for strings as well
 function parseLocalDate(d: string | number) {
-  const date = new Date(d);
-  return new Date(date.getTime());
+  return new Date(d);
 }
 
 export const formatValue = (value: string | number | boolean, columnType: Column['type']) => {
@@ -17,16 +16,16 @@ export const formatValue = (value: string | number | boolean, columnType: Column
     return d.getFullYear().toString();
   }
   if (columnType === "month") {
-    return d.toLocaleString(navigator.languages, { month: 'short' });
+    return d.toLocaleString(navigator.languages, { month: 'short', timeZone: 'UTC' });
   }
   if (columnType === "date") {
-    return d.toLocaleDateString();
+    return d.toLocaleDateString(navigator.languages, { timeZone: 'UTC' });
   }
   if (columnType === "hour") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
   }
   if (columnType === "timestamp") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h24' });
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
   }
   if (columnType === "duration" && !value) {
     return "0"
