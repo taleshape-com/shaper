@@ -8,8 +8,28 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        "cprimary": "var(--shaper-primary-color)",
+        "cprimarya": "var(--shaper-primary-color-alternate)",
+        "ctext": "var(--shaper-text-color)",
+        "ctext2": "var(--shaper-text-color-secondary)",
+        "ctexti": "var(--shaper-text-color-invert)",
+        "cbg": "var(--shaper-background-color)",
+        "cbga": "var(--shaper-background-color-alternate)",
+        "cbgi": "var(--shaper-background-color-invert)",
+        "cb": "var(--shaper-border-color)",
+        "dprimary": "var(--shaper-dark-mode-primary-color)",
+        "dprimarya": "var(--shaper-dark-mode-primary-color-alternate)",
+        "dtext": "var(--shaper-dark-mode-text-color)",
+        "dtext2": "var(--shaper-dark-mode-text-color-secondary)",
+        "dtexti": "var(--shaper-dark-mode-text-color-invert)",
+        "dbg": "var(--shaper-dark-mode-background-color)",
+        "dbga": "var(--shaper-dark-mode-background-color-alternate)",
+        "dbgi": "var(--shaper-dark-mode-background-color-invert)",
+        "db": "var(--shaper-dark-mode-border-color)",
+      },
       fontFamily: {
-        sans: ['Geist Sans', ...defaultTheme.fontFamily.sans],
+        sans: ['var(--shaper-font-family)', ...defaultTheme.fontFamily.sans],
       },
       keyframes: {
         hide: {
@@ -65,23 +85,23 @@ export default {
       animation: {
         hide: "hide 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         slideDownAndFade:
-        "slideDownAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          "slideDownAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         slideLeftAndFade:
-        "slideLeftAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          "slideLeftAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         slideUpAndFade: "slideUpAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         slideRightAndFade:
-        "slideRightAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          "slideRightAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         // Accordion
         accordionOpen: "accordionOpen 150ms cubic-bezier(0.87, 0, 0.13, 1)",
         accordionClose: "accordionClose 150ms cubic-bezier(0.87, 0, 0.13, 1)",
         // Dialog
         dialogOverlayShow:
-        "dialogOverlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          "dialogOverlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         dialogContentShow:
-        "dialogContentShow 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          "dialogContentShow 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         // Drawer
         drawerSlideLeftAndFade:
-        "drawerSlideLeftAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+          "drawerSlideLeftAndFade 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         drawerSlideRightAndFade: "drawerSlideRightAndFade 150ms ease-in",
       },
     },

@@ -152,17 +152,17 @@ function DashboardViewComponent() {
             <section
               key={index}
               className={cx('flex flex-wrap items-center pr-2 mx-1', {
-                'mt-1 border-t': index !== 0 && section.title,
+                'mt-1 border-t border-cb dark:border-db': index !== 0 && section.title,
                 'py-1 mb-2': section.queries.length > 0 || section.title,
               })}
             >
               {index === 0 ? (
-                <h1 className="text-2xl text-slate-900 dark:text-slate-100 flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
+                <h1 className="text-2xl flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
                   {data.title}
                 </h1>
               ) : null}
               {section.title ? (
-                <h1 className="text-lg text-slate-900 dark:text-slate-100 flex-grow text-left py-1 ml-2 mr-4 mt-5 w-full sm:w-fit">
+                <h1 className="text-lg flex-grow text-left py-1 ml-2 mr-4 mt-5 w-full sm:w-fit">
                   {section.title}
                 </h1>
               ) : (
@@ -257,7 +257,7 @@ function DashboardViewComponent() {
                     'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
                     'lg:h-[calc(100vh-4.7rem)]': numContentSections === 1 && numQueriesInSection === 2,
                   })}>
-                  {render.label ? <h2 className="text-md mb-2 text-center text-slate-900 dark:text-slate-100">
+                  {render.label ? <h2 className="text-md mb-2 text-center">
                     {render.label}
                   </h2>
                     : null
@@ -268,7 +268,7 @@ function DashboardViewComponent() {
                   })}>
                     {
                       rows.length === 0 ? (
-                        <div className="h-full py-1 px-3 flex items-center justify-center text-slate-600 dark:text-slate-100">
+                        <div className="h-full py-1 px-3 flex items-center justify-center text-ctext2 dark:text-dtext2">
                           {translate('No data available')}
                         </div>
                       ) :
@@ -309,7 +309,7 @@ function DashboardViewComponent() {
         )
       })}
       {numContentSections === 0 ? (
-        <div className="text-center text-slate-600 leading-[calc(70vh)]">
+        <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
           Nothing to show yet ...
         </div>
       ) : null}

@@ -37,11 +37,11 @@ function DashboardDropdownMulti({
     <div className="ml-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="secondary" className="font-normal flex w-full items-center justify-between my-1">
+          <Button variant="secondary" className="font-normal flex w-full items-center justify-between my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga">
             {label ?? varName} ({selectedVal ? selectedValArr.length : data.length})
             <SelectPrimitives.Icon asChild>
               <RiExpandUpDownLine
-                className="ml-2 size-4 shrink-0 text-gray-400 dark:text-gray-600"
+                className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2"
               />
             </SelectPrimitives.Icon>
           </Button>

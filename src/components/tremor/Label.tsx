@@ -20,8 +20,9 @@ const Label = React.forwardRef<
       // base
       "text-sm leading-none",
       // text color
-      "text-gray-900 dark:text-gray-50",
+      "text-ctext dark:text-dtext",
       // disabled
+      // TODO: not in used and not styled using custom colors
       {
         "text-gray-400 dark:text-gray-600": disabled,
       },

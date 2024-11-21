@@ -116,11 +116,11 @@ const DropdownMenuContent = React.forwardRef<
           // heights
           "max-h-[var(--radix-popper-available-height)]",
           // background color
-          "bg-white dark:bg-gray-950",
+          "bg-cbg dark:bg-dbg",
           // text color
-          "text-gray-900 dark:text-gray-50",
+          "text-ctext dark:text-dtext",
           // border color
-          "border-gray-200 dark:border-gray-800",
+          "border-cb dark:border-db",
           // transition
           "will-change-[transform,opacity]",
           "data-[state=closed]:animate-hide",
@@ -205,13 +205,13 @@ const DropdownMenuCheckboxItem = React.forwardRef<
         // base
         "relative flex cursor-pointer select-none items-center gap-x-2 rounded py-1.5 pl-8 pr-1 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-ctext dark:text-dtext",
         // disabled
         "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
         // focus
-        "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
+        "focus-visible:bg-cbga focus-visible:dark:bg-dbga",
         // hover
-        "hover:bg-gray-100 hover:dark:bg-gray-900",
+        "hover:bg-cbga hover:dark:bg-dbga",
         className,
       )}
       checked={checked}
@@ -221,7 +221,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
         <DropdownMenuPrimitives.ItemIndicator>
           <RiCheckLine
             aria-hidden="true"
-            className="size-full shrink-0 text-gray-800 dark:text-gray-200"
+            className="size-full shrink-0 text-ctext dark:text-dtext"
           />
         </DropdownMenuPrimitives.ItemIndicator>
       </span>
@@ -229,7 +229,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       {hint && (
         <span
           className={cx(
-            "ml-auto text-sm font-normal text-gray-400 dark:text-gray-600",
+            "ml-auto text-sm font-normal text-ctext2 dark:text-dtext2",
           )}
         >
           {hint}

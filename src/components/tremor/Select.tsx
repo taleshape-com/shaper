@@ -9,7 +9,7 @@ import {
   RiExpandUpDownLine,
 } from "@remixicon/react";
 
-import { cx, focusInput, hasErrorInput } from "../../lib/utils";
+import { cx, focusRing, hasErrorInput } from "../../lib/utils";
 
 const Select = SelectPrimitives.Root;
 Select.displayName = "Select";
@@ -23,21 +23,21 @@ SelectValue.displayName = "SelectValue";
 const selectTriggerStyles = [
   cx(
     // base
-    "group/trigger flex w-full select-none items-center justify-between gap-2 truncate rounded-md border px-2 py-1 outline-none transition text-sm",
+    "group/trigger flex w-full select-none items-center justify-between gap-2 truncate rounded-md border px-2 py-1 transition text-sm",
     // border color
-    "border-gray-300 dark:border-gray-800",
+    "border-cb dark:border-db",
     // text color
-    "text-gray-900 dark:text-gray-50",
+    "text-ctext dark:dtext",
     // placeholder
-    "data-[placeholder]:text-gray-500 data-[placeholder]:dark:text-gray-500",
+    "data-[placeholder]:text-ctext2 data-[placeholder]:dark:text-dtext2",
     // background color
-    "bg-white dark:bg-gray-950",
+    "bg-cbg dark:bg-dbg",
     // hover
-    "hover:bg-gray-50 hover:dark:bg-gray-950/50",
+    "hover:bg-cbga hover:dark:bg-dbga",
     // disabled
     "data-[disabled]:bg-gray-100 data-[disabled]:text-gray-400",
     "data-[disabled]:dark:border-gray-700 data-[disabled]:dark:bg-gray-800 data-[disabled]:dark:text-gray-500",
-    focusInput,
+    focusRing,
     // invalid (optional)
     // "aria-[invalid=true]:dark:ring-red-400/20 aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-red-200 aria-[invalid=true]:border-red-500 invalid:ring-2 invalid:ring-red-200 invalid:border-red-500"
   ),
@@ -67,7 +67,7 @@ const SelectTrigger = React.forwardRef<
             // base
             "size-4 shrink-0",
             // text color
-            "text-gray-400 dark:text-gray-600",
+            "text-ctext2 dark:text-dtext2",
             // disabled
             "group-data-[disabled]/trigger:text-gray-300 group-data-[disabled]/trigger:dark:text-gray-600",
           )}
@@ -140,11 +140,11 @@ const SelectContent = React.forwardRef<
           // heights
           "max-h-[--radix-select-content-available-height]",
           // background color
-          "bg-white dark:bg-gray-950",
+          "bg-cbg dark:bg-dbg",
           // text color
-          "text-gray-900 dark:text-gray-50",
+          "text-ctext dark:text-dtext",
           // border color
-          "border-gray-200 dark:border-gray-800",
+          "border-cb dark:border-db",
           // transition
           "will-change-[transform,opacity]",
           // "data-[state=open]:animate-slideDownAndFade",
@@ -205,13 +205,13 @@ const SelectItem = React.forwardRef<
         // base
         "grid cursor-pointer grid-cols-[1fr_20px] gap-x-2 rounded px-3 py-2 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-ctext dark:dtext",
         // disabled
         "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
         // focus
-        "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
+        "focus-visible:bg-cbga focus-visible:dark:dbga",
         // hover
-        "hover:bg-gray-100 hover:dark:bg-gray-900",
+        "hover:bg-cbga hover:dark:bg-dbga",
         className,
       )}
       {...props}
@@ -221,7 +221,7 @@ const SelectItem = React.forwardRef<
       </SelectPrimitives.ItemText>
       <SelectPrimitives.ItemIndicator>
         <RiCheckLine
-          className="size-5 shrink-0 text-gray-800 dark:text-gray-200"
+          className="size-5 shrink-0 text-ctext dark:text-dtext"
           aria-hidden="true"
         />
       </SelectPrimitives.ItemIndicator>

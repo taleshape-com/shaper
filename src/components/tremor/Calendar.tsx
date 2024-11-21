@@ -116,31 +116,31 @@ const Calendar = ({
         nav: "gap-1 flex items-center rounded-full size-full justify-between p-4",
         table: "w-full border-collapse space-y-1",
         head_cell:
-          "w-9 font-medium text-sm sm:text-xs text-center text-gray-400 dark:text-gray-600 pb-2",
+          "w-9 font-medium text-sm sm:text-xs text-center text-ctext2 dark:text-dtext2 pb-2",
         row: "w-full mt-0.5",
         cell: cx(
           "relative p-0 text-center focus-within:relative",
-          "text-gray-900 dark:text-gray-50",
+          "text-ctext dark:text-dtext",
         ),
         day: cx(
           "size-9 rounded text-sm focus:z-10",
-          "text-gray-900 dark:text-gray-50",
-          "hover:bg-gray-200 hover:dark:bg-gray-700",
+          "text-ctext dark:text-dtext",
+          "hover:bg-cbga hover:dark:bg-cbga",
           focusRing,
         ),
         day_today: "font-semibold",
         day_selected: cx(
           "rounded",
-          "aria-selected:bg-blue-500 aria-selected:text-white",
-          "dark:aria-selected:bg-blue-500 dark:aria-selected:text-white",
+          "aria-selected:bg-cprimary aria-selected:text-ctexti",
+          "dark:aria-selected:bg-dprimary dark:aria-selected:text-dtexti",
         ),
         day_disabled:
           "!text-gray-300 dark:!text-gray-700 line-through disabled:hover:bg-transparent",
         day_outside: "text-gray-400 dark:text-gray-600",
         day_range_middle: cx(
           "!rounded-none",
-          "aria-selected:!bg-gray-100 aria-selected:!text-gray-900",
-          "dark:aria-selected:!bg-gray-900 dark:aria-selected:!text-gray-50",
+          "aria-selected:!bg-cbga aria-selected:!text-ctext",
+          "dark:aria-selected:!bg-dbga dark:aria-selected:!text-dtext",
         ),
         day_range_start: "rounded-r-none !rounded-l",
         day_range_end: "rounded-l-none !rounded-r",
@@ -296,9 +296,9 @@ const Calendar = ({
                   className={cx(
                     "absolute inset-x-1/2 bottom-1.5 h-0.5 w-4 -translate-x-1/2 rounded-[2px]",
                     {
-                      "bg-blue-500 dark:bg-blue-500": !selected,
-                      "!bg-white dark:!bg-gray-950": selected,
-                      "!bg-gray-400 dark:!bg-gray-600":
+                      "bg-cprimary dark:bg-dprimary": !selected,
+                      "!bg-ctexti dark:!bg-dtexti": selected,
+                      "!bg-ctext dark:!bg-dtext":
                         selected && range_middle,
                       "bg-gray-400 text-gray-400 dark:bg-gray-400 dark:text-gray-600":
                         disabled,

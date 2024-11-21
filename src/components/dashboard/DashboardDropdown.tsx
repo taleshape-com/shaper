@@ -38,7 +38,7 @@ function DashboardDropdown({ label, data, headers, onChange, vars }: DropdownPro
         >
           <SelectTrigger
             id={label}
-            className="mx-auto my-1"
+            className="mx-auto my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga"
           >
             <SelectValue />
           </SelectTrigger>

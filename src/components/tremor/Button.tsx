@@ -22,24 +22,24 @@ const buttonVariants = tv({
         // border
         "border-transparent",
         // text color
-        "text-white dark:text-white",
+        "text-ctexti dark:text-dtexti",
         // background color
-        "bg-blue-500 dark:bg-blue-500",
+        "bg-cprimary dark:bg-dprimary",
         // hover color
-        "hover:bg-blue-600 dark:hover:bg-blue-600",
+        "hover:bg-cprimarya dark:hover:bg-dprimarya",
         // disabled
         "disabled:bg-blue-300 disabled:text-white",
         "disabled:dark:bg-blue-800 disabled:dark:text-blue-400",
       ],
       secondary: [
         // border
-        "border-gray-300 dark:border-gray-800",
+        "border-cb dark:border-db",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-ctext dark:text-dtext",
         // background color
-        "bg-white dark:bg-gray-950",
+        "bg-cbg dark:dgb",
         //hover color
-        "hover:bg-gray-50 dark:hover:bg-gray-900/60",
+        "hover:bg-cbga dark:hover:bg-dbga",
         // disabled
         "disabled:text-gray-400",
         "disabled:dark:text-gray-600",

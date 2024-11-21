@@ -9,3 +9,26 @@
   font-weight: 100 900;
 }
 
+:root {
+  --shaper-font-family: Geist Sans;
+
+  --shaper-primary-color: #3b82f6;
+  --shaper-primary-color-alternate: #316dd0;
+  --shaper-text-color: #28292b;
+  --shaper-text-color-secondary: #9199a3;
+  --shaper-text-color-invert: #f8fafc;
+  --shaper-background-color: #fdfdfd;
+  --shaper-background-color-alternate: #eef0f3;
+  --shaper-background-color-invert: #1e293b;
+  --shaper-border-color: #dce1e9;
+
+  --shaper-dark-mode-primary-color: rgb(247 77 163);
+  --shaper-dark-mode-primary-color-alternate: rgb(247 77 163);
+  --shaper-dark-mode-text-color: rgb(25, 25, 25);
+  --shaper-dark-mode-text-color-secondary: rgb(30, 30, 30);
+  --shaper-dark-mode-text-color-invert: rgb(30, 30, 30);
+  --shaper-dark-mode-background-color: rgb(247, 247, 247);
+  --shaper-dark-mode-background-color-alternate: #eee;
+  --shaper-dark-mode-background-color-invert: #eee;
+  --shaper-dark-mode-border-color: rgb(209 213 219);
+}

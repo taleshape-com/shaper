@@ -21,33 +21,33 @@ function DashboardTable({ headers, data }: TableProps) {
   return (
     <TableRoot className="h-full">
       <Table>
-        <TableHead className="sticky top-0 bg-white dark:bg-black shadow-sm">
+        <TableHead className="sticky top-0 bg-cbg dark:bg-dbg shadow-sm">
           <TableRow>
             {headers.map((header) => (
-              <TableHeaderCell className="text-center" key={header.name}>{header.name}</TableHeaderCell>
+              <TableHeaderCell className="text-center text-ctext dark:text-dtext" key={header.name}>{header.name}</TableHeaderCell>
             ))}
           </TableRow>
         </TableHead>
         <TableBody>
           {
             data.map((items, index) => (
-              <TableRow key={index} className={index % 2 === 0 ? "bg-slate-50 dark:bg-slate-800" : undefined}>
+              <TableRow key={index} className={index % 2 === 0 ? "bg-cbga dark:dbga" : undefined}>
                 {items.map((item, index) => {
                   const header = headers[index]
                   const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
                   return (
-                    <TableCell key={index} className="text-center dark:text-white">
+                    <TableCell key={index} className="text-center text-ctext dark:text-dtext">
                       {percent !== undefined ? percent === 0 ? '-' : (
                         <div
                           className={cx(
-                            "ml-2 rounded px-1 py-1 text-sm font-medium text-white flex flex-nowrap items-center justify-center bg-slate-800 dark:bg-slate-600",
+                            "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:bg-cbg ",
                             // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
                           )}
                         >
                           {percent > 0 && '+'}{percent}%{
                             percent > 0 ?
-                              <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-white" />
-                              : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-white" />
+                              <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-ctext" />
+                              : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-ctext" />
                           }
                         </div>) :
                         formatValue(item, header.type)

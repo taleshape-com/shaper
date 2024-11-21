@@ -154,23 +154,23 @@ TimeInput.displayName = "TimeInput"
 const triggerStyles = tv({
   base: [
     // base
-    "peer flex w-full cursor-pointer appearance-none items-center gap-x-2 truncate rounded-md border px-3 py-1 shadow-sm outline-none transition-all text-sm",
+    "peer flex w-full cursor-pointer appearance-none items-center gap-x-2 truncate rounded-md border px-2 py-1 shadow-sm outline-none transition-all text-sm",
     // background color
-    "bg-white dark:bg-gray-950",
+    "bg-cbg dark:bg-dbg",
     // border color
-    "border-gray-300 dark:border-gray-800",
+    "border-cb dark:border-db",
     // text color
-    "text-gray-900 dark:text-gray-50",
+    "text-ctext dark:text-dtext",
     // placeholder color
     "placeholder-gray-400 dark:placeholder-gray-500",
     // hover
-    "hover:bg-gray-50 hover:dark:bg-gray-950/50",
+    "hover:bg-cbga hover:dark:bg-cbga",
     // disabled
     "disabled:pointer-events-none",
     "disabled:bg-gray-100 disabled:text-gray-400",
     "disabled:dark:border-gray-800 disabled:dark:bg-gray-800 disabled:dark:text-gray-500",
     // focus
-    focusInput,
+    focusRing,
     // invalid (optional)
     // "aria-[invalid=true]:dark:ring-red-400/20 aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-red-200 aria-[invalid=true]:border-red-500 invalid:ring-2 invalid:ring-red-200 invalid:border-red-500"
   ],
@@ -200,11 +200,9 @@ const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
           className={cx(triggerStyles({ hasError }), className)}
           {...props}
         >
-          <RiCalendar2Fill className="size-5 shrink-0 text-gray-400 dark:text-gray-600" />
           <span className={cx({
-            "flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-gray-900 dark:text-gray-50": true,
-            "text-gray-900": !isDefaultValue,
-            "text-gray-600": isDefaultValue,
+            "flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-ctext dark:text-dtext": true,
+            "text-ctext2 dark:text-dtext2": isDefaultValue,
           })}>
             {children ? (
               children
@@ -214,6 +212,7 @@ const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
               </span>
             ) : null}
           </span>
+          <RiCalendar2Fill className="size-5 shrink-0 text-ctext2 dark:text-dtext2" />
         </button>
       </PopoverPrimitives.Trigger>
     )
@@ -375,16 +374,16 @@ const PresetContainer = <TPreset extends Preset, TValue>({
                 // base
                 "relative w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border px-2.5 py-1.5 text-left text-base shadow-sm outline-none transition-all sm:border-none sm:py-2 sm:text-sm sm:shadow-none",
                 // text color
-                "text-gray-700 dark:text-gray-300",
+                "text-ctext dark:text-dtext",
                 // border color
-                "border-gray-200 dark:border-gray-800",
+                "border-cb dark:border-db",
                 // focus
                 focusRing,
+                "outline-offset-0",
                 // background color
-                "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
-                "hover:bg-gray-100 hover:dark:bg-gray-900",
+                "hover:bg-cbga hover:dark:bg-dbga",
                 {
-                  "bg-gray-100 dark:bg-gray-900": matchesCurrent(preset),
+                  "bg-cbga dark:bg-dbga": matchesCurrent(preset),
                 },
               )}
               onClick={() => handleClick(preset)}
@@ -893,7 +892,7 @@ const RangeDatePicker = ({
       <Trigger
         placeholder={placeholder}
         disabled={disabled}
-        className={cx({ "border-blue-500": open }, className)}
+        className={cx({ "bg-cbga dark:bg-dbga": open }, focusRing, className)}
         hasError={hasError}
         aria-required={props.required || props["aria-required"]}
         aria-invalid={props["aria-invalid"]}
@@ -910,7 +909,7 @@ const RangeDatePicker = ({
               <div
                 className={cx(
                   "relative flex h-16 w-full items-center sm:h-full sm:w-40",
-                  "border-b border-gray-200 sm:border-b-0 sm:border-r dark:border-gray-800",
+                  "border-b border-cb sm:border-b-0 sm:border-r dark:border-cb",
                   "overflow-auto",
                 )}
               >

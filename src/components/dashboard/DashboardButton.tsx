@@ -20,17 +20,20 @@ function DashboardButton({
 }: ButtonProps) {
   return (
     <div className="ml-2">
-      <a href={formatValue(`${data[0][0]}?${searchParams}`, headers[0].type).toString()} download>
-        <Button variant="secondary" className="font-normal flex w-full items-center justify-between my-1">
+      <Button
+        asChild
+        variant="secondary"
+        className="font-normal flex w-full items-center justify-between my-1">
+        <a href={formatValue(`${data[0][0]}?${searchParams}`, headers[0].type).toString()} download>
           {label}
           {headers[0].name}
           <SelectPrimitives.Icon asChild>
             <RiFileDownloadLine
-              className="ml-2 size-4 shrink-0 text-gray-400 dark:text-gray-600"
+              className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2"
             />
           </SelectPrimitives.Icon>
-        </Button>
-      </a>
+        </a>
+      </Button>
     </div>
   );
 }
