@@ -151,18 +151,18 @@ function DashboardViewComponent() {
           return (
             <section
               key={index}
-              className={cx('flex flex-wrap items-center pr-2 mx-1', {
+              className={cx('flex flex-wrap items-center mr-3 ml-3', {
                 'mt-1 border-t border-cb dark:border-db': index !== 0 && section.title,
                 'py-1 mb-2': section.queries.length > 0 || section.title,
               })}
             >
               {index === 0 ? (
-                <h1 className="text-2xl flex-grow py-1 ml-2 mr-4 w-full sm:w-fit">
+                <h1 className="text-2xl flex-grow py-1 mr-4 w-full sm:w-fit">
                   {data.title}
                 </h1>
               ) : null}
               {section.title ? (
-                <h1 className="text-lg flex-grow text-left py-1 ml-2 mr-4 mt-5 w-full sm:w-fit">
+                <h1 className="text-lg flex-grow text-left py-1 mr-4 mt-5 w-full sm:w-fit">
                   {section.title}
                 </h1>
               ) : (

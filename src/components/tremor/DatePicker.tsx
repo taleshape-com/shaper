@@ -625,7 +625,7 @@ const SingleDatePicker = ({
               <div
                 className={cx(
                   "relative flex h-14 w-full items-center sm:h-full sm:w-40",
-                  "border-b border-gray-200 sm:border-b-0 sm:border-r dark:border-gray-800",
+                  "border-b border-cb sm:border-b-0 sm:border-r dark:border-db",
                   "overflow-auto",
                 )}
               >

@@ -28,6 +28,7 @@ type Config struct {
 	LoginToken        string
 	DashboardDir      string
 	ExecutableModTime time.Time
+	CustomCSS         string
 }
 
 func main() {
@@ -43,6 +44,7 @@ func loadConfig() Config {
 	dbFile := flags.String('f', "duckdb", "", "path to duckdb file (default: use in-memory db)")
 	loginToken := flags.String('t', "token", "", "token used for login (required)")
 	dashboardDir := flags.String('d', "dashboards", "", "path to directory to read dashboard SQL files from (required)")
+	customCSS := flags.String('c', "css", "", "CSS string to inject into the frontend")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
@@ -76,6 +78,7 @@ func loadConfig() Config {
 		LoginToken:        *loginToken,
 		DashboardDir:      *dashboardDir,
 		ExecutableModTime: executableModTime,
+		CustomCSS:         *customCSS,
 	}
 	return config
 }
@@ -98,7 +101,7 @@ func Run(config Config) func(context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	e := server.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime)
+	e := server.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS)
 
 	return func(ctx context.Context) {
 		if err := db.Close(); err != nil {
