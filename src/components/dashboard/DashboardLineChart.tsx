@@ -1,6 +1,6 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
-import { formatValue } from "../../lib/render";
+import { formatValue, getXAxisDomain } from "../../lib/render";
 
 type LineProps = {
   headers: Column[];
@@ -59,7 +59,7 @@ const DashboardLineChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const xAxisDomain = isTimeType(indexAxisHeader.type) ? [minTimeValue, maxTimeValue] : undefined
+  const xAxisDomain = isTimeType(indexAxisHeader.type) ? getXAxisDomain(minTimeValue, maxTimeValue) : undefined
 
   return (
     <LineChart

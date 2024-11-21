@@ -67,7 +67,7 @@ const TimeSegment = ({ segment, state }: TimeSegmentProps) => {
         // text color
         "text-gray-900 dark:text-gray-50",
         // background color
-        "bg-white dark:bg-gray-950",
+        "bg-cbg dark:bg-dbg",
         // focus
         focusInput,
         // invalid (optional)
@@ -243,9 +243,9 @@ const CalendarPopover = React.forwardRef<
           // widths
           "min-w-[calc(var(--radix-select-trigger-width)-2px)] max-w-[95vw]",
           // border color
-          "border-gray-200 dark:border-gray-800",
+          "border-cb dark:border-db",
           // background color
-          "bg-white dark:bg-gray-950",
+          "bg-cbg dark:bg-dbg",
           // transition
           "will-change-[transform,opacity]",
           "data-[state=closed]:animate-hide",
@@ -903,7 +903,7 @@ const RangeDatePicker = ({
         {displayRange}
       </Trigger>
       <CalendarPopover align={align}>
-        <div className="flex">
+        <div className="flex bg-cbg dark:dbg">
           <div className="flex flex-col overflow-x-auto sm:flex-row sm:items-start">
             {presets && presets.length > 0 && (
               <div

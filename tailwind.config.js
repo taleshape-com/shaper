@@ -11,6 +11,10 @@ export default {
       colors: {
         "cprimary": "var(--shaper-primary-color)",
         "cprimarya": "var(--shaper-primary-color-alternate)",
+        "ctwo": "var(--shaper-color-two)",
+        "cthree": "var(--shaper-color-three)",
+        "cfour": "var(--shaper-color-four)",
+        "cfive": "var(--shaper-color-five)",
         "ctext": "var(--shaper-text-color)",
         "ctext2": "var(--shaper-text-color-secondary)",
         "ctexti": "var(--shaper-text-color-invert)",

@@ -12,8 +12,12 @@
 :root {
   --shaper-font-family: Geist Sans;
 
-  --shaper-primary-color: #3b82f6;
-  --shaper-primary-color-alternate: #316dd0;
+  --shaper-primary-color: #6366f1;
+  --shaper-primary-color-alternate: #4f46e5;
+  --shaper-color-two: #6ee7b7;
+  --shaper-color-three: #f472b6;
+  --shaper-color-four: #fef08a;
+  --shaper-color-five: #7dd3fc;
   --shaper-text-color: #28292b;
   --shaper-text-color-secondary: #adb5bf;
   --shaper-text-color-invert: #f8fafc;

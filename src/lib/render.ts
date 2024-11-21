@@ -63,3 +63,9 @@ export const formatValue = (value: string | number | boolean, columnType: Column
   return value;
 };
 
+// Without adding some margins, some bars can end up directly on the edge of the chart
+export const getXAxisDomain = (minTimeValue: number, maxTimeValue: number) => {
+  const margin = (maxTimeValue - minTimeValue) * 0.04
+  return [minTimeValue - margin, maxTimeValue + margin]
+}
+
