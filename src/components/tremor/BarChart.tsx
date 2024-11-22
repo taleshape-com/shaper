@@ -1,7 +1,3 @@
-// Tremor BarChart [v0.2.1]
-
-"use client";
-
 import React from "react";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import {
@@ -682,7 +678,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           >
             {showGridLines ? (
               <CartesianGrid
-                className={cx("stroke-gray-200 stroke-1 dark:stroke-gray-800")}
+                className={cx("stroke-cb stroke-1 dark:stroke-db")}
                 horizontal={layout !== "vertical"}
                 vertical={layout === "vertical"}
               />
@@ -699,7 +695,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 // base
                 "text-xs",
                 // text fill
-                "fill-gray-500 dark:fill-gray-500",
+                "fill-ctext2 dark:fill-dtext2",
                 { "mt-4": layout !== "vertical" },
               )}
               tickLine={false}
@@ -732,7 +728,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 <Label
                   position="insideBottom"
                   offset={-20}
-                  className="fill-gray-800 text-sm font-medium dark:fill-gray-200"
+                  className="fill-ctext text-sm font-medium dark:fill-dtext"
                 >
                   {xAxisLabel}
                 </Label>
@@ -749,7 +745,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 // base
                 "text-xs",
                 // text fill
-                "fill-gray-500 dark:fill-gray-500",
+                "fill-ctext2 dark:fill-ctext2",
               )}
               tick={{
                 transform:
@@ -780,7 +776,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   style={{ textAnchor: "middle" }}
                   angle={-90}
                   offset={-15}
-                  className="fill-gray-800 text-sm font-medium dark:fill-gray-200"
+                  className="fill-ctext text-sm font-medium dark:fill-dtext"
                 >
                   {yAxisLabel}
                 </Label>
@@ -790,7 +786,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               wrapperStyle={{ outline: "none", zIndex: 30 }}
               isAnimationActive={true}
               animationDuration={100}
-              cursor={{ fill: "#d1d5db", opacity: "0.15" }}
+              cursor={{ fill: "var(--shaper-background-color-invert)", opacity: "0.05" }}
               offset={20}
               position={{
                 y: layout === "horizontal" ? 0 : undefined,
