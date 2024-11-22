@@ -3,6 +3,7 @@ import { LineChart } from "../tremor/LineChart";
 import { formatValue, getIndexAxisDomain } from "../../lib/render";
 
 type LineProps = {
+  chartId: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
   minTimeValue: number;
@@ -10,6 +11,7 @@ type LineProps = {
 };
 
 const DashboardLineChart = ({
+  chartId,
   headers,
   data,
   minTimeValue,
@@ -63,6 +65,7 @@ const DashboardLineChart = ({
 
   return (
     <LineChart
+      chartId={chartId}
       className="h-full"
       enableLegendSlider
       startEndOnly={isTimeType(indexAxisHeader.type)}

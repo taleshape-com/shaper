@@ -276,6 +276,7 @@ function DashboardViewComponent() {
                         ) :
                           render.type === 'linechart' ?
                             <DashboardLineChart
+                              chartId={`${sectionIndex}-${queryIndex}`}
                               headers={columns}
                               data={rows}
                               minTimeValue={data.minTimeValue}
