@@ -6,6 +6,7 @@ import {
   Label,
   BarChart as RechartsBarChart,
   Legend as RechartsLegend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +23,7 @@ import {
 } from "../../lib/chartUtils";
 import { useOnWindowResize } from "../../hooks/useOnWindowResize";
 import { cx } from "../../lib/utils";
+import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 
 //#region Shape
 
@@ -521,6 +523,7 @@ type BaseEventProps = {
 type BarChartEventProps = BaseEventProps | null | undefined;
 
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
+  chartId: string;
   data: Record<string, any>[];
   index: string;
   categories: string[];
@@ -550,7 +553,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   legendPosition?: "left" | "center" | "right";
   tooltipCallback?: (tooltipCallbackContent: TooltipProps) => void;
   customTooltip?: React.ComponentType<TooltipProps>;
-  xAxisDomain?: AxisDomain;
+  indexAxisDomain?: AxisDomain;
 }
 
 const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
@@ -586,7 +589,8 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       legendPosition = "right",
       tooltipCallback,
       customTooltip,
-      xAxisDomain = ['auto', 'auto'],
+      indexAxisDomain = ['auto', 'auto'],
+      chartId,
       ...other
     } = props;
     const CustomTooltip = customTooltip;
@@ -600,12 +604,15 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
     const [activeBar, setActiveBar] = React.useState<any | undefined>(
       undefined,
     );
-    const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
+    const valueAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
     const hasOnValueChange = !!onValueChange;
     const stacked = type === "stacked" || type === "percent";
 
     const prevActiveRef = React.useRef<boolean | undefined>(undefined);
     const prevLabelRef = React.useRef<string | undefined>(undefined);
+
+    const { hoveredIndex, hoveredChartId, setHoverState } = React.useContext(ChartHoverContext);
+
 
     function valueToPercent(value: number) {
       return `${(value * 100).toFixed(0)}%`;
@@ -666,6 +673,16 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 }
                 : undefined
             }
+            onMouseMove={state => {
+              if (state.activeLabel) {
+                setHoverState(state.activeLabel, chartId);
+              }
+            }}
+            onMouseLeave={() => {
+              if (hoveredChartId === chartId) {
+                setHoverState(null, null);
+              }
+            }}
             margin={{
               bottom: xAxisLabel ? 30 : undefined,
               left: yAxisLabel ? 20 : undefined,
@@ -714,14 +731,15 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     : undefined,
                   tickFormatter:
                     type === "percent" ? valueToPercent : indexFormatter,
-                  type: typeof data[0][index] === 'number' && data.length > 7 ? "number" : 'category',
-                  domain: xAxisDomain,
+                  type: Array.isArray(indexAxisDomain) && indexAxisDomain[0] !== 'auto' && data.length > 7 ? "number" : "category",
+                  domain: indexAxisDomain,
                 }
                 : {
                   type: "number",
                   tickFormatter:
-                    type === "percent" ? valueToPercent : indexFormatter,
+                    type === "percent" ? valueToPercent : valueFormatter,
                   allowDecimals: allowDecimals,
+                  domain: valueAxisDomain,
                 })}
             >
               {xAxisLabel && (
@@ -756,7 +774,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               {...(layout !== "vertical"
                 ? {
                   type: "number",
-                  domain: yAxisDomain as AxisDomain,
+                  domain: valueAxisDomain as AxisDomain,
                   tickFormatter:
                     type === "percent" ? valueToPercent : valueFormatter,
                   allowDecimals: allowDecimals,
@@ -766,8 +784,11 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   ticks: startEndOnly
                     ? [data[0][index], data[data.length - 1][index]]
                     : undefined,
-                  type: "category",
+                  type: Array.isArray(indexAxisDomain) && indexAxisDomain[0] !== 'auto' && data.length > 7 ? "number" : "category",
                   interval: "equidistantPreserveStart",
+                  tickFormatter:
+                    type === "percent" ? valueToPercent : indexFormatter,
+                  domain: indexAxisDomain,
                 })}
             >
               {yAxisLabel && (
@@ -786,7 +807,10 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               wrapperStyle={{ outline: "none", zIndex: 30 }}
               isAnimationActive={true}
               animationDuration={100}
-              cursor={{ fill: "var(--shaper-background-color-invert)", opacity: "0.05" }}
+              cursor={{
+                fill: "var(--shaper-background-color-invert)",
+                opacity: 0.05
+              }}
               offset={20}
               position={{
                 y: layout === "horizontal" ? 0 : undefined,
@@ -806,11 +830,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   }))
                   : [];
 
-                if (
-                  tooltipCallback &&
-                  (active !== prevActiveRef.current ||
-                    label !== prevLabelRef.current)
-                ) {
+                if (tooltipCallback && (active !== prevActiveRef.current || label !== prevLabelRef.current)) {
                   tooltipCallback({ active, payload: cleanPayload, label });
                   prevActiveRef.current = active;
                   prevLabelRef.current = label;
@@ -855,6 +875,13 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 }
               />
             ) : null}
+            {hoveredIndex != null && hoveredChartId !== chartId &&
+              <ReferenceLine
+                x={layout === 'horizontal' ? hoveredIndex : undefined}
+                y={layout === 'vertical' ? hoveredIndex : undefined}
+                stroke="var(--shaper-reference-line-color)"
+              />
+            }
             {categories.map((category) => (
               <Bar
                 className={cx(

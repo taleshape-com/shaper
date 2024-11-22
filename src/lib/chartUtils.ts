@@ -1,5 +1,7 @@
 // Tremor Raw chartColors [v0.1.0]
 
+import { AxisDomain } from "recharts/types/util/types"
+
 export type ColorUtility = "bg" | "stroke" | "fill" | "text"
 
 export const chartColors = {
@@ -147,7 +149,7 @@ export const getYAxisDomain = (
   autoMinValue: boolean,
   minValue: number | undefined,
   maxValue: number | undefined,
-) => {
+): AxisDomain => {
   const minDomain = autoMinValue ? "auto" : minValue ?? 0
   const maxDomain = maxValue ?? "auto"
   return [minDomain, maxDomain]

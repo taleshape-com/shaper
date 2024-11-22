@@ -1,8 +1,9 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
-import { formatValue, getXAxisDomain } from "../../lib/render";
+import { formatValue, getIndexAxisDomain } from "../../lib/render";
 import { BarChart } from "../tremor/BarChart";
 
 type BarProps = {
+  chartId: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
   minTimeValue: number;
@@ -12,6 +13,7 @@ type BarProps = {
 };
 
 const DashboardBarChart = ({
+  chartId,
   headers,
   data,
   stacked,
@@ -63,10 +65,11 @@ const DashboardBarChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const xAxisDomain = isTimeType(indexAxisHeader.type) ? getXAxisDomain(minTimeValue, maxTimeValue) : undefined
+  const indexAxisDomain = isTimeType(indexAxisHeader.type) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
 
   return (
     <BarChart
+      chartId={chartId}
       className="h-full"
       enableLegendSlider
       startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexAxisHeader.type) ? 10 : 15)}
@@ -84,7 +87,7 @@ const DashboardBarChart = ({
       xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
       yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
       showLegend={categoryIndex !== -1}
-      xAxisDomain={xAxisDomain}
+      indexAxisDomain={indexAxisDomain}
     />
   );
 };

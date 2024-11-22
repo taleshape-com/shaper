@@ -17,6 +17,7 @@ import DashboardDateRangePicker from '../components/dashboard/DashboardDateRange
 import DashboardValue from '../components/dashboard/DashboardValue'
 import { Card } from "../components/tremor/Card";
 import { translate } from '../lib/translate'
+import { ChartHoverProvider } from '../components/ChartHoverProvider'
 
 const zVars = z.record(z.union([z.string(), z.array(z.string())])).optional()
 
@@ -145,169 +146,172 @@ function DashboardViewComponent() {
         <title>{data.title}</title>
         <meta name="description" content={data.title} />
       </Helmet>
-      {sections.map((section, index) => {
-        if (section.type === 'header') {
-          const queries = section.queries.filter(query => query.rows.length > 0)
+      <ChartHoverProvider>
+        {sections.map((section, sectionIndex) => {
+          if (section.type === 'header') {
+            const queries = section.queries.filter(query => query.rows.length > 0)
+            return (
+              <section
+                key={sectionIndex}
+                className={cx('flex flex-wrap items-center mr-3 ml-3', {
+                  'mt-1 border-t border-cb dark:border-db': sectionIndex !== 0 && section.title,
+                  'py-1 mb-2': section.queries.length > 0 || section.title,
+                })}
+              >
+                {sectionIndex === 0 ? (
+                  <h1 className="text-2xl flex-grow py-1 mr-4 w-full sm:w-fit">
+                    {data.title}
+                  </h1>
+                ) : null}
+                {section.title ? (
+                  <h1 className="text-lg flex-grow text-left py-1 mr-4 mt-5 w-full sm:w-fit">
+                    {section.title}
+                  </h1>
+                ) : (
+                  <div className="sm:flex-grow"></div>
+                )}
+                {queries.map(({ render, columns, rows }, index) => {
+                  if (render.type === 'dropdown') {
+                    return (
+                      <DashboardDropdown
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onDropdownChange}
+                      />
+                    )
+                  }
+                  if (render.type === 'dropdownMulti') {
+                    return (
+                      <DashboardDropdownMulti
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onDropdownChange}
+                      />
+                    )
+                  }
+                  if (render.type === 'button') {
+                    return (
+                      <DashboardButton
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        searchParams={searchParams}
+                      />
+                    )
+                  }
+                  if (render.type === 'datepicker') {
+                    return (
+                      <DashboardDatePicker
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onDropdownChange}
+                      />
+                    )
+                  }
+                  if (render.type === 'daterangePicker') {
+                    return (
+                      <DashboardDateRangePicker
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onDropdownChange}
+                      />
+                    )
+                  }
+                })}
+              </section>
+            )
+          }
+          const numQueriesInSection = section.queries.length
           return (
             <section
-              key={index}
-              className={cx('flex flex-wrap items-center mr-3 ml-3', {
-                'mt-1 border-t border-cb dark:border-db': index !== 0 && section.title,
-                'py-1 mb-2': section.queries.length > 0 || section.title,
+              key={sectionIndex}
+              className={cx(
+                'grid grid-cols-1 ml-3', {
+                'sm:grid-cols-2': numQueriesInSection > 1,
+                'lg:grid-cols-2': numQueriesInSection === 2 || (numContentSections === 1 && numQueriesInSection === 4),
+                'lg:grid-cols-3': numQueriesInSection > 4 || numQueriesInSection === 3 || (numQueriesInSection === 4 && numContentSections > 1),
+                'xl:grid-cols-4': (numQueriesInSection === 4 && numContentSections > 1) || numQueriesInSection === 7 || numQueriesInSection === 8 || numQueriesInSection > 9
               })}
             >
-              {index === 0 ? (
-                <h1 className="text-2xl flex-grow py-1 mr-4 w-full sm:w-fit">
-                  {data.title}
-                </h1>
-              ) : null}
-              {section.title ? (
-                <h1 className="text-lg flex-grow text-left py-1 mr-4 mt-5 w-full sm:w-fit">
-                  {section.title}
-                </h1>
-              ) : (
-                <div className="sm:flex-grow"></div>
-              )}
-              {queries.map(({ render, columns, rows }, index) => {
-                if (render.type === 'dropdown') {
+              {section.queries.map(({ render, columns, rows }, queryIndex) => {
+                if (render.type === 'placeholder') {
                   return (
-                    <DashboardDropdown
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onDropdownChange}
-                    />
+                    <div key={queryIndex}></div>
                   )
                 }
-                if (render.type === 'dropdownMulti') {
-                  return (
-                    <DashboardDropdownMulti
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onDropdownChange}
-                    />
-                  )
-                }
-                if (render.type === 'button') {
-                  return (
-                    <DashboardButton
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      searchParams={searchParams}
-                    />
-                  )
-                }
-                if (render.type === 'datepicker') {
-                  return (
-                    <DashboardDatePicker
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onDropdownChange}
-                    />
-                  )
-                }
-                if (render.type === 'daterangePicker') {
-                  return (
-                    <DashboardDateRangePicker
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onDropdownChange}
-                    />
-                  )
-                }
-              })}
-            </section>
-          )
-        }
-        const numQueriesInSection = section.queries.length
-        return (
-          <section
-            key={index}
-            className={cx(
-              'grid grid-cols-1 ml-3', {
-              'sm:grid-cols-2': numQueriesInSection > 1,
-              'lg:grid-cols-2': numQueriesInSection === 2 || (numContentSections === 1 && numQueriesInSection === 4),
-              'lg:grid-cols-3': numQueriesInSection > 4 || numQueriesInSection === 3 || (numQueriesInSection === 4 && numContentSections > 1),
-              'xl:grid-cols-4': (numQueriesInSection === 4 && numContentSections > 1) || numQueriesInSection === 7 || numQueriesInSection === 8 || numQueriesInSection > 9
-            })}
-          >
-            {section.queries.map(({ render, columns, rows }, index) => {
-              if (render.type === 'placeholder') {
                 return (
-                  <div key={index}></div>
-                )
-              }
-              return (
-                <Card key={index} className={cx(
-                  "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
-                  {
-                    'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
-                    'lg:h-[calc(100vh-4.7rem)]': numContentSections === 1 && numQueriesInSection === 2,
-                  })}>
-                  {render.label ? <h2 className="text-md mb-2 text-center">
-                    {render.label}
-                  </h2>
-                    : null
-                  }
-                  <div className={cx({
-                    'h-[calc(100%-2rem)]': render.label,
-                    'h-full': !render.label,
-                  })}>
+                  <Card key={queryIndex} className={cx(
+                    "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
                     {
-                      rows.length === 0 ? (
-                        <div className="h-full py-1 px-3 flex items-center justify-center text-ctext2 dark:text-dtext2">
-                          {translate('No data available')}
-                        </div>
-                      ) :
-                        render.type === 'linechart' ?
-                          <DashboardLineChart
-                            headers={columns}
-                            data={rows}
-                            minTimeValue={data.minTimeValue}
-                            maxTimeValue={data.maxTimeValue}
-                          /> :
-                          render.type === 'barchartHorizontal' || render.type === 'barchartHorizontalStacked' || render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked' ? (
-                            <DashboardBarChart
-                              stacked={render.type === 'barchartHorizontalStacked' || render.type === 'barchartVerticalStacked'}
-                              vertical={render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked'}
+                      'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
+                      'lg:h-[calc(100vh-4.7rem)]': numContentSections === 1 && numQueriesInSection === 2,
+                    })}>
+                    {render.label ? <h2 className="text-md mb-2 text-center">
+                      {render.label}
+                    </h2>
+                      : null
+                    }
+                    <div className={cx({
+                      'h-[calc(100%-2rem)]': render.label,
+                      'h-full': !render.label,
+                    })}>
+                      {
+                        rows.length === 0 ? (
+                          <div className="h-full py-1 px-3 flex items-center justify-center text-ctext2 dark:text-dtext2">
+                            {translate('No data available')}
+                          </div>
+                        ) :
+                          render.type === 'linechart' ?
+                            <DashboardLineChart
                               headers={columns}
                               data={rows}
                               minTimeValue={data.minTimeValue}
                               maxTimeValue={data.maxTimeValue}
-                            />
-                          )
-                            : render.type === 'value' ? (
-                              <DashboardValue
+                            /> :
+                            render.type === 'barchartHorizontal' || render.type === 'barchartHorizontalStacked' || render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked' ? (
+                              <DashboardBarChart
+                                chartId={`${sectionIndex}-${queryIndex}`}
+                                stacked={render.type === 'barchartHorizontalStacked' || render.type === 'barchartVerticalStacked'}
+                                vertical={render.type === 'barchartVertical' || render.type === 'barchartVerticalStacked'}
                                 headers={columns}
                                 data={rows}
+                                minTimeValue={data.minTimeValue}
+                                maxTimeValue={data.maxTimeValue}
                               />
-                            ) :
-                              (
-                                <DashboardTable
+                            )
+                              : render.type === 'value' ? (
+                                <DashboardValue
                                   headers={columns}
                                   data={rows}
                                 />
-                              )}
-                  </div>
-                </Card>
-              )
-            })}
-          </section>
-        )
-      })}
+                              ) :
+                                (
+                                  <DashboardTable
+                                    headers={columns}
+                                    data={rows}
+                                  />
+                                )}
+                    </div>
+                  </Card>
+                )
+              })}
+            </section>
+          )
+        })}
+      </ChartHoverProvider>
       {numContentSections === 0 ? (
         <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
           Nothing to show yet ...

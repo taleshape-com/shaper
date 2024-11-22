@@ -11,6 +11,7 @@
 
 :root {
   --shaper-font-family: Geist Sans;
+  --shaper-reference-line-color: rgb(244 114 182 / 0.5);
 
   --shaper-primary-color: #6366f1;
   --shaper-primary-color-alternate: #4f46e5;
