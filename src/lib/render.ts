@@ -19,10 +19,10 @@ export const formatValue = (value: string | number | boolean, columnType: Column
     return d.toLocaleString(navigator.languages, { month: 'short', timeZone: 'UTC' });
   }
   if (columnType === "date") {
-    return d.toLocaleDateString(navigator.languages, { timeZone: 'UTC' });
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC', weekday: 'short' })
   }
   if (columnType === "hour") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', weekday: 'short' })
   }
   if (columnType === "timestamp") {
     return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
