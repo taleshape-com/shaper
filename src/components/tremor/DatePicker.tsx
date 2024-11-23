@@ -164,7 +164,7 @@ const triggerStyles = tv({
     // placeholder color
     "placeholder-gray-400 dark:placeholder-gray-500",
     // hover
-    "hover:bg-cbga hover:dark:bg-cbga",
+    "hover:bg-cbga hover:dark:bg-dbga",
     // disabled
     "disabled:pointer-events-none",
     "disabled:bg-gray-100 disabled:text-gray-400",
@@ -903,13 +903,13 @@ const RangeDatePicker = ({
         {displayRange}
       </Trigger>
       <CalendarPopover align={align}>
-        <div className="flex bg-cbg dark:dbg">
+        <div className="flex bg-cbg dark:bg-dbg">
           <div className="flex flex-col overflow-x-auto sm:flex-row sm:items-start">
             {presets && presets.length > 0 && (
               <div
                 className={cx(
                   "relative flex h-16 w-full items-center sm:h-full sm:w-40",
-                  "border-b border-cb sm:border-b-0 sm:border-r dark:border-cb",
+                  "border-b border-cb sm:border-b-0 sm:border-r dark:border-db",
                   "overflow-auto",
                 )}
               >

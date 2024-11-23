@@ -128,7 +128,7 @@ const LegendItem = ({
           // base
           "truncate whitespace-nowrap text-xs",
           // text color
-          "text-ctext dark:dtext",
+          "text-ctext dark:text-dtext",
           hasOnValueChange &&
           "group-hover:text-gray-900 dark:group-hover:text-gray-50",
           activeLegend && activeLegend !== name ? "opacity-40" : "opacity-100",
@@ -763,7 +763,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 // base
                 "text-xs",
                 // text fill
-                "fill-ctext2 dark:fill-ctext2",
+                "fill-ctext2 dark:fill-dtext2",
               )}
               tick={{
                 transform:
@@ -808,7 +808,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               isAnimationActive={true}
               animationDuration={100}
               cursor={{
-                fill: "var(--shaper-background-color-invert)",
+                fill: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)') ? "var(--shaper-dark-mode-background-color-invert)" : "var(--shaper-background-color-invert)",
                 opacity: 0.05
               }}
               offset={20}

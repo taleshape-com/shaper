@@ -70,7 +70,7 @@ const LegendItem = ({
           // base
           "truncate whitespace-nowrap text-xs",
           // text color
-          "text-ctext dark:dtext",
+          "text-ctext dark:text-dtext",
           hasOnValueChange &&
           "group-hover:text-gray-900 dark:group-hover:text-gray-50",
           activeLegend && activeLegend !== name ? "opacity-40" : "opacity-100",
@@ -695,7 +695,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 // base
                 "text-xs",
                 // text fill
-                "fill-ctext2 dark:fill-ctext2",
+                "fill-ctext2 dark:fill-dtext2",
               )}
               tickFormatter={valueFormatter}
               allowDecimals={allowDecimals}

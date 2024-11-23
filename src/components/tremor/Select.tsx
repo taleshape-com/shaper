@@ -27,7 +27,7 @@ const selectTriggerStyles = [
     // border color
     "border-cb dark:border-db",
     // text color
-    "text-ctext dark:dtext",
+    "text-ctext dark:text-dtext",
     // placeholder
     "data-[placeholder]:text-ctext2 data-[placeholder]:dark:text-dtext2",
     // background color
@@ -205,11 +205,11 @@ const SelectItem = React.forwardRef<
         // base
         "grid cursor-pointer grid-cols-[1fr_20px] gap-x-2 rounded px-3 py-2 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-ctext dark:dtext",
+        "text-ctext dark:text-dtext",
         // disabled
         "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
         // focus
-        "focus-visible:bg-cbga focus-visible:dark:dbga",
+        "focus-visible:bg-cbga focus-visible:dark:bg-dbga",
         // hover
         "hover:bg-cbga hover:dark:bg-dbga",
         className,

@@ -125,7 +125,7 @@ const Calendar = ({
         day: cx(
           "size-9 rounded text-sm focus:z-10",
           "text-ctext dark:text-dtext",
-          "hover:bg-cbga hover:dark:bg-cbga",
+          "hover:bg-cbga hover:dark:bg-dbga",
           focusRing,
         ),
         day_today: "font-semibold",
