@@ -87,6 +87,14 @@ func loadConfig() Config {
 }
 
 func Run(config Config) func(context.Context) {
+	fmt.Println("⇨ dashboard directory:", config.DashboardDir)
+	if config.Favicon != "" {
+		fmt.Println("⇨ custom favicon:", config.Favicon)
+	}
+	if config.CustomCSS != "" {
+		fmt.Println("⇨ custom CSS injected into frontend")
+	}
+
 	// connect to duckdb
 	db, err := sqlx.Connect("duckdb", config.DBFile)
 	if err != nil {
