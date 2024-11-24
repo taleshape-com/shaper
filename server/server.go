@@ -17,7 +17,7 @@ import (
 	slogecho "github.com/samber/slog-echo"
 )
 
-func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string) *echo.Echo {
+func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) *echo.Echo {
 	// Echo instance
 	e := echo.New()
 	e.HideBanner = true
@@ -39,7 +39,7 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	}))
 
 	// Routes
-	routes(e, app, frontendFS, modTime, customCSS)
+	routes(e, app, frontendFS, modTime, customCSS, favicon)
 
 	// Start server
 	go func() {

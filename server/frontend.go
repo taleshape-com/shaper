@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -20,7 +21,29 @@ func frontend(frontendFS fs.FS) echo.HandlerFunc {
 	return echo.WrapHandler(http.HandlerFunc(assetHandler.ServeHTTP))
 }
 
-func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
+func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.HandlerFunc {
+	fsys, err := fs.Sub(frontendFS, "dist")
+	if err != nil {
+		panic(err)
+	}
+	return func(c echo.Context) error {
+		var file fs.File
+		var err error
+		if favicon != "" {
+			file, err = os.Open(favicon)
+		} else {
+			file, err = fsys.Open("favicon.ico")
+		}
+		if err != nil {
+			return c.String(http.StatusNotFound, "Not Found")
+		}
+		defer file.Close()
+		http.ServeContent(c.Response(), c.Request(), "favicon.ico", modTime, file.(io.ReadSeeker))
+		return nil
+	}
+}
+
+func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		panic(err)
@@ -40,7 +63,10 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string) e
 	if err != nil {
 		panic(err)
 	}
-	content := strings.Replace(string(fileContent), "<style></style>", "<style>"+customCSS+"</style>", 1)
+
+	// Inject custom CSS
+	html := strings.Replace(string(fileContent), "<style></style>", "<style>"+customCSS+"</style>", 1)
+
 	return func(c echo.Context) error {
 		// Add cache headers for index.html
 		c.Response().Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
@@ -64,7 +90,7 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string) e
 			}
 		}
 
-		http.ServeContent(c.Response(), c.Request(), "index.html", modTime, strings.NewReader(content))
+		http.ServeContent(c.Response(), c.Request(), "index.html", modTime, strings.NewReader(html))
 		return nil
 	}
 }

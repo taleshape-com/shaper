@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string) {
+func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
 	apiWithAuth := e.Group("/api", middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
 		KeyLookup: "cookie:shaper-token",
 		Validator: func(key string, c echo.Context) (bool, error) {
@@ -37,11 +37,11 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	assetsGroup.GET("/*", frontend(frontendFS))
 
 	// Icon - moderate caching
-	e.GET("/icon.svg", frontend(frontendFS), CacheControl(CacheConfig{
+	e.GET("/favicon.ico", serveFavicon(frontendFS, favicon, modTime), CacheControl(CacheConfig{
 		MaxAge: 24 * time.Hour, // 1 day
 		Public: true,
 	}))
 
 	// Index HTML - light caching with revalidation
-	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS))
+	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, "/favicon.ico"))
 }

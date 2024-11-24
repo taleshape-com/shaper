@@ -29,6 +29,7 @@ type Config struct {
 	DashboardDir      string
 	ExecutableModTime time.Time
 	CustomCSS         string
+	Favicon           string
 }
 
 func main() {
@@ -45,6 +46,7 @@ func loadConfig() Config {
 	loginToken := flags.String('t', "token", "", "token used for login (required)")
 	dashboardDir := flags.String('d', "dashboards", "", "path to directory to read dashboard SQL files from (required)")
 	customCSS := flags.String('c', "css", "", "CSS string to inject into the frontend")
+	favicon := flags.String('i', "favicon", "", "path to override favicon. Must end .svg or .ico")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
@@ -79,6 +81,7 @@ func loadConfig() Config {
 		DashboardDir:      *dashboardDir,
 		ExecutableModTime: executableModTime,
 		CustomCSS:         *customCSS,
+		Favicon:           *favicon,
 	}
 	return config
 }
@@ -101,7 +104,7 @@ func Run(config Config) func(context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	e := server.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS)
+	e := server.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
 
 	return func(ctx context.Context) {
 		if err := db.Close(); err != nil {
