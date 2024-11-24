@@ -808,7 +808,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               isAnimationActive={true}
               animationDuration={100}
               cursor={{
-                fill: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)') ? "var(--shaper-dark-mode-background-color-invert)" : "var(--shaper-background-color-invert)",
+                fill: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "var(--shaper-dark-mode-background-color-invert)" : "var(--shaper-background-color-invert)",
                 opacity: 0.05
               }}
               offset={20}

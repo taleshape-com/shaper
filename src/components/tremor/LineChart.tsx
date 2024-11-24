@@ -716,7 +716,10 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               wrapperStyle={{ outline: "none", zIndex: 30 }}
               isAnimationActive={true}
               animationDuration={100}
-              cursor={{ stroke: "var(--shaper-border-color)", strokeWidth: 1 }}
+              cursor={{
+                stroke: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "var(--shaper-dark-mode-border-color)" : "var(--shaper-border-color)",
+                strokeWidth: 1,
+              }}
               offset={20}
               position={{ y: 0 }}
               content={({ active, payload, label }) => {
