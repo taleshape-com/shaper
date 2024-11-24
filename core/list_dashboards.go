@@ -9,7 +9,7 @@ import (
 
 func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
 	result := ListResult{Dashboards: []string{}}
-	files, err := os.ReadDir("dashboards")
+	files, err := os.ReadDir(app.DashboardDir)
 	if err != nil {
 		return result, fmt.Errorf("failed to read dashboards directory: %w", err)
 	}
