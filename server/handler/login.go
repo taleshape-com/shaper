@@ -5,10 +5,11 @@ import (
 	"shaper/core"
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
-func CookieLogin(app *core.App) echo.HandlerFunc {
+func TokenLogin(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
@@ -23,20 +24,14 @@ func CookieLogin(app *core.App) echo.HandlerFunc {
 		} else if !ok {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
-		// Set the cookie
-		cookie := new(http.Cookie)
-		cookie.Name = "shaper-token"
-		cookie.Value = loginRequest.Token
-		cookie.Expires = time.Now().Add(90 * 24 * time.Hour)
-		cookie.HttpOnly = true
-		cookie.Secure = true // Use this in production with HTTPS
-		cookie.SameSite = http.SameSiteStrictMode
-		cookie.Path = "/api"
-		c.SetCookie(cookie)
-		return c.JSON(http.StatusOK, map[string]string{"message": "Login successful"})
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"exp": time.Now().Add(time.Second * 10).Unix(),
+		})
+		tokenString, err := jwtToken.SignedString(app.JWTSecret)
+		if err != nil {
+			app.Logger.Error("Failed to sign token", err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
+		}
+		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
 	}
-}
-
-func TestCookie(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"message": "Cookie is valid"})
 }

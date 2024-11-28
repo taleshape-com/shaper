@@ -30,6 +30,8 @@ type Config struct {
 	ExecutableModTime time.Time
 	CustomCSS         string
 	Favicon           string
+	JWTSecret         []byte
+	JWTExp            time.Duration
 }
 
 func main() {
@@ -47,6 +49,8 @@ func loadConfig() Config {
 	dashboardDir := flags.String('d', "dashboards", "", "path to directory to read dashboard SQL files from (required)")
 	customCSS := flags.String('c', "css", "", "CSS string to inject into the frontend")
 	favicon := flags.String('i', "favicon", "", "path to override favicon. Must end .svg or .ico")
+	jwtSecret := flags.String('j', "jwtsecret", "", "JWT secret to sign auth tokens")
+	jwtExp := flags.Duration('e', "jwtexp", 15*time.Minute, "JWT expiration duration")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
@@ -82,6 +86,8 @@ func loadConfig() Config {
 		ExecutableModTime: executableModTime,
 		CustomCSS:         *customCSS,
 		Favicon:           *favicon,
+		JWTSecret:         []byte(*jwtSecret),
+		JWTExp:            *jwtExp,
 	}
 	return config
 }
@@ -108,7 +114,7 @@ func Run(config Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	app, err := core.New(db, logger, config.LoginToken, config.DashboardDir)
+	app, err := core.New(db, logger, config.LoginToken, config.DashboardDir, config.JWTSecret, config.JWTExp)
 	if err != nil {
 		panic(err)
 	}

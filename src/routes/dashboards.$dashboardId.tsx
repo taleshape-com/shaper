@@ -28,9 +28,15 @@ export const Route = createFileRoute('/dashboards/$dashboardId')({
   loaderDeps: ({ search: { vars } }) => ({
     vars,
   }),
-  loader: async ({ params: { dashboardId }, deps: { vars } }) => {
+  loader: async ({ params: { dashboardId }, deps: { vars }, context: { auth: { getJwt } } }) => {
+    const jwt = await getJwt();
     const searchParams = getSearchParamString(vars)
-    return fetch(`/api/dashboards/${dashboardId}?${searchParams}`)
+    return fetch(`/api/dashboards/${dashboardId}?${searchParams}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: jwt,
+      }
+    })
       .then(async (response) => {
         if (response.status === 401) {
           throw redirect({

@@ -6,9 +6,9 @@ import {
   ErrorComponent,
 } from "@tanstack/react-router";
 import { z } from "zod";
-import { login, testCookie } from "../lib/auth";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
+import { useAuth } from "../auth";
 
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({
@@ -17,9 +17,8 @@ export const Route = createFileRoute("/login")({
   loaderDeps: ({ search: { redirect } }) => ({
     redirectUrl: redirect,
   }),
-  loader: async ({ deps: { redirectUrl } }) => {
-    const isLoggedIn = await testCookie();
-    if (isLoggedIn) {
+  loader: async ({ deps: { redirectUrl }, context: { auth: { testLogin } } }) => {
+    if (await testLogin()) {
       throw redirect({
         to: redirectUrl || "/",
       });
@@ -35,6 +34,7 @@ function LoginErrorComponent({ error }: ErrorComponentProps) {
 }
 
 function LoginComponent() {
+  const auth = useAuth();
   const router = useRouter();
   const search = Route.useSearch();
   const [token, setToken] = React.useState("");
@@ -45,11 +45,11 @@ function LoginComponent() {
     e.preventDefault();
     setIsLoggingIn(true);
     setError("");
-    const err = await login(token);
-    if (err) {
-      setError(err);
-    } else {
+    const ok = await auth.login(token)
+    if (ok) {
       router.history.push(search.redirect || "/");
+    } else {
+      setError("Invalid token");
     }
     setIsLoggingIn(false);
   };

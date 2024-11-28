@@ -6,24 +6,19 @@ import (
 	"shaper/server/handler"
 	"time"
 
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
-	apiWithAuth := e.Group("/api", middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-		KeyLookup: "cookie:shaper-token",
-		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidLogin(app, c.Request().Context(), key)
-		},
-		ErrorHandler: func(err error, c echo.Context) error {
-			return c.JSON(401, map[string]string{"error": "Unauthorized"})
-		},
+
+	apiWithAuth := e.Group("/api", echojwt.WithConfig(echojwt.Config{
+		TokenLookup: "header:Authorization",
+		SigningKey:  app.JWTSecret,
 	}))
 
 	// API routes - no caching
-	e.POST("/api/login/cookie", handler.CookieLogin(app))
-	apiWithAuth.GET("/login/cookie/test", handler.TestCookie)
+	e.POST("/api/login/token", handler.TokenLogin(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
 	apiWithAuth.GET("/dashboards/:name", handler.GetDashboard(app))
 	apiWithAuth.GET("/dashboards/:name/query/:query/:filename", handler.DownloadQuery(app))
