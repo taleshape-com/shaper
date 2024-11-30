@@ -1,22 +1,16 @@
 import { z } from 'zod'
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
-import { Result } from '../lib/dashboard'
 import { Dashboard } from '../components/dashboard'
-import { redirect } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet'
 import { useNavigate } from '@tanstack/react-router'
-import { varsParamSchema, getSearchParamString } from '../lib/utils'
+import { varsParamSchema } from '../lib/utils'
 import { useAuth } from '../auth'
 
 export const Route = createFileRoute('/dashboards/$dashboardId')({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
-  loader: async ({ params: { dashboardId }, deps: { vars }, context: { auth: { getJwt } } }) => {
-    const jwt = await getJwt();
-
-  },
   errorComponent: DashboardErrorComponent,
   notFoundComponent: () => {
     return (

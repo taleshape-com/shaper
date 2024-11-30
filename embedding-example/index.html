@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <h1>Embedding Demo</h1>
+    <p>Dashboard will be embedded here:</p>
+    <div id="dashboard-container"></div>
+    <script src="http://localhost:3000/embed/shaper.js"></script>
+    <script>
+      const baseUrl = 'http://localhost:3000'
+      const dashboardId = 'Tickets'
+      shaper.embed({
+        container: document.getElementById('dashboard-container'),
+        dashboardId,
+        baseUrl,
+        storeVarsInQueryParam: 'analytics',
+        async getJwt() {
+          const res = await fetch('/api/jwt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ baseUrl, dashboardId }),
+          })
+          return res.json()
+        },
+      })
+    </script>
+  </body>
+</html>
+

@@ -31,6 +31,12 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}))
 	assetsGroup.GET("/*", frontend(frontendFS))
 
+	e.GET("/embed/*", frontend(frontendFS), CacheControl(CacheConfig{
+		MaxAge: 24 * time.Hour, // 1 day
+		Public: true,
+		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
+	}))
+
 	// Icon - moderate caching
 	e.GET("/favicon.ico", serveFavicon(frontendFS, favicon, modTime), CacheControl(CacheConfig{
 		MaxAge: 24 * time.Hour, // 1 day

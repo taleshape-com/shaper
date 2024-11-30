@@ -14,19 +14,21 @@ import DashboardValue from "./DashboardValue"
 import DashboardTable from "./DashboardTable"
 import { useEffect, useState } from "react"
 
+export interface DashboardProps {
+  id: string,
+  vars: VarsParamSchema,
+  getJwt: () => Promise<string>,
+  baseUrl?: string,
+  onVarsChanged: (newVars: Record<string, string | string[]>) => void,
+}
+
 export function Dashboard({
   id,
   vars,
   getJwt,
   baseUrl = '',
   onVarsChanged,
-}: {
-  id: string,
-  vars: VarsParamSchema,
-  getJwt: () => Promise<string>,
-  baseUrl?: string,
-  onVarsChanged: (newVars: Record<string, string | string[]>) => void,
-}) {
+}: DashboardProps) {
   const [data, setData] = useState<Result>()
   useEffect(() => {
     fetchDashboard(id, vars, baseUrl, getJwt).then(setData)

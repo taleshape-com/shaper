@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 // (Optional) Import default theme when using a custom font (Step 7)
 import defaultTheme from 'tailwindcss/defaultTheme';
+import { scopedPreflightStyles, isolateInsideOfContainer } from 'tailwindcss-scoped-preflight';
+
 export default {
   content: [
     "./index.html",
@@ -110,5 +112,10 @@ export default {
       },
     },
   },
-  plugins: [require("@tailwindcss/forms")],
+  plugins: [
+    require("@tailwindcss/forms"),
+    scopedPreflightStyles({
+      isolationStrategy: isolateInsideOfContainer('.shaper-tailwind-scope'),
+    }),
+  ],
 }
