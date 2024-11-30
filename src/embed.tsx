@@ -1,42 +1,7 @@
 import "./index.css";
 import ReactDOM from "react-dom/client";
-import { Dashboard } from './components/dashboard'
 import { VarsParamSchema } from "./lib/utils";
-import { useState } from "react";
-
-interface EmbedArgs {
-  container: HTMLElement;
-  baseUrl?: string;
-  dashboardId: string;
-  storeVarsInQueryParam?: string;
-  initialVars?: VarsParamSchema,
-  getJwt: () => Promise<string>;
-  onVarsChanged?: (newVars: VarsParamSchema) => void;
-}
-
-function EmbedComponent({
-  dashboardId,
-  baseUrl,
-  initialVars,
-  getJwt,
-  onVarsChanged,
-}: Omit<EmbedArgs, 'container' | 'storeVarsInQueryParam'>) {
-  const [vars, setVars] = useState(initialVars)
-  return <div className="shaper-tailwind-scope">
-    <Dashboard
-      id={dashboardId}
-      baseUrl={baseUrl}
-      vars={vars}
-      getJwt={getJwt}
-      onVarsChanged={newVars => {
-        setVars(newVars)
-        if (onVarsChanged) {
-          onVarsChanged(newVars)
-        }
-      }}
-    />
-  </div>
-}
+import { EmbedComponent, EmbedProps } from "./components/Embed";
 
 function storeVarsInQuery(param: string, vars: VarsParamSchema) {
   const url = new URL(window.location.toString())
@@ -50,6 +15,11 @@ function varsFromQuery(param: string) {
     return null
   }
   return JSON.parse(decodeURIComponent(p))
+}
+
+type EmbedArgs = EmbedProps & {
+  container: HTMLElement;
+  storeVarsInQueryParam?: string;
 }
 
 export function embed({

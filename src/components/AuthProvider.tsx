@@ -1,18 +1,9 @@
 import { redirect } from '@tanstack/react-router'
-import * as React from 'react'
-
-export interface AuthContext {
-  getJwt: () => Promise<string>
-  login: (token: string) => Promise<boolean>
-  testLogin: () => Promise<boolean>
-}
-
-const localStorageTokenKey = 'shaper-token'
-
-const AuthContext = React.createContext<AuthContext | null>(null)
+import { useState } from 'react';
+import { parseJwt, localStorageTokenKey, AuthContext } from '../lib/auth';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [jwt, setJwt] = React.useState<string | null>(null)
+  const [jwt, setJwt] = useState<string | null>(null)
 
   const refreshJwt = async (token: string) => {
     return fetch(`/api/login/token`, {
@@ -88,20 +79,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function useAuth() {
-  const context = React.useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
 
-function parseJwt(token: string) {
-  var base64Url = token.split('.')[1];
-  var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join(''));
-
-  return JSON.parse(jsonPayload);
-}

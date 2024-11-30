@@ -8,7 +8,7 @@ import {
 import { z } from "zod";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
-import { useAuth } from "../auth";
+import { useAuth } from "../lib/auth";
 
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({

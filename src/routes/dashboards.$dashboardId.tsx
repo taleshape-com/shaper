@@ -5,7 +5,7 @@ import { Dashboard } from '../components/dashboard'
 import { Helmet } from 'react-helmet'
 import { useNavigate } from '@tanstack/react-router'
 import { varsParamSchema } from '../lib/utils'
-import { useAuth } from '../auth'
+import { useAuth } from '../lib/auth'
 
 export const Route = createFileRoute('/dashboards/$dashboardId')({
   validateSearch: z.object({

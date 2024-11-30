@@ -1,6 +1,6 @@
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import React from "react";
-import { AuthContext } from "../auth";
+import { IAuthContext } from "../lib/auth";
 
 const TanStackRouterDevtools =
   process.env.NODE_ENV === "production"
@@ -15,7 +15,7 @@ const TanStackRouterDevtools =
     );
 
 interface RouterContext {
-  auth: AuthContext
+  auth: IAuthContext
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({

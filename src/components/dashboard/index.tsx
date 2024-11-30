@@ -32,7 +32,7 @@ export function Dashboard({
   const [data, setData] = useState<Result>()
   useEffect(() => {
     fetchDashboard(id, vars, baseUrl, getJwt).then(setData)
-  }, [id, vars])
+  }, [id, vars, baseUrl, getJwt])
 
   if (!data) {
     return <div
