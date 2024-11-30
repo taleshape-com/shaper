@@ -12,12 +12,34 @@ import DashboardLineChart from "./DashboardLineChart"
 import DashboardBarChart from "./DashboardBarChart"
 import DashboardValue from "./DashboardValue"
 import DashboardTable from "./DashboardTable"
+import { useEffect, useState } from "react"
 
-export function Dashboard({ data, vars, onVarsChanged }: {
-  data: Result,
+export function Dashboard({
+  id,
+  vars,
+  getJwt,
+  baseUrl = '',
+  onVarsChanged,
+}: {
+  id: string,
   vars: VarsParamSchema,
+  getJwt: () => Promise<string>,
+  baseUrl?: string,
   onVarsChanged: (newVars: Record<string, string | string[]>) => void,
 }) {
+  const [data, setData] = useState<Result>()
+  useEffect(() => {
+    fetchDashboard(id, vars, baseUrl, getJwt).then(setData)
+  }, [id, vars])
+
+  if (!data) {
+    return <div
+      className="h-[calc(100vh)] flex items-center justify-center text-xl"
+    >
+      <span>loading...</span>
+    </div>
+  }
+
   const searchParams = getSearchParamString(vars)
 
   const sections: Result['sections'] =
@@ -239,4 +261,32 @@ const renderContent = (
     data={query.rows}
   />
 
+}
+
+const fetchDashboard = async (
+  id: string,
+  vars: VarsParamSchema,
+  baseUrl: string,
+  getJwt: () => Promise<string>,
+): Promise<Result> => {
+  const jwt = await getJwt()
+  const searchParams = getSearchParamString(vars)
+  const res = await fetch(`${baseUrl}/api/dashboards/${id}?${searchParams}`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: jwt,
+    }
+  })
+  const json = await res.json()
+  if (res.status !== 200) {
+    throw new Error(
+      (
+        json?.Error?.Msg ??
+        json?.Error ??
+        json?.message ??
+        json
+      ).toString(),
+    )
+  }
+  return json
 }

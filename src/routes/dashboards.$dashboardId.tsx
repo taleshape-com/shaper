@@ -7,62 +7,15 @@ import { redirect } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet'
 import { useNavigate } from '@tanstack/react-router'
 import { varsParamSchema, getSearchParamString } from '../lib/utils'
+import { useAuth } from '../auth'
 
 export const Route = createFileRoute('/dashboards/$dashboardId')({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
-  loaderDeps: ({ search: { vars } }) => ({
-    vars,
-  }),
   loader: async ({ params: { dashboardId }, deps: { vars }, context: { auth: { getJwt } } }) => {
     const jwt = await getJwt();
-    const searchParams = getSearchParamString(vars)
-    return fetch(`/api/dashboards/${dashboardId}?${searchParams}`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: jwt,
-      }
-    })
-      .then(async (response) => {
-        if (response.status === 401) {
-          throw redirect({
-            to: '/login',
-            search: {
-              // Use the current location to power a redirect after login
-              // (Do not use `router.state.resolvedLocation` as it can
-              // potentially lag behind the actual current location)
-              redirect: location.pathname + location.search + location.hash,
-            },
-          })
-        }
-        if (response.status === 404) {
-          throw notFound()
-        }
-        if (response.status !== 200) {
-          return response
-            .json()
-            .then(
-              (data: {
-                Error?: { Type: number; Msg?: string }
-                message?: string
-              }) => {
-                throw new Error(
-                  (
-                    data?.Error?.Msg ??
-                    data?.Error ??
-                    data?.message ??
-                    data
-                  ).toString(),
-                )
-              },
-            )
-        }
-        return response.json()
-      })
-      .then((fetchedData: Result) => {
-        return fetchedData
-      })
+
   },
   errorComponent: DashboardErrorComponent,
   notFoundComponent: () => {
@@ -88,17 +41,19 @@ function DashboardErrorComponent({ error }: ErrorComponentProps) {
 
 function DashboardViewComponent() {
   const { vars } = Route.useSearch()
-  const data = Route.useLoaderData()
+  const params = Route.useParams()
+  const auth = useAuth()
   const navigate = useNavigate({ from: '/dashboards/$dashboardId' })
 
   return <>
     <Helmet>
-      <title>{data.title}</title>
-      <meta name="description" content={data.title} />
+      <title>{params.dashboardId}</title>
+      <meta name="description" content={params.dashboardId} />
     </Helmet>
     <Dashboard
-      data={data}
+      id={params.dashboardId}
       vars={vars}
+      getJwt={auth.getJwt}
       onVarsChanged={newVars => {
         navigate({
           search: (old: any) => ({
