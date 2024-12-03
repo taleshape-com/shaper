@@ -39,7 +39,7 @@ function DashboardViewComponent() {
   const auth = useAuth()
   const navigate = useNavigate({ from: '/dashboards/$dashboardId' })
 
-  return <>
+  return <div className="pb-16 pt-1">
     <Helmet>
       <title>{params.dashboardId}</title>
       <meta name="description" content={params.dashboardId} />
@@ -57,5 +57,5 @@ function DashboardViewComponent() {
         })
       }}
     />
-  </>
+  </div>
 }

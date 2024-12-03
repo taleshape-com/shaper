@@ -37,10 +37,11 @@ export function embed({
       initialVars = fromQuery
     }
   }
+  container.classList.add("shaper-scope")
   ReactDOM.createRoot(container).render(
     <EmbedComponent
       dashboardId={dashboardId}
-      baseUrl={baseUrl}
+      baseUrl={baseUrl ?? (window as any).shaper.defaultBaseUrl}
       initialVars={initialVars}
       getJwt={getJwt}
       onVarsChanged={newVars => {

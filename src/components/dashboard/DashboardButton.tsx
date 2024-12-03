@@ -2,13 +2,13 @@ import * as SelectPrimitives from "@radix-ui/react-select";
 import { RiFileDownloadLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 import { Button } from "../tremor/Button";
-import { formatValue } from "../../lib/render";
 
 type ButtonProps = {
   label?: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
   searchParams: string;
+  baseUrl?: string;
 };
 
 // TODO: Support multiple buttons in one select to download different file formats
@@ -17,6 +17,7 @@ function DashboardButton({
   data,
   headers,
   searchParams,
+  baseUrl,
 }: ButtonProps) {
   return (
     <div className="ml-2">
@@ -24,7 +25,7 @@ function DashboardButton({
         asChild
         variant="secondary"
         className="font-normal flex w-full items-center justify-between my-1">
-        <a href={formatValue(`${data[0][0]}?${searchParams}`, headers[0].type).toString()} download>
+        <a href={`${baseUrl}${data[0][0]}?${searchParams}`} download>
           {label}
           {headers[0].name}
           <SelectPrimitives.Icon asChild>

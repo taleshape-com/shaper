@@ -6,7 +6,7 @@ export interface EmbedProps {
   baseUrl?: string;
   dashboardId: string;
   initialVars?: VarsParamSchema,
-  getJwt: () => Promise<string>;
+  getJwt: (args: { baseUrl?: string }) => Promise<string>;
   onVarsChanged?: (newVars: VarsParamSchema) => void;
 }
 
@@ -19,12 +19,12 @@ export function EmbedComponent({
   onVarsChanged,
 }: EmbedProps) {
   const [vars, setVars] = useState(initialVars)
-  return <div className="shaper-tailwind-scope">
+  return <div className="antialiased text-ctext dark:text-dtext">
     <Dashboard
       id={dashboardId}
       baseUrl={baseUrl}
       vars={vars}
-      getJwt={getJwt}
+      getJwt={() => getJwt({ baseUrl })}
       onVarsChanged={newVars => {
         setVars(newVars)
         if (onVarsChanged) {

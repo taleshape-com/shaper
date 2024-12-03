@@ -36,7 +36,7 @@ export function Dashboard({
 
   if (!data) {
     return <div
-      className="h-[calc(100vh)] flex items-center justify-center text-xl"
+      className="min-h-[calc(100vh)] flex items-center justify-center text-xl"
     >
       <span>loading...</span>
     </div>
@@ -65,7 +65,7 @@ export function Dashboard({
   const numContentSections = sections.filter(section => section.type === 'content').length
 
   return (
-    <div className="mb-16 mt-1">
+    <div>
       <ChartHoverProvider>
         {sections.map((section, sectionIndex) => {
           if (section.type === 'header') {
@@ -74,17 +74,12 @@ export function Dashboard({
               <section
                 key={sectionIndex}
                 className={cx('flex flex-wrap items-center mr-3 ml-3', {
-                  'mt-1 border-t border-cb dark:border-db': sectionIndex !== 0 && section.title,
-                  'py-1 mb-2': section.queries.length > 0 || section.title,
+                  'mb-2 mt-1': section.queries.length > 0 || section.title,
+                  'pt-4': section.title && sectionIndex !== 0,
                 })}
               >
-                {sectionIndex === 0 ? (
-                  <h1 className="text-2xl flex-grow py-1 mr-4 w-full sm:w-fit">
-                    {data.title}
-                  </h1>
-                ) : null}
                 {section.title ? (
-                  <h1 className="text-lg flex-grow text-left py-1 mr-4 mt-5 w-full sm:w-fit">
+                  <h1 className="text-xl flex-grow text-left w-full sm:w-fit">
                     {section.title}
                   </h1>
                 ) : (
@@ -123,6 +118,7 @@ export function Dashboard({
                         headers={columns}
                         data={rows}
                         searchParams={searchParams}
+                        baseUrl={baseUrl}
                       />
                     )
                   }

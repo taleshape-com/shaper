@@ -8,6 +8,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  important: '.shaper-scope',
   theme: {
     extend: {
       colors: {
@@ -115,7 +116,7 @@ export default {
   plugins: [
     require("@tailwindcss/forms"),
     scopedPreflightStyles({
-      isolationStrategy: isolateInsideOfContainer('.shaper-tailwind-scope'),
+      isolationStrategy: isolateInsideOfContainer('.shaper-scope'),
     }),
   ],
 }

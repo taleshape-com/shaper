@@ -37,3 +37,7 @@
   --shaper-dark-mode-background-color-invert: #ebecf2;
   --shaper-dark-mode-border-color: #282c48;
 }
+
+body[data-scroll-locked] {
+  padding-top: 0 !important;
+}

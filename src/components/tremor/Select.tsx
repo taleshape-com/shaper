@@ -129,7 +129,7 @@ const SelectContent = React.forwardRef<
     },
     forwardedRef,
   ) => (
-    <SelectPrimitives.Portal>
+    <SelectPrimitives.Portal container={document.querySelector('.shaper-scope')}>
       <SelectPrimitives.Content
         ref={forwardedRef}
         className={cx(

@@ -10,14 +10,12 @@
     <div id="dashboard-container"></div>
     <script src="http://localhost:3000/embed/shaper.js"></script>
     <script>
-      const baseUrl = 'http://localhost:3000'
       const dashboardId = 'Tickets'
       shaper.embed({
         container: document.getElementById('dashboard-container'),
         dashboardId,
-        baseUrl,
         storeVarsInQueryParam: 'analytics',
-        async getJwt() {
+        async getJwt({ baseUrl }) {
           const res = await fetch('/api/jwt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

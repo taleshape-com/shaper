@@ -7,6 +7,7 @@ const TOKEN = 'test'
 
 const server = http.createServer(async (req, res) => {
   if (req.url === '/api/jwt' && req.method === 'POST') {
+    //verify coookie here
     let body = ''
     req.on('data', chunk => {
       body += chunk.toString()
@@ -19,7 +20,10 @@ const server = http.createServer(async (req, res) => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ token: TOKEN }),
+          body: JSON.stringify({
+            token: TOKEN
+            // customer vars
+          }),
         })
         if (r.status !== 200) {
           console.error('failed fetching token:', await r.text())
