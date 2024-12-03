@@ -119,6 +119,7 @@ export function Dashboard({
                         data={rows}
                         searchParams={searchParams}
                         baseUrl={baseUrl}
+                        getJwt={getJwt}
                       />
                     )
                   }
