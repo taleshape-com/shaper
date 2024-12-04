@@ -1,10 +1,16 @@
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunkPlugin, type PluginOption } from 'vite';
 import react from "@vitejs/plugin-react";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), TanStackRouterVite()],
+  plugins: [
+    react(),
+    TanStackRouterVite(),
+    visualizer() as PluginOption,
+    splitVendorChunkPlugin(),
+  ],
   server: {
     proxy: {
       "/api": {

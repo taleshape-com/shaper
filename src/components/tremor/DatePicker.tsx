@@ -229,7 +229,7 @@ const CalendarPopover = React.forwardRef<
   React.ComponentProps<typeof PopoverPrimitives.Content>
 >(({ align, className, children, ...props }, forwardedRef) => {
   return (
-    <PopoverPrimitives.Portal>
+    <PopoverPrimitives.Portal container={document.querySelector('.shaper-scope')}>
       <PopoverPrimitives.Content
         ref={forwardedRef}
         sideOffset={10}

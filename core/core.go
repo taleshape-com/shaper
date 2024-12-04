@@ -3,6 +3,7 @@ package core
 
 import (
 	"log/slog"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -12,13 +13,22 @@ type App struct {
 	Logger       *slog.Logger
 	LoginToken   string
 	DashboardDir string
+	JWTSecret    []byte
+	JWTExp       time.Duration
 }
 
-func New(db *sqlx.DB, logger *slog.Logger, loginToken string, dashboardDir string) (*App, error) {
+func New(db *sqlx.DB, logger *slog.Logger, loginToken string, dashboardDir string, jwtSecret []byte, jwtExp time.Duration) (*App, error) {
 	if err := initDB(db); err != nil {
 		return nil, err
 	}
-	return &App{db: db, Logger: logger, LoginToken: loginToken, DashboardDir: dashboardDir}, nil
+	return &App{
+		db:           db,
+		Logger:       logger,
+		LoginToken:   loginToken,
+		DashboardDir: dashboardDir,
+		JWTSecret:    jwtSecret,
+		JWTExp:       jwtExp,
+	}, nil
 }
 
 func initDB(db *sqlx.DB) error {

@@ -1,5 +1,6 @@
 node_modules
 dist
+stats.html
 
 # Editor directories and files
 .vscode/*

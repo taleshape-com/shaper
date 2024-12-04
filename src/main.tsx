@@ -1,7 +1,9 @@
 import "./index.css";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { createRouter } from "@tanstack/react-router";
+import { AuthProvider } from './components/AuthProvider'
+import { App } from "./App"
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
@@ -13,6 +15,9 @@ const router = createRouter({
   defaultPreload: "intent",
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   defaultStaleTime: 5000,
+  context: {
+    auth: undefined!, // This will be set after we wrap the app in an AuthProvider
+  },
 });
 
 // Register the router instance for type safety
@@ -28,7 +33,9 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <App router={router} />
+      </AuthProvider>
     </StrictMode>,
   );
 }

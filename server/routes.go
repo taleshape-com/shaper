@@ -6,27 +6,23 @@ import (
 	"shaper/server/handler"
 	"time"
 
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
-	apiWithAuth := e.Group("/api", middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-		KeyLookup: "cookie:shaper-token",
-		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidLogin(app, c.Request().Context(), key)
-		},
-		ErrorHandler: func(err error, c echo.Context) error {
-			return c.JSON(401, map[string]string{"error": "Unauthorized"})
-		},
+
+	apiWithAuth := e.Group("/api", echojwt.WithConfig(echojwt.Config{
+		TokenLookup: "header:Authorization",
+		SigningKey:  app.JWTSecret,
 	}))
 
 	// API routes - no caching
-	e.POST("/api/login/cookie", handler.CookieLogin(app))
-	apiWithAuth.GET("/login/cookie/test", handler.TestCookie)
+	e.POST("/api/login/token", handler.TokenLogin(app))
+	e.POST("/api/auth/token", handler.TokenAuth(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
-	apiWithAuth.GET("/dashboards/:name", handler.GetDashboard(app))
-	apiWithAuth.GET("/dashboards/:name/query/:query/:filename", handler.DownloadQuery(app))
+	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
+	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 
 	// Static assets - aggressive caching
 	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{
@@ -35,6 +31,12 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		Immutable: true,
 	}))
 	assetsGroup.GET("/*", frontend(frontendFS))
+
+	e.GET("/embed/*", serveEmbedJS(frontendFS, modTime), CacheControl(CacheConfig{
+		MaxAge: 24 * time.Hour, // 1 day
+		Public: true,
+		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
+	}))
 
 	// Icon - moderate caching
 	e.GET("/favicon.ico", serveFavicon(frontendFS, favicon, modTime), CacheControl(CacheConfig{

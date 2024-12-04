@@ -8,8 +8,14 @@ type DashboardListResponse = {
 };
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    return fetch(`/api/dashboards`)
+  loader: async ({ context: { auth: { getJwt } } }) => {
+    const jwt = await getJwt();
+    return fetch(`/api/dashboards`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: jwt,
+      }
+    })
       .then(async (response) => {
         if (response.status === 401) {
           throw redirect({

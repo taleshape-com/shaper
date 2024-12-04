@@ -1,34 +1,29 @@
-export async function login(token: string) {
-  return fetch(`/api/login/cookie`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ token }),
-  }).then(async (response) => {
-    if (response.status !== 200) {
-      return response.json().then((data: { error: string }) => {
-        return data.error;
-      });
-    }
-    return;
-  });
+import * as React from 'react'
+
+export interface IAuthContext {
+  getJwt: () => Promise<string>
+  login: (token: string) => Promise<boolean>
+  testLogin: () => Promise<boolean>
 }
 
-export async function testCookie() {
-  return fetch(`/api/login/cookie/test`, {
-    credentials: "include",
-  }).then(async (response) => {
-    if (response.status === 200) {
-      return true;
-    }
-    if (response.status === 401) {
-      return false;
-    }
-    return response
-      .json()
-      .then((data: { Error: { Type: number; Msg: string } }) => {
-        throw new Error(data.Error.Msg);
-      });
-  });
+export const localStorageTokenKey = 'shaper-token'
+
+export const AuthContext = React.createContext<IAuthContext | null>(null)
+
+export function useAuth() {
+  const context = React.useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+export function parseJwt(token: string) {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+
+  return JSON.parse(jsonPayload);
 }

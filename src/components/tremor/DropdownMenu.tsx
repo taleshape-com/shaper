@@ -105,7 +105,7 @@ const DropdownMenuContent = React.forwardRef<
     },
     forwardedRef,
   ) => (
-    <DropdownMenuPrimitives.Portal>
+    <DropdownMenuPrimitives.Portal container={document.querySelector('.shaper-scope')}>
       <DropdownMenuPrimitives.Content
         ref={forwardedRef}
         className={cx(

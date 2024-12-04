@@ -16,7 +16,7 @@ import (
 	"github.com/marcboeker/go-duckdb"
 )
 
-func GetDashboard(app *App, ctx context.Context, dashboardName string, queryParams url.Values) (GetResult, error) {
+func GetDashboard(app *App, ctx context.Context, dashboardName string, queryParams url.Values, variables map[string][]string) (GetResult, error) {
 	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
 	result := GetResult{
 		Title:    dashboardName,
@@ -135,7 +135,11 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			query.Columns = append(query.Columns, col)
 			if rInfo.Download == "csv" {
 				filename := query.Rows[0][colIndex].(string)
-				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv", dashboardName, queryIndex+1, url.QueryEscape(filename))
+				queryString := ""
+				if len(queryParams) > 0 {
+					queryString = "?" + queryParams.Encode()
+				}
+				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv%s", dashboardName, queryIndex+1, url.QueryEscape(filename), queryString)
 			}
 		}
 
@@ -180,7 +184,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			}
 		}
 
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows, variables)
 		if err != nil {
 			return result, err
 		}
@@ -189,7 +193,9 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" {
 			wantedSectionType = "header"
 		}
-		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
+		if wantedSectionType == "header" && handledByVariable(query.Columns, variables) {
+			hideNextContentSection = false
+		} else if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
 			lastSection := &result.Sections[len(result.Sections)-1]
 			lastSection.Queries = append(lastSection.Queries, query)
 		} else {
@@ -786,7 +792,7 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 	return varPrefix.String()
 }
 
-func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows, variables map[string][]string) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
 		columnName := ""
@@ -807,6 +813,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdown")
 		}
 		param := queryParams.Get(columnName)
+		if v, ok := variables[columnName]; ok {
+			if len(v) == 0 {
+				return fmt.Errorf("variable for single param '%s' must not be empty array", columnName)
+			}
+			if len(v) > 1 {
+				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", columnName, v)
+			}
+			param = v[0]
+		}
 		if param == "" {
 			if len(data) == 0 {
 				// No vars for dropdown without options
@@ -861,6 +876,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
 		params := queryParams[columnName]
+		if v, ok := variables[columnName]; ok {
+			params = v
+		}
 		if len(params) == 0 {
 			// Set default value to all rows
 			for _, row := range data {
@@ -922,6 +940,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing datepicker column")
 		}
 		param := queryParams.Get(columnName)
+		if v, ok := variables[columnName]; ok {
+			if len(v) == 0 {
+				return fmt.Errorf("variable for single param '%s' must not be empty array", columnName)
+			}
+			if len(v) > 1 {
+				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", columnName, v)
+			}
+			param = v[0]
+		}
 		if param == "" {
 			// Set default value
 			if defaultValueIndex != -1 {
@@ -968,6 +995,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing DATEPICKER_TO column")
 		}
 		fromParam := queryParams.Get(fromColumnName)
+		if v, ok := variables[fromColumnName]; ok {
+			if len(v) == 0 {
+				return fmt.Errorf("variable for single param '%s' must not be empty array", fromColumnName)
+			}
+			if len(v) > 1 {
+				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", fromColumnName, v)
+			}
+			fromParam = v[0]
+		}
 		if fromParam == "" {
 			// Set default value
 			if fromDefaultValueIndex != -1 {
@@ -987,6 +1023,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			singleVars[fromColumnName] = "TIMESTAMP '" + escapeSQLString(fromParam) + "'"
 		}
 		toParam := queryParams.Get(toColumnName)
+		if v, ok := variables[toColumnName]; ok {
+			if len(v) == 0 {
+				return fmt.Errorf("variable for single param '%s' must not be empty array", toColumnName)
+			}
+			if len(v) > 1 {
+				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", toColumnName, v)
+			}
+			toParam = v[0]
+		}
 		if toParam == "" {
 			// Set default value
 			if toDefaultValueIndex != -1 {
@@ -1012,4 +1057,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 func isDateValue(stringDate string) bool {
 	_, err := time.Parse(time.DateOnly, stringDate)
 	return err == nil
+}
+
+func handledByVariable(cols []Column, variables map[string][]string) bool {
+	for _, col := range cols {
+		if col.Tag == "value" || col.Tag == "default" || col.Tag == "defaultFrom" || col.Tag == "defaultTo" {
+			if _, ok := variables[col.Name]; ok {
+				return true
+			}
+		}
+	}
+	return false
 }
