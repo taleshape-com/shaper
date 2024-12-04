@@ -38,7 +38,7 @@ export function Dashboard({
     return <div
       className="min-h-[calc(100vh)] flex items-center justify-center text-xl"
     >
-      <span>loading...</span>
+      <span>{translate('loading')}...</span>
     </div>
   }
 
