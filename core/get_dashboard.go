@@ -823,6 +823,10 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", columnName, v)
 			}
 			param = v[0]
+			// If variable is set to empty string, do not overide with default value
+			if param == "" {
+				return nil
+			}
 		}
 		if param == "" {
 			if len(data) == 0 {
@@ -879,6 +883,10 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		params := queryParams[columnName]
 		if v, ok := variables[columnName]; ok {
+			if len(params) == 0 {
+				// If variable is set to empty array, do not overide with default value
+				return nil
+			}
 			params = v
 		}
 		if len(params) == 0 {
