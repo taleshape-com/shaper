@@ -815,7 +815,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		param := queryParams.Get(columnName)
 		if v, ok := variables[columnName]; ok {
 			if len(v) == 0 {
-				return fmt.Errorf("variable for single param '%s' must not be empty array '%s'", columnName)
+				return fmt.Errorf("variable for single param '%s' must not be empty array", columnName)
 			}
 			if len(v) > 1 {
 				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", columnName, v)
@@ -942,7 +942,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		param := queryParams.Get(columnName)
 		if v, ok := variables[columnName]; ok {
 			if len(v) == 0 {
-				return fmt.Errorf("variable for single param '%s' must not be empty array '%s'", columnName)
+				return fmt.Errorf("variable for single param '%s' must not be empty array", columnName)
 			}
 			if len(v) > 1 {
 				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", columnName, v)
@@ -997,7 +997,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		fromParam := queryParams.Get(fromColumnName)
 		if v, ok := variables[fromColumnName]; ok {
 			if len(v) == 0 {
-				return fmt.Errorf("variable for single param '%s' must not be empty array '%s'", fromColumnName)
+				return fmt.Errorf("variable for single param '%s' must not be empty array", fromColumnName)
 			}
 			if len(v) > 1 {
 				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", fromColumnName, v)
@@ -1025,7 +1025,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		toParam := queryParams.Get(toColumnName)
 		if v, ok := variables[toColumnName]; ok {
 			if len(v) == 0 {
-				return fmt.Errorf("variable for single param '%s' must not be empty array '%s'", toColumnName)
+				return fmt.Errorf("variable for single param '%s' must not be empty array", toColumnName)
 			}
 			if len(v) > 1 {
 				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", toColumnName, v)
