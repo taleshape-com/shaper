@@ -14,14 +14,15 @@ const server = http.createServer(async (req, res) => {
     })
     req.on('end', async () => {
       try {
-        const { baseUrl } = JSON.parse(body)
-        const r = await fetch(`${baseUrl}/api/login/token`, {
+        const { baseUrl, dashboardId } = JSON.parse(body)
+        const r = await fetch(`${baseUrl}/api/auth/token`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            token: TOKEN
+            token: TOKEN,
+            dashboardId
             // customer vars
           }),
         })

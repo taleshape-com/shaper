@@ -7,11 +7,16 @@ import (
 	"shaper/core"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
 func ListDashboards(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
 		result, err := core.ListDashboards(app, c.Request().Context())
 		if err != nil {
 			app.Logger.Error("error listing dashboards:", slog.Any("error", err))
@@ -23,7 +28,11 @@ func ListDashboards(app *core.App) echo.HandlerFunc {
 
 func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("name"), c.QueryParams())
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
+			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("id"), c.QueryParams())
 		if err != nil {
 			app.Logger.Error("error getting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
@@ -35,6 +44,10 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 // For now only supports .csv
 func DownloadQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
+			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
 		// Validate filename extension
 		filename := c.Param("filename")
 		if !strings.HasSuffix(strings.ToLower(filename), ".csv") {
@@ -60,7 +73,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 		err := core.StreamQueryCSV(
 			app,
 			c.Request().Context(),
-			c.Param("name"),
+			c.Param("id"),
 			c.QueryParams(),
 			c.Param("query"),
 			writer,

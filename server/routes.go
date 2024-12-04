@@ -19,9 +19,10 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	// API routes - no caching
 	e.POST("/api/login/token", handler.TokenLogin(app))
+	e.POST("/api/auth/token", handler.TokenAuth(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
-	apiWithAuth.GET("/dashboards/:name", handler.GetDashboard(app))
-	apiWithAuth.GET("/dashboards/:name/query/:query/:filename", handler.DownloadQuery(app))
+	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
+	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 
 	// Static assets - aggressive caching
 	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{
