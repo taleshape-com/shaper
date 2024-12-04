@@ -370,6 +370,9 @@ func isSectionTitle(sqlString string, rows Rows) bool {
 func isPlaceholder(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::PLACEHOLDER") && (len(rows) == 1 && len(rows[0]) == 1)
 }
+func isDownloadButton(sqlString string) bool {
+	return getTagName(sqlString, "DOWNLOAD_CSV") != ""
+}
 
 // TODO: Charts should assert that only the required columns are present.
 // TODO: BARCHART_STACKED must have CATEGORY column
@@ -584,8 +587,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
-	downloadCSV := getTagName(sqlString, "DOWNLOAD_CSV")
-	if downloadCSV != "" {
+	if isDownloadButton(sqlString) {
 		return renderInfo{
 			Label:    labelValue,
 			Type:     "button",
