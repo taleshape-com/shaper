@@ -1,4 +1,3 @@
-// TODO: https://echo.labstack.com/docs/middleware/secure
 // TODO: metrics https://echo.labstack.com/docs/middleware/prometheus
 // TODO: rate limit https://echo.labstack.com/docs/middleware/rate-limiter
 // TODO: TLS https://echo.labstack.com/docs/cookbook/auto-tls#server
@@ -26,10 +25,17 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	e.Use(slogecho.New(app.Logger))
 	e.Use(middleware.BodyLimit("2M"))
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 5}))
+	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		// Does more bad than good https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+		XSSProtection:      "",
+		ContentTypeNosniff: "nosniff",
+		// TODO: In the future we should make this configurable to support embedding the whole app
+		XFrameOptions: "SAMEORIGIN",
+		HSTSMaxAge:    2592000, // 30 days
+	}))
 	// CORS restricted
-	// Allows requests from any `https://labstack.com` or `https://labstack.net` origin
-	// wth GET, PUT, POST or DELETE method.
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		// TODO: Allow to restrict origins via config
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
