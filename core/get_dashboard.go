@@ -370,6 +370,9 @@ func isSectionTitle(sqlString string, rows Rows) bool {
 func isPlaceholder(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::PLACEHOLDER") && (len(rows) == 1 && len(rows[0]) == 1)
 }
+func isDownloadButton(sqlString string) bool {
+	return getTagName(sqlString, "DOWNLOAD_CSV") != ""
+}
 
 // TODO: Charts should assert that only the required columns are present.
 // TODO: BARCHART_STACKED must have CATEGORY column
@@ -584,8 +587,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
-	downloadCSV := getTagName(sqlString, "DOWNLOAD_CSV")
-	if downloadCSV != "" {
+	if isDownloadButton(sqlString) {
 		return renderInfo{
 			Label:    labelValue,
 			Type:     "button",
@@ -821,6 +823,10 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				return fmt.Errorf("variable for single param '%s' must not be array with more than one element '%v'", columnName, v)
 			}
 			param = v[0]
+			// If variable is set to empty string, do not overide with default value
+			if param == "" {
+				return nil
+			}
 		}
 		if param == "" {
 			if len(data) == 0 {
@@ -877,6 +883,10 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		params := queryParams[columnName]
 		if v, ok := variables[columnName]; ok {
+			if len(params) == 0 {
+				// If variable is set to empty array, do not overide with default value
+				return nil
+			}
 			params = v
 		}
 		if len(params) == 0 {

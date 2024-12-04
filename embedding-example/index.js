@@ -7,7 +7,8 @@ const TOKEN = 'test'
 
 const server = http.createServer(async (req, res) => {
   if (req.url === '/api/jwt' && req.method === 'POST') {
-    //verify coookie here
+    // verify coookie and define customer here
+    const customerId = "10"
     let body = ''
     req.on('data', chunk => {
       body += chunk.toString()
@@ -24,7 +25,7 @@ const server = http.createServer(async (req, res) => {
             token: TOKEN,
             dashboardId,
             variables: {
-              "customer_id": "10",
+              "customer_id": customerId,
             }
           }),
         })

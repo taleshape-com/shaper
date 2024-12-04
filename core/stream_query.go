@@ -37,6 +37,9 @@ func StreamQueryCSV(
 	if len(sqls) <= queryIndex || queryIndex < 0 {
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardName, queryIndex)
 	}
+	if queryIndex < 1 || !isDownloadButton(sqls[queryIndex-1]) {
+		return fmt.Errorf("query must be download query")
+	}
 	query := sqls[queryIndex]
 
 	// Create a CSV writer
