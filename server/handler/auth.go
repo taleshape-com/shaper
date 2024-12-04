@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -38,14 +37,37 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
 	}
 }
+func normalizeVariables(mixedMap map[string]interface{}) (map[string][]string, error) {
+	result := make(map[string][]string)
+	for k, v := range mixedMap {
+		switch val := v.(type) {
+		case string:
+			result[k] = []string{val}
+		case []interface{}:
+			strSlice := make([]string, 0, len(val))
+			for _, item := range val {
+				if str, ok := item.(string); ok {
+					strSlice = append(strSlice, str)
+				} else {
+					return nil, fmt.Errorf("invalid type in array for key %s: %T", k, item)
+				}
+			}
+			result[k] = strSlice
+		default:
+			return nil, fmt.Errorf("unsupported type for key %s: %T", k, v)
+		}
+	}
+
+	return result, nil
+}
 
 func TokenAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
-			Token       string          `json:"token"`
-			DashboardID string          `json:"dashboardId"`
-			Variables   json.RawMessage `json:"variables"`
+			Token       string                 `json:"token"`
+			DashboardID string                 `json:"dashboardId"`
+			Variables   map[string]interface{} `json:"variables"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -63,9 +85,16 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}
 		if len(loginRequest.Variables) > 0 {
-			fmt.Println(string(loginRequest.Variables))
-			claims["variables"] = loginRequest.Variables
+			normalizedVars, err := normalizeVariables(loginRequest.Variables)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+					"error":     "Invalid variables format: " + err.Error(),
+					"variables": loginRequest.Variables,
+				})
+			}
+			claims["variables"] = normalizedVars
 		}
+
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)
 		if err != nil {

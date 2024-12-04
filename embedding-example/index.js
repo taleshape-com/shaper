@@ -22,8 +22,10 @@ const server = http.createServer(async (req, res) => {
           },
           body: JSON.stringify({
             token: TOKEN,
-            dashboardId
-            // customer vars
+            dashboardId,
+            variables: {
+              "customer_id": "10",
+            }
           }),
         })
         if (r.status !== 200) {

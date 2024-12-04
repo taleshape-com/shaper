@@ -32,7 +32,18 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
 			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
 		}
-		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("id"), c.QueryParams())
+		variables := map[string][]string{}
+		if vars, hasVariables := claims["variables"]; hasVariables {
+			v, err := normalizeVariables(vars.(map[string]interface{}))
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+					"error":     "Invalid claims.variables format: " + err.Error(),
+					"variables": vars,
+				})
+			}
+			variables = v
+		}
+		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("id"), c.QueryParams(), variables)
 		if err != nil {
 			app.Logger.Error("error getting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
@@ -47,6 +58,17 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
 			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+		variables := map[string][]string{}
+		if vars, hasVariables := claims["variables"]; hasVariables {
+			v, err := normalizeVariables(vars.(map[string]interface{}))
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+					"error":     "Invalid claims.variables format: " + err.Error(),
+					"variables": vars,
+				})
+			}
+			variables = v
 		}
 		// Validate filename extension
 		filename := c.Param("filename")
@@ -76,6 +98,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 			c.Param("id"),
 			c.QueryParams(),
 			c.Param("query"),
+			variables,
 			writer,
 		)
 
