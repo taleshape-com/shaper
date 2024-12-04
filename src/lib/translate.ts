@@ -1,5 +1,8 @@
 
 const translations: Record<string, Record<string, string>> = {
+  'loading': {
+    de: 'Einen Moment'
+  },
   'No data available': {
     de: 'Keine Daten verfügbar'
   },
