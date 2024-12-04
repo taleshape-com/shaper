@@ -135,7 +135,11 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			query.Columns = append(query.Columns, col)
 			if rInfo.Download == "csv" {
 				filename := query.Rows[0][colIndex].(string)
-				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv", dashboardName, queryIndex+1, url.QueryEscape(filename))
+				queryString := ""
+				if len(queryParams) > 0 {
+					queryString = "?" + queryParams.Encode()
+				}
+				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv%s", dashboardName, queryIndex+1, url.QueryEscape(filename), queryString)
 			}
 		}
 

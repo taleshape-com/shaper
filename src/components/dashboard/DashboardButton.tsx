@@ -8,7 +8,6 @@ type ButtonProps = {
 	label?: string;
 	headers: Column[];
 	data: Result["sections"][0]["queries"][0]["rows"];
-	searchParams: string;
 	baseUrl?: string;
 	getJwt: () => Promise<string>;
 };
@@ -18,7 +17,6 @@ function DashboardButton({
 	label,
 	data,
 	headers,
-	searchParams,
 	baseUrl,
 	getJwt,
 }: ButtonProps) {
@@ -28,7 +26,7 @@ function DashboardButton({
 		setIsLoading(true);
 		try {
 			const jwt = await getJwt();
-			const url = `${baseUrl}${data[0][0]}?${searchParams}`;
+			const url = `${baseUrl}${data[0][0]}`;
 			const response = await fetch(url, {
 				headers: {
 					Authorization: jwt,

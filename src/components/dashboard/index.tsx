@@ -42,8 +42,6 @@ export function Dashboard({
     </div>
   }
 
-  const searchParams = getSearchParamString(vars)
-
   const sections: Result['sections'] =
     data.sections.length === 0
       ? [
@@ -117,7 +115,6 @@ export function Dashboard({
                         label={render.label}
                         headers={columns}
                         data={rows}
-                        searchParams={searchParams}
                         baseUrl={baseUrl}
                         getJwt={getJwt}
                       />
