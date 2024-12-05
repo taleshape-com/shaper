@@ -2,6 +2,7 @@ package server
 
 import (
 	"io/fs"
+	"net/http"
 	"shaper/core"
 	"shaper/server/handler"
 	"time"
@@ -16,6 +17,10 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		TokenLookup: "header:Authorization",
 		SigningKey:  app.JWTSecret,
 	}))
+
+	e.GET("/status", func(c echo.Context) error {
+        return c.NoContent(http.StatusOK)
+    })
 
 	// API routes - no caching
 	e.POST("/api/login/token", handler.TokenLogin(app))
