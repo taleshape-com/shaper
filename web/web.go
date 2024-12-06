@@ -1,7 +1,7 @@
 // TODO: metrics https://echo.labstack.com/docs/middleware/prometheus
 // TODO: rate limit https://echo.labstack.com/docs/middleware/rate-limiter
 // TODO: TLS https://echo.labstack.com/docs/cookbook/auto-tls#server
-package server
+package web
 
 import (
 	"fmt"

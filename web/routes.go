@@ -1,10 +1,10 @@
-package server
+package web
 
 import (
 	"io/fs"
 	"net/http"
 	"shaper/core"
-	"shaper/server/handler"
+	"shaper/web/handler"
 	"time"
 
 	echojwt "github.com/labstack/echo-jwt/v4"
@@ -19,8 +19,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}))
 
 	e.GET("/status", func(c echo.Context) error {
-        return c.NoContent(http.StatusOK)
-    })
+		return c.NoContent(http.StatusOK)
+	})
 
 	// API routes - no caching
 	e.POST("/api/login/token", handler.TokenLogin(app))

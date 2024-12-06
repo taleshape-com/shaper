@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"os"
 	"shaper/core"
-	"shaper/server"
 	"shaper/util/signals"
+	"shaper/web"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -118,7 +118,7 @@ func Run(config Config) func(context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	e := server.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
+	e := web.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
 
 	return func(ctx context.Context) {
 		if err := db.Close(); err != nil {
