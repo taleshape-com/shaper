@@ -47,6 +47,7 @@ function DashboardViewComponent() {
     <Dashboard
       id={params.dashboardId}
       vars={vars}
+      hash={auth.hash}
       getJwt={auth.getJwt}
       onVarsChanged={newVars => {
         navigate({

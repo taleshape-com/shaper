@@ -1,17 +1,35 @@
 import { redirect } from '@tanstack/react-router'
 import { useState } from 'react';
-import { parseJwt, localStorageTokenKey, AuthContext } from '../lib/auth';
+import {
+  parseJwt,
+  localStorageTokenKey,
+  localStorageVariablesKey,
+  AuthContext,
+  Variables,
+} from '../lib/auth';
+
+
+const getVariablesString = () => {
+  return localStorage.getItem(localStorageVariablesKey) ?? '{}'
+}
+const getVariables = (): Variables => {
+  return JSON.parse(getVariablesString())
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [jwt, setJwt] = useState<string | null>(null)
+  const [hash, setHash] = useState<string>(getVariablesString())
 
-  const refreshJwt = async (token: string) => {
+  const refreshJwt = async (token: string, variables: Variables) => {
     return fetch(`/api/login/token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({
+        token,
+        variables: Object.keys(variables).length > 0 ? variables : undefined,
+      }),
     }).then(async (response) => {
       if (response.status !== 200) {
         return null;
@@ -42,11 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     const token = localStorage.getItem(localStorageTokenKey)
+    const variables = getVariables()
     if (token == null) {
       goToLoginPage()
       return null
     }
-    const newJwt = await refreshJwt(token)
+    const newJwt = await refreshJwt(token, variables)
     if (newJwt == null) {
       goToLoginPage()
       return null
@@ -54,10 +73,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return newJwt
   }
 
-  const login = async (token: string) => {
-    const jwt = await refreshJwt(token)
+  const login = async (token: string, variables: Variables) => {
+    const jwt = await refreshJwt(token, variables)
     if (jwt != null) {
       localStorage.setItem(localStorageTokenKey, token)
+      localStorage.setItem(localStorageVariablesKey, JSON.stringify(variables))
+      setHash(JSON.stringify(variables))
       return true
     }
     return false
@@ -68,12 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token == null) {
       return false
     }
-    const jwt = await refreshJwt(token)
+    const variables = getVariables()
+    const jwt = await refreshJwt(token, variables)
     return jwt != null
   }
 
   return (
-    <AuthContext.Provider value={{ getJwt, login, testLogin }}>
+    <AuthContext.Provider value={{ getJwt, login, testLogin, hash }}>
       {children}
     </AuthContext.Provider>
   )

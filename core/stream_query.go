@@ -19,7 +19,7 @@ func StreamQueryCSV(
 	dashboardName string,
 	params url.Values,
 	queryID string,
-	variables map[string][]string,
+	variables map[string]interface{},
 	writer io.Writer,
 ) error {
 	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
@@ -119,11 +119,13 @@ func formatValue(value interface{}) string {
 	}
 }
 
-func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string][]string) (string, error) {
+func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]interface{}) (string, error) {
 	nextIsDownload := false
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
-	singleVars := map[string]string{}
-	multiVars := map[string][]string{}
+	singleVars, multiVars, err := getTokenVars(variables)
+	if err != nil {
+		return "", err
+	}
 
 	for queryIndex, sqlString := range sqlQueries {
 		if queryIndex == len(sqlQueries)-1 {
@@ -171,7 +173,7 @@ func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParam
 			}
 			columns = append(columns, col)
 		}
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, data, variables)
+		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, data)
 		if err != nil {
 			return "", err
 		}

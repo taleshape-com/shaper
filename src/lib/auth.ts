@@ -1,12 +1,18 @@
+import { z } from 'zod'
 import * as React from 'react'
 
 export interface IAuthContext {
   getJwt: () => Promise<string>
-  login: (token: string) => Promise<boolean>
+  login: (token: string, variables: Variables) => Promise<boolean>
   testLogin: () => Promise<boolean>
+  hash: string
 }
 
+const zVariables = z.record(z.string(), z.any())
+export type Variables = typeof zVariables['_type']
+
 export const localStorageTokenKey = 'shaper-token'
+export const localStorageVariablesKey = 'shaper-variables'
 
 export const AuthContext = React.createContext<IAuthContext | null>(null)
 

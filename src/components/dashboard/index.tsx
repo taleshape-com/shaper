@@ -1,79 +1,98 @@
-import { Result } from "../../lib/dashboard"
-import { ChartHoverProvider } from '../ChartHoverProvider'
-import { cx, getSearchParamString, VarsParamSchema } from '../../lib/utils'
-import DashboardDropdown from "./DashboardDropdown"
-import DashboardDropdownMulti from "./DashboardDropdownMulti"
-import DashboardButton from "./DashboardButton"
-import DashboardDatePicker from "./DashboardDatePicker"
-import DashboardDateRangePicker from "./DashboardDateRangePicker"
-import { Card } from "../tremor/Card"
-import { translate } from "../../lib/translate"
-import DashboardLineChart from "./DashboardLineChart"
-import DashboardBarChart from "./DashboardBarChart"
-import DashboardValue from "./DashboardValue"
-import DashboardTable from "./DashboardTable"
-import { useEffect, useState } from "react"
+import { Result } from "../../lib/dashboard";
+import { ChartHoverProvider } from "../ChartHoverProvider";
+import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
+import DashboardDropdown from "./DashboardDropdown";
+import DashboardDropdownMulti from "./DashboardDropdownMulti";
+import DashboardButton from "./DashboardButton";
+import DashboardDatePicker from "./DashboardDatePicker";
+import DashboardDateRangePicker from "./DashboardDateRangePicker";
+import { Card } from "../tremor/Card";
+import { translate } from "../../lib/translate";
+import DashboardLineChart from "./DashboardLineChart";
+import DashboardBarChart from "./DashboardBarChart";
+import DashboardValue from "./DashboardValue";
+import DashboardTable from "./DashboardTable";
+import { useEffect, useState } from "react";
 
 export interface DashboardProps {
-  id: string,
-  vars: VarsParamSchema,
-  getJwt: () => Promise<string>,
-  baseUrl?: string,
-  onVarsChanged: (newVars: Record<string, string | string[]>) => void,
+  id: string;
+  vars: VarsParamSchema;
+  getJwt: () => Promise<string>;
+  baseUrl?: string;
+  onVarsChanged: (newVars: Record<string, string | string[]>) => void;
+  hash?: string;
 }
 
 export function Dashboard({
   id,
   vars,
   getJwt,
-  baseUrl = '',
+  baseUrl = "",
   onVarsChanged,
+  // We update this string when JWT variables change to trigger a re-fetch
+  hash = "",
 }: DashboardProps) {
-  const [data, setData] = useState<Result>()
+  const [data, setData] = useState<Result>();
+  const [error, setError] = useState<Error | null>();
   useEffect(() => {
-    fetchDashboard(id, vars, baseUrl, getJwt).then(setData)
-  }, [id, vars, baseUrl, getJwt])
+    setError(null);
+    fetchDashboard(id, vars, baseUrl, getJwt).then(setData, setError);
+  }, [id, vars, baseUrl, getJwt, hash]);
 
-  if (!data) {
-    return <div
-      className="min-h-[calc(100vh)] flex items-center justify-center text-xl"
-    >
-      <span>{translate('loading')}...</span>
-    </div>
+  if (error) {
+    return (
+      <div className="min-h-[calc(100vh)] flex items-center justify-center text-xl">
+        <div className="p-4 m-4 bg-red-200 rounded-md font-mono">
+          <p>{error.message}</p>
+        </div>
+      </div>
+    );
   }
 
-  const sections: Result['sections'] =
+  if (!data) {
+    return (
+      <div className="min-h-[calc(100vh)] flex items-center justify-center text-xl">
+        <span>{translate("loading")}...</span>
+      </div>
+    );
+  }
+
+  const sections: Result["sections"] =
     data.sections.length === 0
       ? [
-        {
-          type: 'header',
-          queries: [],
-        },
-      ]
-      : data.sections[0].type !== 'header'
-        ? [
           {
-            type: 'header',
+            type: "header",
             queries: [],
           },
-          ...data.sections,
         ]
-        : data.sections
+      : data.sections[0].type !== "header"
+        ? [
+            {
+              type: "header",
+              queries: [],
+            },
+            ...data.sections,
+          ]
+        : data.sections;
 
-  const numContentSections = sections.filter(section => section.type === 'content').length
+  const numContentSections = sections.filter(
+    (section) => section.type === "content",
+  ).length;
 
   return (
     <div>
       <ChartHoverProvider>
         {sections.map((section, sectionIndex) => {
-          if (section.type === 'header') {
-            const queries = section.queries.filter(query => query.rows.length > 0)
+          if (section.type === "header") {
+            const queries = section.queries.filter(
+              (query) => query.rows.length > 0,
+            );
             return (
               <section
                 key={sectionIndex}
-                className={cx('flex flex-wrap items-center mr-3 ml-3', {
-                  'mb-2 mt-1': section.queries.length > 0 || section.title,
-                  'pt-4': section.title && sectionIndex !== 0,
+                className={cx("flex flex-wrap items-center mr-3 ml-3", {
+                  "mb-2 mt-1": section.queries.length > 0 || section.title,
+                  "pt-4": section.title && sectionIndex !== 0,
                 })}
               >
                 {section.title ? (
@@ -84,7 +103,7 @@ export function Dashboard({
                   <div className="sm:flex-grow"></div>
                 )}
                 {queries.map(({ render, columns, rows }, index) => {
-                  if (render.type === 'dropdown') {
+                  if (render.type === "dropdown") {
                     return (
                       <DashboardDropdown
                         key={index}
@@ -94,9 +113,9 @@ export function Dashboard({
                         vars={vars}
                         onChange={onVarsChanged}
                       />
-                    )
+                    );
                   }
-                  if (render.type === 'dropdownMulti') {
+                  if (render.type === "dropdownMulti") {
                     return (
                       <DashboardDropdownMulti
                         key={index}
@@ -106,9 +125,9 @@ export function Dashboard({
                         vars={vars}
                         onChange={onVarsChanged}
                       />
-                    )
+                    );
                   }
-                  if (render.type === 'button') {
+                  if (render.type === "button") {
                     return (
                       <DashboardButton
                         key={index}
@@ -118,9 +137,9 @@ export function Dashboard({
                         baseUrl={baseUrl}
                         getJwt={getJwt}
                       />
-                    )
+                    );
                   }
-                  if (render.type === 'datepicker') {
+                  if (render.type === "datepicker") {
                     return (
                       <DashboardDatePicker
                         key={index}
@@ -130,9 +149,9 @@ export function Dashboard({
                         vars={vars}
                         onChange={onVarsChanged}
                       />
-                    )
+                    );
                   }
-                  if (render.type === 'daterangePicker') {
+                  if (render.type === "daterangePicker") {
                     return (
                       <DashboardDateRangePicker
                         key={index}
@@ -142,46 +161,60 @@ export function Dashboard({
                         vars={vars}
                         onChange={onVarsChanged}
                       />
-                    )
+                    );
                   }
                 })}
               </section>
-            )
+            );
           }
-          const numQueriesInSection = section.queries.length
+          const numQueriesInSection = section.queries.length;
           return (
             <section
               key={sectionIndex}
-              className={cx(
-                'grid grid-cols-1 ml-3', {
-                'sm:grid-cols-2': numQueriesInSection > 1,
-                'lg:grid-cols-2': numQueriesInSection === 2 || (numContentSections === 1 && numQueriesInSection === 4),
-                'lg:grid-cols-3': numQueriesInSection > 4 || numQueriesInSection === 3 || (numQueriesInSection === 4 && numContentSections > 1),
-                'xl:grid-cols-4': (numQueriesInSection === 4 && numContentSections > 1) || numQueriesInSection === 7 || numQueriesInSection === 8 || numQueriesInSection > 9
+              className={cx("grid grid-cols-1 ml-3", {
+                "sm:grid-cols-2": numQueriesInSection > 1,
+                "lg:grid-cols-2":
+                  numQueriesInSection === 2 ||
+                  (numContentSections === 1 && numQueriesInSection === 4),
+                "lg:grid-cols-3":
+                  numQueriesInSection > 4 ||
+                  numQueriesInSection === 3 ||
+                  (numQueriesInSection === 4 && numContentSections > 1),
+                "xl:grid-cols-4":
+                  (numQueriesInSection === 4 && numContentSections > 1) ||
+                  numQueriesInSection === 7 ||
+                  numQueriesInSection === 8 ||
+                  numQueriesInSection > 9,
               })}
             >
               {section.queries.map((query, queryIndex) => {
-                if (query.render.type === 'placeholder') {
-                  return (
-                    <div key={queryIndex}></div>
-                  )
+                if (query.render.type === "placeholder") {
+                  return <div key={queryIndex}></div>;
                 }
                 return (
-                  <Card key={queryIndex} className={cx(
-                    "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
-                    {
-                      'h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]': numQueriesInSection === 1,
-                      'lg:h-[calc(100vh-4.7rem)]': numContentSections === 1 && numQueriesInSection === 2,
-                    })}>
-                    {query.render.label ? <h2 className="text-md mb-2 text-center">
-                      {query.render.label}
-                    </h2>
-                      : null
-                    }
-                    <div className={cx({
-                      'h-[calc(100%-2rem)]': query.render.label,
-                      'h-full': !query.render.label,
-                    })}>
+                  <Card
+                    key={queryIndex}
+                    className={cx(
+                      "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
+                      {
+                        "h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]":
+                          numQueriesInSection === 1,
+                        "lg:h-[calc(100vh-4.7rem)]":
+                          numContentSections === 1 && numQueriesInSection === 2,
+                      },
+                    )}
+                  >
+                    {query.render.label ? (
+                      <h2 className="text-md mb-2 text-center">
+                        {query.render.label}
+                      </h2>
+                    ) : null}
+                    <div
+                      className={cx({
+                        "h-[calc(100%-2rem)]": query.render.label,
+                        "h-full": !query.render.label,
+                      })}
+                    >
                       {renderContent(
                         query,
                         sectionIndex,
@@ -191,10 +224,10 @@ export function Dashboard({
                       )}
                     </div>
                   </Card>
-                )
+                );
               })}
             </section>
-          )
+          );
         })}
       </ChartHoverProvider>
       {numContentSections === 0 ? (
@@ -203,61 +236,63 @@ export function Dashboard({
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 const renderContent = (
-  query: Result['sections'][0]['queries'][0],
+  query: Result["sections"][0]["queries"][0],
   sectionIndex: number,
   queryIndex: number,
   minTimeValue: number,
   maxTimeValue: number,
 ) => {
   if (query.rows.length === 0) {
-    return <div className="h-full py-1 px-3 flex items-center justify-center text-ctext2 dark:text-dtext2">
-      {translate('No data available')}
-    </div>
-
+    return (
+      <div className="h-full py-1 px-3 flex items-center justify-center text-ctext2 dark:text-dtext2">
+        {translate("No data available")}
+      </div>
+    );
   }
-  if (query.render.type === 'linechart') {
-    return <DashboardLineChart
-      chartId={`${sectionIndex}-${queryIndex}`}
-      headers={query.columns}
-      data={query.rows}
-      minTimeValue={minTimeValue}
-      maxTimeValue={maxTimeValue}
-    />
+  if (query.render.type === "linechart") {
+    return (
+      <DashboardLineChart
+        chartId={`${sectionIndex}-${queryIndex}`}
+        headers={query.columns}
+        data={query.rows}
+        minTimeValue={minTimeValue}
+        maxTimeValue={maxTimeValue}
+      />
+    );
   }
   if (
-    query.render.type === 'barchartHorizontal' ||
-    query.render.type === 'barchartHorizontalStacked' ||
-    query.render.type === 'barchartVertical' ||
-    query.render.type === 'barchartVerticalStacked'
+    query.render.type === "barchartHorizontal" ||
+    query.render.type === "barchartHorizontalStacked" ||
+    query.render.type === "barchartVertical" ||
+    query.render.type === "barchartVerticalStacked"
   ) {
-    return <DashboardBarChart
-      chartId={`${sectionIndex}-${queryIndex}`}
-      stacked={query.render.type === 'barchartHorizontalStacked' || query.render.type === 'barchartVerticalStacked'}
-      vertical={query.render.type === 'barchartVertical' || query.render.type === 'barchartVerticalStacked'}
-      headers={query.columns}
-      data={query.rows}
-      minTimeValue={minTimeValue}
-      maxTimeValue={maxTimeValue}
-    />
-
+    return (
+      <DashboardBarChart
+        chartId={`${sectionIndex}-${queryIndex}`}
+        stacked={
+          query.render.type === "barchartHorizontalStacked" ||
+          query.render.type === "barchartVerticalStacked"
+        }
+        vertical={
+          query.render.type === "barchartVertical" ||
+          query.render.type === "barchartVerticalStacked"
+        }
+        headers={query.columns}
+        data={query.rows}
+        minTimeValue={minTimeValue}
+        maxTimeValue={maxTimeValue}
+      />
+    );
   }
-  if (query.render.type === 'value') {
-    return <DashboardValue
-      headers={query.columns}
-      data={query.rows}
-    />
-
+  if (query.render.type === "value") {
+    return <DashboardValue headers={query.columns} data={query.rows} />;
   }
-  return <DashboardTable
-    headers={query.columns}
-    data={query.rows}
-  />
-
-}
+  return <DashboardTable headers={query.columns} data={query.rows} />;
+};
 
 const fetchDashboard = async (
   id: string,
@@ -265,24 +300,19 @@ const fetchDashboard = async (
   baseUrl: string,
   getJwt: () => Promise<string>,
 ): Promise<Result> => {
-  const jwt = await getJwt()
-  const searchParams = getSearchParamString(vars)
+  const jwt = await getJwt();
+  const searchParams = getSearchParamString(vars);
   const res = await fetch(`${baseUrl}/api/dashboards/${id}?${searchParams}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: jwt,
-    }
-  })
-  const json = await res.json()
+    },
+  });
+  const json = await res.json();
   if (res.status !== 200) {
     throw new Error(
-      (
-        json?.Error?.Msg ??
-        json?.Error ??
-        json?.message ??
-        json
-      ).toString(),
-    )
+      (json?.Error?.Msg ?? json?.Error ?? json?.message ?? json).toString(),
+    );
   }
-  return json
-}
+  return json;
+};

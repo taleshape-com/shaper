@@ -15,7 +15,8 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
-			Token string `json:"token"`
+			Token     string                 `json:"token"`
+			Variables map[string]interface{} `json:"variables"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -26,9 +27,20 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 		} else if !ok {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
-		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		claims := jwt.MapClaims{
 			"exp": time.Now().Add(time.Second * 10).Unix(),
-		})
+		}
+		if len(loginRequest.Variables) > 0 {
+			err := validateVariables(loginRequest.Variables)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+					"error":     "Invalid variables format: " + err.Error(),
+					"variables": loginRequest.Variables,
+				})
+			}
+			claims["variables"] = loginRequest.Variables
+		}
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)
 		if err != nil {
 			app.Logger.Error("Failed to sign token", slog.Any("error", err))
@@ -37,28 +49,23 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
 	}
 }
-func normalizeVariables(mixedMap map[string]interface{}) (map[string][]string, error) {
-	result := make(map[string][]string)
+
+func validateVariables(mixedMap map[string]interface{}) error {
 	for k, v := range mixedMap {
 		switch val := v.(type) {
 		case string:
-			result[k] = []string{val}
+			continue
 		case []interface{}:
-			strSlice := make([]string, 0, len(val))
 			for _, item := range val {
-				if str, ok := item.(string); ok {
-					strSlice = append(strSlice, str)
-				} else {
-					return nil, fmt.Errorf("invalid type in array for key %s: %T", k, item)
+				if _, ok := item.(string); !ok {
+					return fmt.Errorf("invalid type in array for key %s: %T", k, item)
 				}
 			}
-			result[k] = strSlice
 		default:
-			return nil, fmt.Errorf("unsupported type for key %s: %T", k, v)
+			return fmt.Errorf("unsupported type for key %s: %T", k, v)
 		}
 	}
-
-	return result, nil
+	return nil
 }
 
 func TokenAuth(app *core.App) echo.HandlerFunc {
@@ -85,14 +92,14 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}
 		if len(loginRequest.Variables) > 0 {
-			normalizedVars, err := normalizeVariables(loginRequest.Variables)
+			err := validateVariables(loginRequest.Variables)
 			if err != nil {
 				return c.JSON(http.StatusBadRequest, map[string]interface{}{
 					"error":     "Invalid variables format: " + err.Error(),
 					"variables": loginRequest.Variables,
 				})
 			}
-			claims["variables"] = normalizedVars
+			claims["variables"] = loginRequest.Variables
 		}
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
