@@ -36,7 +36,8 @@ export default {
         "db": "var(--shaper-dark-mode-border-color)",
       },
       fontFamily: {
-        sans: ['var(--shaper-font-family)', ...defaultTheme.fontFamily.sans],
+        sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],
+        display: ['var(--shaper-display-font)', ...defaultTheme.fontFamily.sans],
       },
       keyframes: {
         hide: {

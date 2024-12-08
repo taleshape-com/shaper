@@ -201,7 +201,7 @@ const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
           {...props}
         >
           <span className={cx({
-            "flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-ctext dark:text-dtext": true,
+            "flex-1 font-medium overflow-hidden text-ellipsis whitespace-nowrap text-left text-ctext dark:text-dtext": true,
             "text-ctext2 dark:text-dtext2": isDefaultValue,
           })}>
             {children ? (

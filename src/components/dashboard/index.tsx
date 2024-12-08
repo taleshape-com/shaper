@@ -216,7 +216,7 @@ export function Dashboard({
                     )}
                   >
                     {query.render.label ? (
-                      <h2 className="text-md mb-2 text-center">
+                      <h2 className="text-md mb-2 text-center font-semibold">
                         {query.render.label}
                       </h2>
                     ) : null}

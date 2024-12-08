@@ -59,7 +59,7 @@ function DashboardButton({
         onClick={handleDownload}
         disabled={isLoading}
         variant="secondary"
-        className="font-normal flex w-full items-center justify-between my-1"
+        className="flex w-full items-center justify-between my-1"
       >
         {label}
         {headers[0].name}

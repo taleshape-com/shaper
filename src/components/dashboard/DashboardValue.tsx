@@ -22,10 +22,10 @@ function DashboardValue({ headers, data }: ValueProps) {
 
   return (
     <div className="items-center h-full flex flex-col justify-center">
-      <div className={"text-7xl"}>
+      <div className="text-7xl font-display font-bold">
         {formatValue(value, valueHeader.type)}
       </div>
-      <div className="text-xl mt-1">
+      <div className="text-xl mt-1 font-semibold">
         {valueHeader.name}
       </div>
       {compareValue && compareHeader ? (

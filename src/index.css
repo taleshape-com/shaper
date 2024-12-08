@@ -3,20 +3,54 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'Geist Sans';
-  src: url('./assets/fonts/GeistVariableVF.woff2') format('woff2');
+  font-family: 'Poppins';
+  src: url('./assets/fonts/poppins-regular-webfont.woff2') format('woff2');
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'Poppins';
+  src: url('./assets/fonts/poppins-medium-webfont.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+}
+@font-face {
+  font-family: 'Poppins';
+  src: url('./assets/fonts/poppins-semibold-webfont.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+}
+@font-face {
+  font-family: 'Poppins';
+  src: url('./assets/fonts/poppins-bold-webfont.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
 }
 
+
+@font-face {
+  font-family: 'Arimo';
+  src: url('./assets/fonts/arimo.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+}
+@font-face {
+  font-family: 'Arimo';
+  src: url('./assets/fonts/arimobold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+}
+
+
 :root {
-  --shaper-font-family: Geist Sans;
+  --shaper-font: Poppins;
+  --shaper-display-font: Arimo;
   --shaper-reference-line-color: rgb(244 114 182 / 0.5);
 
-  --shaper-primary-color: #6366f1;
-  --shaper-primary-color-alternate: #4f46e5;
-  --shaper-color-two: #6ee7b7;
-  --shaper-color-three: #f472b6;
+  --shaper-primary-color: #5659e8;
+  --shaper-primary-color-alternate: #4940e5;
+  --shaper-color-two: #7ae4e9;
+  --shaper-color-three: #ec74f6;
   --shaper-color-four: #fef08a;
   --shaper-color-five: #7dd3fc;
   --shaper-text-color: #181919;
