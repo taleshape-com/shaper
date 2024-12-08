@@ -103,7 +103,7 @@ export function Dashboard({
               <section
                 key={sectionIndex}
                 className={cx("flex flex-wrap items-center ml-1 mr-3", {
-                  "mb-2 mt-1": section.queries.length > 0 || section.title,
+                  "mb-2 mt-1": section.queries.length > 0 || section.title || sectionIndex === 0,
                   "pt-4": section.title && sectionIndex !== 0,
                 })}
               >
