@@ -1043,7 +1043,6 @@ func getTokenVars(variables map[string]interface{}) (map[string]string, map[stri
 			multiVars[k] = strSlice
 		default:
 			return singleVars, multiVars, fmt.Errorf("unsupported type for key %s: %T", k, v)
-			continue
 		}
 	}
 	return singleVars, multiVars, nil
