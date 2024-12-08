@@ -41,6 +41,7 @@
     "recharts": "^2.13.2",
     "tailwind-merge": "^2.5.4",
     "tailwind-variants": "^0.2.1",
+    "use-debounce": "^10.0.4",
     "vite-plugin-css-injected-by-js": "^3.5.2"
   },
   "devDependencies": {

@@ -6,21 +6,23 @@ import {
   localStorageVariablesKey,
   AuthContext,
   Variables,
+  zVariables,
 } from '../lib/auth';
 
 
 const getVariablesString = () => {
   return localStorage.getItem(localStorageVariablesKey) ?? '{}'
 }
-const getVariables = (): Variables => {
-  return JSON.parse(getVariablesString())
+const getVariables = (s: string): Variables => {
+  return zVariables.parse(JSON.parse(s))
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [jwt, setJwt] = useState<string | null>(null)
+  const [variables, setVariables] = useState<Variables>(getVariables(getVariablesString()))
   const [hash, setHash] = useState<string>(getVariablesString())
 
-  const refreshJwt = async (token: string, variables: Variables) => {
+  const refreshJwt = async (token: string, vars: Variables) => {
     return fetch(`/api/login/token`, {
       method: "POST",
       headers: {
@@ -28,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       body: JSON.stringify({
         token,
-        variables: Object.keys(variables).length > 0 ? variables : undefined,
+        variables: Object.keys(vars).length > 0 ? vars : undefined,
       }),
     }).then(async (response) => {
       if (response.status !== 200) {
@@ -60,12 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     const token = localStorage.getItem(localStorageTokenKey)
-    const variables = getVariables()
+    const vars = getVariables(getVariablesString())
     if (token == null) {
       goToLoginPage()
       return null
     }
-    const newJwt = await refreshJwt(token, variables)
+    const newJwt = await refreshJwt(token, vars)
     if (newJwt == null) {
       goToLoginPage()
       return null
@@ -73,12 +75,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return newJwt
   }
 
-  const login = async (token: string, variables: Variables) => {
-    const jwt = await refreshJwt(token, variables)
+  const login = async (token: string, vars?: Variables) => {
+    const v = vars ?? getVariables(getVariablesString())
+    const jwt = await refreshJwt(token, v)
     if (jwt != null) {
       localStorage.setItem(localStorageTokenKey, token)
-      localStorage.setItem(localStorageVariablesKey, JSON.stringify(variables))
-      setHash(JSON.stringify(variables))
+      localStorage.setItem(localStorageVariablesKey, JSON.stringify(v))
+      setHash(JSON.stringify(v))
+      setVariables(v)
       return true
     }
     return false
@@ -89,13 +93,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token == null) {
       return false
     }
-    const variables = getVariables()
-    const jwt = await refreshJwt(token, variables)
+    const vars = getVariables(getVariablesString())
+    const jwt = await refreshJwt(token, vars)
     return jwt != null
   }
 
+  const updateVariables = async (text: string) => {
+    try {
+      const vars = getVariables(text)
+      await login(localStorage.getItem(localStorageTokenKey) ?? "", vars)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ getJwt, login, testLogin, hash }}>
+    <AuthContext.Provider value={{ getJwt, login, testLogin, hash, variables, updateVariables }}>
       {children}
     </AuthContext.Provider>
   )

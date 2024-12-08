@@ -6,6 +6,9 @@ const translations: Record<string, Record<string, string>> = {
   'No data available': {
     de: 'Keine Daten verfügbar'
   },
+  'Variables': {
+    de: 'Parameter'
+  },
   'Apply': {
     de: 'Bestätigen'
   },

@@ -3,12 +3,14 @@ import * as React from 'react'
 
 export interface IAuthContext {
   getJwt: () => Promise<string>
-  login: (token: string, variables: Variables) => Promise<boolean>
+  login: (token: string, variables?: Variables) => Promise<boolean>
   testLogin: () => Promise<boolean>
   hash: string
+  variables: Variables
+  updateVariables: (text: string) => Promise<boolean>
 }
 
-const zVariables = z.record(z.string(), z.any())
+export const zVariables = z.record(z.string(), z.union([z.string(), z.array(z.string())]))
 export type Variables = typeof zVariables['_type']
 
 export const localStorageTokenKey = 'shaper-token'
