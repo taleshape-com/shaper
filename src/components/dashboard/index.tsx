@@ -109,10 +109,17 @@ export function Dashboard({
               <div className={cx("sm:flex-grow flex items-center ml-1", {
                 "w-full sm:w-fit": section.title,
               })}>
-                {sectionIndex === 0 ? menuButton : null}
-                {section.title ? (
-                  <h1 className="text-2xl text-left ml-1 mt-0.5">{section.title}</h1>
+                {sectionIndex === 0 ? (
+                  <>
+                    {menuButton}
+                    {section.title ? (
+                      <h1 className="text-2xl text-left ml-1 mt-0.5">{section.title}</h1>
+                    ) : null}
+                  </>
+                ) : section.title ? (
+                  <h2 className="text-xl text-left ml-1 mt-0.5">{section.title}</h2>
                 ) : null}
+
               </div>
               {queries.map(({ render, columns, rows }, index) => {
                 if (render.type === "dropdown") {
