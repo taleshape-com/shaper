@@ -101,15 +101,17 @@ export function Dashboard({
           return (
             <section
               key={sectionIndex}
-              className={cx("flex flex-wrap items-center ml-1 mr-3", {
+              className={cx("flex flex-wrap items-center ml-2 mr-4", {
                 "mb-2 mt-1": section.queries.length > 0 || section.title || sectionIndex === 0,
                 "pt-4": section.title && sectionIndex !== 0,
               })}
             >
-              <div className="sm:flex-grow flex items-center w-full sm:w-fit ml-1">
+              <div className={cx("sm:flex-grow flex items-center ml-1", {
+                "w-full sm:w-fit": section.title,
+              })}>
                 {sectionIndex === 0 ? menuButton : null}
                 {section.title ? (
-                  <h1 className="text-xl text-left ml-1">{section.title}</h1>
+                  <h1 className="text-2xl text-left ml-1 mt-0.5">{section.title}</h1>
                 ) : null}
               </div>
               {queries.map(({ render, columns, rows }, index) => {
@@ -181,7 +183,7 @@ export function Dashboard({
         return (
           <section
             key={sectionIndex}
-            className={cx("grid grid-cols-1 ml-3", {
+            className={cx("grid grid-cols-1 ml-4", {
               "sm:grid-cols-2": numQueriesInSection > 1,
               "lg:grid-cols-2":
                 numQueriesInSection === 2 ||
@@ -205,7 +207,7 @@ export function Dashboard({
                 <Card
                   key={queryIndex}
                   className={cx(
-                    "mr-3 mb-3 p-3 h-[calc(50vh-2.6rem)] min-h-[18rem]",
+                    "mr-4 mb-4 p-4 h-[calc(50vh-2.6rem)] min-h-[18rem]",
                     {
                       "h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]":
                         numQueriesInSection === 1,
@@ -215,7 +217,7 @@ export function Dashboard({
                   )}
                 >
                   {query.render.label ? (
-                    <h2 className="text-md mb-2 text-center font-semibold">
+                    <h2 className="text-md mb-4 text-center font-semibold font-display">
                       {query.render.label}
                     </h2>
                   ) : null}

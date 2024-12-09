@@ -154,7 +154,7 @@ TimeInput.displayName = "TimeInput"
 const triggerStyles = tv({
   base: [
     // base
-    "peer flex w-full cursor-pointer appearance-none items-center gap-x-2 truncate rounded-md border px-2 py-1 shadow-sm outline-none transition-all text-sm",
+    "peer flex w-full cursor-pointer appearance-none items-center gap-x-2 truncate rounded-md border px-2 py-1.5 shadow-sm outline-none transition-all text-sm",
     // background color
     "bg-cbg dark:bg-dbg",
     // border color
@@ -201,7 +201,7 @@ const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
           {...props}
         >
           <span className={cx({
-            "flex-1 font-medium overflow-hidden text-ellipsis whitespace-nowrap text-left text-ctext dark:text-dtext": true,
+            "flex-1 font-normal overflow-hidden text-ellipsis whitespace-nowrap text-left text-ctext dark:text-dtext": true,
             "text-ctext2 dark:text-dtext2": isDefaultValue,
           })}>
             {children ? (
@@ -372,7 +372,7 @@ const PresetContainer = <TPreset extends Preset, TValue>({
               title={preset.label}
               className={cx(
                 // base
-                "relative w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border px-2.5 py-1.5 text-left text-base shadow-sm outline-none transition-all sm:border-none sm:py-2 sm:text-sm sm:shadow-none",
+                "relative w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border px-2.5 py-1.5 text-left text-base shadow-sm outline-none transition-all sm:border-none sm:py-2 text-sm sm:shadow-none",
                 // text color
                 "text-ctext dark:text-dtext",
                 // border color

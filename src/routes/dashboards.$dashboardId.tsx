@@ -54,8 +54,11 @@ function DashboardViewComponent() {
   };
 
   const MenuButton = (
-    <button onClick={() => setIsMenuOpen(true)}>
-      <RiMenuLine className="pl-1 py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+    <button
+      className="px-1"
+      onClick={() => setIsMenuOpen(true)}
+    >
+      <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
     </button>
   );
 
@@ -81,7 +84,7 @@ function DashboardViewComponent() {
         <meta name="description" content={params.dashboardId} />
       </Helmet>
       <div
-        className={cx("pb-16 pt-1", {
+        className={cx("pb-8 pt-1", {
           "h-dvh sm:h-fit overflow-y-hidden sm:overflow-y-auto": isMenuOpen,
         })}
         onClick={() => {
@@ -118,9 +121,9 @@ function DashboardViewComponent() {
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
-        <div className="mt-6 px-5 w-full sm:w-80">
+        <div className="mt-6 px-5 w-full sm:w-96">
           <label>
-            <span className="text-lg font-medium ml-1 mb-2 block">
+            <span className="text-lg font-medium font-display ml-1 mb-2 block">
               {translate("Variables")}
             </span>
             <textarea
