@@ -225,8 +225,8 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 
 		nextLabel = ""
 	}
-	if closeErr := conn.Close(); closeErr != nil {
-		return result, fmt.Errorf("Error closing conn %d: %v", closeErr)
+	if err := conn.Close(); err != nil {
+		return result, fmt.Errorf("Error closing conn: %v", err)
 	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue

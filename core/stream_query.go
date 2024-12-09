@@ -111,8 +111,8 @@ func StreamQueryCSV(
 			return fmt.Errorf("error flushing CSV writer: %w", err)
 		}
 	}
-	if closeErr := conn.Close(); closeErr != nil {
-		return fmt.Errorf("Error closing conn %d: %v", closeErr)
+	if err := conn.Close(); err != nil {
+		return fmt.Errorf("Error closing conn: %v", err)
 	}
 
 	return rows.Err()
