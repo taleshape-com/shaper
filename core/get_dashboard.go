@@ -41,6 +41,11 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
 
+	conn, err := app.db.Connx(ctx)
+	if err != nil {
+		return result, fmt.Errorf("Error getting conn: %v", err)
+	}
+
 	for queryIndex, sqlString := range sqls {
 		if queryIndex == len(sqls)-1 {
 			// Ignore text after last semicolon
@@ -50,10 +55,16 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 			nextIsDownload = false
 			continue
 		}
-		varPrefix := buildVarPrefix(singleVars, multiVars)
+		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
 		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
-		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
+		rows, err := conn.QueryxContext(ctx, varPrefix+string(sqlString)+";")
+		// TODO: Harden DB cleanup logic. We must not leak vars to other queries. Also consider parallel queries
+		if varCleanup != "" {
+			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+				return result, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+			}
+		}
 		if err != nil {
 			return result, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
 		}
@@ -70,7 +81,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		}
 		// prefix with DESCRIBE and run query to get the details of the UNION type
 		// desc := []Desc{}
-		// err = app.db.SelectContext(ctx, &desc, "DESCRIBE "+string(sql)+";")
+		// err = conn.SelectContext(ctx, &desc, "DESCRIBE "+string(sql)+";")
 		// if err != nil {
 		// 	return result, err
 		// }
@@ -213,6 +224,9 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 		}
 
 		nextLabel = ""
+	}
+	if closeErr := conn.Close(); closeErr != nil {
+		return result, fmt.Errorf("Error closing conn %d: %v", closeErr)
 	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
@@ -777,10 +791,12 @@ func hasOnlyUniqueValues(rows Rows, columnIndex int) bool {
 // TODO: assert that variable names are alphanumeric
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
-func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) string {
+func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
 	varPrefix := strings.Builder{}
+	varCleanup := strings.Builder{}
 	for k, v := range singleVars {
 		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = %s;\n", escapeSQLIdentifier(k), v))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE %s;\n", escapeSQLIdentifier(k)))
 	}
 	for k, v := range multiVars {
 		l := ""
@@ -792,8 +808,9 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 			l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
 		}
 		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR[];\n", escapeSQLIdentifier(k), l))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE %s;\n", escapeSQLIdentifier(k)))
 	}
-	return varPrefix.String()
+	return varPrefix.String(), varCleanup.String()
 }
 
 func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows) error {
@@ -1030,7 +1047,7 @@ func getTokenVars(variables map[string]interface{}) (map[string]string, map[stri
 	for k, v := range variables {
 		switch v := v.(type) {
 		case string:
-			singleVars[k] = v
+			singleVars[k] = "'" + escapeSQLString(v) + "'"
 		case []interface{}:
 			strSlice := make([]string, 0, len(v))
 			for _, item := range v {

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func StreamQueryCSV(
@@ -46,12 +48,22 @@ func StreamQueryCSV(
 	csvWriter := csv.NewWriter(writer)
 	defer csvWriter.Flush()
 
+	conn, err := app.db.Connx(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting conn: %v", err)
+	}
+
 	// Execute the query and get rows
-	varPrefix, err := getVarPrefix(app, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
 	if err != nil {
 		return err
 	}
-	rows, err := app.db.QueryContext(ctx, varPrefix+query+";")
+	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
+	if varCleanup != "" {
+		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("error executing query: %w", err)
 	}
@@ -99,6 +111,9 @@ func StreamQueryCSV(
 			return fmt.Errorf("error flushing CSV writer: %w", err)
 		}
 	}
+	if closeErr := conn.Close(); closeErr != nil {
+		return fmt.Errorf("Error closing conn %d: %v", closeErr)
+	}
 
 	return rows.Err()
 }
@@ -119,12 +134,12 @@ func formatValue(value interface{}) string {
 	}
 }
 
-func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]interface{}) (string, error) {
+func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]interface{}) (string, string, error) {
 	nextIsDownload := false
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	for queryIndex, sqlString := range sqlQueries {
@@ -136,21 +151,26 @@ func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParam
 			nextIsDownload = false
 			continue
 		}
-		varPrefix := buildVarPrefix(singleVars, multiVars)
+		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
 		// run query
 		data := Rows{}
-		rows, err := app.db.QueryxContext(ctx, varPrefix+string(sqlString)+";")
+		rows, err := conn.QueryxContext(ctx, varPrefix+string(sqlString)+";")
+		if varCleanup != "" {
+			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+				return "", "", fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+			}
+		}
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		colTypes, err := rows.ColumnTypes()
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		for rows.Next() {
 			row, err := rows.SliceScan()
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			data = append(data, row)
 		}
@@ -175,8 +195,9 @@ func getVarPrefix(app *App, ctx context.Context, sqlQueries []string, queryParam
 		}
 		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, data)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
-	return buildVarPrefix(singleVars, multiVars), nil
+	varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
+	return varPrefix, varCleanup, nil
 }

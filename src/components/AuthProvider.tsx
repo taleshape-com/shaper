@@ -1,4 +1,5 @@
 import { redirect } from '@tanstack/react-router'
+import { isEqual } from 'lodash'
 import { useState } from 'react';
 import {
   parseJwt,
@@ -101,6 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateVariables = async (text: string) => {
     try {
       const vars = getVariables(text)
+      if (isEqual(vars, getVariables(getVariablesString()))) {
+        return true
+      }
       await login(localStorage.getItem(localStorageTokenKey) ?? "", vars)
       return true
     } catch {
