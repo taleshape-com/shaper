@@ -109,18 +109,18 @@ function DashboardViewComponent() {
       </div>
       <div
         className={cx(
-          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl translate-x-[calc(-100vw)] transition-transform",
+          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
           {
-            "translate-x-0": isMenuOpen,
+            "-translate-x-[calc(100vw+50px)] ": !isMenuOpen,
           },
         )}
       >
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
-        <div className="mx-5 mt-5 w-80">
+        <div className="mt-6 px-5 w-full sm:w-80">
           <label>
-            <span className="text-lg font-medium ml-1 mb-1 block">
+            <span className="text-lg font-medium ml-1 mb-2 block">
               {translate("Variables")}
             </span>
             <textarea

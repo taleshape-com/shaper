@@ -54,20 +54,18 @@ function DashboardButton({
   };
 
   return (
-    <div className="ml-2 select-none">
-      <Button
-        onClick={handleDownload}
-        disabled={isLoading}
-        variant="secondary"
-        className="flex w-full items-center justify-between my-1"
-      >
-        {label}
-        {headers[0].name}
-        <SelectPrimitives.Icon asChild>
-          <RiFileDownloadLine className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2" />
-        </SelectPrimitives.Icon>
-      </Button>
-    </div>
+    <Button
+      onClick={handleDownload}
+      disabled={isLoading}
+      variant="secondary"
+      className="flex items-center justify-between my-1 ml-2 select-none"
+    >
+      {label}
+      {headers[0].name}
+      <SelectPrimitives.Icon asChild>
+        <RiFileDownloadLine className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2" />
+      </SelectPrimitives.Icon>
+    </Button>
   );
 }
 
