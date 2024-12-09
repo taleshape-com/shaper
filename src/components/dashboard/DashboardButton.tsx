@@ -54,7 +54,7 @@ function DashboardButton({
   };
 
   return (
-    <div className="ml-2">
+    <div className="ml-2 select-none">
       <Button
         onClick={handleDownload}
         disabled={isLoading}

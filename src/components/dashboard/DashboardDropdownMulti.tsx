@@ -34,7 +34,7 @@ function DashboardDropdownMulti({
     ? selectedVal
     : [selectedVal]) : [];
   return (
-    <div className="ml-2">
+    <div className="ml-2 select-none">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" className="font-normal font-medium flex w-full items-center justify-between my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga">

@@ -70,7 +70,7 @@ const DashboardBarChart = ({
   return (
     <BarChart
       chartId={chartId}
-      className="h-full"
+      className="h-full select-none"
       enableLegendSlider
       startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexAxisHeader.type) ? 10 : 15)}
       type={stacked ? "stacked" : "default"}

@@ -66,7 +66,7 @@ const DashboardLineChart = ({
   return (
     <LineChart
       chartId={chartId}
-      className="h-full"
+      className="h-full select-none"
       enableLegendSlider
       startEndOnly={isTimeType(indexAxisHeader.type)}
       connectNulls

@@ -38,7 +38,7 @@ function DashboardDropdown({
           {label}:
         </Label>
       )}
-      <div className={cx({ ["ml-2"]: !label })}>
+      <div className={cx("select-none", { ["ml-2"]: !label })}>
         <Select
           defaultValue={formatValue(
             data[0][valueIndex],
