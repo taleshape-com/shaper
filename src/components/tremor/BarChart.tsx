@@ -130,7 +130,7 @@ const LegendItem = ({
           // text color
           "text-ctext dark:text-dtext",
           hasOnValueChange &&
-          "group-hover:text-gray-900 dark:group-hover:text-gray-50",
+            "group-hover:text-gray-900 dark:group-hover:text-gray-50",
           activeLegend && activeLegend !== name ? "opacity-40" : "opacity-100",
         )}
       >
@@ -589,7 +589,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       legendPosition = "right",
       tooltipCallback,
       customTooltip,
-      indexAxisDomain = ['auto', 'auto'],
+      indexAxisDomain = ["auto", "auto"],
       chartId,
       ...other
     } = props;
@@ -611,8 +611,8 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
     const prevActiveRef = React.useRef<boolean | undefined>(undefined);
     const prevLabelRef = React.useRef<string | undefined>(undefined);
 
-    const { hoveredIndex, hoveredChartId, setHoverState } = React.useContext(ChartHoverContext);
-
+    const { hoveredIndex, hoveredChartId, setHoverState } =
+      React.useContext(ChartHoverContext);
 
     function valueToPercent(value: number) {
       return `${(value * 100).toFixed(0)}%`;
@@ -667,13 +667,13 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             onClick={
               hasOnValueChange && (activeLegend || activeBar)
                 ? () => {
-                  setActiveBar(undefined);
-                  setActiveLegend(undefined);
-                  onValueChange?.(null);
-                }
+                    setActiveBar(undefined);
+                    setActiveLegend(undefined);
+                    onValueChange?.(null);
+                  }
                 : undefined
             }
-            onMouseMove={state => {
+            onMouseMove={(state) => {
               if (state.activeLabel) {
                 setHoverState(state.activeLabel, chartId);
               }
@@ -720,27 +720,32 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               minTickGap={tickGap}
               {...(layout !== "vertical"
                 ? {
-                  padding: {
-                    left: paddingValue,
-                    right: paddingValue,
-                  },
-                  dataKey: index,
-                  interval: startEndOnly ? "preserveStartEnd" : intervalType,
-                  ticks: startEndOnly
-                    ? [data[0][index], data[data.length - 1][index]]
-                    : undefined,
-                  tickFormatter:
-                    type === "percent" ? valueToPercent : indexFormatter,
-                  type: Array.isArray(indexAxisDomain) && indexAxisDomain[0] !== 'auto' && data.length > 7 ? "number" : "category",
-                  domain: indexAxisDomain,
-                }
+                    padding: {
+                      left: paddingValue,
+                      right: paddingValue,
+                    },
+                    dataKey: index,
+                    interval: startEndOnly ? "preserveStartEnd" : intervalType,
+                    ticks: startEndOnly
+                      ? [data[0][index], data[data.length - 1][index]]
+                      : undefined,
+                    tickFormatter:
+                      type === "percent" ? valueToPercent : indexFormatter,
+                    type:
+                      Array.isArray(indexAxisDomain) &&
+                      indexAxisDomain[0] !== "auto" &&
+                      data.length > 7
+                        ? "number"
+                        : "category",
+                    domain: indexAxisDomain,
+                  }
                 : {
-                  type: "number",
-                  tickFormatter:
-                    type === "percent" ? valueToPercent : valueFormatter,
-                  allowDecimals: allowDecimals,
-                  domain: valueAxisDomain,
-                })}
+                    type: "number",
+                    tickFormatter:
+                      type === "percent" ? valueToPercent : valueFormatter,
+                    allowDecimals: allowDecimals,
+                    domain: valueAxisDomain,
+                  })}
             >
               {xAxisLabel && (
                 <Label
@@ -773,23 +778,28 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               }}
               {...(layout !== "vertical"
                 ? {
-                  type: "number",
-                  domain: valueAxisDomain as AxisDomain,
-                  tickFormatter:
-                    type === "percent" ? valueToPercent : valueFormatter,
-                  allowDecimals: allowDecimals,
-                }
+                    type: "number",
+                    domain: valueAxisDomain as AxisDomain,
+                    tickFormatter:
+                      type === "percent" ? valueToPercent : valueFormatter,
+                    allowDecimals: allowDecimals,
+                  }
                 : {
-                  dataKey: index,
-                  ticks: startEndOnly
-                    ? [data[0][index], data[data.length - 1][index]]
-                    : undefined,
-                  type: Array.isArray(indexAxisDomain) && indexAxisDomain[0] !== 'auto' && data.length > 7 ? "number" : "category",
-                  interval: "equidistantPreserveStart",
-                  tickFormatter:
-                    type === "percent" ? valueToPercent : indexFormatter,
-                  domain: indexAxisDomain,
-                })}
+                    dataKey: index,
+                    ticks: startEndOnly
+                      ? [data[0][index], data[data.length - 1][index]]
+                      : undefined,
+                    type:
+                      Array.isArray(indexAxisDomain) &&
+                      indexAxisDomain[0] !== "auto" &&
+                      data.length > 7
+                        ? "number"
+                        : "category",
+                    interval: "equidistantPreserveStart",
+                    tickFormatter:
+                      type === "percent" ? valueToPercent : indexFormatter,
+                    domain: indexAxisDomain,
+                  })}
             >
               {yAxisLabel && (
                 <Label
@@ -808,8 +818,12 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               isAnimationActive={true}
               animationDuration={100}
               cursor={{
-                fill: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "var(--shaper-dark-mode-background-color-invert)" : "var(--shaper-background-color-invert)",
-                opacity: 0.05
+                fill:
+                  window.matchMedia &&
+                  window.matchMedia("(prefers-color-scheme: dark)").matches
+                    ? "var(--shaper-dark-mode-background-color-invert)"
+                    : "var(--shaper-background-color-invert)",
+                opacity: 0.05,
               }}
               offset={20}
               position={{
@@ -819,24 +833,31 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               content={({ active, payload, label }) => {
                 const cleanPayload: TooltipProps["payload"] = payload
                   ? payload.map((item: any) => ({
-                    category: item.dataKey,
-                    value: item.value,
-                    index: item.payload[index],
-                    color: categoryColors.get(
-                      item.dataKey,
-                    ) as AvailableChartColorsKeys,
-                    type: item.type,
-                    payload: item.payload,
-                  }))
+                      category: item.dataKey,
+                      value: item.value,
+                      index: item.payload[index],
+                      color: categoryColors.get(
+                        item.dataKey,
+                      ) as AvailableChartColorsKeys,
+                      type: item.type,
+                      payload: item.payload,
+                    }))
                   : [];
 
-                if (tooltipCallback && (active !== prevActiveRef.current || label !== prevLabelRef.current)) {
+                if (
+                  tooltipCallback &&
+                  (active !== prevActiveRef.current ||
+                    label !== prevLabelRef.current)
+                ) {
                   tooltipCallback({ active, payload: cleanPayload, label });
                   prevActiveRef.current = active;
                   prevLabelRef.current = label;
                 }
 
-                return showTooltip && active ? (
+                return showTooltip &&
+                  active &&
+                  hoveredIndex != null &&
+                  hoveredChartId === chartId ? (
                   CustomTooltip ? (
                     <CustomTooltip
                       active={active}
@@ -866,7 +887,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     activeLegend,
                     hasOnValueChange
                       ? (clickedLegendItem: string) =>
-                        onCategoryClick(clickedLegendItem)
+                          onCategoryClick(clickedLegendItem)
                       : undefined,
                     enableLegendSlider,
                     legendPosition,
@@ -875,13 +896,13 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 }
               />
             ) : null}
-            {hoveredIndex != null && hoveredChartId !== chartId &&
+            {hoveredIndex != null && hoveredChartId !== chartId && (
               <ReferenceLine
-                x={layout === 'horizontal' ? hoveredIndex : undefined}
-                y={layout === 'vertical' ? hoveredIndex : undefined}
+                x={layout === "horizontal" ? hoveredIndex : undefined}
+                y={layout === "vertical" ? hoveredIndex : undefined}
                 stroke="var(--shaper-reference-line-color)"
               />
-            }
+            )}
             {categories.map((category) => (
               <Bar
                 className={cx(

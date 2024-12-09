@@ -746,7 +746,9 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                   prevLabelRef.current = label;
                 }
 
-                return showTooltip && active ? (
+                return showTooltip && active &&
+                  hoveredIndex != null &&
+                  hoveredChartId === chartId ? (
                   CustomTooltip ? (
                     <CustomTooltip
                       active={active}
