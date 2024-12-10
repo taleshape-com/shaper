@@ -3,16 +3,19 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"fmt"
 	"log/slog"
 	"os"
+	"shaper/comms"
 	"shaper/core"
 	"shaper/util/signals"
 	"shaper/web"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/marcboeker/go-duckdb"
 	_ "github.com/marcboeker/go-duckdb"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
@@ -101,8 +104,16 @@ func Run(config Config) func(context.Context) {
 		fmt.Println("⇨ custom CSS injected into frontend")
 	}
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	// connect to duckdb
-	db, err := sqlx.Connect("duckdb", config.DBFile)
+	dbConnector, err := duckdb.NewConnector(config.DBFile, nil)
+	if err != nil {
+		panic(err)
+	}
+	sqlDB := sql.OpenDB(dbConnector)
+	db := sqlx.NewDb(sqlDB, "duckdb")
+
 	if err != nil {
 		panic(err)
 	}
@@ -112,21 +123,25 @@ func Run(config Config) func(context.Context) {
 		fmt.Println("⇨ connected to in-memory duckdb")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
 	app, err := core.New(db, logger, config.LoginToken, config.DashboardDir, config.JWTSecret, config.JWTExp)
 	if err != nil {
 		panic(err)
 	}
+
+	c, err := comms.New(dbConnector, db, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	e := web.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
 
 	return func(ctx context.Context) {
-		if err := db.Close(); err != nil {
-			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
-		}
-		db.Close()
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
+		}
+		c.Close()
+		if err := db.Close(); err != nil {
+			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
 		}
 	}
 }
