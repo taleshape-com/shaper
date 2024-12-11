@@ -131,8 +131,11 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 			if !ok {
 				// Channel closed, process remaining messages and exit
 				if len(batch) > 0 {
+					processStartTime := time.Now()
 					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
-						logger.Error("Failed to process final batch", slog.Any("error", err))
+						logger.Error("Failed to process final batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					} else {
+						logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 					}
 				}
 				return
@@ -148,8 +151,11 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 
 			// Process if batch is full
 			if len(batch) >= BATCH_SIZE {
+				processStartTime := time.Now()
 				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
-					logger.Error("Failed to process batch", slog.Any("error", err))
+					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+				} else {
+					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 				// Stop timer after processing
@@ -161,8 +167,11 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 		case <-batchTimer.C:
 			// Process non-empty batch
 			if len(batch) > 0 {
+				processStartTime := time.Now()
 				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
-					logger.Error("Failed to process batch", slog.Any("error", err))
+					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+				} else {
+					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 			}
