@@ -34,19 +34,6 @@ type ColInfo struct {
 	Null       string `db:"null"`
 }
 
-type BatchMessage struct {
-	msg      jetstream.Msg
-	data     map[string]interface{}
-	metadata *jetstream.MsgMetadata
-	table    string
-}
-
-// TODO: remove type
-type MessageBatch struct {
-	messages []*BatchMessage
-}
-
-// TODO: remove type
 type TableCache struct {
 	columns    []ColInfo
 	lastUpdate time.Time
@@ -66,37 +53,31 @@ func Start(dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *
 	if err != nil {
 		return Ingest{}, err
 	}
-	// TODO: How to handle consumer errors? Should we set MaxDeliver? Any case we can fail writing to DuckDB?
 	ingestConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
 		Durable: "shaper-ingest",
 	})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	go handleMessages(ctx, ingestConsumer, logger, dbConnector, db)
 	return Ingest{ingestCancelFunc: cancel}, err
 }
 
+const tableColumnsQuery = "SELECT column_name, \"null\" FROM (DESCRIBE (FROM query_table($1)))"
+
 func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
 	var columns []ColInfo
-	query := "SELECT column_name, \"null\" FROM (DESCRIBE (FROM query_table($1)))"
-
-	err := db.SelectContext(ctx, &columns, query, tableName)
+	err := db.SelectContext(ctx, &columns, tableColumnsQuery, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get table columns: %w", err)
 	}
-
 	if len(columns) == 0 {
 		return nil, fmt.Errorf("table %s not found or has no columns", tableName)
 	}
-
 	return columns, nil
 }
 
 func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB) {
 	tableCache := make(map[string]TableCache)
-	batch := &MessageBatch{
-		messages: make([]*BatchMessage, 0, BATCH_SIZE),
-	}
+	batch := make([]jetstream.Msg, 0, BATCH_SIZE)
 
 	// Create buffered channel for messages
 	msgChan := make(chan jetstream.Msg, BATCH_SIZE)
@@ -149,52 +130,28 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 		case msg, ok := <-msgChan:
 			if !ok {
 				// Channel closed, process remaining messages and exit
-				if len(batch.messages) > 0 {
-					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger); err != nil {
+				if len(batch) > 0 {
+					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
 						logger.Error("Failed to process final batch", slog.Any("error", err))
 					}
 				}
 				return
 			}
 
-			tableName := strings.TrimPrefix(msg.Subject(), SUBJECT_PREFIX)
-
-			// Parse message
-			var jsonData map[string]interface{}
-			if err := json.Unmarshal(msg.Data(), &jsonData); err != nil {
-				logger.Error("Failed to parse JSON message",
-					slog.String("table", tableName),
-					slog.Any("error", err))
-				continue
-			}
-
-			metadata, err := msg.Metadata()
-			if err != nil {
-				logger.Error("Failed to get message metadata",
-					slog.String("table", tableName),
-					slog.Any("error", err))
-				continue
-			}
-
 			// Add to batch
-			batch.messages = append(batch.messages, &BatchMessage{
-				msg:      msg,
-				data:     jsonData,
-				metadata: metadata,
-				table:    tableName,
-			})
+			batch = append(batch, msg)
 
 			// Start/reset timer when we get the first message in a batch
-			if len(batch.messages) == 1 {
+			if len(batch) == 1 {
 				batchTimer.Reset(BATCH_TIMEOUT)
 			}
 
 			// Process if batch is full
-			if len(batch.messages) >= BATCH_SIZE {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger); err != nil {
+			if len(batch) >= BATCH_SIZE {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err))
 				}
-				batch.messages = make([]*BatchMessage, 0, BATCH_SIZE)
+				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 				// Stop timer after processing
 				if !batchTimer.Stop() {
 					<-batchTimer.C
@@ -203,18 +160,17 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 
 		case <-batchTimer.C:
 			// Process non-empty batch
-			if len(batch.messages) > 0 {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger); err != nil {
+			if len(batch) > 0 {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err))
 				}
-				batch.messages = make([]*BatchMessage, 0, BATCH_SIZE)
-
+				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 			}
 
 		case <-ctx.Done():
 			// Process remaining messages before shutting down
-			if len(batch.messages) > 0 {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger); err != nil {
+			if len(batch) > 0 {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
 					logger.Error("Failed to process final batch", slog.Any("error", err))
 				}
 			}
@@ -224,17 +180,19 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 	}
 }
 
-func processBatch(ctx context.Context, batch *MessageBatch, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger) error {
+func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB) error {
 	// Group messages by table
-	tableMessages := make(map[string][]*BatchMessage)
-	for _, msg := range batch.messages {
-		tableMessages[msg.table] = append(tableMessages[msg.table], msg)
+	tableMessages := make(map[string][]jetstream.Msg)
+	for _, msg := range batch {
+		tableName := strings.TrimPrefix(msg.Subject(), SUBJECT_PREFIX)
+		tableMessages[tableName] = append(tableMessages[tableName], msg)
 	}
 
 	// Process each table's messages
 	for tableName, messages := range tableMessages {
 		// Get or update table schema from cache
 		tableInfo, exists := tableCache[tableName]
+		// TODO: Rethink how to cache table schemas
 		if !exists || time.Since(tableInfo.lastUpdate) > time.Hour {
 			columns, err := getTableColumns(ctx, db, tableName)
 			if err != nil {
@@ -262,24 +220,35 @@ func processBatch(ctx context.Context, batch *MessageBatch, tableCache map[strin
 		defer appender.Close()
 
 		// Process messages for this table
-		for _, batchMsg := range messages {
+		for _, msg := range messages {
+			// Parse message
+			var jsonData map[string]interface{}
+			if err := json.Unmarshal(msg.Data(), &jsonData); err != nil {
+				return fmt.Errorf("failed to parse JSON message: %w", err)
+			}
+
+			metadata, err := msg.Metadata()
+			if err != nil {
+				return fmt.Errorf("failed to get message metadata: %w", err)
+			}
+
 			values := make([]driver.Value, len(tableInfo.columns))
 			for j, col := range tableInfo.columns {
 				switch col.ColumnName {
 				case EVENT_ID_COLUMN:
-					if jsonValue, exists := batchMsg.data[EVENT_ID_COLUMN]; exists {
+					if jsonValue, exists := jsonData[EVENT_ID_COLUMN]; exists {
 						values[j] = jsonValue
 					} else {
-						values[j] = batchMsg.metadata.Sequence
+						values[j] = metadata.Sequence
 					}
 				case EVENT_TIMESTAMP_COLUMN:
-					if jsonValue, exists := batchMsg.data[EVENT_TIMESTAMP_COLUMN]; exists {
+					if jsonValue, exists := jsonData[EVENT_TIMESTAMP_COLUMN]; exists {
 						values[j] = jsonValue
 					} else {
-						values[j] = batchMsg.metadata.Timestamp
+						values[j] = metadata.Timestamp
 					}
 				default:
-					value, exists := batchMsg.data[col.ColumnName]
+					value, exists := jsonData[col.ColumnName]
 					if !exists {
 						if col.Null == "YES" {
 							values[j] = nil
@@ -297,10 +266,8 @@ func processBatch(ctx context.Context, batch *MessageBatch, tableCache map[strin
 			}
 
 			// Acknowledge message
-			if err := batchMsg.msg.Ack(); err != nil {
-				logger.Error("Failed to acknowledge message",
-					slog.String("table", tableName),
-					slog.Any("error", err))
+			if err := msg.Ack(); err != nil {
+				return fmt.Errorf("failed to acknowledge message: %w", err)
 			}
 		}
 	}
