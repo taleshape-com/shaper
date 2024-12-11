@@ -10,6 +10,7 @@ import (
 	"os"
 	"shaper/comms"
 	"shaper/core"
+	"shaper/ingest"
 	"shaper/util/signals"
 	"shaper/web"
 	"time"
@@ -113,7 +114,6 @@ func Run(config Config) func(context.Context) {
 	}
 	sqlDB := sql.OpenDB(dbConnector)
 	db := sqlx.NewDb(sqlDB, "duckdb")
-
 	if err != nil {
 		panic(err)
 	}
@@ -128,7 +128,12 @@ func Run(config Config) func(context.Context) {
 		panic(err)
 	}
 
-	c, err := comms.New(dbConnector, db, logger)
+	c, err := comms.New()
+	if err != nil {
+		panic(err)
+	}
+
+	ingestConsumer, err := ingest.Start(dbConnector, db, logger, c.Conn)
 	if err != nil {
 		panic(err)
 	}
@@ -139,6 +144,7 @@ func Run(config Config) func(context.Context) {
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
 		}
+		ingestConsumer.Close()
 		c.Close()
 		if err := db.Close(); err != nil {
 			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
