@@ -39,16 +39,21 @@ type TableCache struct {
 	lastUpdate time.Time
 }
 
-func Start(dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn) (Ingest, error) {
+func Start(dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn, persist bool) (Ingest, error) {
 	js, err := jetstream.New(nc)
 	if err != nil {
 		return Ingest{}, err
 	}
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()
+	storageType := jetstream.MemoryStorage
+	if persist {
+		storageType = jetstream.FileStorage
+	}
 	stream, err := js.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
 		Name:     "shaper-ingest",
 		Subjects: []string{SUBJECT_PREFIX + ">"},
+		Storage:  storageType,
 	})
 	if err != nil {
 		return Ingest{}, err

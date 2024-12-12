@@ -1,6 +1,7 @@
 package comms
 
 import (
+	"os"
 	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
@@ -17,7 +18,17 @@ type Comms struct {
 	Server *server.Server
 }
 
-func New() (Comms, error) {
+type Config struct {
+	Host       string
+	Port       int
+	Token      string
+	JSDir      string
+	JSKey      string
+	MaxStore   int64
+	DontListen bool
+}
+
+func New(config Config) (Comms, error) {
 	// TODO: auth
 	// TODO: allow changing nats host+port
 	// TODO: support TLS
@@ -28,11 +39,33 @@ func New() (Comms, error) {
 	opts := &server.Options{
 		JetStream:              true,
 		DisableJetStreamBanner: true,
-		// TODO: DontListen as default. No NATS exposed. Only internally
-		// DontListen:             true,
-		// TODO: StoreDir
-		StoreDir: "./jetstream",
+		Host:                   config.Host,
+		Port:                   config.Port,
+		DontListen:             config.DontListen,
 	}
+	// Configure authentication if token is provided
+	if config.Token != "" {
+		opts.Authorization = config.Token
+	}
+	// Configure JetStream directory if provided
+	if config.JSDir != "" {
+		opts.StoreDir = config.JSDir
+	} else {
+		tmpStoreDir, err := os.MkdirTemp("", "shaper-nats")
+		if err != nil {
+			return Comms{}, err
+		}
+		opts.StoreDir = tmpStoreDir
+	}
+	// Configure JetStream encryption if key is provided
+	if config.JSKey != "" {
+		opts.JetStreamKey = config.JSKey
+	}
+	// Configure stream retention if set
+	if config.MaxStore > 0 {
+		opts.JetStreamMaxStore = config.MaxStore
+	}
+
 	ns, err := server.NewServer(opts)
 	if err != nil {
 		return Comms{}, err
@@ -42,9 +75,16 @@ func New() (Comms, error) {
 	if !ns.ReadyForConnections(CONNECT_TIMEOUT) {
 		return Comms{}, err
 	}
-	clientOpts := []nats.Option{}
-	// TODO: Make inprocess optional. Allow connecting to remote NATS
-	clientOpts = append(clientOpts, nats.InProcessServer(ns))
+	clientOpts := []nats.Option{
+		// TODO: Make inprocess optional. Allow connecting to remote NATS
+		nats.InProcessServer(ns),
+	}
+
+	// Add authentication to client if token is set
+	if config.Token != "" {
+		clientOpts = append(clientOpts, nats.Token(config.Token))
+	}
+
 	nc, err := nats.Connect(ns.ClientURL(), clientOpts...)
 	if err != nil {
 		return Comms{}, err
