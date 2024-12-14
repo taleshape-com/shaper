@@ -253,7 +253,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 					if jsonValue, exists := jsonData[EVENT_ID_COLUMN]; exists {
 						values[j] = jsonValue
 					} else {
-						values[j] = metadata.Sequence
+						values[j] = metadata.Sequence.Stream
 					}
 				case EVENT_TIMESTAMP_COLUMN:
 					if jsonValue, exists := jsonData[EVENT_TIMESTAMP_COLUMN]; exists {
