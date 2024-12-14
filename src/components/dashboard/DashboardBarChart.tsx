@@ -77,6 +77,7 @@ const DashboardBarChart = ({
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}
       index={indexAxisHeader.name}
+      indexType={indexAxisHeader.type}
       categories={Array.from(categories)}
       valueFormatter={(n: number) => {
         return n.toLocaleString();

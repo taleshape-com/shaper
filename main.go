@@ -3,16 +3,21 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"fmt"
 	"log/slog"
 	"os"
+	"shaper/comms"
 	"shaper/core"
+	"shaper/ingest"
 	"shaper/util/signals"
 	"shaper/web"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/marcboeker/go-duckdb"
 	_ "github.com/marcboeker/go-duckdb"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
@@ -32,6 +37,13 @@ type Config struct {
 	Favicon           string
 	JWTSecret         []byte
 	JWTExp            time.Duration
+	NatsHost          string
+	NatsPort          int
+	NatsToken         string
+	NatsJSDir         string
+	NatsJSKey         string
+	NatsMaxStore      int64 // in bytes
+	NatsDontListen    bool
 }
 
 func main() {
@@ -42,15 +54,22 @@ func main() {
 func loadConfig() Config {
 	flags := ff.NewFlagSet("shaper")
 	help := flags.Bool('h', "help", "show help")
-	addr := flags.String('a', "addr", "0.0.0.0", "server address")
+	addr := flags.StringLong("addr", "0.0.0.0", "server address")
 	port := flags.Int('p', "port", 3000, "port to listen on")
-	dbFile := flags.String('f', "duckdb", "", "path to duckdb file (default: use in-memory db)")
+	dbFile := flags.String('d', "duckdb", "", "path to duckdb file (default: use in-memory db)")
 	loginToken := flags.String('t', "token", "", "token used for login (required)")
-	dashboardDir := flags.String('d', "dashboards", "", "path to directory to read dashboard SQL files from (required)")
-	customCSS := flags.String('c', "css", "", "CSS string to inject into the frontend")
-	favicon := flags.String('i', "favicon", "", "path to override favicon. Must end .svg or .ico")
-	jwtSecret := flags.String('j', "jwtsecret", "", "JWT secret to sign auth tokens")
-	jwtExp := flags.Duration('e', "jwtexp", 15*time.Minute, "JWT expiration duration")
+	dashboardDir := flags.StringLong("dashboards", "", "path to directory to read dashboard SQL files from (required)")
+	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
+	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
+	jwtSecret := flags.StringLong("jwtsecret", "", "JWT secret to sign auth tokens")
+	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
+	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
+	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
+	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
+	natsJSDir := flags.String('n', "nats-dir", "", "JetStream storage directory (default: in-memory)")
+	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
+	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes (0 for unlimited)")
+	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
@@ -77,6 +96,13 @@ func loadConfig() Config {
 		panic(err)
 	}
 
+	// Parse natsMaxStore as int64
+	maxStore, err := strconv.ParseInt(*natsMaxStore, 10, 64)
+	if err != nil {
+		fmt.Printf("Invalid value for nats-max-store: %v\n", err)
+		os.Exit(1)
+	}
+
 	config := Config{
 		Address:           *addr,
 		Port:              *port,
@@ -88,6 +114,13 @@ func loadConfig() Config {
 		Favicon:           *favicon,
 		JWTSecret:         []byte(*jwtSecret),
 		JWTExp:            *jwtExp,
+		NatsHost:          *natsHost,
+		NatsPort:          *natsPort,
+		NatsToken:         *natsToken,
+		NatsJSDir:         *natsJSDir,
+		NatsJSKey:         *natsJSKey,
+		NatsMaxStore:      maxStore,
+		NatsDontListen:    *natsDontListen,
 	}
 	return config
 }
@@ -101,8 +134,15 @@ func Run(config Config) func(context.Context) {
 		fmt.Println("⇨ custom CSS injected into frontend")
 	}
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	// connect to duckdb
-	db, err := sqlx.Connect("duckdb", config.DBFile)
+	dbConnector, err := duckdb.NewConnector(config.DBFile, nil)
+	if err != nil {
+		panic(err)
+	}
+	sqlDB := sql.OpenDB(dbConnector)
+	db := sqlx.NewDb(sqlDB, "duckdb")
 	if err != nil {
 		panic(err)
 	}
@@ -112,21 +152,39 @@ func Run(config Config) func(context.Context) {
 		fmt.Println("⇨ connected to in-memory duckdb")
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
 	app, err := core.New(db, logger, config.LoginToken, config.DashboardDir, config.JWTSecret, config.JWTExp)
 	if err != nil {
 		panic(err)
 	}
+
+	c, err := comms.New(comms.Config{
+		Host:       config.NatsHost,
+		Port:       config.NatsPort,
+		Token:      config.NatsToken,
+		JSDir:      config.NatsJSDir,
+		JSKey:      config.NatsJSKey,
+		MaxStore:   config.NatsMaxStore,
+		DontListen: config.NatsDontListen,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	ingestConsumer, err := ingest.Start(dbConnector, db, logger, c.Conn, config.NatsJSDir != "")
+	if err != nil {
+		panic(err)
+	}
+
 	e := web.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
 
 	return func(ctx context.Context) {
-		if err := db.Close(); err != nil {
-			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
-		}
-		db.Close()
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
+		}
+		ingestConsumer.Close()
+		c.Close()
+		if err := db.Close(); err != nil {
+			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
 		}
 	}
 }

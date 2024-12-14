@@ -48,3 +48,18 @@ export default tseslint.config({
   },
 })
 ```
+
+
+## Viz Logic
+
+- Line chart: date or timestamp, 1+ number columns
+    int stack, float not
+- Bar chart: text col, 1+ number columns
+    int stack, float not
+
+
+## NATS
+
+```sh
+nats pub --count 10 shaper.ingest.events '{"valid_at": "{{TimeStamp}}", "id": "{{ID}}", "action": "{{Random 3 10}}"}'
+```
