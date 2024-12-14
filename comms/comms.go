@@ -30,12 +30,9 @@ type Config struct {
 
 func New(config Config) (Comms, error) {
 	// TODO: auth
-	// TODO: allow changing nats host+port
 	// TODO: support TLS
 	// TODO: configure NATS logging
 	// TODO: NATS prometheus metrics
-	// TODO: JetStreamKey for disk encryption
-	// TODO: Allow configuring stream retention
 	opts := &server.Options{
 		JetStream:              true,
 		DisableJetStreamBanner: true,
