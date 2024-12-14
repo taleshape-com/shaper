@@ -1,5 +1,6 @@
 import React from "react";
 import { ChartHoverContext } from "../contexts/ChartHoverContext";
+import { Column } from "../lib/dashboard";
 
 export const ChartHoverProvider = ({
   children,
@@ -9,25 +10,29 @@ export const ChartHoverProvider = ({
   const [hoveredIndex, setHoveredIndex] = React.useState<
     string | number | null
   >(null);
-  const [hoveredChartId, setActiveChartId] = React.useState<string | null>(
+  const [hoveredIndexType, setHoveredIndexType] = React.useState<Column['type'] | null>(
+    null,
+  );
+  const [hoveredChartId, setHoveredChartId] = React.useState<string | null>(
     null,
   );
 
   const setHoverState = React.useCallback(
-    (index: string | number | null, chartId: string | null) => {
+    (index: string | number | null, chartId: string | null, indexType: Column['type'] | null) => {
       setHoveredIndex(index);
-      setActiveChartId(chartId);
+      setHoveredChartId(chartId);
+      setHoveredIndexType(indexType);
     },
     [],
   );
 
   return (
     <ChartHoverContext.Provider
-      value={{ hoveredIndex, hoveredChartId, setHoverState }}
+      value={{ hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState }}
     >
       <div
         onTouchEnd={() => {
-          setHoverState(null, null);
+          setHoverState(null, null, null);
         }}
       >
         {children}

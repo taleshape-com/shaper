@@ -72,6 +72,7 @@ const DashboardLineChart = ({
       connectNulls
       data={chartdata}
       index={indexAxisHeader.name}
+      indexType={indexAxisHeader.type}
       categories={Array.from(categories)}
       valueFormatter={(number: number) => {
         return number.toLocaleString();
