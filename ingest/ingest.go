@@ -112,6 +112,7 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 					if err == context.Canceled {
 						return
 					}
+					// TODO: we probably want to restart the system here. This could mean the consumer was removed
 					logger.Error("Failed to get next message", slog.Any("error", err))
 					continue
 				}

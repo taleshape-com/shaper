@@ -39,6 +39,7 @@ export function Dashboard({
   const [data, setData] = useState<Result>();
   const [error, setError] = useState<Error | null>();
   useEffect(() => {
+    console.log(id, vars, baseUrl, hash)
     setError(null);
     fetchDashboard(id, vars, baseUrl, getJwt)
       .then(setData)
@@ -49,7 +50,7 @@ export function Dashboard({
         }
         setError(err);
       });
-  }, [id, vars, baseUrl, getJwt, hash, onError]);
+  }, [id, JSON.stringify(vars), baseUrl, hash]);
 
   if (error) {
     return (
