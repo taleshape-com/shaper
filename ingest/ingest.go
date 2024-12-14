@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -253,7 +254,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 					if jsonValue, exists := jsonData[EVENT_ID_COLUMN]; exists {
 						values[j] = jsonValue
 					} else {
-						values[j] = metadata.Sequence.Stream
+						values[j] = strconv.FormatUint(metadata.Sequence.Stream, 10)
 					}
 				case EVENT_TIMESTAMP_COLUMN:
 					if jsonValue, exists := jsonData[EVENT_TIMESTAMP_COLUMN]; exists {
