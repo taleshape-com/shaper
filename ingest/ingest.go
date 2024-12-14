@@ -33,6 +33,7 @@ type Ingest struct {
 type ColInfo struct {
 	ColumnName string `db:"column_name"`
 	Null       string `db:"null"`
+	Type       string `db:"column_type"`
 }
 
 type TableCache struct {
@@ -67,7 +68,7 @@ func Start(dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *
 	return Ingest{ingestCancelFunc: cancel}, err
 }
 
-const tableColumnsQuery = "SELECT column_name, \"null\" FROM (DESCRIBE (FROM query_table($1)))"
+const tableColumnsQuery = "SELECT column_name, \"null\", column_type FROM (DESCRIBE (FROM query_table($1)))"
 
 func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
 	var columns []ColInfo
@@ -271,7 +272,24 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 							return fmt.Errorf("missing required column %s", col.ColumnName)
 						}
 					} else {
-						values[j] = value
+						if strings.Contains(strings.ToUpper(col.Type), "TIMESTAMP") {
+							switch v := value.(type) {
+							case string:
+								// Try parsing the timestamp string
+								ts, err := parseTimestamp(v)
+								if err != nil {
+									return fmt.Errorf("failed to parse timestamp for column %s: %w", col.ColumnName, err)
+								}
+								values[j] = ts
+							case float64:
+								// Assume Unix timestamp in seconds or milliseconds
+								values[j] = parseUnixTimestamp(v)
+							default:
+								return fmt.Errorf("unsupported timestamp format for column %s", col.ColumnName)
+							}
+						} else {
+							values[j] = value
+						}
 					}
 				}
 			}
@@ -288,6 +306,35 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 	}
 
 	return nil
+}
+
+// Helper function to parse timestamp strings
+func parseTimestamp(value string) (time.Time, error) {
+	// Try common timestamp formats
+	formats := []string{
+		time.RFC3339,
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05.000Z07:00",
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, value); err == nil {
+			return t, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse timestamp: %s", value)
+}
+
+// Helper function to parse Unix timestamps
+func parseUnixTimestamp(value float64) time.Time {
+	// If the number is too large to be seconds, assume it's milliseconds
+	if value > 1e11 {
+		return time.UnixMilli(int64(value))
+	}
+	return time.Unix(int64(value), 0)
 }
 
 func (c Ingest) Close() {
