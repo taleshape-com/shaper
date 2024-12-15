@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,11 +18,9 @@ import (
 
 // TODO: Move consts to config
 const (
-	SUBJECT_PREFIX         = "shaper.ingest."
-	EVENT_ID_COLUMN        = "event_id"
-	EVENT_TIMESTAMP_COLUMN = "event_timestamp"
-	BATCH_SIZE             = 1000
-	BATCH_TIMEOUT          = 2000 * time.Millisecond
+	SUBJECT_PREFIX = "shaper.ingest."
+	BATCH_SIZE     = 1000
+	BATCH_TIMEOUT  = 2000 * time.Millisecond
 )
 
 type Ingest struct {
@@ -251,57 +248,42 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 			values := make([]driver.Value, len(tableInfo.columns))
 			for j, col := range tableInfo.columns {
-				switch col.ColumnName {
-				case EVENT_ID_COLUMN:
-					if jsonValue, exists := jsonData[EVENT_ID_COLUMN]; exists {
-						values[j] = jsonValue
+				value, exists := jsonData[col.ColumnName]
+				if !exists {
+					if col.Null == "YES" {
+						values[j] = nil
 					} else {
-						values[j] = strconv.FormatUint(metadata.Sequence.Stream, 10)
+						return fmt.Errorf("missing required column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
 					}
-				case EVENT_TIMESTAMP_COLUMN:
-					if jsonValue, exists := jsonData[EVENT_TIMESTAMP_COLUMN]; exists {
-						values[j] = jsonValue
-					} else {
-						values[j] = metadata.Timestamp
-					}
-				default:
-					value, exists := jsonData[col.ColumnName]
-					if !exists {
-						if col.Null == "YES" {
-							values[j] = nil
-						} else {
-							return fmt.Errorf("missing required column %s", col.ColumnName)
-						}
-					} else {
-						if strings.Contains(strings.ToUpper(col.Type), "TIMESTAMP") {
-							switch v := value.(type) {
-							case string:
-								// Try parsing the timestamp string
-								ts, err := parseTimestamp(v)
-								if err != nil {
-									return fmt.Errorf("failed to parse timestamp for column %s: %w", col.ColumnName, err)
-								}
-								values[j] = ts
-							case float64:
-								// Assume Unix timestamp in seconds or milliseconds
-								values[j] = parseUnixTimestamp(v)
-							default:
-								return fmt.Errorf("unsupported timestamp format for column %s", col.ColumnName)
+				} else {
+					if strings.Contains(strings.ToUpper(col.Type), "TIMESTAMP") {
+						switch v := value.(type) {
+						case string:
+							// Try parsing the timestamp string
+							ts, err := parseTimestamp(v)
+							if err != nil {
+								return fmt.Errorf("failed to parse timestamp for column %s: %w (SEQ %d)", col.ColumnName, err, metadata.Sequence.Stream)
 							}
-						} else {
-							values[j] = value
+							values[j] = ts
+						case float64:
+							// Assume Unix timestamp in seconds or milliseconds
+							values[j] = parseUnixTimestamp(v)
+						default:
+							return fmt.Errorf("unsupported timestamp format for column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
 						}
+					} else {
+						values[j] = value
 					}
 				}
 			}
 
 			if err := appender.AppendRow(values...); err != nil {
-				return fmt.Errorf("failed to append row: %w", err)
+				return fmt.Errorf("failed to append row: %w (SEQ %d)", err, metadata.Sequence.Stream)
 			}
 
 			// Acknowledge message
 			if err := msg.Ack(); err != nil {
-				return fmt.Errorf("failed to acknowledge message: %w", err)
+				return fmt.Errorf("failed to acknowledge message: %w (SEQ %d)", err, metadata.Sequence.Stream)
 			}
 		}
 	}
