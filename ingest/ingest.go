@@ -231,7 +231,6 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		if err != nil {
 			return fmt.Errorf("failed to create appender: %w", err)
 		}
-		defer appender.Close()
 
 		// Process messages for this table
 		for _, msg := range messages {
@@ -280,10 +279,17 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 			if err := appender.AppendRow(values...); err != nil {
 				return fmt.Errorf("failed to append row: %w (SEQ %d)", err, metadata.Sequence.Stream)
 			}
+		}
 
-			// Acknowledge message
+		err = appender.Close()
+		if err != nil {
+			return fmt.Errorf("failed to close appender: %w", err)
+		}
+
+		// Acknowledge messages after appender is closed
+		for _, msg := range messages {
 			if err := msg.Ack(); err != nil {
-				return fmt.Errorf("failed to acknowledge message: %w (SEQ %d)", err, metadata.Sequence.Stream)
+				return fmt.Errorf("failed to acknowledge message: %w", err)
 			}
 		}
 	}
