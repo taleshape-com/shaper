@@ -28,7 +28,7 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
 		claims := jwt.MapClaims{
-			"exp": time.Now().Add(time.Second * 10).Unix(),
+			"exp": time.Now().Add(app.JWTExp).Unix(),
 		}
 		if len(loginRequest.Variables) > 0 {
 			err := validateVariables(loginRequest.Variables)
@@ -86,7 +86,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
 		claims := jwt.MapClaims{
-			"exp": time.Now().Add(time.Second * 10).Unix(),
+			"exp": time.Now().Add(app.JWTExp).Unix(),
 		}
 		if loginRequest.DashboardID != "" {
 			claims["dashboardId"] = loginRequest.DashboardID

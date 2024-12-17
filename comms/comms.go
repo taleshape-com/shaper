@@ -82,6 +82,7 @@ func New(config Config) (Comms, error) {
 		clientOpts = append(clientOpts, nats.Token(config.Token))
 	}
 
+	// TODO: set nats.Name() for connection once we use more than one connection
 	nc, err := nats.Connect(ns.ClientURL(), clientOpts...)
 	if err != nil {
 		return Comms{}, err
