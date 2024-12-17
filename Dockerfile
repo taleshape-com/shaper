@@ -20,7 +20,10 @@ COPY . .
 COPY --from=frontend /app/dist dist
 RUN go vet ./...
 RUN go build -a -ldflags "-w -extldflags '-static'" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
+# If no directory is specified Jetstream will fallback to /tmp
+RUN mkdir /tmp/shapertmp
 
 FROM scratch
 COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
+COPY --from=build /tmp/shapertmp /tmp
 ENTRYPOINT ["/usr/local/bin/shaper"]
