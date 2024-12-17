@@ -1,5 +1,5 @@
 import { Dashboard } from './dashboard'
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { VarsParamSchema } from "../lib/utils";
 
 export interface EmbedProps {
@@ -19,18 +19,23 @@ export function EmbedComponent({
   onVarsChanged,
 }: EmbedProps) {
   const [vars, setVars] = useState(initialVars)
+  const handleVarsChanged = useCallback((newVars: VarsParamSchema) => {
+    setVars(newVars)
+    if (onVarsChanged) {
+      onVarsChanged(newVars)
+    }
+  }, [onVarsChanged]);
+  const handleGetJwt = useCallback(() => {
+    return getJwt({ baseUrl })
+  }, [baseUrl, getJwt]);
+
   return <div className="antialiased text-ctext dark:text-dtext">
     <Dashboard
       id={dashboardId}
       baseUrl={baseUrl}
       vars={vars}
-      getJwt={() => getJwt({ baseUrl })}
-      onVarsChanged={newVars => {
-        setVars(newVars)
-        if (onVarsChanged) {
-          onVarsChanged(newVars)
-        }
-      }}
+      getJwt={handleGetJwt}
+      onVarsChanged={handleVarsChanged}
     />
   </div>
 }

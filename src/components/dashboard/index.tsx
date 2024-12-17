@@ -19,7 +19,7 @@ export interface DashboardProps {
   vars: VarsParamSchema;
   getJwt: () => Promise<string>;
   baseUrl?: string;
-  onVarsChanged: (newVars: Record<string, string | string[]>) => void;
+  onVarsChanged: (newVars: VarsParamSchema) => void;
   hash?: string;
   menuButton?: React.ReactNode;
   onError?: (error: Error) => void;
@@ -39,7 +39,6 @@ export function Dashboard({
   const [data, setData] = useState<Result>();
   const [error, setError] = useState<Error | null>();
   useEffect(() => {
-    console.log(id, vars, baseUrl, hash)
     setError(null);
     fetchDashboard(id, vars, baseUrl, getJwt)
       .then(setData)
@@ -50,7 +49,7 @@ export function Dashboard({
         }
         setError(err);
       });
-  }, [id, JSON.stringify(vars), baseUrl, hash]);
+  }, [id, vars, baseUrl, hash, onError, getJwt]);
 
   if (error) {
     return (

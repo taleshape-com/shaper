@@ -6,9 +6,9 @@ import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
-import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
+import { cx, focusRing, hasErrorInput, VarsParamSchema, varsParamSchema } from "../lib/utils";
 import { useAuth } from "../lib/auth";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
 
 export const Route = createFileRoute("/dashboards/$dashboardId")({
@@ -45,13 +45,21 @@ function DashboardViewComponent() {
   const [hasVariableError, setHasVariableError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const handleRedirectError = (err: Error) => {
+  const handleRedirectError = useCallback((err: Error) => {
     if (isRedirect(err)) {
       navigate(err);
       return
     }
     setError(err)
-  };
+  }, [navigate]);
+  const handleVarsChanged = useCallback((newVars: VarsParamSchema) => {
+    navigate({
+      search: (old: any) => ({
+        ...old,
+        vars: newVars,
+      }),
+    });
+  }, [navigate]);
 
   const MenuButton = (
     <button
@@ -99,14 +107,7 @@ function DashboardViewComponent() {
           hash={auth.hash}
           getJwt={auth.getJwt}
           menuButton={MenuButton}
-          onVarsChanged={(newVars) => {
-            navigate({
-              search: (old: any) => ({
-                ...old,
-                vars: newVars,
-              }),
-            });
-          }}
+          onVarsChanged={handleVarsChanged}
           onError={handleRedirectError}
         />
       </div>

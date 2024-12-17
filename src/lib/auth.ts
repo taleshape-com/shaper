@@ -14,6 +14,7 @@ export const zVariables = z.record(z.string(), z.union([z.string(), z.array(z.st
 export type Variables = typeof zVariables['_type']
 
 export const localStorageTokenKey = 'shaper-token'
+export const localStorageJwtKey = 'shaper-jwt'
 export const localStorageVariablesKey = 'shaper-variables'
 
 export const AuthContext = React.createContext<IAuthContext | null>(null)
