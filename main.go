@@ -158,6 +158,7 @@ func Run(config Config) func(context.Context) {
 	}
 
 	c, err := comms.New(comms.Config{
+		Logger:     logger.WithGroup("nats"),
 		Host:       config.NatsHost,
 		Port:       config.NatsPort,
 		Token:      config.NatsToken,
@@ -170,7 +171,7 @@ func Run(config Config) func(context.Context) {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(dbConnector, db, logger, c.Conn, config.NatsJSDir != "")
+	ingestConsumer, err := ingest.Start(dbConnector, db, logger.WithGroup("ingest"), c.Conn, config.NatsJSDir != "")
 	if err != nil {
 		panic(err)
 	}
@@ -178,11 +179,15 @@ func Run(config Config) func(context.Context) {
 	e := web.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
 
 	return func(ctx context.Context) {
+		logger.Info("initiating shutdown...")
+		logger.Info("stopping web server...")
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
 		}
+		logger.Info("stopping NATS...")
 		ingestConsumer.Close()
 		c.Close()
+		logger.Info("closing DB connections...")
 		if err := db.Close(); err != nil {
 			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
 		}

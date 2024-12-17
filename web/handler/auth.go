@@ -43,7 +43,7 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)
 		if err != nil {
-			app.Logger.Error("Failed to sign token", slog.Any("error", err))
+			c.Logger().Error("Failed to sign token", slog.Any("error", err))
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
 		}
 		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
@@ -105,7 +105,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)
 		if err != nil {
-			app.Logger.Error("Failed to sign token", slog.Any("error", err))
+			c.Logger().Error("Failed to sign token", slog.Any("error", err))
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
 		}
 		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})

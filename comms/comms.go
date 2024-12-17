@@ -1,6 +1,7 @@
 package comms
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
@@ -19,6 +20,7 @@ type Comms struct {
 }
 
 type Config struct {
+	Logger     *slog.Logger
 	Host       string
 	Port       int
 	Token      string
@@ -39,6 +41,8 @@ func New(config Config) (Comms, error) {
 		Host:                   config.Host,
 		Port:                   config.Port,
 		DontListen:             config.DontListen,
+		// We handle signals separately
+		NoSigs: true,
 	}
 	// Configure authentication if token is provided
 	if config.Token != "" {
@@ -67,7 +71,7 @@ func New(config Config) (Comms, error) {
 	if err != nil {
 		return Comms{}, err
 	}
-	ns.ConfigureLogger()
+	ns.SetLoggerV2(newNATSLogger(config.Logger), false, false, false)
 	go ns.Start()
 	if !ns.ReadyForConnections(CONNECT_TIMEOUT) {
 		return Comms{}, err

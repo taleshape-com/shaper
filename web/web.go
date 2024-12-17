@@ -22,7 +22,7 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	e.HideBanner = true
 
 	// Middlewares
-	e.Use(slogecho.New(app.Logger))
+	e.Use(slogecho.New(app.Logger.WithGroup("web")))
 	e.Use(middleware.BodyLimit("2M"))
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 5}))
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
