@@ -45,7 +45,7 @@ func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.Hand
 	}
 }
 
-func serveEmbedJS(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
+func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		panic(err)
@@ -69,8 +69,8 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
 			}
 
 			defaultBaseUrl := strings.TrimSuffix(getRequestURL(c.Request()).String(), "/embed/shaper.js")
-			appendScript := fmt.Sprintf("\nwindow.shaper.defaultBaseUrl = %q;\n", defaultBaseUrl)
-			content = append(content, []byte(appendScript)...)
+			// Inject default base URL and custom CSS
+			content = append(content, []byte(fmt.Sprintf("\nshaper.defaultBaseUrl = %q;\nshaper.customCSS = %q;\n", defaultBaseUrl, customCSS))...)
 
 			http.ServeContent(c.Response(), c.Request(), filename, modTime, bytes.NewReader(content))
 		} else {
