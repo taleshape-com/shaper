@@ -32,12 +32,12 @@ type EmbedArgs = EmbedProps & {
   storeVarsInQueryParam?: string;
 };
 
-// Function to inject custom CSS into the container
-function injectCustomCSS(container: HTMLElement) {
+// Function to inject custom CSS
+function injectCustomCSS() {
   if (window.shaper?.customCSS) {
     const styleElement = document.createElement("style");
     styleElement.textContent = window.shaper.customCSS;
-    container.appendChild(styleElement);
+    document.head.appendChild(styleElement);
   }
 }
 
@@ -59,7 +59,7 @@ export function embed({
   container.classList.add("shaper-scope");
 
   // Inject custom CSS before rendering
-  injectCustomCSS(container);
+  injectCustomCSS();
 
   ReactDOM.createRoot(container).render(
     <EmbedComponent
