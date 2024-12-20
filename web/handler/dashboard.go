@@ -45,7 +45,7 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	}
 }
 
-// For now only supports .csv
+// Supports .csv and .xlsx
 func DownloadQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
@@ -58,51 +58,92 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 		}
 		// Validate filename extension
 		filename := c.Param("filename")
-		if !strings.HasSuffix(strings.ToLower(filename), ".csv") {
-			return c.JSONPretty(
-				http.StatusBadRequest,
-				struct{ Error string }{Error: "filename must have .csv extension"},
-				"  ",
+
+		if strings.HasSuffix(strings.ToLower(filename), ".csv") {
+			// Set headers for CSV file download
+			c.Response().Header().Set(echo.HeaderContentType, "text/csv")
+			c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
+
+			// Disable response buffering
+			c.Response().Header().Set("X-Content-Type-Options", "nosniff")
+			c.Response().Header().Set("Transfer-Encoding", "chunked")
+
+			// Create a writer that writes to the response
+			writer := c.Response().Writer
+
+			// Start the streaming query and write directly to response
+			err := core.StreamQueryCSV(
+				app,
+				c.Request().Context(),
+				c.Param("id"),
+				c.QueryParams(),
+				c.Param("query"),
+				variables,
+				writer,
 			)
-		}
 
-		// Set headers for CSV file download
-		c.Response().Header().Set(echo.HeaderContentType, "text/csv")
-		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
-
-		// Disable response buffering
-		c.Response().Header().Set("X-Content-Type-Options", "nosniff")
-		c.Response().Header().Set("Transfer-Encoding", "chunked")
-
-		// Create a writer that writes to the response
-		writer := c.Response().Writer
-
-		// Start the streaming query and write directly to response
-		err := core.StreamQueryCSV(
-			app,
-			c.Request().Context(),
-			c.Param("id"),
-			c.QueryParams(),
-			c.Param("query"),
-			variables,
-			writer,
-		)
-
-		if err != nil {
-			// If headers haven't been sent yet, return JSON error
-			if c.Response().Committed {
-				// If we've already started streaming, log the error since we can't modify the response
-				c.Logger().Error("streaming error after response started:", slog.Any("error", err))
-				return err
+			if err != nil {
+				// If headers haven't been sent yet, return JSON error
+				if c.Response().Committed {
+					// If we've already started streaming, log the error since we can't modify the response
+					c.Logger().Error("streaming error after response started:", slog.Any("error", err))
+					return err
+				}
+				c.Logger().Error("error downloading CSV:", slog.Any("error", err))
+				return c.JSONPretty(
+					http.StatusBadRequest,
+					struct{ Error string }{Error: err.Error()},
+					"  ",
+				)
 			}
-			c.Logger().Error("error downloading CSV:", slog.Any("error", err))
-			return c.JSONPretty(
-				http.StatusBadRequest,
-				struct{ Error string }{Error: err.Error()},
-				"  ",
-			)
+
+			return nil
 		}
 
-		return nil
+		if strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
+			// Set headers for Excel file download
+			c.Response().Header().Set(echo.HeaderContentType, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
+
+			// Disable response buffering
+			c.Response().Header().Set("X-Content-Type-Options", "nosniff")
+			c.Response().Header().Set("Transfer-Encoding", "chunked")
+
+			// Create a writer that writes to the response
+			writer := c.Response().Writer
+
+			err := core.StreamQueryXLSX(
+				app,
+				c.Request().Context(),
+				c.Param("id"),
+				c.QueryParams(),
+				c.Param("query"),
+				variables,
+				writer,
+			)
+
+			if err != nil {
+				// If headers haven't been sent yet, return JSON error
+				if c.Response().Committed {
+					// If we've already started streaming, log the error since we can't modify the response
+					c.Logger().Error("streaming error after response started:", slog.Any("error", err))
+					return err
+				}
+				c.Logger().Error("error downloading .xlsx file:", slog.Any("error", err))
+				return c.JSONPretty(
+					http.StatusBadRequest,
+					struct{ Error string }{Error: err.Error()},
+					"  ",
+				)
+			}
+
+			return nil
+		}
+
+		return c.JSONPretty(
+			http.StatusBadRequest,
+			struct{ Error string }{Error: "Invalid filename extension. Must be .csv or .xlsx"},
+			"  ",
+		)
 	}
 }

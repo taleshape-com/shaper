@@ -148,13 +148,13 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
-			if rInfo.Download == "csv" {
+			if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
 				filename := query.Rows[0][colIndex].(string)
 				queryString := ""
 				if len(queryParams) > 0 {
 					queryString = "?" + queryParams.Encode()
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.csv%s", dashboardName, queryIndex+1, url.QueryEscape(filename), queryString)
+				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.%s%s", dashboardName, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
 			}
 		}
 
@@ -386,8 +386,19 @@ func isSectionTitle(sqlString string, rows Rows) bool {
 func isPlaceholder(sqlString string, rows Rows) bool {
 	return strings.Contains(sqlString, "::PLACEHOLDER") && (len(rows) == 1 && len(rows[0]) == 1)
 }
+func getDownloadType(sqlString string) string {
+	csvTag := getTagName(sqlString, "DOWNLOAD_CSV")
+	if csvTag != "" {
+		return "csv"
+	}
+	xlsxTag := getTagName(sqlString, "DOWNLOAD_XLSX")
+	if xlsxTag != "" {
+		return "xlsx"
+	}
+	return ""
+}
 func isDownloadButton(sqlString string) bool {
-	return getTagName(sqlString, "DOWNLOAD_CSV") != ""
+	return getDownloadType(sqlString) != ""
 }
 
 // TODO: Charts should assert that only the required columns are present.
@@ -603,11 +614,12 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
-	if isDownloadButton(sqlString) {
+	downloadType := getDownloadType(sqlString)
+	if downloadType != "" {
 		return renderInfo{
 			Label:    labelValue,
 			Type:     "button",
-			Download: "csv",
+			Download: downloadType,
 		}
 	}
 

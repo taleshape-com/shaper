@@ -19,6 +19,7 @@ var dbTypes = []struct {
 	{"HINT", "VARCHAR"},
 	{"SECTION", "VARCHAR"},
 	{"DOWNLOAD_CSV", "VARCHAR"},
+	{"DOWNLOAD_XLSX", "VARCHAR"},
 	{"DATEPICKER", "DATE"},
 	{"DATEPICKER_FROM", "DATE"},
 	{"DATEPICKER_TO", "DATE"},

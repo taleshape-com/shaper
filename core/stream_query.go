@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/xuri/excelize/v2"
 )
 
 func StreamQueryCSV(
@@ -116,6 +117,114 @@ func StreamQueryCSV(
 	}
 
 	return rows.Err()
+}
+
+func StreamQueryXLSX(
+	app *App,
+	ctx context.Context,
+	dashboardName string,
+	params url.Values,
+	queryID string,
+	variables map[string]interface{},
+	writer io.Writer,
+) error {
+	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
+	// read sql file
+	sqlFile, err := os.ReadFile(fileName)
+	if err != nil {
+		return err
+	}
+	sqls := strings.Split(string(sqlFile), ";")
+
+	queryIndex, err := strconv.Atoi(queryID)
+	if err != nil {
+		return err
+	}
+	if len(sqls) <= queryIndex || queryIndex < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardName, queryIndex)
+	}
+	if queryIndex < 1 || !isDownloadButton(sqls[queryIndex-1]) {
+		return fmt.Errorf("query must be download query")
+	}
+	query := sqls[queryIndex]
+
+	// Create a new XLSX file
+	xlsx := excelize.NewFile()
+	// TODO: Support specifying sheet name
+	sheetName := "Sheet1"
+
+	conn, err := app.db.Connx(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting conn: %v", err)
+	}
+
+	// Execute the query and get rows
+	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
+	if err != nil {
+		return err
+	}
+	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
+	if varCleanup != "" {
+		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	// Get column names
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("error getting columns: %w", err)
+	}
+
+	// Write headers
+	for colIdx, column := range columns {
+		cell, err := excelize.CoordinatesToCellName(colIdx+1, 1)
+		if err != nil {
+			return fmt.Errorf("error converting coordinates: %w", err)
+		}
+		xlsx.SetCellValue(sheetName, cell, column)
+	}
+
+	// Prepare containers for row data
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+	for i := range values {
+		valuePtrs[i] = &values[i]
+	}
+
+	// Stream rows
+	rowIdx := 2 // Start from row 2 (after headers)
+	for rows.Next() {
+		// Scan the row into our value containers
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return fmt.Errorf("error scanning row: %w", err)
+		}
+
+		// Write values to cells
+		for colIdx, value := range values {
+			cell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
+			if err != nil {
+				return fmt.Errorf("error converting coordinates: %w", err)
+			}
+			xlsx.SetCellValue(sheetName, cell, formatValue(value))
+		}
+		rowIdx++
+	}
+
+	if err := conn.Close(); err != nil {
+		return fmt.Errorf("Error closing conn: %v", err)
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Write the XLSX file to the writer
+	return xlsx.Write(writer)
 }
 
 // formatValue converts various types to their string representation
