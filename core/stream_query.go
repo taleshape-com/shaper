@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"os"
 	"path"
@@ -153,6 +154,40 @@ func StreamQueryXLSX(
 	// TODO: Support specifying sheet name
 	sheetName := "Sheet1"
 
+	// Create header style with bold font
+	headerStyle, err := xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Bold: true,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error creating header style: %w", err)
+	}
+
+	styles := map[string]int{
+		"datetime": createStyle(xlsx, &excelize.Style{
+			NumFmt: 22, // "m/d/yy h:mm"
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+			},
+		}),
+		"number": createStyle(xlsx, &excelize.Style{
+			Alignment: &excelize.Alignment{
+				Horizontal: "right",
+			},
+		}),
+		"text": createStyle(xlsx, &excelize.Style{
+			Alignment: &excelize.Alignment{
+				Horizontal: "left",
+				WrapText:   true,
+			},
+		}),
+	}
+
 	conn, err := app.db.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
@@ -187,6 +222,13 @@ func StreamQueryXLSX(
 			return fmt.Errorf("error converting coordinates: %w", err)
 		}
 		xlsx.SetCellValue(sheetName, cell, column)
+		xlsx.SetCellStyle(sheetName, cell, cell, headerStyle)
+		width := float64(len(column)) + 2 // +2 for some padding
+		colName, err := excelize.ColumnNumberToName(colIdx + 1)
+		if err != nil {
+			return fmt.Errorf("error converting column number: %w", err)
+		}
+		xlsx.SetColWidth(sheetName, colName, colName, math.Max(width, 6))
 	}
 
 	// Prepare containers for row data
@@ -210,8 +252,28 @@ func StreamQueryXLSX(
 			if err != nil {
 				return fmt.Errorf("error converting coordinates: %w", err)
 			}
-			xlsx.SetCellValue(sheetName, cell, formatValue(value))
+			// Apply appropriate formatting based on data type
+			switch {
+			case value == nil:
+				xlsx.SetCellValue(sheetName, cell, "")
+				xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+
+			case isNumber(value):
+				xlsx.SetCellValue(sheetName, cell, value)
+				xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
+
+			case isDateTime(value):
+				if timeVal, ok := value.(time.Time); ok {
+					xlsx.SetCellValue(sheetName, cell, timeVal)
+					xlsx.SetCellStyle(sheetName, cell, cell, styles["datetime"])
+				}
+
+			default:
+				xlsx.SetCellValue(sheetName, cell, formatValue(value))
+				xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+			}
 		}
+
 		rowIdx++
 	}
 
@@ -222,6 +284,21 @@ func StreamQueryXLSX(
 	if err := rows.Err(); err != nil {
 		return err
 	}
+
+	// Set up autofilter
+	lastCol, _ := excelize.ColumnNumberToName(len(columns))
+	filterRange := fmt.Sprintf("A1:%s%d", lastCol, rowIdx-1)
+	xlsx.AutoFilter(sheetName, filterRange, []excelize.AutoFilterOptions{})
+
+	// Freeze the header row
+	xlsx.SetPanes(sheetName, &excelize.Panes{
+		Freeze:      true,
+		Split:       false,
+		XSplit:      0,
+		YSplit:      1,
+		TopLeftCell: "A2",
+		ActivePane:  "bottomLeft",
+	})
 
 	// Write the XLSX file to the writer
 	return xlsx.Write(writer)
@@ -241,6 +318,36 @@ func formatValue(value interface{}) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func isNumber(value interface{}) bool {
+	if value == nil {
+		return false
+	}
+	switch value.(type) {
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return true
+	case string:
+		// Optionally check if string is numeric
+		return false
+	default:
+		return false
+	}
+}
+
+func isDateTime(value interface{}) bool {
+	if value == nil {
+		return false
+	}
+	_, isTime := value.(time.Time)
+	return isTime
+}
+
+func createStyle(xlsx *excelize.File, style *excelize.Style) int {
+	styleID, _ := xlsx.NewStyle(style)
+	return styleID
 }
 
 func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]interface{}) (string, string, error) {
