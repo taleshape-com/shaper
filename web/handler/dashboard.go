@@ -192,3 +192,35 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 		)
 	}
 }
+
+func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var request struct {
+			DashboardId string `json:"dashboardId"`
+			Content     string `json:"content"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		}
+
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+		variables := map[string]interface{}{}
+		if vars, hasVariables := claims["variables"]; hasVariables {
+			variables = vars.(map[string]interface{})
+		}
+
+		result, err := core.QueryDashboard(app, c.Request().Context(), core.DashboardQuery{
+			Content: request.Content,
+			ID:      request.DashboardId,
+		}, c.QueryParams(), variables)
+
+		if err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, result, "  ")
+	}
+}

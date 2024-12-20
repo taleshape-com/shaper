@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
@@ -45,7 +45,48 @@ function DashboardEditor() {
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
-  const [dashboardKey, setDashboardKey] = useState(0); // For forcing dashboard reload
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  // Add debounced preview function
+  const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
+    setPreviewError(null);
+    setIsPreviewLoading(true);
+    try {
+      const jwt = await auth.getJwt();
+      const response = await fetch("/api/query/dashboard", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: jwt,
+        },
+        body: JSON.stringify({
+          dashboardId: params.dashboardId,
+          content: newQuery,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to preview dashboard");
+      }
+
+      const data = await response.json();
+      setPreviewData(data);
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  }, 1000);
+
+  // Update textarea onChange handler
+  const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newQuery = e.target.value;
+    setQuery(newQuery);
+    previewDashboard(newQuery);
+  };
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -67,14 +108,18 @@ function DashboardEditor() {
       if (!response.ok) {
         throw new Error("Failed to save dashboard query");
       }
-      // Force dashboard reload after successful save
-      setDashboardKey((prev) => prev + 1);
+      // Update preview data after successful save
+      await previewDashboard(query);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSaving(false);
     }
-  }, [auth, params.dashboardId, query]);
+  }, [auth, params.dashboardId, query, previewDashboard]);
+
+  const handleDashboardError = useCallback((err: Error) => {
+    setPreviewError(err.message);
+  }, []);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -92,6 +137,10 @@ function DashboardEditor() {
     auth.updateVariables(value).then(
       (ok) => {
         setHasVariableError(!ok);
+        if (ok) {
+          // Refresh preview when variables change
+          previewDashboard(query);
+        }
       },
       () => {
         setHasVariableError(true);
@@ -105,7 +154,10 @@ function DashboardEditor() {
     </button>
   );
 
-  const handleDashboardError = useCallback((err: Error) => setError(err.message), [])
+  // Load initial preview
+  useEffect(() => {
+    previewDashboard(query);
+  }, [previewDashboard, query]);
 
   return (
     <div className="h-screen flex flex-col">
@@ -139,27 +191,40 @@ function DashboardEditor() {
         <div className="m-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
       )}
 
+      {previewError && (
+        <div className="m-4 p-4 bg-red-100 text-red-700 rounded">
+          {previewError}
+        </div>
+      )}
+
       <div className="flex-1 flex overflow-hidden">
         <div className="w-1/2 p-4 overflow-auto">
           <textarea
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleQueryChange}
             className="w-full h-full p-4 font-mono text-sm border rounded"
             spellCheck={false}
           />
         </div>
 
-        <div className="w-1/2 overflow-auto">
-          <Dashboard
-            key={dashboardKey}
-            id={params.dashboardId}
-            vars={vars}
-            hash={auth.hash}
-            getJwt={auth.getJwt}
-            menuButton={MenuButton}
-            onVarsChanged={handleVarsChanged}
-            onError={handleDashboardError}
-          />
+        <div className="w-1/2 overflow-auto relative">
+          {isPreviewLoading && (
+            <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
+              <div className="text-gray-500">Loading preview...</div>
+            </div>
+          )}
+          {previewData && (
+            <Dashboard
+              id={params.dashboardId}
+              vars={vars}
+              hash={auth.hash}
+              getJwt={auth.getJwt}
+              menuButton={MenuButton}
+              onVarsChanged={handleVarsChanged}
+              onError={handleDashboardError}
+              data={previewData} // Pass preview data directly to Dashboard
+            />
+          )}
         </div>
       </div>
 

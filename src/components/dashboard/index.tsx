@@ -23,6 +23,7 @@ export interface DashboardProps {
   hash?: string;
   menuButton?: React.ReactNode;
   onError?: (error: Error) => void;
+  data?: Result;
 }
 
 export function Dashboard({
@@ -35,21 +36,29 @@ export function Dashboard({
   hash = "",
   menuButton,
   onError,
+  data: initialData,
 }: DashboardProps) {
-  const [data, setData] = useState<Result>();
+  const [fetchedData, setFetchedData] = useState<Result | null>(null);
   const [error, setError] = useState<Error | null>();
+
   useEffect(() => {
+    if (initialData) {
+      return;
+    }
+
     setError(null);
     fetchDashboard(id, vars, baseUrl, getJwt)
-      .then(setData)
+      .then(setFetchedData)
       .catch((err) => {
         if (err?.isRedirect) {
           onError?.(err);
-          return
+          return;
         }
         setError(err);
       });
-  }, [id, vars, baseUrl, hash, onError, getJwt]);
+  }, [id, vars, baseUrl, hash, onError, getJwt, initialData]);
+
+  const data = initialData ?? fetchedData;
 
   if (error) {
     return (
@@ -72,19 +81,19 @@ export function Dashboard({
   const sections: Result["sections"] =
     data.sections.length === 0
       ? [
-        {
-          type: "header",
-          queries: [],
-        },
-      ]
-      : data.sections[0].type !== "header"
-        ? [
           {
             type: "header",
             queries: [],
           },
-          ...data.sections,
         ]
+      : data.sections[0].type !== "header"
+        ? [
+            {
+              type: "header",
+              queries: [],
+            },
+            ...data.sections,
+          ]
         : data.sections;
 
   const numContentSections = sections.filter(
@@ -102,24 +111,32 @@ export function Dashboard({
             <section
               key={sectionIndex}
               className={cx("flex flex-wrap items-center ml-2 mr-4", {
-                "mb-2 mt-1": section.queries.length > 0 || section.title || sectionIndex === 0,
+                "mb-2 mt-1":
+                  section.queries.length > 0 ||
+                  section.title ||
+                  sectionIndex === 0,
                 "pt-4": section.title && sectionIndex !== 0,
               })}
             >
-              <div className={cx("sm:flex-grow flex items-center ml-1", {
-                "w-full sm:w-fit": section.title,
-              })}>
+              <div
+                className={cx("sm:flex-grow flex items-center ml-1", {
+                  "w-full sm:w-fit": section.title,
+                })}
+              >
                 {sectionIndex === 0 ? (
                   <>
                     {menuButton}
                     {section.title ? (
-                      <h1 className="text-2xl text-left ml-1 mt-0.5">{section.title}</h1>
+                      <h1 className="text-2xl text-left ml-1 mt-0.5">
+                        {section.title}
+                      </h1>
                     ) : null}
                   </>
                 ) : section.title ? (
-                  <h2 className="text-xl text-left ml-1 mt-0.5">{section.title}</h2>
+                  <h2 className="text-xl text-left ml-1 mt-0.5">
+                    {section.title}
+                  </h2>
                 ) : null}
-
               </div>
               {queries.map(({ render, columns, rows }, index) => {
                 if (render.type === "dropdown") {
