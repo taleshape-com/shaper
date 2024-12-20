@@ -1,72 +1,119 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useCallback, useState } from 'react'
-import { Helmet } from 'react-helmet'
-import { useAuth } from '../lib/auth'
+import { z } from "zod";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
+import { Helmet } from "react-helmet";
+import { useAuth } from "../lib/auth";
+import { Dashboard } from "../components/dashboard";
+import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
+import { useDebouncedCallback } from "use-debounce";
+import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
+import { translate } from "../lib/translate";
 
-export const Route = createFileRoute('/dashboards_/$dashboardId/edit')({
+export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
+  validateSearch: z.object({
+    vars: varsParamSchema,
+  }),
   loader: async ({
     params: { dashboardId },
     context: {
       auth: { getJwt },
     },
   }) => {
-    const jwt = await getJwt()
+    const jwt = await getJwt();
     const response = await fetch(`/api/dashboards/${dashboardId}/query`, {
       headers: {
         Authorization: jwt,
       },
-    })
+    });
     if (!response.ok) {
-      throw new Error('Failed to load dashboard query')
+      throw new Error("Failed to load dashboard query");
     }
-    const data = await response.json()
-    return data.content
+    const data = await response.json();
+    return data.content;
   },
   component: DashboardEditor,
-})
+});
 
 function DashboardEditor() {
-  const params = Route.useParams()
-  const content = Route.useLoaderData()
-  const auth = useAuth()
-  const [query, setQuery] = useState(content)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const params = Route.useParams();
+  const { vars } = Route.useSearch();
+  const content = Route.useLoaderData();
+  const auth = useAuth();
+  const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
+  const [query, setQuery] = useState(content);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hasVariableError, setHasVariableError] = useState(false);
+  const [dashboardKey, setDashboardKey] = useState(0); // For forcing dashboard reload
 
   const handleSave = useCallback(async () => {
-    setSaving(true)
-    setError(null)
+    setSaving(true);
+    setError(null);
     try {
-      const jwt = await auth.getJwt()
+      const jwt = await auth.getJwt();
       const response = await fetch(
         `/api/dashboards/${params.dashboardId}/query`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: jwt,
           },
           body: JSON.stringify({ content: query }),
         },
-      )
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to save dashboard query')
+        throw new Error("Failed to save dashboard query");
       }
+      // Force dashboard reload after successful save
+      setDashboardKey((prev) => prev + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }, [auth, params.dashboardId, query])
+  }, [auth, params.dashboardId, query]);
+
+  const handleVarsChanged = useCallback(
+    (newVars: any) => {
+      navigate({
+        search: (old: any) => ({
+          ...old,
+          vars: newVars,
+        }),
+      });
+    },
+    [navigate],
+  );
+
+  const onVariablesEdit = useDebouncedCallback((value) => {
+    auth.updateVariables(value).then(
+      (ok) => {
+        setHasVariableError(!ok);
+      },
+      () => {
+        setHasVariableError(true);
+      },
+    );
+  }, 500);
+
+  const MenuButton = (
+    <button className="px-1" onClick={() => setIsMenuOpen(true)}>
+      <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+    </button>
+  );
+
+  const handleDashboardError = useCallback((err: Error) => setError(err.message), [])
 
   return (
-    <div className="p-4">
+    <div className="h-screen flex flex-col">
       <Helmet>
         <title>Edit {params.dashboardId}</title>
       </Helmet>
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center p-4 border-b">
         <h1 className="text-2xl font-bold">
           Edit Dashboard: {params.dashboardId}
         </h1>
@@ -83,21 +130,71 @@ function DashboardEditor() {
             disabled={saving}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
+        <div className="m-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
       )}
 
-      <textarea
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full h-[calc(100vh-200px)] p-4 font-mono text-sm border rounded"
-        spellCheck={false}
-      />
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-1/2 p-4 overflow-auto">
+          <textarea
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full h-full p-4 font-mono text-sm border rounded"
+            spellCheck={false}
+          />
+        </div>
+
+        <div className="w-1/2 overflow-auto">
+          <Dashboard
+            key={dashboardKey}
+            id={params.dashboardId}
+            vars={vars}
+            hash={auth.hash}
+            getJwt={auth.getJwt}
+            menuButton={MenuButton}
+            onVarsChanged={handleVarsChanged}
+            onError={handleDashboardError}
+          />
+        </div>
+      </div>
+
+      {/* Variables Menu */}
+      <div
+        className={cx(
+          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
+          {
+            "-translate-x-[calc(100vw+50px)]": !isMenuOpen,
+          },
+        )}
+      >
+        <button onClick={() => setIsMenuOpen(false)}>
+          <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+        </button>
+        <div className="mt-6 px-5 w-full sm:w-96">
+          <label>
+            <span className="text-lg font-medium font-display ml-1 mb-2 block">
+              {translate("Variables")}
+            </span>
+            <textarea
+              className={cx(
+                "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+                focusRing,
+                hasVariableError && hasErrorInput,
+              )}
+              onChange={(event) => {
+                onVariablesEdit(event.target.value);
+              }}
+              defaultValue={JSON.stringify(auth.variables, null, 2)}
+              rows={4}
+            ></textarea>
+          </label>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
