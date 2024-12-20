@@ -71,14 +71,20 @@ function Index() {
       ) : (
         <ul className="space-y-2">
           {data.dashboards.map((dashboard) => (
-            <li key={dashboard} className="bg-gray-100 p-2 rounded">
+            <li key={dashboard} className="bg-gray-100 p-2 rounded flex justify-between items-center">
               <Link
                 to="/dashboards/$dashboardId"
-                preload={false}
                 params={{ dashboardId: dashboard }}
                 className="text-blue-600 hover:underline"
               >
                 {dashboard}
+              </Link>
+              <Link
+                to="/dashboards/$dashboardId/edit"
+                params={{ dashboardId: dashboard }}
+                className="text-gray-600 hover:text-gray-800"
+              >
+                Edit
               </Link>
             </li>
           ))}
