@@ -8,7 +8,10 @@ export default defineConfig({
   plugins: [
     react(),
     TanStackRouterVite(),
-    visualizer() as PluginOption,
+    visualizer({
+      filename: 'vite/stats.html',
+      gzipSize: true,
+    }) as PluginOption,
     splitVendorChunkPlugin(),
   ],
   server: {
