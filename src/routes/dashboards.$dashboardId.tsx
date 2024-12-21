@@ -91,7 +91,7 @@ function DashboardViewComponent() {
   }, 500);
 
   if (error) {
-    return <DashboardErrorComponent error={error} reset={() => { }} />;
+    return <DashboardErrorComponent error={error} reset={() => {}} />;
   }
 
   return (
@@ -140,6 +140,7 @@ function DashboardViewComponent() {
         <Link
           to="/dashboards/$dashboardId/edit"
           params={{ dashboardId: params.dashboardId }}
+          search={() => ({ vars })}
           className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
         >
           Edit Dashboard

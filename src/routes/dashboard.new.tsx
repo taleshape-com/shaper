@@ -10,7 +10,13 @@ import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
-import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
+import {
+  cx,
+  focusRing,
+  getSearchParamString,
+  hasErrorInput,
+  varsParamSchema,
+} from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 
@@ -78,7 +84,8 @@ function NewDashboard() {
     editorStorage.saveChanges("new", newQuery);
     try {
       const jwt = await auth.getJwt();
-      const response = await fetch("/api/query/dashboard", {
+      const searchParams = getSearchParamString(vars);
+      const response = await fetch(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,6 +109,10 @@ function NewDashboard() {
       setIsPreviewLoading(false);
     }
   }, 1000);
+
+  useEffect(() => {
+    previewDashboard(query);
+  }, [previewDashboard, query, vars]); // Add vars to dependency array
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
@@ -140,13 +151,14 @@ function NewDashboard() {
       navigate({
         to: "/dashboards/$dashboardId/edit",
         params: { dashboardId: title },
+        search: () => ({ vars }),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setCreating(false);
     }
-  }, [auth, query, navigate]);
+  }, [auth, query, navigate, vars]);
 
   const handleDashboardError = useCallback((err: Error) => {
     setPreviewError(err.message);

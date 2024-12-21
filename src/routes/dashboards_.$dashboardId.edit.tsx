@@ -11,7 +11,13 @@ import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
-import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
+import {
+  cx,
+  focusRing,
+  getSearchParamString,
+  hasErrorInput,
+  varsParamSchema,
+} from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 
@@ -27,6 +33,9 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
+  shouldReload: (match) => {
+    return match.cause === "enter";
+  },
   loader: async ({
     params: { dashboardId },
     context: {
@@ -99,7 +108,8 @@ function DashboardEditor() {
     editorStorage.saveChanges(params.dashboardId, newQuery);
     try {
       const jwt = await auth.getJwt();
-      const response = await fetch("/api/query/dashboard", {
+      const searchParams = getSearchParamString(vars);
+      const response = await fetch(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -226,7 +236,7 @@ function DashboardEditor() {
   // Load initial preview
   useEffect(() => {
     previewDashboard(query);
-  }, [previewDashboard, query]);
+  }, [previewDashboard, query, vars]); // Add vars to dependency array
 
   return (
     <div className="h-screen flex flex-col">
@@ -254,6 +264,7 @@ function DashboardEditor() {
               <Link
                 to="/dashboards/$dashboardId"
                 params={{ dashboardId: params.dashboardId }}
+                search={() => ({ vars })}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 View
