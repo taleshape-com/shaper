@@ -12,7 +12,7 @@ import { ErrorComponent } from "@tanstack/react-router";
 // Polyfill container queries
 const supportsContainerQueries = "container" in document.documentElement.style;
 if (!supportsContainerQueries) {
-  // @ts-ignore
+  // @ts-expect-error
   import("https://cdn.skypack.dev/container-query-polyfill");
 }
 
