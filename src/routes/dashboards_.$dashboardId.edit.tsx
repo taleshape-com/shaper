@@ -260,7 +260,7 @@ function DashboardEditor() {
               </Link>
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || query === content}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save"}
@@ -278,7 +278,7 @@ function DashboardEditor() {
               minimap: { enabled: false },
               fontSize: 14,
               lineNumbers: "on",
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               wordWrap: "on",
               automaticLayout: true,
               formatOnPaste: true,

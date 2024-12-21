@@ -96,7 +96,7 @@ function Index() {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 max-w-[720px] mx-auto">
       <Helmet>
         <title>Dashboard Overview</title>
         <meta
@@ -104,13 +104,15 @@ function Index() {
           content="Show a list of all available dashboards"
         />
       </Helmet>
-      <h2 className="text-2xl font-bold mb-4">Available Dashboards</h2>
-      <Link
-        to="/dashboard/new"
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        New Dashboard
-      </Link>
+      <div className="mb-4 flex">
+        <h2 className="text-2xl font-bold mb-4 flex-grow">Available Dashboards</h2>
+        <Link
+          to="/dashboard/new"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 h-fit"
+        >
+          New Dashboard
+        </Link>
+      </div>
       {data.dashboards.length === 0 ? (
         <p>No dashboards available.</p>
       ) : (
@@ -118,7 +120,7 @@ function Index() {
           {data.dashboards.map((dashboard) => (
             <li
               key={dashboard}
-              className="bg-gray-100 p-2 rounded flex justify-between items-center hover:bg-gray-300"
+              className="bg-gray-100 p-4 rounded flex justify-between items-center hover:bg-gray-300"
             >
               <Link
                 to="/dashboards/$dashboardId"
@@ -127,7 +129,7 @@ function Index() {
               >
                 {dashboard}
               </Link>
-              <div className="space-x-2">
+              <div className="space-x-4">
                 <Link
                   to="/dashboards/$dashboardId/edit"
                   params={{ dashboardId: dashboard }}
