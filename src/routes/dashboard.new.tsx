@@ -12,6 +12,7 @@ import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
 import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
 import { translate } from "../lib/translate";
+import { editorStorage } from "../lib/editorStorage";
 
 self.MonacoEnvironment = {
   getWorker() {
@@ -54,9 +55,27 @@ function NewDashboard() {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
+  // Check for unsaved changes when component mounts
+  useEffect(() => {
+    const unsavedContent = editorStorage.getChanges("new");
+    if (unsavedContent) {
+      if (
+        window.confirm(
+          "There are unsaved previous edits. Do you want to restore them?",
+        )
+      ) {
+        setQuery(unsavedContent);
+      } else {
+        editorStorage.clearChanges("new");
+      }
+    }
+  }, []);
+
   const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
     setPreviewError(null);
     setIsPreviewLoading(true);
+    // Save to localStorage
+    editorStorage.saveChanges("new", newQuery);
     try {
       const jwt = await auth.getJwt();
       const response = await fetch("/api/query/dashboard", {
@@ -113,6 +132,9 @@ function NewDashboard() {
       if (!response.ok) {
         throw new Error("Failed to create dashboard");
       }
+
+      // Clear localStorage after successful creation
+      editorStorage.clearChanges("new");
 
       // Navigate to the edit page of the new dashboard
       navigate({

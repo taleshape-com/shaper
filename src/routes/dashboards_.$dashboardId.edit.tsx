@@ -13,6 +13,7 @@ import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
 import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
 import { translate } from "../lib/translate";
+import { editorStorage } from "../lib/editorStorage";
 
 self.MonacoEnvironment = {
   getWorker() {
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
       throw new Error("Failed to load dashboard query");
     }
     const data = await response.json();
-    return data.content;
+    return data.content as string;
   },
   component: DashboardEditor,
 });
@@ -75,10 +76,27 @@ function DashboardEditor() {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
+  // Check for unsaved changes when component mounts
+  useEffect(() => {
+    const unsavedContent = editorStorage.getChanges(params.dashboardId);
+    if (unsavedContent && unsavedContent !== content) {
+      if (
+        window.confirm(
+          "There are unsaved previous edits. Do you want to restore them?",
+        )
+      ) {
+        setQuery(unsavedContent);
+      } else {
+        editorStorage.clearChanges(params.dashboardId);
+      }
+    }
+  }, [params.dashboardId, content]);
+
   // Add debounced preview function
   const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
     setPreviewError(null);
     setIsPreviewLoading(true);
+    editorStorage.saveChanges(params.dashboardId, newQuery);
     try {
       const jwt = await auth.getJwt();
       const response = await fetch("/api/query/dashboard", {
@@ -134,6 +152,8 @@ function DashboardEditor() {
       if (!response.ok) {
         throw new Error("Failed to save dashboard query");
       }
+      // Clear localStorage after successful save
+      editorStorage.clearChanges(params.dashboardId);
       // Update preview data after successful save
       await previewDashboard(query);
     } catch (err) {
