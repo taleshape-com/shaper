@@ -81,19 +81,19 @@ export function Dashboard({
   const sections: Result["sections"] =
     data.sections.length === 0
       ? [
+        {
+          type: "header",
+          queries: [],
+        },
+      ]
+      : data.sections[0].type !== "header"
+        ? [
           {
             type: "header",
             queries: [],
           },
+          ...data.sections,
         ]
-      : data.sections[0].type !== "header"
-        ? [
-            {
-              type: "header",
-              queries: [],
-            },
-            ...data.sections,
-          ]
         : data.sections;
 
   const numContentSections = sections.filter(
@@ -101,176 +101,178 @@ export function Dashboard({
   ).length;
 
   return (
-    <ChartHoverProvider>
-      {sections.map((section, sectionIndex) => {
-        if (section.type === "header") {
-          const queries = section.queries.filter(
-            (query) => query.rows.length > 0,
-          );
+    <div className="@container">
+      <ChartHoverProvider>
+        {sections.map((section, sectionIndex) => {
+          if (section.type === "header") {
+            const queries = section.queries.filter(
+              (query) => query.rows.length > 0,
+            );
+            return (
+              <section
+                key={sectionIndex}
+                className={cx("flex flex-wrap items-center ml-2 mr-4", {
+                  "mb-2 mt-1":
+                    section.queries.length > 0 ||
+                    section.title ||
+                    sectionIndex === 0,
+                  "pt-4": section.title && sectionIndex !== 0,
+                })}
+              >
+                <div
+                  className={cx("@sm:flex-grow flex items-center ml-1", {
+                    "w-full @sm:w-fit": section.title,
+                  })}
+                >
+                  {sectionIndex === 0 ? (
+                    <>
+                      {menuButton}
+                      {section.title ? (
+                        <h1 className="text-2xl text-left ml-1 mt-0.5">
+                          {section.title}
+                        </h1>
+                      ) : null}
+                    </>
+                  ) : section.title ? (
+                    <h2 className="text-xl text-left ml-1 mt-0.5">
+                      {section.title}
+                    </h2>
+                  ) : null}
+                </div>
+                {queries.map(({ render, columns, rows }, index) => {
+                  if (render.type === "dropdown") {
+                    return (
+                      <DashboardDropdown
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onVarsChanged}
+                      />
+                    );
+                  }
+                  if (render.type === "dropdownMulti") {
+                    return (
+                      <DashboardDropdownMulti
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onVarsChanged}
+                      />
+                    );
+                  }
+                  if (render.type === "button") {
+                    return (
+                      <DashboardButton
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        baseUrl={baseUrl}
+                        getJwt={getJwt}
+                      />
+                    );
+                  }
+                  if (render.type === "datepicker") {
+                    return (
+                      <DashboardDatePicker
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onVarsChanged}
+                      />
+                    );
+                  }
+                  if (render.type === "daterangePicker") {
+                    return (
+                      <DashboardDateRangePicker
+                        key={index}
+                        label={render.label}
+                        headers={columns}
+                        data={rows}
+                        vars={vars}
+                        onChange={onVarsChanged}
+                      />
+                    );
+                  }
+                })}
+              </section>
+            );
+          }
+          const numQueriesInSection = section.queries.length;
           return (
             <section
               key={sectionIndex}
-              className={cx("flex flex-wrap items-center ml-2 mr-4", {
-                "mb-2 mt-1":
-                  section.queries.length > 0 ||
-                  section.title ||
-                  sectionIndex === 0,
-                "pt-4": section.title && sectionIndex !== 0,
+              className={cx("grid grid-cols-1 ml-4", {
+                "@sm:grid-cols-2": numQueriesInSection > 1,
+                "@lg:grid-cols-2":
+                  numQueriesInSection === 2 ||
+                  (numContentSections === 1 && numQueriesInSection === 4),
+                "@lg:grid-cols-3":
+                  numQueriesInSection > 4 ||
+                  numQueriesInSection === 3 ||
+                  (numQueriesInSection === 4 && numContentSections > 1),
+                "@xl:grid-cols-4":
+                  (numQueriesInSection === 4 && numContentSections > 1) ||
+                  numQueriesInSection === 7 ||
+                  numQueriesInSection === 8 ||
+                  numQueriesInSection > 9,
               })}
             >
-              <div
-                className={cx("sm:flex-grow flex items-center ml-1", {
-                  "w-full sm:w-fit": section.title,
-                })}
-              >
-                {sectionIndex === 0 ? (
-                  <>
-                    {menuButton}
-                    {section.title ? (
-                      <h1 className="text-2xl text-left ml-1 mt-0.5">
-                        {section.title}
-                      </h1>
+              {section.queries.map((query, queryIndex) => {
+                if (query.render.type === "placeholder") {
+                  return <div key={queryIndex}></div>;
+                }
+                return (
+                  <Card
+                    key={queryIndex}
+                    className={cx(
+                      "mr-4 mb-4 p-4 h-[calc(50vh-2.6rem)] min-h-[18rem]",
+                      {
+                        "h-[calc(65vh-4.7rem)] @sm:h-[calc(100vh-4.7rem)]":
+                          numQueriesInSection === 1,
+                        "@lg:h-[calc(100vh-4.7rem)]":
+                          numContentSections === 1 && numQueriesInSection === 2,
+                      },
+                    )}
+                  >
+                    {query.render.label ? (
+                      <h2 className="text-md mb-4 text-center font-semibold font-display">
+                        {query.render.label}
+                      </h2>
                     ) : null}
-                  </>
-                ) : section.title ? (
-                  <h2 className="text-xl text-left ml-1 mt-0.5">
-                    {section.title}
-                  </h2>
-                ) : null}
-              </div>
-              {queries.map(({ render, columns, rows }, index) => {
-                if (render.type === "dropdown") {
-                  return (
-                    <DashboardDropdown
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "dropdownMulti") {
-                  return (
-                    <DashboardDropdownMulti
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "button") {
-                  return (
-                    <DashboardButton
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      baseUrl={baseUrl}
-                      getJwt={getJwt}
-                    />
-                  );
-                }
-                if (render.type === "datepicker") {
-                  return (
-                    <DashboardDatePicker
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "daterangePicker") {
-                  return (
-                    <DashboardDateRangePicker
-                      key={index}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
+                    <div
+                      className={cx({
+                        "h-[calc(100%-2rem)]": query.render.label,
+                        "h-full": !query.render.label,
+                      })}
+                    >
+                      {renderContent(
+                        query,
+                        sectionIndex,
+                        queryIndex,
+                        data.minTimeValue,
+                        data.maxTimeValue,
+                      )}
+                    </div>
+                  </Card>
+                );
               })}
             </section>
           );
-        }
-        const numQueriesInSection = section.queries.length;
-        return (
-          <section
-            key={sectionIndex}
-            className={cx("grid grid-cols-1 ml-4", {
-              "sm:grid-cols-2": numQueriesInSection > 1,
-              "lg:grid-cols-2":
-                numQueriesInSection === 2 ||
-                (numContentSections === 1 && numQueriesInSection === 4),
-              "lg:grid-cols-3":
-                numQueriesInSection > 4 ||
-                numQueriesInSection === 3 ||
-                (numQueriesInSection === 4 && numContentSections > 1),
-              "xl:grid-cols-4":
-                (numQueriesInSection === 4 && numContentSections > 1) ||
-                numQueriesInSection === 7 ||
-                numQueriesInSection === 8 ||
-                numQueriesInSection > 9,
-            })}
-          >
-            {section.queries.map((query, queryIndex) => {
-              if (query.render.type === "placeholder") {
-                return <div key={queryIndex}></div>;
-              }
-              return (
-                <Card
-                  key={queryIndex}
-                  className={cx(
-                    "mr-4 mb-4 p-4 h-[calc(50vh-2.6rem)] min-h-[18rem]",
-                    {
-                      "h-[calc(65vh-4.7rem)] sm:h-[calc(100vh-4.7rem)]":
-                        numQueriesInSection === 1,
-                      "lg:h-[calc(100vh-4.7rem)]":
-                        numContentSections === 1 && numQueriesInSection === 2,
-                    },
-                  )}
-                >
-                  {query.render.label ? (
-                    <h2 className="text-md mb-4 text-center font-semibold font-display">
-                      {query.render.label}
-                    </h2>
-                  ) : null}
-                  <div
-                    className={cx({
-                      "h-[calc(100%-2rem)]": query.render.label,
-                      "h-full": !query.render.label,
-                    })}
-                  >
-                    {renderContent(
-                      query,
-                      sectionIndex,
-                      queryIndex,
-                      data.minTimeValue,
-                      data.maxTimeValue,
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-          </section>
-        );
-      })}
-      {numContentSections === 0 ? (
-        <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
-          Nothing to show yet ...
-        </div>
-      ) : null}
-    </ChartHoverProvider>
+        })}
+        {numContentSections === 0 ? (
+          <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
+            Nothing to show yet ...
+          </div>
+        ) : null}
+      </ChartHoverProvider>
+    </div>
   );
 }
 

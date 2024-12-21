@@ -301,7 +301,7 @@ function DashboardEditor() {
       {/* Variables Menu */}
       <div
         className={cx(
-          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
+          "fixed top-0 h-dvh w-full @sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
           {
             "-translate-x-[calc(100vw+50px)]": !isMenuOpen,
           },
@@ -316,7 +316,7 @@ function DashboardEditor() {
         >
           Delete
         </button>
-        <div className="mt-6 px-5 w-full sm:w-96">
+        <div className="mt-6 px-5 w-full @sm:w-96">
           <label>
             <span className="text-lg font-medium font-display ml-1 mb-2 block">
               {translate("Variables")}

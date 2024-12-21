@@ -32,6 +32,7 @@
     "@react-aria/datepicker": "^3.11.4",
     "@react-stately/datepicker": "^3.10.3",
     "@remixicon/react": "^4.5.0",
+    "@tailwindcss/container-queries": "^0.1.1",
     "@tanstack/react-router": "^1.78.2",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",

@@ -9,6 +9,13 @@ import { App } from "./App"
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "@tanstack/react-router";
 
+// Polyfill container queries
+const supportsContainerQueries = "container" in document.documentElement.style;
+if (!supportsContainerQueries) {
+  // @ts-ignore
+  import("https://cdn.skypack.dev/container-query-polyfill");
+}
+
 // Create a new router instance
 const router = createRouter({
   routeTree,

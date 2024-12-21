@@ -1,4 +1,4 @@
-import { redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { redirect, useRouter } from "@tanstack/react-router";
 import { ErrorComponent, createFileRoute, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";

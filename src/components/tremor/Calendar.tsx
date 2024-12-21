@@ -45,7 +45,7 @@ const NavigationButton = React.forwardRef<
         type="button"
         disabled={disabled}
         className={cx(
-          "flex size-8 shrink-0 select-none items-center justify-center rounded border p-1 outline-none transition sm:size-[30px]",
+          "flex size-8 shrink-0 select-none items-center justify-center rounded border p-1 outline-none transition @sm:size-[30px]",
           // text color
           "text-gray-600 hover:text-gray-800",
           "dark:text-gray-400 hover:dark:text-gray-200",
@@ -116,7 +116,7 @@ const Calendar = ({
         nav: "gap-1 flex items-center rounded-full size-full justify-between p-4",
         table: "w-full border-collapse space-y-1",
         head_cell:
-          "w-9 font-medium text-sm sm:text-xs text-center text-ctext2 dark:text-dtext2 pb-2",
+          "w-9 font-medium text-sm @sm:text-xs text-center text-ctext2 dark:text-dtext2 pb-2",
         row: "w-full mt-0.5",
         cell: cx(
           "relative p-0 text-center focus-within:relative",

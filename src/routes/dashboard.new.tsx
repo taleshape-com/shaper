@@ -31,7 +31,7 @@ export const Route = createFileRoute("/dashboard/new")({
 function NewDashboard() {
   const { vars } = Route.useSearch();
   const auth = useAuth();
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: "/dashboard/new" });
   const [query, setQuery] = useState("-- Enter your SQL query here");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -3,6 +3,7 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import formPlugin from '@tailwindcss/forms';
 import { scopedPreflightStyles, isolateInsideOfContainer } from 'tailwindcss-scoped-preflight';
+import containerQueries from '@tailwindcss/container-queries';
 
 export default {
   content: [
@@ -39,6 +40,11 @@ export default {
       fontFamily: {
         sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],
         display: ['var(--shaper-display-font)', ...defaultTheme.fontFamily.sans],
+      },
+      containers: {
+        'sm': '640px',
+        'lg': '1024px',
+        'xl': '1280px',
       },
       keyframes: {
         hide: {
@@ -117,6 +123,7 @@ export default {
   },
   plugins: [
     formPlugin,
+    containerQueries,
     scopedPreflightStyles({
       isolationStrategy: isolateInsideOfContainer('.shaper-scope'),
     }),
