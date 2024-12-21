@@ -26,6 +26,40 @@ func ListDashboards(app *core.App) echo.HandlerFunc {
 	}
 }
 
+func CreateDashboard(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			ID      string `json:"id"`
+			Content string `json:"content"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct{ Error string }{Error: "Invalid request"}, "  ")
+		}
+
+		// Validate dashboard ID
+		if request.ID == "" {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct{ Error string }{Error: "Dashboard ID is required"}, "  ")
+		}
+
+		err := core.CreateDashboard(app, c.Request().Context(), request.ID, request.Content)
+		if err != nil {
+			c.Logger().Error("error creating dashboard:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest,
+				struct{ Error string }{Error: err.Error()}, "  ")
+		}
+
+		return c.NoContent(http.StatusCreated)
+	}
+}
+
 func GetDashboardQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)

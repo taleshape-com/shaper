@@ -26,6 +26,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/login/token", handler.TokenLogin(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
+	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.GET("/dashboards/:id/query", handler.GetDashboardQuery(app))
 	apiWithAuth.POST("/dashboards/:id/query", handler.SaveDashboardQuery(app))

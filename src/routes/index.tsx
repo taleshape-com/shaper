@@ -8,13 +8,17 @@ type DashboardListResponse = {
 };
 
 export const Route = createFileRoute("/")({
-  loader: async ({ context: { auth: { getJwt } } }) => {
+  loader: async ({
+    context: {
+      auth: { getJwt },
+    },
+  }) => {
     const jwt = await getJwt();
     return fetch(`/api/dashboards`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: jwt,
-      }
+      },
     })
       .then(async (response) => {
         if (response.status === 401) {
@@ -66,12 +70,21 @@ function Index() {
         />
       </Helmet>
       <h2 className="text-2xl font-bold mb-4">Available Dashboards</h2>
+      <Link
+        to="/dashboard/new"
+        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        New Dashboard
+      </Link>
       {data.dashboards.length === 0 ? (
         <p>No dashboards available.</p>
       ) : (
         <ul className="space-y-2">
           {data.dashboards.map((dashboard) => (
-            <li key={dashboard} className="bg-gray-100 p-2 rounded flex justify-between items-center">
+            <li
+              key={dashboard}
+              className="bg-gray-100 p-2 rounded flex justify-between items-center"
+            >
               <Link
                 to="/dashboards/$dashboardId"
                 params={{ dashboardId: dashboard }}
