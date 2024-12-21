@@ -1,4 +1,8 @@
 import { Editor } from "@monaco-editor/react";
+import { loader } from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+
 import { z } from "zod";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
@@ -9,6 +13,14 @@ import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
 import { cx, focusRing, hasErrorInput, varsParamSchema } from "../lib/utils";
 import { translate } from "../lib/translate";
+
+self.MonacoEnvironment = {
+	getWorker() {
+		return new editorWorker();
+	},
+};
+loader.config({ monaco });
+loader.init();
 
 export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
 	validateSearch: z.object({
