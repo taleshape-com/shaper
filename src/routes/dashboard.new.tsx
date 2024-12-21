@@ -3,7 +3,7 @@ import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { z } from "zod";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
@@ -171,7 +171,12 @@ function NewDashboard() {
       </Helmet>
 
       <div className="flex justify-between items-center p-4 border-b">
-        <h1 className="text-2xl font-bold">New Dashboard</h1>
+        <div className="flex items-center space-x-4">
+          <Link to="/" className="text-gray-600 hover:text-gray-800">
+            ← Overview
+          </Link>
+          <h1 className="text-2xl font-bold">New Dashboard</h1>
+        </div>
         <div className="space-x-2">
           <button
             onClick={handleCreate}

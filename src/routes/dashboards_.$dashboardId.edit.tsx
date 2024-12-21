@@ -221,9 +221,14 @@ function DashboardEditor() {
       </Helmet>
 
       <div className="flex justify-between items-center p-4 border-b">
-        <h1 className="text-2xl font-bold">
-          Edit Dashboard: {params.dashboardId}
-        </h1>
+        <div className="flex items-center space-x-4">
+          <Link to="/" className="text-gray-600 hover:text-gray-800">
+            ← Overview
+          </Link>
+          <h1 className="text-2xl font-bold">
+            Edit Dashboard: {params.dashboardId}
+          </h1>
+        </div>
         <div className="space-x-2">
           <Link
             to="/dashboards/$dashboardId"

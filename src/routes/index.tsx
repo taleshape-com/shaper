@@ -86,7 +86,7 @@ function Index() {
     } catch (err) {
       alert(
         "Error deleting dashboard: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+        (err instanceof Error ? err.message : "Unknown error"),
       );
     }
   };
@@ -118,7 +118,7 @@ function Index() {
           {data.dashboards.map((dashboard) => (
             <li
               key={dashboard}
-              className="bg-gray-100 p-2 rounded flex justify-between items-center"
+              className="bg-gray-100 p-2 rounded flex justify-between items-center hover:bg-gray-300"
             >
               <Link
                 to="/dashboards/$dashboardId"
