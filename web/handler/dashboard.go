@@ -124,6 +124,25 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	}
 }
 
+func DeleteDashboard(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+
+		err := core.DeleteDashboard(app, c.Request().Context(), c.Param("id"))
+		if err != nil {
+			c.Logger().Error("error deleting dashboard:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest,
+				struct{ Error string }{Error: err.Error()}, "  ")
+		}
+
+		return c.NoContent(http.StatusOK)
+	}
+}
+
 // Supports .csv and .xlsx
 func DownloadQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {

@@ -1,7 +1,8 @@
-import { redirect } from "@tanstack/react-router";
+import { redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { ErrorComponent, createFileRoute, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
+import { useAuth } from "../lib/auth";
 
 type DashboardListResponse = {
   dashboards: string[];
@@ -55,6 +56,40 @@ function DashboardErrorComponent({ error }: ErrorComponentProps) {
 
 function Index() {
   const data = Route.useLoaderData();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleDelete = async (dashboardId: string) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete dashboard "${dashboardId}"?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const jwt = await auth.getJwt();
+      const response = await fetch(`/api/dashboards/${dashboardId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: jwt,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete dashboard");
+      }
+
+      // Reload the page to refresh the list
+      router.invalidate();
+    } catch (err) {
+      alert(
+        "Error deleting dashboard: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
+  };
 
   if (!data) {
     return <div className="p-2">Loading dashboards...</div>;
@@ -92,13 +127,21 @@ function Index() {
               >
                 {dashboard}
               </Link>
-              <Link
-                to="/dashboards/$dashboardId/edit"
-                params={{ dashboardId: dashboard }}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                Edit
-              </Link>
+              <div className="space-x-2">
+                <Link
+                  to="/dashboards/$dashboardId/edit"
+                  params={{ dashboardId: dashboard }}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={() => handleDelete(dashboard)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>

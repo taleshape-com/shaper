@@ -28,6 +28,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
+	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))
 	apiWithAuth.GET("/dashboards/:id/query", handler.GetDashboardQuery(app))
 	apiWithAuth.POST("/dashboards/:id/query", handler.SaveDashboardQuery(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
