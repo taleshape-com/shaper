@@ -271,7 +271,9 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 		}, c.QueryParams(), variables)
 
 		if err != nil {
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 
 		return c.JSONPretty(http.StatusOK, result, "  ")

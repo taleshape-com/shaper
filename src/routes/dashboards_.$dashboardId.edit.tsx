@@ -203,12 +203,6 @@ function DashboardEditor() {
     }
   };
 
-  const MenuButton = (
-    <button className="px-1" onClick={() => setIsMenuOpen(true)}>
-      <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
-    </button>
-  );
-
   // Load initial preview
   useEffect(() => {
     previewDashboard(query);
@@ -220,45 +214,40 @@ function DashboardEditor() {
         <title>Edit {params.dashboardId}</title>
       </Helmet>
 
-      <div className="flex justify-between items-center p-4 border-b">
-        <div className="flex items-center space-x-4">
-          <Link to="/" className="text-gray-600 hover:text-gray-800">
-            ← Overview
-          </Link>
-          <h1 className="text-2xl font-bold">
-            Edit Dashboard: {params.dashboardId}
-          </h1>
-        </div>
-        <div className="space-x-2">
-          <Link
-            to="/dashboards/$dashboardId"
-            params={{ dashboardId: params.dashboardId }}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
-          >
-            View
-          </Link>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
-
       {error && (
         <div className="m-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
       )}
 
-      {previewError && (
-        <div className="m-4 p-4 bg-red-100 text-red-700 rounded">
-          {previewError}
-        </div>
-      )}
-
       <div className="flex-1 flex overflow-hidden">
         <div className="w-1/2 overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b">
+            <div className="flex items-center space-x-4">
+              <button className="px-1" onClick={() => setIsMenuOpen(true)}>
+                <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+              </button>
+              <Link to="/" className="text-gray-600 hover:text-gray-800">
+                ← Overview
+              </Link>
+              <h1 className="text-2xl font-bold">{params.dashboardId}</h1>
+            </div>
+            <div className="space-x-2">
+              <Link
+                to="/dashboards/$dashboardId"
+                params={{ dashboardId: params.dashboardId }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                View
+              </Link>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+
           <Editor
             height="100%"
             defaultLanguage="sql"
@@ -283,6 +272,13 @@ function DashboardEditor() {
         </div>
 
         <div className="w-1/2 overflow-auto relative">
+          {previewError && (
+            <div className="fixed w-1/2 h-full p-4 z-50 backdrop-blur-sm flex justify-center items-center">
+              <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
+                {previewError}
+              </div>
+            </div>
+          )}
           {isPreviewLoading && (
             <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
               <div className="text-gray-500">Loading preview...</div>
@@ -294,7 +290,6 @@ function DashboardEditor() {
               vars={vars}
               hash={auth.hash}
               getJwt={auth.getJwt}
-              menuButton={MenuButton}
               onVarsChanged={handleVarsChanged}
               onError={handleDashboardError}
               data={previewData} // Pass preview data directly to Dashboard
