@@ -3,22 +3,22 @@ package core
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
 )
 
-func DeleteDashboard(app *App, ctx context.Context, dashboardName string) error {
-    fileName := path.Join(app.DashboardDir, dashboardName+".sql")
+func DeleteDashboard(app *App, ctx context.Context, id string) error {
+	result, err := app.db.ExecContext(ctx,
+		`DELETE FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete dashboard: %w", err)
+	}
 
-    // Check if dashboard exists
-    if _, err := os.Stat(fileName); os.IsNotExist(err) {
-        return fmt.Errorf("dashboard does not exist: %s", dashboardName)
-    }
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("dashboard not found: %s", id)
+	}
 
-    // Delete the dashboard file
-    if err := os.Remove(fileName); err != nil {
-        return fmt.Errorf("failed to delete dashboard: %w", err)
-    }
-
-    return nil
+	return nil
 }

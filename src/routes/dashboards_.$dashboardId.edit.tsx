@@ -20,6 +20,7 @@ import {
 } from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
+import { IDashboard, Result } from "../lib/dashboard";
 
 self.MonacoEnvironment = {
   getWorker() {
@@ -52,7 +53,7 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
       throw new Error("Failed to load dashboard query");
     }
     const data = await response.json();
-    return data.content as string;
+    return data as IDashboard;
   },
   component: DashboardEditor,
 });
@@ -60,15 +61,15 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
 function DashboardEditor() {
   const params = Route.useParams();
   const { vars } = Route.useSearch();
-  const content = Route.useLoaderData();
+  const dashboard = Route.useLoaderData();
   const auth = useAuth();
   const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
-  const [query, setQuery] = useState(content);
+  const [query, setQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<Result | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(
@@ -88,7 +89,7 @@ function DashboardEditor() {
   // Check for unsaved changes when component mounts
   useEffect(() => {
     const unsavedContent = editorStorage.getChanges(params.dashboardId);
-    if (unsavedContent && unsavedContent !== content) {
+    if (unsavedContent && unsavedContent !== dashboard.content) {
       if (
         window.confirm(
           "There are unsaved previous edits. Do you want to restore them?",
@@ -99,7 +100,7 @@ function DashboardEditor() {
         editorStorage.clearChanges(params.dashboardId);
       }
     }
-  }, [params.dashboardId, content]);
+  }, [params.dashboardId, dashboard.content]);
 
   // Add debounced preview function
   const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
@@ -162,16 +163,15 @@ function DashboardEditor() {
       if (!response.ok) {
         throw new Error("Failed to save dashboard query");
       }
+      dashboard.content = query;
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.dashboardId);
-      // Update preview data after successful save
-      await previewDashboard(query);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSaving(false);
     }
-  }, [auth, params.dashboardId, query, previewDashboard]);
+  }, [auth, params.dashboardId, query, dashboard]);
 
   const handleDashboardError = useCallback((err: Error) => {
     setPreviewError(err.message);
@@ -207,7 +207,7 @@ function DashboardEditor() {
   const handleDelete = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to delete dashboard "${params.dashboardId}"?`,
+        `Are you sure you want to delete dashboard "${dashboard.name}"?`,
       )
     ) {
       return;
@@ -241,7 +241,7 @@ function DashboardEditor() {
   return (
     <div className="h-screen flex flex-col">
       <Helmet>
-        <title>Edit {params.dashboardId}</title>
+        <title>Edit {dashboard.name}</title>
       </Helmet>
 
       {error && (
@@ -258,7 +258,7 @@ function DashboardEditor() {
               <Link to="/" className="text-gray-600 hover:text-gray-800">
                 ← Overview
               </Link>
-              <h1 className="text-2xl font-bold">{params.dashboardId}</h1>
+              <h1 className="text-2xl font-bold">{dashboard.name}</h1>
             </div>
             <div className="space-x-2">
               <Link
@@ -271,7 +271,7 @@ function DashboardEditor() {
               </Link>
               <button
                 onClick={handleSave}
-                disabled={saving || query === content}
+                disabled={saving || query === dashboard.content}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save"}

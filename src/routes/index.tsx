@@ -3,9 +3,19 @@ import { ErrorComponent, createFileRoute, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
+import { IDashboard } from "../lib/dashboard";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRoot,
+  TableRow,
+} from "../components/tremor/Table";
 
 type DashboardListResponse = {
-  dashboards: string[];
+  dashboards: IDashboard[];
 };
 
 export const Route = createFileRoute("/")({
@@ -59,10 +69,10 @@ function Index() {
   const auth = useAuth();
   const router = useRouter();
 
-  const handleDelete = async (dashboardId: string) => {
+  const handleDelete = async (dashboard: IDashboard) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete dashboard "${dashboardId}"?`,
+        `Are you sure you want to delete dashboard "${dashboard.name}"?`,
       )
     ) {
       return;
@@ -70,7 +80,7 @@ function Index() {
 
     try {
       const jwt = await auth.getJwt();
-      const response = await fetch(`/api/dashboards/${dashboardId}`, {
+      const response = await fetch(`/api/dashboards/${dashboard.id}`, {
         method: "DELETE",
         headers: {
           Authorization: jwt,
@@ -101,52 +111,82 @@ function Index() {
         <title>Dashboard Overview</title>
         <meta
           name="description"
-          content="Show a list of all available dashboards"
+          content="Show a list of all dashboards"
         />
       </Helmet>
       <div className="mb-4 flex">
-        <h2 className="text-2xl font-bold mb-4 flex-grow">Available Dashboards</h2>
+        <h2 className="text-2xl font-semibold font-display mb-4 flex-grow">
+          Overview
+        </h2>
         <Link
           to="/dashboard/new"
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 h-fit"
         >
-          New Dashboard
+          New
         </Link>
       </div>
       {data.dashboards.length === 0 ? (
-        <p>No dashboards available.</p>
+        <p>No dashboards yet</p>
       ) : (
-        <ul className="space-y-2">
-          {data.dashboards.map((dashboard) => (
-            <li
-              key={dashboard}
-              className="bg-gray-100 p-4 rounded flex justify-between items-center hover:bg-gray-300"
-            >
-              <Link
-                to="/dashboards/$dashboardId"
-                params={{ dashboardId: dashboard }}
-                className="text-blue-600 hover:underline"
-              >
-                {dashboard}
-              </Link>
-              <div className="space-x-4">
-                <Link
-                  to="/dashboards/$dashboardId/edit"
-                  params={{ dashboardId: dashboard }}
-                  className="text-gray-600 hover:text-gray-800"
+        <TableRoot>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Name</TableHeaderCell>
+                <TableHeaderCell className="hidden md:table-cell">
+                  Updated
+                </TableHeaderCell>
+                <TableHeaderCell className="hidden md:table-cell">
+                  Actions
+                </TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data.dashboards.map((dashboard) => (
+                <TableRow
+                  key={dashboard.id}
+                  className="group hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200"
+                  onClick={() =>
+                    router.navigate({
+                      to: "/dashboards/$dashboardId",
+                      params: { dashboardId: dashboard.id },
+                    })
+                  }
                 >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => handleDelete(dashboard)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  <TableCell className="font-medium text-gray-900 dark:text-gray-100">
+                    {dashboard.name}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div title={new Date(dashboard.updatedAt).toLocaleString()}>
+                      {new Date(dashboard.updatedAt).toLocaleDateString()}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex gap-4">
+                      <Link
+                        to="/dashboards/$dashboardId/edit"
+                        params={{ dashboardId: dashboard.id }}
+                        className="text-gray-600 hover:text-gray-800 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(dashboard);
+                        }}
+                        className="text-red-600 hover:text-red-800 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableRoot>
       )}
     </div>
   );

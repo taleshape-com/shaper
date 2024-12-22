@@ -19,7 +19,7 @@ if (!supportsContainerQueries) {
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  defaultPreload: "intent",
+  defaultPreload: false,
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   defaultStaleTime: 5000,
   context: {

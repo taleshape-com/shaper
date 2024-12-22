@@ -231,13 +231,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 }
 
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
-	content, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
 	if err != nil {
 		return GetResult{}, err
 	}
 
 	return QueryDashboard(app, ctx, DashboardQuery{
-		Content: content,
+		Content: dashboard.Content,
 		ID:      dashboardId,
 	}, queryParams, variables)
 }

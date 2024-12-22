@@ -20,6 +20,8 @@ import {
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 
+const defaultQuery = "-- Enter your SQL query here"
+
 self.MonacoEnvironment = {
   getWorker() {
     return new editorWorker();
@@ -39,7 +41,7 @@ function NewDashboard() {
   const { vars } = Route.useSearch();
   const auth = useAuth();
   const navigate = useNavigate({ from: "/dashboard/new" });
-  const [query, setQuery] = useState("-- Enter your SQL query here");
+  const [query, setQuery] = useState(defaultQuery);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -81,7 +83,11 @@ function NewDashboard() {
     setPreviewError(null);
     setIsPreviewLoading(true);
     // Save to localStorage
-    editorStorage.saveChanges("new", newQuery);
+    if (newQuery !== defaultQuery && newQuery.trim() !== "") {
+      editorStorage.saveChanges("new", newQuery);
+    } else {
+      editorStorage.clearChanges("new");
+    }
     try {
       const jwt = await auth.getJwt();
       const searchParams = getSearchParamString(vars);
@@ -121,8 +127,8 @@ function NewDashboard() {
   };
 
   const handleCreate = useCallback(async () => {
-    const title = window.prompt("Enter a title for the dashboard:");
-    if (!title) return;
+    const name = window.prompt("Enter a name for the dashboard:");
+    if (!name) return;
 
     setCreating(true);
     setError(null);
@@ -135,22 +141,25 @@ function NewDashboard() {
           Authorization: jwt,
         },
         body: JSON.stringify({
-          id: title,
+          name,
           content: query,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create dashboard");
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create dashboard");
       }
 
-      // Clear localStorage after successful creation
+      const { id } = await response.json();
+
+      // Clear localStorage after successful save
       editorStorage.clearChanges("new");
 
       // Navigate to the edit page of the new dashboard
       navigate({
         to: "/dashboards/$dashboardId/edit",
-        params: { dashboardId: title },
+        params: { dashboardId: id },
         search: () => ({ vars }),
       });
     } catch (err) {
@@ -211,7 +220,6 @@ function NewDashboard() {
               <Link to="/" className="text-gray-600 hover:text-gray-800">
                 ← Overview
               </Link>
-              <h1 className="text-2xl font-bold">New Dashboard</h1>
             </div>
             <div className="space-x-2">
               <button

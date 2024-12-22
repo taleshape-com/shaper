@@ -7,8 +7,6 @@ import (
 	"io"
 	"math"
 	"net/url"
-	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -20,26 +18,24 @@ import (
 func StreamQueryCSV(
 	app *App,
 	ctx context.Context,
-	dashboardName string,
+	dashboardId string,
 	params url.Values,
 	queryID string,
 	variables map[string]interface{},
 	writer io.Writer,
 ) error {
-	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
-	// read sql file
-	sqlFile, err := os.ReadFile(fileName)
+	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting dashboard: %w", err)
 	}
-	sqls := strings.Split(string(sqlFile), ";")
+	sqls := strings.Split(dashboard.Content, ";")
 
 	queryIndex, err := strconv.Atoi(queryID)
 	if err != nil {
 		return err
 	}
 	if len(sqls) <= queryIndex || queryIndex < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardName, queryIndex)
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
 	}
 	if queryIndex < 1 || !isDownloadButton(sqls[queryIndex-1]) {
 		return fmt.Errorf("query must be download query")
@@ -123,26 +119,25 @@ func StreamQueryCSV(
 func StreamQueryXLSX(
 	app *App,
 	ctx context.Context,
-	dashboardName string,
+	dashboardId string,
 	params url.Values,
 	queryID string,
 	variables map[string]interface{},
 	writer io.Writer,
 ) error {
-	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
-	// read sql file
-	sqlFile, err := os.ReadFile(fileName)
+	// Get dashboard content
+	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting dashboard: %w", err)
 	}
-	sqls := strings.Split(string(sqlFile), ";")
+	sqls := strings.Split(dashboard.Content, ";")
 
 	queryIndex, err := strconv.Atoi(queryID)
 	if err != nil {
 		return err
 	}
 	if len(sqls) <= queryIndex || queryIndex < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardName, queryIndex)
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
 	}
 	if queryIndex < 1 || !isDownloadButton(sqls[queryIndex-1]) {
 		return fmt.Errorf("query must be download query")

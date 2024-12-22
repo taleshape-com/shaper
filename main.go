@@ -31,7 +31,7 @@ type Config struct {
 	Port              int
 	DBFile            string
 	LoginToken        string
-	DashboardDir      string
+	Schema            string
 	ExecutableModTime time.Time
 	CustomCSS         string
 	Favicon           string
@@ -58,7 +58,7 @@ func loadConfig() Config {
 	port := flags.Int('p', "port", 3000, "port to listen on")
 	dbFile := flags.String('d', "duckdb", "", "path to duckdb file (default: use in-memory db)")
 	loginToken := flags.String('t', "token", "", "token used for login (required)")
-	dashboardDir := flags.StringLong("dashboards", "", "path to directory to read dashboard SQL files from (required)")
+	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtSecret := flags.StringLong("jwtsecret", "", "JWT secret to sign auth tokens")
@@ -77,9 +77,6 @@ func loadConfig() Config {
 	)
 	if err == nil && *loginToken == "" {
 		err = fmt.Errorf("--token must be set")
-	}
-	if err == nil && *dashboardDir == "" {
-		err = fmt.Errorf("--dashboards must be set")
 	}
 	if err != nil {
 		fmt.Printf("%s\n", ffhelp.Flags(flags))
@@ -108,7 +105,7 @@ func loadConfig() Config {
 		Port:              *port,
 		DBFile:            *dbFile,
 		LoginToken:        *loginToken,
-		DashboardDir:      *dashboardDir,
+		Schema:            *schema,
 		ExecutableModTime: executableModTime,
 		CustomCSS:         *customCSS,
 		Favicon:           *favicon,
@@ -126,7 +123,6 @@ func loadConfig() Config {
 }
 
 func Run(config Config) func(context.Context) {
-	fmt.Println("⇨ dashboard directory:", config.DashboardDir)
 	if config.Favicon != "" {
 		fmt.Println("⇨ custom favicon:", config.Favicon)
 	}
@@ -152,7 +148,7 @@ func Run(config Config) func(context.Context) {
 		fmt.Println("⇨ connected to in-memory duckdb")
 	}
 
-	app, err := core.New(db, logger, config.LoginToken, config.DashboardDir, config.JWTSecret, config.JWTExp)
+	app, err := core.New(db, logger, config.LoginToken, config.Schema, config.JWTSecret, config.JWTExp)
 	if err != nil {
 		panic(err)
 	}

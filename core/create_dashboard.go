@@ -3,44 +3,35 @@ package core
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
 	"strings"
+	"time"
+
+	"github.com/nrednav/cuid2"
 )
 
-func CreateDashboard(app *App, ctx context.Context, dashboardName string, content string) error {
-	// Sanitize dashboard name
-	dashboardName = strings.TrimSpace(dashboardName)
-	if dashboardName == "" {
-		return fmt.Errorf("dashboard name cannot be empty")
+func CreateDashboard(app *App, ctx context.Context, name string, content string) (string, error) {
+	// Validate name
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("dashboard name cannot be empty")
 	}
 
-	// Basic validation of dashboard name
-	// Avoid directory traversal and ensure valid filename
-	if strings.Contains(dashboardName, "/") || strings.Contains(dashboardName, "\\") {
-		return fmt.Errorf("invalid dashboard name: must not contain path separators")
-	}
+	// Generate unique ID
+	id := cuid2.Generate()
+	now := time.Now()
 
-	if !isValidDashboardName(dashboardName) {
-		return fmt.Errorf("invalid dashboard name: use only letters, numbers, dashes, and underscores")
-	}
-
-	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
-
-	// Check if dashboard already exists
-	if _, err := os.Stat(fileName); err == nil {
-		return fmt.Errorf("dashboard already exists: %s", dashboardName)
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("error checking dashboard existence: %w", err)
-	}
-
-	// Create the dashboard file
-	err := os.WriteFile(fileName, []byte(content), 0644)
+	// Insert into DB
+	_, err := app.db.ExecContext(ctx,
+		`INSERT INTO `+app.Schema+`.dashboards (
+			id, path, name, content, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6)`,
+		id, "/", name, content, now, now,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to create dashboard file: %w", err)
+		return id, fmt.Errorf("failed to create dashboard: %w", err)
 	}
 
-	return nil
+	return id, nil
 }
 
 func isValidDashboardName(name string) bool {

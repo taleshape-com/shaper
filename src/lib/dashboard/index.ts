@@ -1,3 +1,14 @@
+export interface IDashboard {
+  id: string;
+  name: string;
+  path: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
 export type Column = {
   name: string;
   type: "year" | "month" | "hour" | "date" | "timestamp" | "duration" | "number" | "string" | "boolean";

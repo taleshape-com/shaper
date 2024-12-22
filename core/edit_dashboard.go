@@ -3,24 +3,36 @@ package core
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
+	"time"
 )
 
-func GetDashboardQuery(app *App, ctx context.Context, dashboardName string) (string, error) {
-	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
-	content, err := os.ReadFile(fileName)
+func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
+	var dashboard Dashboard
+	err := app.db.GetContext(ctx, &dashboard,
+		`SELECT * FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
 	if err != nil {
-		return "", fmt.Errorf("failed to read dashboard file: %w", err)
+		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
 	}
-	return string(content), nil
+	return dashboard, nil
 }
 
-func SaveDashboardQuery(app *App, ctx context.Context, dashboardName string, content string) error {
-	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
-	err := os.WriteFile(fileName, []byte(content), 0644)
+func SaveDashboardQuery(app *App, ctx context.Context, id string, content string) error {
+	result, err := app.db.ExecContext(ctx,
+		`UPDATE `+app.Schema+`.dashboards
+		 SET content = $1, updated_at = $2
+		 WHERE id = $3`,
+		content, time.Now(), id)
 	if err != nil {
-		return fmt.Errorf("failed to write dashboard file: %w", err)
+		return fmt.Errorf("failed to save dashboard: %w", err)
 	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("dashboard not found: %s", id)
+	}
+
 	return nil
 }

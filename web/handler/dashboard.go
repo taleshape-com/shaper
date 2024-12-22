@@ -35,7 +35,7 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 		}
 
 		var request struct {
-			ID      string `json:"id"`
+			Name    string `json:"name"`
 			Content string `json:"content"`
 		}
 		if err := c.Bind(&request); err != nil {
@@ -43,20 +43,26 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 				struct{ Error string }{Error: "Invalid request"}, "  ")
 		}
 
-		// Validate dashboard ID
-		if request.ID == "" {
+		// Validate dashboard name
+		if request.Name == "" {
 			return c.JSONPretty(http.StatusBadRequest,
-				struct{ Error string }{Error: "Dashboard ID is required"}, "  ")
+				struct {
+					Error string `json:"error"`
+				}{Error: "Dashboard name is required"}, "  ")
 		}
 
-		err := core.CreateDashboard(app, c.Request().Context(), request.ID, request.Content)
+		id, err := core.CreateDashboard(app, c.Request().Context(), request.Name, request.Content)
 		if err != nil {
 			c.Logger().Error("error creating dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
 				struct{ Error string }{Error: err.Error()}, "  ")
 		}
 
-		return c.NoContent(http.StatusCreated)
+		return c.JSONPretty(http.StatusCreated, struct {
+			ID string `json:"id"`
+		}{
+			ID: id,
+		}, "  ")
 	}
 }
 
@@ -68,15 +74,13 @@ func GetDashboardQuery(app *core.App) echo.HandlerFunc {
 			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
 		}
 
-		content, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting dashboard query:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
 		}
 
-		return c.JSON(http.StatusOK, struct {
-			Content string `json:"content"`
-		}{Content: content})
+		return c.JSON(http.StatusOK, dashboard)
 	}
 }
 

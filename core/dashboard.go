@@ -1,7 +1,20 @@
 package core
 
+import "time"
+
+type Dashboard struct {
+	ID        string    `db:"id" json:"id"`
+	Path      string    `db:"path" json:"path"`
+	Name      string    `db:"name" json:"name"`
+	Content   string    `db:"content" json:"content"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
+	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
+	UpdatedBy *string   `db:"updated_by" json:"updatedBy,omitempty"`
+}
+
 type ListResult struct {
-	Dashboards []string `json:"dashboards"`
+	Dashboards []Dashboard `json:"dashboards"`
 }
 
 type GetResult struct {
