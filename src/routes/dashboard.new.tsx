@@ -284,7 +284,7 @@ function NewDashboard() {
         </div>
       </div>
 
-      {/* Variables Menu */}
+      {/* Menu */}
       <div
         className={cx(
           "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",

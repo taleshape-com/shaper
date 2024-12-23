@@ -410,10 +410,10 @@ function DashboardEditor() {
         </div>
       </div>
 
-      {/* Variables Menu */}
+      {/* Menu */}
       <div
         className={cx(
-          "fixed top-0 h-dvh w-full @sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
+          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
           {
             "-translate-x-[calc(100vw+50px)]": !isMenuOpen,
           },
@@ -422,13 +422,7 @@ function DashboardEditor() {
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
-        <button
-          onClick={handleDelete}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          {translate("Delete")}
-        </button>
-        <div className="mt-6 px-5 w-full @sm:w-96">
+        <div className="mt-6 px-5 w-full sm:w-96">
           <label>
             <span className="text-lg font-medium font-display ml-1 mb-2 block">
               {translate("Variables")}
@@ -446,6 +440,12 @@ function DashboardEditor() {
               rows={4}
             ></textarea>
           </label>
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mt-6"
+          >
+            {translate("Delete Dashboard")}
+          </button>
         </div>
       </div>
     </div>

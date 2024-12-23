@@ -30,6 +30,9 @@ const translations: Record<string, Record<string, string>> = {
   'Delete': {
     de: 'Löschen'
   },
+  'Delete Dashboard': {
+    de: 'Dashboard löschen'
+  },
   'New': {
     de: 'Neu'
   },
