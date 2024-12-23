@@ -84,6 +84,34 @@ func GetDashboardQuery(app *core.App) echo.HandlerFunc {
 	}
 }
 
+func SaveDashboardName(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			Name string `json:"name"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: "Invalid request"}, "  ")
+		}
+
+		if request.Name == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: "Dashboard name is required"}, "  ")
+		}
+
+		err := core.SaveDashboardName(app, c.Request().Context(), c.Param("id"), request.Name)
+		if err != nil {
+			c.Logger().Error("error saving dashboard name:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+		}
+
+		return c.NoContent(http.StatusOK)
+	}
+}
+
 func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)

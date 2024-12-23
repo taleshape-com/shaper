@@ -67,6 +67,9 @@ function DashboardEditor() {
   const [query, setQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [name, setName] = useState(dashboard.name);
+  const [savingName, setSavingName] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
   const [previewData, setPreviewData] = useState<Result | null>(null);
@@ -204,10 +207,49 @@ function DashboardEditor() {
     );
   }, 500);
 
+  const handleSaveName = async (newName: string) => {
+    if (newName === dashboard.name) {
+      setEditingName(false);
+      return;
+    }
+
+    setSavingName(true);
+    setError(null);
+    try {
+      const jwt = await auth.getJwt();
+      const response = await fetch(
+        `/api/dashboards/${params.dashboardId}/name`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: jwt,
+          },
+          body: JSON.stringify({ name: newName }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save dashboard name");
+      }
+
+      dashboard.name = newName;
+      setName(newName);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      // Revert name on error
+      setName(dashboard.name);
+    } finally {
+      setSavingName(false);
+      setEditingName(false);
+    }
+  };
   const handleDelete = async () => {
     if (
       !window.confirm(
-        translate('Are you sure you want to delete the dashboard "%%"?').replace('%%', dashboard.name),
+        translate(
+          'Are you sure you want to delete the dashboard "%%"?',
+        ).replace("%%", dashboard.name),
       )
     ) {
       return;
@@ -241,7 +283,9 @@ function DashboardEditor() {
   return (
     <div className="h-screen flex flex-col">
       <Helmet>
-        <title>{translate("Edit Dashboard")} - {dashboard.name}</title>
+        <title>
+          {translate("Edit Dashboard")} - {dashboard.name}
+        </title>
       </Helmet>
 
       {error && (
@@ -256,9 +300,45 @@ function DashboardEditor() {
                 <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
               </button>
               <Link to="/" className="text-gray-600 hover:text-gray-800">
-                ← {translate('Overview')}
+                ← {translate("Overview")}
               </Link>
-              <h1 className="text-2xl font-bold">{dashboard.name}</h1>
+              {editingName ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.querySelector("input");
+                    if (input) {
+                      input.blur();
+                    }
+                  }}
+                  className="inline-block"
+                >
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onBlur={() => {
+                      if (!savingName) {
+                        handleSaveName(name);
+                      }
+                    }}
+                    className={cx(
+                      "text-2xl font-bold px-2 py-1 border rounded",
+                      focusRing,
+                    )}
+                    autoFocus
+                    disabled={savingName}
+                  />
+                </form>
+              ) : (
+                <h1
+                  className="text-2xl font-bold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                  onClick={() => setEditingName(true)}
+                  title={translate("Click to edit dashboard name")}
+                >
+                  {name}
+                </h1>
+              )}
             </div>
             <div className="space-x-2">
               <Link

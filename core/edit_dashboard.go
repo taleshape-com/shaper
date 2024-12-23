@@ -16,6 +16,27 @@ func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, err
 	return dashboard, nil
 }
 
+func SaveDashboardName(app *App, ctx context.Context, id string, name string) error {
+	result, err := app.db.ExecContext(ctx,
+		`UPDATE `+app.Schema+`.dashboards
+			 SET name = $1, updated_at = $2
+			 WHERE id = $3`,
+		name, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("failed to save dashboard name: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("dashboard not found: %s", id)
+	}
+
+	return nil
+}
+
 func SaveDashboardQuery(app *App, ctx context.Context, id string, content string) error {
 	result, err := app.db.ExecContext(ctx,
 		`UPDATE `+app.Schema+`.dashboards
