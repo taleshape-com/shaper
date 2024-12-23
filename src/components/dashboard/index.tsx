@@ -268,7 +268,7 @@ export function Dashboard({
         })}
         {numContentSections === 0 ? (
           <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
-            Nothing to show yet ...
+            {translate("Nothing to show yet")} ...
           </div>
         ) : null}
       </ChartHoverProvider>

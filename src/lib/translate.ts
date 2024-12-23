@@ -3,8 +3,56 @@ const translations: Record<string, Record<string, string>> = {
   'loading': {
     de: 'Einen Moment'
   },
+  'Overview': {
+    de: 'Übersicht'
+  },
+  'Name': {
+    de: 'Name'
+  },
+  'Updated': {
+    de: 'Aktualisiert'
+  },
+  'Actions': {
+    de: 'Aktionen'
+  },
+  'Edit': {
+    de: 'Bearbeiten'
+  },
+  'Create': {
+    de: 'Erstellen'
+  },
+  'Creating': {
+    de: 'Erstellen'
+  },
+  'Delete': {
+    de: 'Löschen'
+  },
+  'New': {
+    de: 'Neu'
+  },
+  'Save': {
+    de: 'Speichern'
+  },
+  'Saving': {
+    de: 'Speichern'
+  },
+  'Edit Dashboard': {
+    de: 'Dashboard bearbeiten'
+  },
+  'View Dashboard': {
+    de: 'Dashboard anzeigen'
+  },
+  'Enter a name for the dashboard': {
+    de: 'Geben Sie einen Namen für das Dashboard ein'
+  },
+  'Are you sure you want to delete the dashboard "%%"?': {
+    de: 'Sind Sie sicher, dass Sie das Dashboard "%%" löschen möchten?'
+  },
   'No data available': {
     de: 'Keine Daten verfügbar'
+  },
+  'Nothing to show yet': {
+    de: 'Noch nichts zu zeigen'
   },
   'Variables': {
     de: 'Parameter'

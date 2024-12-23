@@ -127,7 +127,7 @@ function NewDashboard() {
   };
 
   const handleCreate = useCallback(async () => {
-    const name = window.prompt("Enter a name for the dashboard:");
+    const name = window.prompt(`${translate("Enter a name for the dashboard")}:`);
     if (!name) return;
 
     setCreating(true);
@@ -218,7 +218,7 @@ function NewDashboard() {
                 <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
               </button>
               <Link to="/" className="text-gray-600 hover:text-gray-800">
-                ← Overview
+                ← {translate('Overview')}
               </Link>
             </div>
             <div className="space-x-2">
@@ -227,7 +227,7 @@ function NewDashboard() {
                 disabled={creating}
                 className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
               >
-                {creating ? "Creating..." : "Create"}
+                {creating ? `${translate("Creating")}...` : translate("Create")}
               </button>
             </div>
           </div>

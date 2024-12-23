@@ -207,7 +207,7 @@ function DashboardEditor() {
   const handleDelete = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to delete dashboard "${dashboard.name}"?`,
+        translate('Are you sure you want to delete the dashboard "%%"?').replace('%%', dashboard.name),
       )
     ) {
       return;
@@ -241,7 +241,7 @@ function DashboardEditor() {
   return (
     <div className="h-screen flex flex-col">
       <Helmet>
-        <title>Edit {dashboard.name}</title>
+        <title>{translate("Edit Dashboard")} - {dashboard.name}</title>
       </Helmet>
 
       {error && (
@@ -256,7 +256,7 @@ function DashboardEditor() {
                 <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
               </button>
               <Link to="/" className="text-gray-600 hover:text-gray-800">
-                ← Overview
+                ← {translate('Overview')}
               </Link>
               <h1 className="text-2xl font-bold">{dashboard.name}</h1>
             </div>
@@ -267,14 +267,14 @@ function DashboardEditor() {
                 search={() => ({ vars })}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
-                View
+                {translate("View Dashboard")}
               </Link>
               <button
                 onClick={handleSave}
                 disabled={saving || query === dashboard.content}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? `${translate("Saving")}...` : translate("Save")}
               </button>
             </div>
           </div>
@@ -345,7 +345,7 @@ function DashboardEditor() {
           onClick={handleDelete}
           className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
         >
-          Delete
+          {translate("Delete")}
         </button>
         <div className="mt-6 px-5 w-full @sm:w-96">
           <label>

@@ -13,6 +13,7 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
+import { translate } from "../lib/translate";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -72,7 +73,7 @@ function Index() {
   const handleDelete = async (dashboard: IDashboard) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete dashboard "${dashboard.name}"?`,
+        translate('Are you sure you want to delete the dashboard "%%"?').replace('%%', dashboard.name),
       )
     ) {
       return;
@@ -108,7 +109,7 @@ function Index() {
   return (
     <div className="p-4 max-w-[720px] mx-auto">
       <Helmet>
-        <title>Dashboard Overview</title>
+        <title>{translate('Overview')}</title>
         <meta
           name="description"
           content="Show a list of all dashboards"
@@ -116,13 +117,13 @@ function Index() {
       </Helmet>
       <div className="mb-4 flex">
         <h2 className="text-2xl font-semibold font-display mb-4 flex-grow">
-          Overview
+          {translate('Overview')}
         </h2>
         <Link
           to="/dashboard/new"
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 h-fit"
         >
-          New
+          {translate("New")}
         </Link>
       </div>
       {data.dashboards.length === 0 ? (
@@ -132,12 +133,12 @@ function Index() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell>Name</TableHeaderCell>
+                <TableHeaderCell>{translate("Name")}</TableHeaderCell>
                 <TableHeaderCell className="hidden md:table-cell">
-                  Updated
+                  {translate("Updated")}
                 </TableHeaderCell>
                 <TableHeaderCell className="hidden md:table-cell">
-                  Actions
+                  {translate("Actions")}
                 </TableHeaderCell>
               </TableRow>
             </TableHead>
@@ -169,7 +170,7 @@ function Index() {
                         className="text-gray-600 hover:text-gray-800 hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        Edit
+                        {translate("Edit")}
                       </Link>
                       <button
                         onClick={(e) => {
@@ -178,7 +179,7 @@ function Index() {
                         }}
                         className="text-red-600 hover:text-red-800 hover:underline"
                       >
-                        Delete
+                        {translate("Delete")}
                       </button>
                     </div>
                   </TableCell>

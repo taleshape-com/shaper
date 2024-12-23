@@ -91,7 +91,7 @@ function DashboardViewComponent() {
   }, 500);
 
   if (error) {
-    return <DashboardErrorComponent error={error} reset={() => {}} />;
+    return <DashboardErrorComponent error={error} reset={() => { }} />;
   }
 
   return (
@@ -135,7 +135,7 @@ function DashboardViewComponent() {
           to="/"
           className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
         >
-          Overview
+          {translate('Overview')}
         </Link>
         <Link
           to="/dashboards/$dashboardId/edit"
@@ -143,7 +143,7 @@ function DashboardViewComponent() {
           search={() => ({ vars })}
           className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
         >
-          Edit Dashboard
+          {translate("Edit Dashboard")}
         </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
           <label>
