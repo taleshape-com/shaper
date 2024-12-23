@@ -5,12 +5,26 @@ import (
 	"fmt"
 )
 
-func ListDashboards(app *App, ctx context.Context) (ListResult, error) {
+func ListDashboards(app *App, ctx context.Context, sort string, order string) (ListResult, error) {
+	var orderBy string
+	switch sort {
+	case "created":
+		orderBy = "created_at"
+	case "updated":
+		orderBy = "updated_at"
+	default:
+		orderBy = "name"
+	}
+
+	if order != "asc" && order != "desc" {
+		order = "asc"
+	}
+
 	dashboards := []Dashboard{}
 	err := app.db.SelectContext(ctx, &dashboards,
-		`SELECT *
-		 FROM `+app.Schema+`.dashboards
-		 ORDER BY name`)
+		fmt.Sprintf(`SELECT *
+		 FROM %s.dashboards
+		 ORDER BY %s %s`, app.Schema, orderBy, order))
 	if err != nil {
 		return ListResult{Dashboards: dashboards}, fmt.Errorf("error listing dashboards: %w", err)
 	}

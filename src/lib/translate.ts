@@ -9,6 +9,9 @@ const translations: Record<string, Record<string, string>> = {
   'Name': {
     de: 'Name'
   },
+  'Created': {
+    de: 'Erstellt'
+  },
   'Updated': {
     de: 'Aktualisiert'
   },

@@ -158,6 +158,7 @@ function NewDashboard() {
 
       // Navigate to the edit page of the new dashboard
       navigate({
+        replace: true,
         to: "/dashboards/$dashboardId/edit",
         params: { dashboardId: id },
         search: () => ({ vars }),
@@ -176,6 +177,7 @@ function NewDashboard() {
   const handleVarsChanged = useCallback(
     (newVars: any) => {
       navigate({
+        replace: true,
         search: (old: any) => ({
           ...old,
           vars: newVars,
