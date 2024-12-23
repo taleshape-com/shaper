@@ -136,7 +136,7 @@ function DashboardViewComponent() {
           to="/"
           className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
         >
-          {translate('Overview')}
+          ← {translate('Overview')}
         </Link>
         <Link
           to="/dashboards/$dashboardId/edit"

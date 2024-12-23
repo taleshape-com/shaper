@@ -294,15 +294,12 @@ function DashboardEditor() {
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-1/2 overflow-hidden">
-          <div className="flex justify-between items-center p-4 border-b">
+        <div className="w-full lg:w-1/2 overflow-hidden">
+          <div className="flex justify-between items-center p-2 border-b">
             <div className="flex items-center space-x-4">
               <button className="px-1" onClick={() => setIsMenuOpen(true)}>
                 <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
               </button>
-              <Link to="/" className="text-gray-600 hover:text-gray-800">
-                ← {translate("Overview")}
-              </Link>
               {editingName ? (
                 <form
                   onSubmit={(e) => {
@@ -324,7 +321,7 @@ function DashboardEditor() {
                       }
                     }}
                     className={cx(
-                      "text-2xl font-bold px-2 py-1 border rounded",
+                      "text-2xl font-semibold font-display px-2 py-1 border rounded",
                       focusRing,
                     )}
                     autoFocus
@@ -333,7 +330,7 @@ function DashboardEditor() {
                 </form>
               ) : (
                 <h1
-                  className="text-2xl font-bold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                  className="text-2xl font-semibold font-display cursor-pointer hover:bg-gray-100 px-2 py-1 rounded hidden md:block lg:hidden 2xl:block"
                   onClick={() => setEditingName(true)}
                   title={translate("Click to edit dashboard name")}
                 >
@@ -383,7 +380,7 @@ function DashboardEditor() {
           />
         </div>
 
-        <div className="w-1/2 overflow-auto relative">
+        <div className="hidden lg:block w-1/2 overflow-auto relative">
           {previewError && (
             <div className="fixed w-1/2 h-full p-4 z-50 backdrop-blur-sm flex justify-center items-center">
               <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
@@ -422,6 +419,9 @@ function DashboardEditor() {
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
+        <Link to="/" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 mb-4 ">
+          ← {translate("Overview")}
+        </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
           <label>
             <span className="text-lg font-medium font-display ml-1 mb-2 block">
