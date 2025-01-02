@@ -61,7 +61,7 @@ const TimeSegment = ({ segment, state }: TimeSegmentProps) => {
       ref={ref}
       className={cx(
         // base
-        "relative block w-full appearance-none rounded-md border px-2.5 py-1.5 text-left uppercase tabular-nums shadow-sm outline-none transition @sm:text-sm",
+        "relative block w-full appearance-none rounded-md border px-2.5 py-1.5 text-left uppercase tabular-nums shadow-sm outline-none transition sm:text-sm",
         // border color
         "border-gray-300 dark:border-gray-800",
         // text color
@@ -85,7 +85,7 @@ const TimeSegment = ({ segment, state }: TimeSegmentProps) => {
       <span
         aria-hidden="true"
         className={cx(
-          "pointer-events-none block w-full text-left text-gray-700 @sm:text-sm",
+          "pointer-events-none block w-full text-left text-gray-700 sm:text-sm",
           {
             hidden: !segment.isPlaceholder,
             "h-0": !segment.isPlaceholder,
@@ -228,8 +228,12 @@ const CalendarPopover = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitives.Content>,
   React.ComponentProps<typeof PopoverPrimitives.Content>
 >(({ align, className, children, ...props }, forwardedRef) => {
+  let container = document.querySelector('.shaper-scope')
+  if (container === document.querySelector('html')) {
+    container = document.body;
+  }
   return (
-    <PopoverPrimitives.Portal container={document.querySelector('.shaper-scope')}>
+    <PopoverPrimitives.Portal container={container}>
       <PopoverPrimitives.Content
         ref={forwardedRef}
         sideOffset={10}
@@ -364,15 +368,15 @@ const PresetContainer = <TPreset extends Preset, TValue>({
   }
 
   return (
-    <ul className="flex items-start gap-x-2 @sm:flex-col">
+    <ul className="flex items-start gap-x-2 sm:flex-col">
       {presets.map((preset, index) => {
         return (
-          <li key={index} className="@sm:w-full @sm:py-px">
+          <li key={index} className="sm:w-full sm:py-px">
             <button
               title={preset.label}
               className={cx(
                 // base
-                "relative w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border px-2.5 py-1.5 text-left text-base shadow-sm outline-none transition-all @sm:border-none @sm:py-2 text-sm @sm:shadow-none",
+                "relative w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border px-2.5 py-1.5 text-left text-base shadow-sm outline-none transition-all sm:border-none sm:py-2 text-sm sm:shadow-none",
                 // text color
                 "text-ctext dark:text-dtext",
                 // border color
@@ -620,16 +624,16 @@ const SingleDatePicker = ({
       </Trigger>
       <CalendarPopover align={align}>
         <div className="flex">
-          <div className="flex flex-col @sm:flex-row @sm:items-start">
+          <div className="flex flex-col sm:flex-row sm:items-start">
             {presets && presets.length > 0 && (
               <div
                 className={cx(
-                  "relative flex h-14 w-full items-center @sm:h-full @sm:w-40",
-                  "border-b border-cb @sm:border-b-0 @sm:border-r dark:border-db",
+                  "relative flex h-14 w-full items-center sm:h-full sm:w-40",
+                  "border-b border-cb sm:border-b-0 sm:border-r dark:border-db",
                   "overflow-auto",
                 )}
               >
-                <div className="absolute px-2 pr-2 @sm:inset-0 @sm:left-0 @sm:py-2">
+                <div className="absolute px-2 pr-2 sm:inset-0 sm:left-0 sm:py-2">
                   <PresetContainer
                     currentValue={date}
                     presets={presets}
@@ -904,16 +908,16 @@ const RangeDatePicker = ({
       </Trigger>
       <CalendarPopover align={align}>
         <div className="flex bg-cbg dark:bg-dbg">
-          <div className="flex flex-col overflow-x-auto @sm:flex-row @sm:items-start">
+          <div className="flex flex-col overflow-x-auto sm:flex-row sm:items-start">
             {presets && presets.length > 0 && (
               <div
                 className={cx(
-                  "relative flex h-16 w-full items-center @sm:h-full @sm:w-40",
-                  "border-b border-cb @sm:border-b-0 @sm:border-r dark:border-db",
+                  "relative flex h-16 w-full items-center sm:h-full sm:w-40",
+                  "border-b border-cb sm:border-b-0 sm:border-r dark:border-db",
                   "overflow-auto",
                 )}
               >
-                <div className="absolute px-3 @sm:inset-0 @sm:left-0 @sm:p-2">
+                <div className="absolute px-3 sm:inset-0 sm:left-0 sm:p-2">
                   <PresetContainer
                     currentValue={range}
                     presets={presets}
@@ -970,12 +974,12 @@ const RangeDatePicker = ({
                   </div>
                 </div>
               )}
-              <div className="border-t border-gray-200 p-3 @sm:flex @sm:items-center @sm:justify-between dark:border-gray-800">
+              <div className="border-t border-gray-200 p-3 sm:flex sm:items-center sm:justify-between dark:border-gray-800">
                 <div></div>
-                <div className="mt-2 flex items-center gap-x-2 @sm:mt-0">
+                <div className="mt-2 flex items-center gap-x-2 sm:mt-0">
                   <Button
                     variant="secondary"
-                    className="h-8 w-full @sm:w-fit"
+                    className="h-8 w-full sm:w-fit"
                     type="button"
                     onClick={onCancel}
                   >
@@ -983,7 +987,7 @@ const RangeDatePicker = ({
                   </Button>
                   <Button
                     variant="primary"
-                    className="h-8 w-full @sm:w-fit"
+                    className="h-8 w-full sm:w-fit"
                     type="button"
                     onClick={onApply}
                   >

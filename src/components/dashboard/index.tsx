@@ -63,7 +63,7 @@ export function Dashboard({
         }
         setError(err);
       });
-  }, [id, vars, baseUrl, hash, onError, getJwt, initialData]);
+  }, [id, vars, baseUrl, hash, onError, getJwt, onDataChange, initialData]);
 
   const data = initialData ?? fetchedData;
 
