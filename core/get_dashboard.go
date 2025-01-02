@@ -17,11 +17,12 @@ import (
 type DashboardQuery struct {
 	Content string
 	ID      string
+	Name    string
 }
 
 func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
 	result := GetResult{
-		Title:    dashboardQuery.ID,
+		Name:     dashboardQuery.Name,
 		Sections: []Section{},
 	}
 	nextLabel := ""
@@ -239,6 +240,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	return QueryDashboard(app, ctx, DashboardQuery{
 		Content: dashboard.Content,
 		ID:      dashboardId,
+		Name:    dashboard.Name,
 	}, queryParams, variables)
 }
 

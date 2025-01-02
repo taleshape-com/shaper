@@ -21,7 +21,7 @@ export const isTimeType = (t: Column['type']) => {
 }
 
 export type Result = {
-  title: string;
+  name: string;
   minTimeValue: number;
   maxTimeValue: number;
   sections: ({

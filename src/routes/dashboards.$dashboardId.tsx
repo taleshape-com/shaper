@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
+import { Result } from "../lib/dashboard";
 
 export const Route = createFileRoute("/dashboards/$dashboardId")({
   validateSearch: z.object({
@@ -50,6 +51,7 @@ function DashboardViewComponent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [title, setTitle] = useState("Dashboard");
 
   const handleRedirectError = useCallback(
     (err: Error) => {
@@ -91,6 +93,10 @@ function DashboardViewComponent() {
     );
   }, 500);
 
+  const onDataChange = useCallback((data: Result) => {
+    setTitle(data.name);
+  }, [])
+
   if (error) {
     return <DashboardErrorComponent error={error} reset={() => { }} />;
   }
@@ -98,8 +104,8 @@ function DashboardViewComponent() {
   return (
     <>
       <Helmet>
-        <title>{params.dashboardId}</title>
-        <meta name="description" content={params.dashboardId} />
+        <title>{title}</title>
+        <meta name="description" content={title} />
       </Helmet>
       <div
         className={cx("pb-8 pt-1", {
@@ -119,6 +125,7 @@ function DashboardViewComponent() {
           menuButton={MenuButton}
           onVarsChanged={handleVarsChanged}
           onError={handleRedirectError}
+          onDataChange={onDataChange}
         />
       </div>
       <div

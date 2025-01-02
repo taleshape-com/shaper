@@ -24,6 +24,7 @@ export interface DashboardProps {
   menuButton?: React.ReactNode;
   onError?: (error: Error) => void;
   data?: Result;
+  onDataChange?: (data: Result) => void;
 }
 
 export function Dashboard({
@@ -37,6 +38,7 @@ export function Dashboard({
   menuButton,
   onError,
   data: initialData,
+  onDataChange,
 }: DashboardProps) {
   const [fetchedData, setFetchedData] = useState<Result | null>(null);
   const [error, setError] = useState<Error | null>();
@@ -48,7 +50,12 @@ export function Dashboard({
 
     setError(null);
     fetchDashboard(id, vars, baseUrl, getJwt)
-      .then(setFetchedData)
+      .then((data) => {
+        setFetchedData(data);
+        if (onDataChange) {
+          onDataChange(data);
+        }
+      })
       .catch((err) => {
         if (err?.isRedirect) {
           onError?.(err);
