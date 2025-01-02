@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
-import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
+import { RiCloseLargeLine, RiMenuLine, RiArrowLeftLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
 import {
   cx,
@@ -21,6 +21,7 @@ import {
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 import { IDashboard, Result } from "../lib/dashboard";
+import { Button } from "../components/tremor/Button";
 
 self.MonacoEnvironment = {
   getWorker() {
@@ -347,13 +348,14 @@ function DashboardEditor() {
               >
                 {translate("View Dashboard")}
               </Link>
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={saving || query === dashboard.content}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                isLoading={saving}
+                loadingText={translate("Saving")}
               >
-                {saving ? `${translate("Saving")}...` : translate("Save")}
-              </button>
+                {translate("Save")}
+              </Button>
             </div>
           </div>
 
@@ -420,7 +422,7 @@ function DashboardEditor() {
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
         <Link to="/" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 mb-4 ">
-          ← {translate("Overview")}
+          <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
         </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
           <label>

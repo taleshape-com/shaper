@@ -54,6 +54,9 @@ const translations: Record<string, Record<string, string>> = {
   'Are you sure you want to delete the dashboard "%%"?': {
     de: 'Sind Sie sicher, dass Sie das Dashboard "%%" löschen möchten?'
   },
+  'There are unsaved previous edits. Do you want to restore them?': {
+    de: 'Es gibt ungespeicherte Änderungen. Möchten Sie diese wiederherstellen?'
+  },
   'No data available': {
     de: 'Keine Daten verfügbar'
   },

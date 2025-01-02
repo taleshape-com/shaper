@@ -21,6 +21,7 @@ import {
 } from "../components/tremor/Table";
 import { RiSortAsc, RiSortDesc } from "@remixicon/react";
 import { translate } from "../lib/translate";
+import { Button } from "../components/tremor/Button";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -145,7 +146,7 @@ function Index() {
     } catch (err) {
       alert(
         "Error deleting dashboard: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+        (err instanceof Error ? err.message : "Unknown error"),
       );
     }
   };
@@ -166,9 +167,8 @@ function Index() {
         </h2>
         <Link
           to="/dashboard/new"
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 h-fit"
         >
-          {translate("New")}
+          <Button>{translate("New")}</Button>
         </Link>
       </div>
       {data.dashboards.length === 0 ? (

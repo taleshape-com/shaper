@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
-import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
+import { RiCloseLargeLine, RiMenuLine, RiArrowLeftLine } from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
 import {
   cx,
@@ -19,6 +19,7 @@ import {
 } from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
+import { Button } from "../components/tremor/Button";
 
 const defaultQuery = "-- Enter your SQL query here"
 
@@ -69,7 +70,7 @@ function NewDashboard() {
     if (unsavedContent) {
       if (
         window.confirm(
-          "There are unsaved previous edits. Do you want to restore them?",
+          translate("There are unsaved previous edits. Do you want to restore them?"),
         )
       ) {
         setQuery(unsavedContent);
@@ -221,13 +222,14 @@ function NewDashboard() {
               </button>
             </div>
             <div className="space-x-2">
-              <button
+              <Button
                 onClick={handleCreate}
                 disabled={creating}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                isLoading={creating}
+                loadingText={translate("Creating")}
               >
-                {creating ? `${translate("Creating")}...` : translate("Create")}
-              </button>
+                {translate("Create")}
+              </Button>
             </div>
           </div>
 
@@ -294,7 +296,7 @@ function NewDashboard() {
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
         <Link to="/" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 mb-4 ">
-          ← {translate("Overview")}
+          <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
         </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
           <label>

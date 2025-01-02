@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useDebouncedCallback } from "use-debounce";
-import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
+import { RiCloseLargeLine, RiMenuLine, RiPencilLine, RiArrowLeftLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
@@ -136,7 +136,7 @@ function DashboardViewComponent() {
           to="/"
           className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
         >
-          ← {translate('Overview')}
+          <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
         </Link>
         <Link
           to="/dashboards/$dashboardId/edit"
@@ -144,7 +144,7 @@ function DashboardViewComponent() {
           search={() => ({ vars })}
           className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
         >
-          {translate("Edit Dashboard")}
+          <RiPencilLine className="size-4 inline" /> {translate("Edit Dashboard")}
         </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
           <label>
