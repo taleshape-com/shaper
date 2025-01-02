@@ -180,23 +180,23 @@ function Index() {
               <TableRow>
                 <TableHeaderCell
                   onClick={() => handleSort("name" as const)}
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                 >
                   {translate("Name")} <SortIcon field="name" />
                 </TableHeaderCell>
                 <TableHeaderCell
-                  className="hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                   onClick={() => handleSort("created" as const)}
                 >
                   {translate("Created")} <SortIcon field="created" />
                 </TableHeaderCell>
                 <TableHeaderCell
-                  className="hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                   onClick={() => handleSort("updated" as const)}
                 >
                   {translate("Updated")} <SortIcon field="updated" />
                 </TableHeaderCell>
-                <TableHeaderCell className="hidden md:table-cell">
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
                   {translate("Actions")}
                 </TableHeaderCell>
               </TableRow>
@@ -205,7 +205,7 @@ function Index() {
               {data.dashboards.map((dashboard) => (
                 <TableRow
                   key={dashboard.id}
-                  className="group hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200"
+                  className="group hover:bg-cbga dark:hover:bg-dbga cursor-pointer transition-colors duration-200"
                   onClick={() =>
                     navigate({
                       to: "/dashboards/$dashboardId",
@@ -213,15 +213,15 @@ function Index() {
                     })
                   }
                 >
-                  <TableCell className="font-medium text-gray-900 dark:text-gray-100">
+                  <TableCell className="font-medium text-ctext dark:text-dtext">
                     {dashboard.name}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
                     <div title={new Date(dashboard.createdAt).toLocaleString()}>
                       {new Date(dashboard.createdAt).toLocaleDateString()}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
                     <div title={new Date(dashboard.updatedAt).toLocaleString()}>
                       {new Date(dashboard.updatedAt).toLocaleDateString()}
                     </div>
@@ -231,7 +231,7 @@ function Index() {
                       <Link
                         to="/dashboards/$dashboardId/edit"
                         params={{ dashboardId: dashboard.id }}
-                        className="text-gray-600 hover:text-gray-800 hover:underline"
+                        className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {translate("Edit")}
@@ -241,7 +241,7 @@ function Index() {
                           e.stopPropagation();
                           handleDelete(dashboard);
                         }}
-                        className="text-red-600 hover:text-red-800 hover:underline"
+                        className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                       >
                         {translate("Delete")}
                       </button>

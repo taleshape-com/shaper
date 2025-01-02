@@ -48,6 +48,9 @@ const translations: Record<string, Record<string, string>> = {
   'View Dashboard': {
     de: 'Dashboard anzeigen'
   },
+  'Loading preview': {
+    de: 'Vorschau laden'
+  },
   'Enter a name for the dashboard': {
     de: 'Geben Sie einen Namen für das Dashboard ein'
   },

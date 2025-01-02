@@ -134,7 +134,7 @@ function DashboardViewComponent() {
         </button>
         <Link
           to="/"
-          className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors mt-2"
         >
           <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
         </Link>
@@ -142,7 +142,7 @@ function DashboardViewComponent() {
           to="/dashboards/$dashboardId/edit"
           params={{ dashboardId: params.dashboardId }}
           search={() => ({ vars })}
-          className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors"
         >
           <RiPencilLine className="size-4 inline" /> {translate("Edit Dashboard")}
         </Link>

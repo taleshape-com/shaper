@@ -295,7 +295,10 @@ function NewDashboard() {
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
-        <Link to="/" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 mb-4 ">
+        <Link
+          to="/"
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga mb-4 mt-2 transition-colors"
+        >
           <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
         </Link>
         <div className="mt-6 px-5 w-full sm:w-96">

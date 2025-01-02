@@ -323,6 +323,7 @@ function DashboardEditor() {
                     }}
                     className={cx(
                       "text-2xl font-semibold font-display px-2 py-1 border rounded",
+                      "bg-cbga dark:bg-dbga border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
                       focusRing,
                     )}
                     autoFocus
@@ -331,7 +332,7 @@ function DashboardEditor() {
                 </form>
               ) : (
                 <h1
-                  className="text-2xl font-semibold font-display cursor-pointer hover:bg-gray-100 px-2 py-1 rounded hidden md:block lg:hidden 2xl:block"
+                  className="text-2xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-1 rounded hidden md:block lg:hidden 2xl:block"
                   onClick={() => setEditingName(true)}
                   title={translate("Click to edit dashboard name")}
                 >
@@ -344,7 +345,7 @@ function DashboardEditor() {
                 to="/dashboards/$dashboardId"
                 params={{ dashboardId: params.dashboardId }}
                 search={() => ({ vars })}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
               >
                 {translate("View Dashboard")}
               </Link>
@@ -391,9 +392,7 @@ function DashboardEditor() {
             </div>
           )}
           {isPreviewLoading && (
-            <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
-              <div className="text-gray-500">Loading preview...</div>
-            </div>
+            <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">{translate("Loading preview")}...</div>
           )}
           {previewData && (
             <Dashboard
@@ -421,7 +420,10 @@ function DashboardEditor() {
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
-        <Link to="/" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 mb-4 ">
+        <Link
+          to="/"
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga mb-4 mt-2 transition-colors"
+        >
           <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
         </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
@@ -444,7 +446,7 @@ function DashboardEditor() {
           </label>
           <button
             onClick={handleDelete}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mt-6"
+            className="px-4 py-2 bg-cerr dark:bg-derr text-ctext dark:text-dtext rounded opacity-90 hover:opacity-100 hover:underline transition-opacity mt-6"
           >
             {translate("Delete Dashboard")}
           </button>
