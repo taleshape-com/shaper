@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
-import { useAuth } from "../lib/auth";
+import { logout, useAuth } from "../lib/auth";
 import { IDashboard } from "../lib/dashboard";
 import {
   Table,
@@ -161,15 +161,31 @@ function Index() {
         <title>{translate("Overview")}</title>
         <meta name="description" content="Show a list of all dashboards" />
       </Helmet>
-      <div className="mb-4 flex">
-        <h2 className="text-2xl font-semibold font-display mb-4 flex-grow">
+      <div className="mb-4 flex items-center">
+        <h1 className="text-3xl font-semibold font-display flex-grow">
           {translate("Overview")}
-        </h2>
-        <Link
-          to="/dashboard/new"
+        </h1>
+        <Button
+          asChild
+          className="h-fit "
         >
-          <Button>{translate("New")}</Button>
-        </Link>
+          <Link
+            to="/dashboard/new"
+          >{translate("New")}</Link>
+        </Button>
+        <Button
+          onClick={() => {
+            logout();
+            navigate({
+              to: "/login",
+              replace: true,
+            });
+          }}
+          variant="secondary"
+          className="h-fit ml-3"
+        >
+          {translate("Logout")}
+        </Button>
       </div>
       {data.dashboards.length === 0 ? (
         <p>No dashboards yet</p>

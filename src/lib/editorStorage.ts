@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = "dashboard_editor_";
+const STORAGE_PREFIX = "shaper-dashboard-editor-";
 
 export const editorStorage = {
   saveChanges(dashboardId: string, content: string) {

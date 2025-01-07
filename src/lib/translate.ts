@@ -1,10 +1,12 @@
-
 const translations: Record<string, Record<string, string>> = {
-  'loading': {
-    de: 'Einen Moment'
+  Logout: {
+    de: "Abmelden",
   },
-  'Overview': {
-    de: 'Übersicht'
+  loading: {
+    de: "Einen Moment",
+  },
+  Overview: {
+    de: "Übersicht",
   },
   'Name': {
     de: 'Name'

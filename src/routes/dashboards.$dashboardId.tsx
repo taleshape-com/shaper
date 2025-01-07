@@ -13,7 +13,8 @@ import {
   VarsParamSchema,
   varsParamSchema,
 } from "../lib/utils";
-import { useAuth } from "../lib/auth";
+import { useAuth, logout } from "../lib/auth";
+import { Button } from "../components/tremor/Button";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
 import { Result } from "../lib/dashboard";
@@ -136,41 +137,66 @@ function DashboardViewComponent() {
           },
         )}
       >
-        <button onClick={() => setIsMenuOpen(false)}>
-          <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
-        </button>
-        <Link
-          to="/"
-          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors mt-2"
-        >
-          <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
-        </Link>
-        <Link
-          to="/dashboards/$dashboardId/edit"
-          params={{ dashboardId: params.dashboardId }}
-          search={() => ({ vars })}
-          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors"
-        >
-          <RiPencilLine className="size-4 inline" /> {translate("Edit Dashboard")}
-        </Link>
-        <div className="mt-6 px-5 w-full sm:w-96">
-          <label>
-            <span className="text-lg font-medium font-display ml-1 mb-2 block">
-              {translate("Variables")}
-            </span>
-            <textarea
-              className={cx(
-                "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
-                focusRing,
-                hasVariableError && hasErrorInput,
-              )}
-              onChange={(event) => {
-                onVariablesEdit(event.target.value);
+        <div className="flex flex-col h-full">
+          <div>
+            <button onClick={() => setIsMenuOpen(false)}>
+              <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+            </button>
+            <Link
+              to="/"
+              className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors mt-2"
+            >
+              <RiArrowLeftLine className="size-4 inline" />{" "}
+              {translate("Overview")}
+            </Link>
+            <Link
+              to="/dashboards/$dashboardId/edit"
+              params={{ dashboardId: params.dashboardId }}
+              search={() => ({ vars })}
+              className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors"
+            >
+              <RiPencilLine className="size-4 inline" />{" "}
+              {translate("Edit Dashboard")}
+            </Link>
+            <div className="mt-6 px-5 w-full sm:w-96">
+              <label>
+                <span className="text-lg font-medium font-display ml-1 mb-2 block">
+                  {translate("Variables")}
+                </span>
+                <textarea
+                  className={cx(
+                    "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+                    focusRing,
+                    hasVariableError && hasErrorInput,
+                  )}
+                  onChange={(event) => {
+                    onVariablesEdit(event.target.value);
+                  }}
+                  defaultValue={JSON.stringify(auth.variables, null, 2)}
+                  rows={4}
+                ></textarea>
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-auto px-5 pb-6">
+            <Button
+              onClick={() => {
+                logout();
+                navigate({
+                  to: "/login",
+                  replace: true,
+                  search: {
+                    redirect:
+                      location.pathname + location.search + location.hash,
+                  },
+                });
               }}
-              defaultValue={JSON.stringify(auth.variables, null, 2)}
-              rows={4}
-            ></textarea>
-          </label>
+              variant="secondary"
+            >
+              {translate("Logout")}
+            </Button>
+          </div>
         </div>
       </div>
     </>
