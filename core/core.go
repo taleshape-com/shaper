@@ -85,14 +85,13 @@ func (app *App) Close() {
 }
 
 func (app *App) HandleState(msg jetstream.Msg) {
-	sub := strings.TrimPrefix(msg.Subject(), NATS_SUBJECT_PREFIX)
+	event := strings.TrimPrefix(msg.Subject(), NATS_SUBJECT_PREFIX)
 	data := msg.Data()
 	handler := func(app *App, data []byte) bool {
-		app.Logger.Error("Unknown state message subject", slog.String("sub", sub))
+		app.Logger.Error("Unknown state message subject", slog.String("event", event))
 		return false
 	}
-	time.Sleep(10 * time.Second)
-	switch sub {
+	switch event {
 	case "create_dashboard":
 		handler = HandleCreateDashboard
 	case "update_dashboard_content":
@@ -102,6 +101,7 @@ func (app *App) HandleState(msg jetstream.Msg) {
 	case "delete_dashboard":
 		handler = HandleDeleteDashboard
 	}
+	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
 	if ok {
 		err := msg.Ack()
