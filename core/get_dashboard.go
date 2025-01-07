@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math"
 	"net/url"
-	"os"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,21 +14,21 @@ import (
 	"github.com/marcboeker/go-duckdb"
 )
 
-func GetDashboard(app *App, ctx context.Context, dashboardName string, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
-	fileName := path.Join(app.DashboardDir, dashboardName+".sql")
+type DashboardQuery struct {
+	Content string
+	ID      string
+	Name    string
+}
+
+func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
 	result := GetResult{
-		Title:    dashboardName,
+		Name:     dashboardQuery.Name,
 		Sections: []Section{},
-	}
-	// read sql file
-	sqlFile, err := os.ReadFile(fileName)
-	if err != nil {
-		return result, err
 	}
 	nextLabel := ""
 	hideNextContentSection := false
 	nextIsDownload := false
-	sqls := strings.Split(string(sqlFile), ";")
+	sqls := strings.Split(dashboardQuery.Content, ";")
 
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
@@ -154,7 +152,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 				if len(queryParams) > 0 {
 					queryString = "?" + queryParams.Encode()
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.%s%s", dashboardName, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
 			}
 		}
 
@@ -231,6 +229,19 @@ func GetDashboard(app *App, ctx context.Context, dashboardName string, queryPara
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
 	return result, err
+}
+
+func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
+	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	if err != nil {
+		return GetResult{}, err
+	}
+
+	return QueryDashboard(app, ctx, DashboardQuery{
+		Content: dashboard.Content,
+		ID:      dashboardId,
+		Name:    dashboard.Name,
+	}, queryParams, variables)
 }
 
 func escapeSQLString(str string) string {

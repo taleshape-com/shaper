@@ -2,14 +2,21 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useDebouncedCallback } from "use-debounce";
-import { RiCloseLargeLine, RiMenuLine } from "@remixicon/react";
+import { RiCloseLargeLine, RiMenuLine, RiPencilLine, RiArrowLeftLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
-import { cx, focusRing, hasErrorInput, VarsParamSchema, varsParamSchema } from "../lib/utils";
+import {
+  cx,
+  focusRing,
+  hasErrorInput,
+  VarsParamSchema,
+  varsParamSchema,
+} from "../lib/utils";
 import { useAuth } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
+import { Result } from "../lib/dashboard";
 
 export const Route = createFileRoute("/dashboards/$dashboardId")({
   validateSearch: z.object({
@@ -44,28 +51,33 @@ function DashboardViewComponent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [title, setTitle] = useState("Dashboard");
 
-  const handleRedirectError = useCallback((err: Error) => {
-    if (isRedirect(err)) {
-      navigate(err);
-      return
-    }
-    setError(err)
-  }, [navigate]);
-  const handleVarsChanged = useCallback((newVars: VarsParamSchema) => {
-    navigate({
-      search: (old: any) => ({
-        ...old,
-        vars: newVars,
-      }),
-    });
-  }, [navigate]);
+  const handleRedirectError = useCallback(
+    (err: Error) => {
+      if (isRedirect(err)) {
+        navigate(err);
+        return;
+      }
+      setError(err);
+    },
+    [navigate],
+  );
+  const handleVarsChanged = useCallback(
+    (newVars: VarsParamSchema) => {
+      navigate({
+        replace: true,
+        search: (old) => ({
+          ...old,
+          vars: newVars,
+        }),
+      });
+    },
+    [navigate],
+  );
 
   const MenuButton = (
-    <button
-      className="px-1"
-      onClick={() => setIsMenuOpen(true)}
-    >
+    <button className="px-1" onClick={() => setIsMenuOpen(true)}>
       <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
     </button>
   );
@@ -81,6 +93,10 @@ function DashboardViewComponent() {
     );
   }, 500);
 
+  const onDataChange = useCallback((data: Result) => {
+    setTitle(data.name);
+  }, [])
+
   if (error) {
     return <DashboardErrorComponent error={error} reset={() => { }} />;
   }
@@ -88,8 +104,8 @@ function DashboardViewComponent() {
   return (
     <>
       <Helmet>
-        <title>{params.dashboardId}</title>
-        <meta name="description" content={params.dashboardId} />
+        <title>{title}</title>
+        <meta name="description" content={title} />
       </Helmet>
       <div
         className={cx("pb-8 pt-1", {
@@ -109,6 +125,7 @@ function DashboardViewComponent() {
           menuButton={MenuButton}
           onVarsChanged={handleVarsChanged}
           onError={handleRedirectError}
+          onDataChange={onDataChange}
         />
       </div>
       <div
@@ -122,6 +139,20 @@ function DashboardViewComponent() {
         <button onClick={() => setIsMenuOpen(false)}>
           <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
         </button>
+        <Link
+          to="/"
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors mt-2"
+        >
+          <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
+        </Link>
+        <Link
+          to="/dashboards/$dashboardId/edit"
+          params={{ dashboardId: params.dashboardId }}
+          search={() => ({ vars })}
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga transition-colors"
+        >
+          <RiPencilLine className="size-4 inline" /> {translate("Edit Dashboard")}
+        </Link>
         <div className="mt-6 px-5 w-full sm:w-96">
           <label>
             <span className="text-lg font-medium font-display ml-1 mb-2 block">

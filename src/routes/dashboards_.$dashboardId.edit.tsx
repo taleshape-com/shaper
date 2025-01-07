@@ -1,0 +1,457 @@
+import { Editor } from "@monaco-editor/react";
+import { loader } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
+import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+
+import { z } from "zod";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
+import { useAuth } from "../lib/auth";
+import { Dashboard } from "../components/dashboard";
+import { RiCloseLargeLine, RiMenuLine, RiArrowLeftLine } from "@remixicon/react";
+import { useDebouncedCallback } from "use-debounce";
+import {
+  cx,
+  focusRing,
+  getSearchParamString,
+  hasErrorInput,
+  varsParamSchema,
+} from "../lib/utils";
+import { translate } from "../lib/translate";
+import { editorStorage } from "../lib/editorStorage";
+import { IDashboard, Result } from "../lib/dashboard";
+import { Button } from "../components/tremor/Button";
+
+self.MonacoEnvironment = {
+  getWorker() {
+    return new editorWorker();
+  },
+};
+loader.config({ monaco });
+loader.init();
+
+export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
+  validateSearch: z.object({
+    vars: varsParamSchema,
+  }),
+  shouldReload: (match) => {
+    return match.cause === "enter";
+  },
+  loader: async ({
+    params: { dashboardId },
+    context: {
+      auth: { getJwt },
+    },
+  }) => {
+    const jwt = await getJwt();
+    const response = await fetch(`/api/dashboards/${dashboardId}/query`, {
+      headers: {
+        Authorization: jwt,
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to load dashboard query");
+    }
+    const data = await response.json();
+    return data as IDashboard;
+  },
+  component: DashboardEditor,
+});
+
+function DashboardEditor() {
+  const params = Route.useParams();
+  const { vars } = Route.useSearch();
+  const dashboard = Route.useLoaderData();
+  const auth = useAuth();
+  const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
+  const [query, setQuery] = useState(dashboard.content);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [name, setName] = useState(dashboard.name);
+  const [savingName, setSavingName] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hasVariableError, setHasVariableError] = useState(false);
+  const [previewData, setPreviewData] = useState<Result | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(
+    window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  // Check for unsaved changes when component mounts
+  useEffect(() => {
+    const unsavedContent = editorStorage.getChanges(params.dashboardId);
+    if (unsavedContent && unsavedContent !== dashboard.content) {
+      if (
+        window.confirm(
+          "There are unsaved previous edits. Do you want to restore them?",
+        )
+      ) {
+        setQuery(unsavedContent);
+      } else {
+        editorStorage.clearChanges(params.dashboardId);
+      }
+    }
+  }, [params.dashboardId, dashboard.content]);
+
+  // Add debounced preview function
+  const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
+    setPreviewError(null);
+    setIsPreviewLoading(true);
+    editorStorage.saveChanges(params.dashboardId, newQuery);
+    try {
+      const jwt = await auth.getJwt();
+      const searchParams = getSearchParamString(vars);
+      const response = await fetch(`/api/query/dashboard?${searchParams}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: jwt,
+        },
+        body: JSON.stringify({
+          dashboardId: params.dashboardId,
+          content: newQuery,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to preview dashboard");
+      }
+
+      const data = await response.json();
+      setPreviewData(data);
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  }, 1000);
+
+  // Update textarea onChange handler
+  const handleQueryChange = (value: string | undefined) => {
+    const newQuery = value || "";
+    setQuery(newQuery);
+    previewDashboard(newQuery);
+  };
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const jwt = await auth.getJwt();
+      const response = await fetch(
+        `/api/dashboards/${params.dashboardId}/query`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: jwt,
+          },
+          body: JSON.stringify({ content: query }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save dashboard query");
+      }
+      dashboard.content = query;
+      // Clear localStorage after successful save
+      editorStorage.clearChanges(params.dashboardId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSaving(false);
+    }
+  }, [auth, params.dashboardId, query, dashboard]);
+
+  const handleDashboardError = useCallback((err: Error) => {
+    setPreviewError(err.message);
+  }, []);
+
+  const handleVarsChanged = useCallback(
+    (newVars: any) => {
+      navigate({
+        replace: true,
+        search: (old) => ({
+          ...old,
+          vars: newVars,
+        }),
+      });
+    },
+    [navigate],
+  );
+
+  const onVariablesEdit = useDebouncedCallback((value) => {
+    auth.updateVariables(value).then(
+      (ok) => {
+        setHasVariableError(!ok);
+        if (ok) {
+          // Refresh preview when variables change
+          previewDashboard(query);
+        }
+      },
+      () => {
+        setHasVariableError(true);
+      },
+    );
+  }, 500);
+
+  const handleSaveName = async (newName: string) => {
+    if (newName === dashboard.name) {
+      setEditingName(false);
+      return;
+    }
+
+    setSavingName(true);
+    setError(null);
+    try {
+      const jwt = await auth.getJwt();
+      const response = await fetch(
+        `/api/dashboards/${params.dashboardId}/name`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: jwt,
+          },
+          body: JSON.stringify({ name: newName }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save dashboard name");
+      }
+
+      dashboard.name = newName;
+      setName(newName);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      // Revert name on error
+      setName(dashboard.name);
+    } finally {
+      setSavingName(false);
+      setEditingName(false);
+    }
+  };
+  const handleDelete = async () => {
+    if (
+      !window.confirm(
+        translate(
+          'Are you sure you want to delete the dashboard "%%"?',
+        ).replace("%%", dashboard.name),
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const jwt = await auth.getJwt();
+      const response = await fetch(`/api/dashboards/${params.dashboardId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: jwt,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete dashboard");
+      }
+
+      // Navigate back to dashboard list
+      navigate({ to: "/" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  };
+
+  // Load initial preview
+  useEffect(() => {
+    previewDashboard(query);
+  }, [previewDashboard, query, vars]); // Add vars to dependency array
+
+  return (
+    <div className="h-screen flex flex-col">
+      <Helmet>
+        <title>
+          {translate("Edit Dashboard")} - {dashboard.name}
+        </title>
+      </Helmet>
+
+      {error && (
+        <div className="m-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
+      )}
+
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-full lg:w-1/2 overflow-hidden">
+          <div className="flex justify-between items-center p-2 border-b">
+            <div className="flex items-center space-x-4">
+              <button className="px-1" onClick={() => setIsMenuOpen(true)}>
+                <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+              </button>
+              {editingName ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.querySelector("input");
+                    if (input) {
+                      input.blur();
+                    }
+                  }}
+                  className="inline-block"
+                >
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onBlur={() => {
+                      if (!savingName) {
+                        handleSaveName(name);
+                      }
+                    }}
+                    className={cx(
+                      "text-2xl font-semibold font-display px-2 py-1 border rounded",
+                      "bg-cbga dark:bg-dbga border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
+                      focusRing,
+                    )}
+                    autoFocus
+                    disabled={savingName}
+                  />
+                </form>
+              ) : (
+                <h1
+                  className="text-2xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-1 rounded hidden md:block lg:hidden 2xl:block"
+                  onClick={() => setEditingName(true)}
+                  title={translate("Click to edit dashboard name")}
+                >
+                  {name}
+                </h1>
+              )}
+            </div>
+            <div className="space-x-2">
+              <Link
+                to="/dashboards/$dashboardId"
+                params={{ dashboardId: params.dashboardId }}
+                search={() => ({ vars })}
+                className="px-4 py-2 text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+              >
+                {translate("View Dashboard")}
+              </Link>
+              <Button
+                onClick={handleSave}
+                disabled={saving || query === dashboard.content}
+                isLoading={saving}
+                loadingText={translate("Saving")}
+              >
+                {translate("Save")}
+              </Button>
+            </div>
+          </div>
+
+          <Editor
+            height="100%"
+            defaultLanguage="sql"
+            value={query}
+            onChange={handleQueryChange}
+            theme={isDarkMode ? "vs-dark" : "light"}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: "on",
+              scrollBeyondLastLine: true,
+              wordWrap: "on",
+              automaticLayout: true,
+              formatOnPaste: true,
+              formatOnType: true,
+              suggestOnTriggerCharacters: true,
+              quickSuggestions: true,
+              tabSize: 2,
+              bracketPairColorization: { enabled: true },
+            }}
+          />
+        </div>
+
+        <div className="hidden lg:block w-1/2 overflow-auto relative">
+          {previewError && (
+            <div className="fixed w-1/2 h-full p-4 z-50 backdrop-blur-sm flex justify-center items-center">
+              <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
+                {previewError}
+              </div>
+            </div>
+          )}
+          {isPreviewLoading && (
+            <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">{translate("Loading preview")}...</div>
+          )}
+          {previewData && (
+            <Dashboard
+              id={params.dashboardId}
+              vars={vars}
+              hash={auth.hash}
+              getJwt={auth.getJwt}
+              onVarsChanged={handleVarsChanged}
+              onError={handleDashboardError}
+              data={previewData} // Pass preview data directly to Dashboard
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Menu */}
+      <div
+        className={cx(
+          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
+          {
+            "-translate-x-[calc(100vw+50px)]": !isMenuOpen,
+          },
+        )}
+      >
+        <button onClick={() => setIsMenuOpen(false)}>
+          <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+        </button>
+        <Link
+          to="/"
+          className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga mb-4 mt-2 transition-colors"
+        >
+          <RiArrowLeftLine className="size-4 inline" /> {translate('Overview')}
+        </Link>
+        <div className="mt-6 px-5 w-full sm:w-96">
+          <label>
+            <span className="text-lg font-medium font-display ml-1 mb-2 block">
+              {translate("Variables")}
+            </span>
+            <textarea
+              className={cx(
+                "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+                focusRing,
+                hasVariableError && hasErrorInput,
+              )}
+              onChange={(event) => {
+                onVariablesEdit(event.target.value);
+              }}
+              defaultValue={JSON.stringify(auth.variables, null, 2)}
+              rows={4}
+            ></textarea>
+          </label>
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 bg-cerr dark:bg-derr text-ctext dark:text-dtext rounded opacity-90 hover:opacity-100 hover:underline transition-opacity mt-6"
+          >
+            {translate("Delete Dashboard")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

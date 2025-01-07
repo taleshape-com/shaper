@@ -8,7 +8,10 @@ export default defineConfig({
   plugins: [
     react(),
     cssInjectedByJsPlugin(),
-    visualizer() as PluginOption,
+    visualizer({
+      filename: 'vite/stats-embed.html',
+      gzipSize: true,
+    }) as PluginOption,
   ],
   build: {
     outDir: "dist/embed",

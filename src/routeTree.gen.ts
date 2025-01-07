@@ -14,6 +14,8 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as LoginImport } from './routes/login'
 import { Route as IndexImport } from './routes/index'
 import { Route as DashboardsDashboardIdImport } from './routes/dashboards.$dashboardId'
+import { Route as DashboardNewImport } from './routes/dashboard.new'
+import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$dashboardId.edit'
 
 // Create/Update Routes
 
@@ -35,6 +37,18 @@ const DashboardsDashboardIdRoute = DashboardsDashboardIdImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const DashboardNewRoute = DashboardNewImport.update({
+  id: '/dashboard/new',
+  path: '/dashboard/new',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DashboardsDashboardIdEditRoute = DashboardsDashboardIdEditImport.update({
+  id: '/dashboards_/$dashboardId/edit',
+  path: '/dashboards/$dashboardId/edit',
+  getParentRoute: () => rootRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -53,11 +67,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
+    '/dashboard/new': {
+      id: '/dashboard/new'
+      path: '/dashboard/new'
+      fullPath: '/dashboard/new'
+      preLoaderRoute: typeof DashboardNewImport
+      parentRoute: typeof rootRoute
+    }
     '/dashboards/$dashboardId': {
       id: '/dashboards/$dashboardId'
       path: '/dashboards/$dashboardId'
       fullPath: '/dashboards/$dashboardId'
       preLoaderRoute: typeof DashboardsDashboardIdImport
+      parentRoute: typeof rootRoute
+    }
+    '/dashboards_/$dashboardId/edit': {
+      id: '/dashboards_/$dashboardId/edit'
+      path: '/dashboards/$dashboardId/edit'
+      fullPath: '/dashboards/$dashboardId/edit'
+      preLoaderRoute: typeof DashboardsDashboardIdEditImport
       parentRoute: typeof rootRoute
     }
   }
@@ -68,41 +96,67 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/dashboards_/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboards/$dashboardId'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard/new'
+    | '/dashboards/$dashboardId'
+    | '/dashboards/$dashboardId/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboards/$dashboardId'
-  id: '__root__' | '/' | '/login' | '/dashboards/$dashboardId'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard/new'
+    | '/dashboards/$dashboardId'
+    | '/dashboards/$dashboardId/edit'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/dashboard/new'
+    | '/dashboards/$dashboardId'
+    | '/dashboards_/$dashboardId/edit'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  DashboardNewRoute: typeof DashboardNewRoute
   DashboardsDashboardIdRoute: typeof DashboardsDashboardIdRoute
+  DashboardsDashboardIdEditRoute: typeof DashboardsDashboardIdEditRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  DashboardNewRoute: DashboardNewRoute,
   DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
+  DashboardsDashboardIdEditRoute: DashboardsDashboardIdEditRoute,
 }
 
 export const routeTree = rootRoute
@@ -117,7 +171,9 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/login",
-        "/dashboards/$dashboardId"
+        "/dashboard/new",
+        "/dashboards/$dashboardId",
+        "/dashboards_/$dashboardId/edit"
       ]
     },
     "/": {
@@ -126,8 +182,14 @@ export const routeTree = rootRoute
     "/login": {
       "filePath": "login.tsx"
     },
+    "/dashboard/new": {
+      "filePath": "dashboard.new.tsx"
+    },
     "/dashboards/$dashboardId": {
       "filePath": "dashboards.$dashboardId.tsx"
+    },
+    "/dashboards_/$dashboardId/edit": {
+      "filePath": "dashboards_.$dashboardId.edit.tsx"
     }
   }
 }

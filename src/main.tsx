@@ -9,10 +9,17 @@ import { App } from "./App"
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "@tanstack/react-router";
 
+// Polyfill container queries
+const supportsContainerQueries = "container" in document.documentElement.style;
+if (!supportsContainerQueries) {
+  // @ts-expect-error - This is a dynamic import
+  import("https://cdn.skypack.dev/container-query-polyfill");
+}
+
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  defaultPreload: "intent",
+  defaultPreload: false,
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   defaultStaleTime: 5000,
   context: {
