@@ -148,11 +148,6 @@ func Run(config Config) func(context.Context) {
 		fmt.Println("⇨ connected to in-memory duckdb")
 	}
 
-	app, err := core.New(db, logger, config.LoginToken, config.Schema, config.JWTSecret, config.JWTExp)
-	if err != nil {
-		panic(err)
-	}
-
 	c, err := comms.New(comms.Config{
 		Logger:     logger.WithGroup("nats"),
 		Host:       config.NatsHost,
@@ -167,7 +162,14 @@ func Run(config Config) func(context.Context) {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(dbConnector, db, logger.WithGroup("ingest"), c.Conn, config.NatsJSDir != "")
+	persistNATS := config.NatsJSDir != ""
+
+	app, err := core.New(db, c.Conn, logger, config.LoginToken, config.Schema, config.JWTSecret, config.JWTExp, persistNATS)
+	if err != nil {
+		panic(err)
+	}
+
+	ingestConsumer, err := ingest.Start(dbConnector, db, logger.WithGroup("ingest"), c.Conn, persistNATS)
 	if err != nil {
 		panic(err)
 	}

@@ -2,12 +2,22 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/nrednav/cuid2"
 )
+
+type CreateDashboardPayload struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Path      string    `json:"path"`
+	Name      string    `json:"name"`
+	Content   string    `json:"content"`
+}
 
 func CreateDashboard(app *App, ctx context.Context, name string, content string) (string, error) {
 	// Validate name
@@ -15,23 +25,36 @@ func CreateDashboard(app *App, ctx context.Context, name string, content string)
 	if name == "" {
 		return "", fmt.Errorf("dashboard name cannot be empty")
 	}
-
-	// Generate unique ID
 	id := cuid2.Generate()
-	now := time.Now()
+	err := app.SubmitState(ctx, "create_dashboard", CreateDashboardPayload{
+		ID:        id,
+		Timestamp: time.Now(),
+		Path:      "/",
+		Name:      name,
+		Content:   content,
+	})
+	return id, err
+}
 
+func HandleCreateDashboard(app *App, data []byte) bool {
+	var payload CreateDashboardPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal create dashboard payload", slog.Any("error", err))
+		return false
+	}
 	// Insert into DB
-	_, err := app.db.ExecContext(ctx,
-		`INSERT INTO `+app.Schema+`.dashboards (
+	_, err = app.db.Exec(
+		`INSERT OR IGNORE INTO `+app.Schema+`.dashboards (
 			id, path, name, content, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6)`,
-		id, "/", name, content, now, now,
+		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.Timestamp,
 	)
 	if err != nil {
-		return id, fmt.Errorf("failed to create dashboard: %w", err)
+		app.Logger.Error("failed to insert dashboard into DB", slog.Any("error", err))
+		return false
 	}
-
-	return id, nil
+	return true
 }
 
 func isValidDashboardName(name string) bool {

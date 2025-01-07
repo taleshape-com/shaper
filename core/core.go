@@ -2,34 +2,145 @@
 package core
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
+const NATS_SUBJECT_PREFIX = "shaper.state."
+
 type App struct {
-	db         *sqlx.DB
-	Logger     *slog.Logger
-	LoginToken string
-	Schema     string
-	JWTSecret  []byte
-	JWTExp     time.Duration
+	db              *sqlx.DB
+	Logger          *slog.Logger
+	LoginToken      string
+	Schema          string
+	JWTSecret       []byte
+	JWTExp          time.Duration
+	StateConsumeCtx jetstream.ConsumeContext
+	JetStream       jetstream.JetStream
+	NATSConn        *nats.Conn
 }
 
-func New(db *sqlx.DB, logger *slog.Logger, loginToken string, schema string, jwtSecret []byte, jwtExp time.Duration) (*App, error) {
+func New(db *sqlx.DB, nc *nats.Conn, logger *slog.Logger, loginToken string, schema string, jwtSecret []byte, jwtExp time.Duration, persist bool) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
 	}
-	return &App{
+
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return nil, err
+	}
+	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer initCancel()
+	storageType := jetstream.MemoryStorage
+	if persist {
+		storageType = jetstream.FileStorage
+	}
+	stream, err := js.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+		Name:     "shaper-state",
+		Subjects: []string{NATS_SUBJECT_PREFIX + ">"},
+		Storage:  storageType,
+	})
+	if err != nil {
+		return nil, err
+	}
+	stateConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
+		Durable:       "shaper-state",
+		MaxAckPending: 1,
+	})
+
+	app := &App{
 		db:         db,
 		Logger:     logger,
 		LoginToken: loginToken,
 		Schema:     schema,
 		JWTSecret:  jwtSecret,
 		JWTExp:     jwtExp,
-	}, nil
+		NATSConn:   nc,
+		JetStream:  js,
+	}
+
+	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)
+	app.StateConsumeCtx = stateConsumeCtx
+	if err != nil {
+		return nil, err
+	}
+
+	return app, nil
+}
+
+func (app *App) Close() {
+	if app.StateConsumeCtx != nil {
+		app.StateConsumeCtx.Drain()
+		<-app.StateConsumeCtx.Closed()
+	}
+}
+
+func (app *App) HandleState(msg jetstream.Msg) {
+	sub := strings.TrimPrefix(msg.Subject(), NATS_SUBJECT_PREFIX)
+	data := msg.Data()
+	handler := func(app *App, data []byte) bool {
+		app.Logger.Error("Unknown state message subject", slog.String("sub", sub))
+		return false
+	}
+	time.Sleep(10 * time.Second)
+	switch sub {
+	case "create_dashboard":
+		handler = HandleCreateDashboard
+	case "update_dashboard_content":
+		handler = HandleUpdateDashboardContent
+	case "update_dashboard_name":
+		handler = HandleUpdateDashboardName
+	case "delete_dashboard":
+		handler = HandleDeleteDashboard
+	}
+	ok := handler(app, data)
+	if ok {
+		err := msg.Ack()
+		if err != nil {
+			app.Logger.Error("Error acking message", slog.Any("error", err))
+		}
+	}
+}
+
+func (app *App) SubmitState(ctx context.Context, action string, data interface{}) error {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	// We listen on the ACK subject for the consumer to know when the message has been processed
+	// We need to subscribe before publishing the message to avoid missing the ACK
+	sub, err := app.NATSConn.SubscribeSync("$JS.ACK.shaper-state.shaper-state.>")
+	if err != nil {
+		return err
+	}
+	ack, err := app.JetStream.Publish(ctx, NATS_SUBJECT_PREFIX+action, payload)
+	if err != nil {
+		return err
+	}
+	ackSeq := strconv.FormatUint(ack.Sequence, 10)
+	// Wait for the ACK
+	// If context is cancelled, we return an error
+	for {
+		msg, err := sub.NextMsgWithContext(ctx)
+		if err != nil {
+			return err
+		}
+		// The sequence number is the part of the subject after the container of how many deliveries have been made
+		// We trust the shape of the subject to be correct and panic otherwise
+		seq := strings.Split(strings.TrimPrefix(msg.Subject, "$JS.ACK.shaper-state.shaper-state."), ".")[1]
+		if seq == ackSeq {
+			return nil
+		}
+	}
 }
 
 func initDB(db *sqlx.DB, schema string) error {
