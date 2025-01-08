@@ -88,6 +88,10 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		claims := jwt.MapClaims{
 			"exp": time.Now().Add(app.JWTExp).Unix(),
 		}
+		// TODO: remove after migration
+		if loginRequest.DashboardID == "embed" {
+			loginRequest.DashboardID = "ja1ce8t8x53fkpd8dsmh8qrt"
+		}
 		if loginRequest.DashboardID != "" {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}

@@ -142,14 +142,19 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
+		idParam := c.Param("id")
+		// TODO: remove after migration
+		if idParam == "embed" {
+			idParam = "ja1ce8t8x53fkpd8dsmh8qrt"
+		}
+		if id, hasId := claims["dashboardId"]; hasId && id != idParam {
 			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
 		}
 		variables := map[string]interface{}{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
 			variables = vars.(map[string]interface{})
 		}
-		result, err := core.GetDashboard(app, c.Request().Context(), c.Param("id"), c.QueryParams(), variables)
+		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
