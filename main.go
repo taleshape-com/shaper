@@ -35,7 +35,6 @@ type Config struct {
 	ExecutableModTime time.Time
 	CustomCSS         string
 	Favicon           string
-	JWTSecret         []byte
 	JWTExp            time.Duration
 	NatsHost          string
 	NatsPort          int
@@ -61,7 +60,6 @@ func loadConfig() Config {
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
-	jwtSecret := flags.StringLong("jwtsecret", "", "JWT secret to sign auth tokens")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
@@ -109,7 +107,6 @@ func loadConfig() Config {
 		ExecutableModTime: executableModTime,
 		CustomCSS:         *customCSS,
 		Favicon:           *favicon,
-		JWTSecret:         []byte(*jwtSecret),
 		JWTExp:            *jwtExp,
 		NatsHost:          *natsHost,
 		NatsPort:          *natsPort,
@@ -164,7 +161,7 @@ func Run(config Config) func(context.Context) {
 
 	persistNATS := config.NatsJSDir != ""
 
-	app, err := core.New(db, c.Conn, logger, config.LoginToken, config.Schema, config.JWTSecret, config.JWTExp, persistNATS)
+	app, err := core.New(db, c.Conn, logger, config.LoginToken, config.Schema, config.JWTExp, persistNATS)
 	if err != nil {
 		panic(err)
 	}

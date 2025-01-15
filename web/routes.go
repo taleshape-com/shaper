@@ -34,6 +34,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 	apiWithAuth.POST("/query/dashboard", handler.PreviewDashboardQuery(app))
+	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
 
 	// Static assets - aggressive caching
 	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{

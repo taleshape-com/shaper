@@ -115,3 +115,17 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
 	}
 }
+
+func ResetJWTSecret(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+		}
+		_, err := core.ResetJWTSecret(app, c.Request().Context())
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to reset JWT secret"})
+		}
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	}
+}

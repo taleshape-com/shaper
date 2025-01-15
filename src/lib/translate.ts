@@ -1,6 +1,15 @@
 const translations: Record<string, Record<string, string>> = {
+  Error: {
+    de: "Fehler",
+  },
+  "An error occurred": {
+    de: "Ein Fehler ist aufgetreten",
+  },
   Logout: {
     de: "Abmelden",
+  },
+  Admin: {
+    de: "Admin",
   },
   loading: {
     de: "Einen Moment",
@@ -8,115 +17,129 @@ const translations: Record<string, Record<string, string>> = {
   Overview: {
     de: "Übersicht",
   },
-  'Name': {
-    de: 'Name'
+  Name: {
+    de: "Name",
   },
-  'Created': {
-    de: 'Erstellt'
+  Created: {
+    de: "Erstellt",
   },
-  'Updated': {
-    de: 'Aktualisiert'
+  Updated: {
+    de: "Aktualisiert",
   },
-  'Actions': {
-    de: 'Aktionen'
+  Actions: {
+    de: "Aktionen",
   },
-  'Edit': {
-    de: 'Bearbeiten'
+  Edit: {
+    de: "Bearbeiten",
   },
-  'Create': {
-    de: 'Erstellen'
+  Create: {
+    de: "Erstellen",
   },
-  'Creating': {
-    de: 'Erstellen'
+  Creating: {
+    de: "Erstellen",
   },
-  'Delete': {
-    de: 'Löschen'
+  Delete: {
+    de: "Löschen",
   },
-  'Delete Dashboard': {
-    de: 'Dashboard löschen'
+  "Delete Dashboard": {
+    de: "Dashboard löschen",
   },
-  'New': {
-    de: 'Neu'
+  New: {
+    de: "Neu",
   },
-  'Save': {
-    de: 'Speichern'
+  Save: {
+    de: "Speichern",
   },
-  'Saving': {
-    de: 'Speichern'
+  Saving: {
+    de: "Speichern",
   },
-  'Edit Dashboard': {
-    de: 'Dashboard bearbeiten'
+  "Edit Dashboard": {
+    de: "Dashboard bearbeiten",
   },
-  'View Dashboard': {
-    de: 'Dashboard anzeigen'
+  "View Dashboard": {
+    de: "Dashboard anzeigen",
   },
-  'Loading preview': {
-    de: 'Vorschau laden'
+  "Loading preview": {
+    de: "Vorschau laden",
   },
-  'Enter a name for the dashboard': {
-    de: 'Geben Sie einen Namen für das Dashboard ein'
+  "Enter a name for the dashboard": {
+    de: "Geben Sie einen Namen für das Dashboard ein",
   },
   'Are you sure you want to delete the dashboard "%%"?': {
-    de: 'Sind Sie sicher, dass Sie das Dashboard "%%" löschen möchten?'
+    de: 'Sind Sie sicher, dass Sie das Dashboard "%%" löschen möchten?',
   },
-  'There are unsaved previous edits. Do you want to restore them?': {
-    de: 'Es gibt ungespeicherte Änderungen. Möchten Sie diese wiederherstellen?'
+  "There are unsaved previous edits. Do you want to restore them?": {
+    de: "Es gibt ungespeicherte Änderungen. Möchten Sie diese wiederherstellen?",
   },
-  'No data available': {
-    de: 'Keine Daten verfügbar'
+  "No data available": {
+    de: "Keine Daten verfügbar",
   },
-  'Nothing to show yet': {
-    de: 'Noch nichts zu zeigen'
+  "Nothing to show yet": {
+    de: "Noch nichts zu zeigen",
   },
-  'Variables': {
-    de: 'Parameter'
+  Variables: {
+    de: "Parameter",
   },
-  'Apply': {
-    de: 'Bestätigen'
+  Apply: {
+    de: "Bestätigen",
   },
-  'Cancel': {
-    de: 'Abbrechen'
+  Cancel: {
+    de: "Abbrechen",
   },
-  'Select date': {
-    'de': 'Datum wählen'
+  "Select date": {
+    de: "Datum wählen",
   },
-  'Select date range': {
-    de: 'Zeitraum wählen'
+  "Select date range": {
+    de: "Zeitraum wählen",
   },
-  "Today": {
-    de: 'Heute'
+  Today: {
+    de: "Heute",
   },
   "Last 7 days": {
-    de: 'Letzte 7 Tage'
+    de: "Letzte 7 Tage",
   },
   "Last 30 days": {
-    de: 'Letzte 30 Tage'
+    de: "Letzte 30 Tage",
   },
   "Last 3 months": {
-    de: 'Letzte 3 Monate'
+    de: "Letzte 3 Monate",
   },
   "Last 6 months": {
-    de: 'Letzte 6 Monate'
+    de: "Letzte 6 Monate",
   },
   "Month to date": {
-    de: 'Monat bis heute'
+    de: "Monat bis heute",
   },
   "Year to date": {
-    de: 'Jahr bis heute'
+    de: "Jahr bis heute",
   },
-}
+  "Security Settings": {
+    de: "Sicherheitseinstellungen",
+  },
+  "Reset the JWT secret to invalidate all existing tokens.": {
+    de: "Setzen Sie das JWT-Secret zurück, um alle vorhandenen Token ungültig zu machen.",
+  },
+  "JWT secret reset successfully": {
+    de: "JWT-Secret erfolgreich zurückgesetzt",
+  },
+  "Resetting...": {
+    de: "Zurücksetzen...",
+  },
+  "Reset JWT Secret": {
+    de: "JWT-Secret zurücksetzen",
+  },
+};
 
 export function translate(s: string) {
-  const available = translations[s] ?? {}
+  const available = translations[s] ?? {};
   for (const lang of navigator.languages) {
-    if (lang === 'en' || lang === 'en-US') {
-      return s
+    if (lang === "en" || lang === "en-US") {
+      return s;
     }
-    const t = available[lang]
+    const t = available[lang];
     if (t) {
-      return t
+      return t;
     }
   }
-  return s
+  return s;
 }
-

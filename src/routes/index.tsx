@@ -146,7 +146,7 @@ function Index() {
     } catch (err) {
       alert(
         "Error deleting dashboard: " +
-        (err instanceof Error ? err.message : "Unknown error"),
+          (err instanceof Error ? err.message : "Unknown error"),
       );
     }
   };
@@ -165,13 +165,11 @@ function Index() {
         <h1 className="text-3xl font-semibold font-display flex-grow">
           {translate("Overview")}
         </h1>
-        <Button
-          asChild
-          className="h-fit "
-        >
-          <Link
-            to="/dashboard/new"
-          >{translate("New")}</Link>
+        <Button asChild className="h-fit">
+          <Link to="/dashboard/new">{translate("New")}</Link>
+        </Button>
+        <Button asChild variant="secondary" className="h-fit ml-3">
+          <Link to="/admin">{translate("Admin")}</Link>
         </Button>
         <Button
           onClick={() => {
