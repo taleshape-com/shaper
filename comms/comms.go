@@ -1,6 +1,7 @@
 package comms
 
 import (
+	"crypto/subtle"
 	"log/slog"
 	"os"
 	"time"
@@ -30,11 +31,31 @@ type Config struct {
 	DontListen bool
 }
 
+type ClientAuth struct {
+	Token []byte
+}
+
+func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
+	opts := auth.GetOpts()
+	valid := subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1
+	auth.RegisterUser(&server.User{
+		Username: "natstoken",
+		Permissions: &server.Permissions{
+			Publish: &server.SubjectPermission{
+				Allow: []string{">"},
+			},
+			Subscribe: &server.SubjectPermission{
+				Allow: []string{">"},
+			},
+		},
+	})
+	return valid
+}
+
 func New(config Config) (Comms, error) {
-	// TODO: auth
 	// TODO: support TLS
-	// TODO: configure NATS logging
 	// TODO: NATS prometheus metrics
+	// TODO: allow setting jetstream domain
 	opts := &server.Options{
 		JetStream:              true,
 		DisableJetStreamBanner: true,
@@ -43,6 +64,9 @@ func New(config Config) (Comms, error) {
 		DontListen:             config.DontListen,
 		// We handle signals separately
 		NoSigs: true,
+		CustomClientAuthentication: ClientAuth{
+			Token: []byte(config.Token),
+		},
 	}
 	// Configure authentication if token is provided
 	if config.Token != "" {

@@ -17,7 +17,8 @@ import (
 
 const (
 	NATS_SUBJECT_PREFIX   = "shaper.state."
-	CONFIG_KEY_JWT_SECRET = "jwt_secret"
+	NATS_KV_CONFIG_BUCKET = "shaper-config"
+	CONFIG_KEY_JWT_SECRET = "jwt-secret"
 )
 
 type App struct {
@@ -29,10 +30,19 @@ type App struct {
 	JWTExp          time.Duration
 	StateConsumeCtx jetstream.ConsumeContext
 	JetStream       jetstream.JetStream
+	ConfigKV        jetstream.KeyValue
 	NATSConn        *nats.Conn
 }
 
-func New(db *sqlx.DB, nc *nats.Conn, logger *slog.Logger, loginToken string, schema string, jwtExp time.Duration, persist bool) (*App, error) {
+func New(
+	db *sqlx.DB,
+	nc *nats.Conn,
+	logger *slog.Logger,
+	loginToken string,
+	schema string,
+	jwtExp time.Duration,
+	persist bool,
+) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
 	}
@@ -59,7 +69,16 @@ func New(db *sqlx.DB, nc *nats.Conn, logger *slog.Logger, loginToken string, sch
 		Durable:       "shaper-state",
 		MaxAckPending: 1,
 	})
-
+	if err != nil {
+		return nil, err
+	}
+	configKV, err := js.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
+		Bucket:  NATS_KV_CONFIG_BUCKET,
+		Storage: storageType,
+	})
+	if err != nil {
+		return nil, err
+	}
 	app := &App{
 		db:         db,
 		Logger:     logger,
@@ -68,6 +87,7 @@ func New(db *sqlx.DB, nc *nats.Conn, logger *slog.Logger, loginToken string, sch
 		JWTExp:     jwtExp,
 		NATSConn:   nc,
 		JetStream:  js,
+		ConfigKV:   configKV,
 	}
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)
@@ -104,8 +124,6 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleUpdateDashboardName
 	case "delete_dashboard":
 		handler = HandleDeleteDashboard
-	case "set_jwt_secret":
-		handler = HandleSetJWTSecret
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
@@ -170,19 +188,6 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating dashboards table: %w", err)
-	}
-
-	// Create config table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.config (
-			key VARCHAR PRIMARY KEY,
-			value VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL,
-			updated_at TIMESTAMP NOT NULL
-		)
-	`)
-	if err != nil {
-		return fmt.Errorf("error creating config table: %w", err)
 	}
 
 	// Create custom types

@@ -1,4 +1,3 @@
-// TODO: authz to restrict access. Look into casbin and other existing solutions https://github.com/labstack/echo-contrib/tree/master/casbin
 package main
 
 import (
@@ -119,18 +118,18 @@ func loadConfig() Config {
 	return config
 }
 
-func Run(config Config) func(context.Context) {
-	if config.Favicon != "" {
-		fmt.Println("⇨ custom favicon:", config.Favicon)
+func Run(cfg Config) func(context.Context) {
+	if cfg.Favicon != "" {
+		fmt.Println("⇨ custom favicon:", cfg.Favicon)
 	}
-	if config.CustomCSS != "" {
+	if cfg.CustomCSS != "" {
 		fmt.Println("⇨ custom CSS injected into frontend")
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// connect to duckdb
-	dbConnector, err := duckdb.NewConnector(config.DBFile, nil)
+	dbConnector, err := duckdb.NewConnector(cfg.DBFile, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -139,29 +138,37 @@ func Run(config Config) func(context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	if config.DBFile != "" {
-		fmt.Println("⇨ connected to duckdb", config.DBFile)
+	if cfg.DBFile != "" {
+		fmt.Println("⇨ connected to duckdb", cfg.DBFile)
 	} else {
 		fmt.Println("⇨ connected to in-memory duckdb")
 	}
 
 	c, err := comms.New(comms.Config{
 		Logger:     logger.WithGroup("nats"),
-		Host:       config.NatsHost,
-		Port:       config.NatsPort,
-		Token:      config.NatsToken,
-		JSDir:      config.NatsJSDir,
-		JSKey:      config.NatsJSKey,
-		MaxStore:   config.NatsMaxStore,
-		DontListen: config.NatsDontListen,
+		Host:       cfg.NatsHost,
+		Port:       cfg.NatsPort,
+		Token:      cfg.NatsToken,
+		JSDir:      cfg.NatsJSDir,
+		JSKey:      cfg.NatsJSKey,
+		MaxStore:   cfg.NatsMaxStore,
+		DontListen: cfg.NatsDontListen,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	persistNATS := config.NatsJSDir != ""
+	persistNATS := cfg.NatsJSDir != ""
 
-	app, err := core.New(db, c.Conn, logger, config.LoginToken, config.Schema, config.JWTExp, persistNATS)
+	app, err := core.New(
+		db,
+		c.Conn,
+		logger,
+		cfg.LoginToken,
+		cfg.Schema,
+		cfg.JWTExp,
+		persistNATS,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -171,7 +178,7 @@ func Run(config Config) func(context.Context) {
 		panic(err)
 	}
 
-	e := web.Start(config.Address, config.Port, app, frontendFS, config.ExecutableModTime, config.CustomCSS, config.Favicon)
+	e := web.Start(cfg.Address, cfg.Port, app, frontendFS, cfg.ExecutableModTime, cfg.CustomCSS, cfg.Favicon)
 
 	return func(ctx context.Context) {
 		logger.Info("initiating shutdown...")
