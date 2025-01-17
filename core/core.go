@@ -124,6 +124,10 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleUpdateDashboardName
 	case "delete_dashboard":
 		handler = HandleDeleteDashboard
+	case "create_api_key":
+		handler = HandleCreateAPIKey
+	case "delete_api_key":
+		handler = HandleDeleteAPIKey
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
@@ -188,6 +192,22 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating dashboards table: %w", err)
+	}
+
+	// Create api_keys table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.api_keys (
+			id VARCHAR PRIMARY KEY,
+			hash VARCHAR NOT NULL,
+			name VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL,
+			created_by VARCHAR,
+			updated_by VARCHAR
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating config table: %w", err)
 	}
 
 	// Create custom types

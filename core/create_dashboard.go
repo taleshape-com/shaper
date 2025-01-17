@@ -47,8 +47,8 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 	_, err = app.db.Exec(
 		`INSERT OR IGNORE INTO `+app.Schema+`.dashboards (
 			id, path, name, content, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6)`,
-		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.Timestamp,
+		) VALUES ($1, $2, $3, $4, $5, $5)`,
+		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert dashboard into DB", slog.Any("error", err))

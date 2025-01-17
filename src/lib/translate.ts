@@ -128,6 +128,45 @@ const translations: Record<string, Record<string, string>> = {
   "Reset JWT Secret": {
     de: "JWT-Secret zurücksetzen",
   },
+  "API Keys": {
+    de: "API-Keys"
+  },
+  "Loading API keys...": {
+    de: "API-Keys werden geladen..."
+  },
+  "No API keys found": {
+    de: "Keine API-Keys gefunden"
+  },
+  "Create New API Key": {
+    de: "Neuen API-Key erstellen"
+  },
+  "Key:": {
+    de: "Schlüssel:"
+  },
+  "API key copied to clipboard": {
+    de: "API-Key wurde in die Zwischenablage kopiert"
+  },
+  "Make sure to copy the key. You won't be able to see it again.": {
+    de: "Kopieren Sie den Schlüssel. Sie werden ihn nicht nochmal sehen können."
+  },
+  "Key name": {
+    de: "Name"
+  },
+  "Close": {
+    de: "Schließen"
+  },
+  "Copy": {
+    de: "Kopieren"
+  },
+  'Are you sure you want to delete this API key "%%"?': {
+    de: 'Sind Sie sicher, dass Sie den API-Key "%%" löschen möchten?'
+  },
+  "API key deleted successfully": {
+    de: "API-Key erfolgreich gelöscht"
+  },
+  "Success": {
+    de: "Erfolg"
+  },
 };
 
 export function translate(s: string) {
