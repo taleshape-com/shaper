@@ -144,6 +144,19 @@ func Run(cfg Config) func(context.Context) {
 		fmt.Println("⇨ connected to in-memory duckdb")
 	}
 
+	persistNATS := cfg.NatsJSDir != ""
+
+	app, err := core.New(
+		db,
+		logger,
+		cfg.LoginToken,
+		cfg.Schema,
+		cfg.JWTExp,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	c, err := comms.New(comms.Config{
 		Logger:     logger.WithGroup("nats"),
 		Host:       cfg.NatsHost,
@@ -153,22 +166,13 @@ func Run(cfg Config) func(context.Context) {
 		JSKey:      cfg.NatsJSKey,
 		MaxStore:   cfg.NatsMaxStore,
 		DontListen: cfg.NatsDontListen,
+		App:        app,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	persistNATS := cfg.NatsJSDir != ""
-
-	app, err := core.New(
-		db,
-		c.Conn,
-		logger,
-		cfg.LoginToken,
-		cfg.Schema,
-		cfg.JWTExp,
-		persistNATS,
-	)
+	err = app.Init(c.Conn, persistNATS)
 	if err != nil {
 		panic(err)
 	}

@@ -1,9 +1,11 @@
 package comms
 
 import (
+	"context"
 	"crypto/subtle"
 	"log/slog"
 	"os"
+	"shaper/core"
 	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
@@ -29,27 +31,67 @@ type Config struct {
 	JSKey      string
 	MaxStore   int64
 	DontListen bool
+	App        *core.App
 }
+
+type AuthCheckFunc func(context.Context, string) (bool, error)
 
 type ClientAuth struct {
 	Token []byte
+	App   *core.App
 }
 
 func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 	opts := auth.GetOpts()
-	valid := subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1
-	auth.RegisterUser(&server.User{
-		Username: "natstoken",
+
+	// First check static token
+	if subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1 {
+		auth.RegisterUser(c.createUser("root", true))
+		return true
+	}
+
+	valid, err := core.ValidateAPIKey(c.App, context.Background(), opts.Token)
+	if err != nil {
+		return false
+	}
+	if valid {
+		keyId := core.GetAPIKeyID(opts.Token)
+		auth.RegisterUser(c.createUser("key."+keyId, false))
+		return true
+	}
+
+	return false
+}
+
+func (c ClientAuth) createUser(name string, root bool) *server.User {
+	if root {
+		return &server.User{
+			Username: name,
+			Permissions: &server.Permissions{
+				Publish: &server.SubjectPermission{
+					Allow: []string{">"},
+				},
+				Subscribe: &server.SubjectPermission{
+					Allow: []string{">"},
+				},
+			},
+		}
+	}
+	return &server.User{
+		Username: name,
 		Permissions: &server.Permissions{
 			Publish: &server.SubjectPermission{
-				Allow: []string{">"},
+				Allow: []string{"shaper.ingest.>"},
 			},
+			// TODO: jetstream publish is done via request/reply so we need inbox permissions to get the ACK,
+			//       but it's not the most secure that the client can listen to all replies.
+			//       Unfortunately NATS doesn't seem to support this scenario yet.
 			Subscribe: &server.SubjectPermission{
-				Allow: []string{">"},
+				Allow: []string{"_INBOX.>"},
 			},
+			Response: &server.ResponsePermission{},
 		},
-	})
-	return valid
+	}
 }
 
 func New(config Config) (Comms, error) {
@@ -66,6 +108,7 @@ func New(config Config) (Comms, error) {
 		NoSigs: true,
 		CustomClientAuthentication: ClientAuth{
 			Token: []byte(config.Token),
+			App:   config.App,
 		},
 	}
 	// Configure authentication if token is provided

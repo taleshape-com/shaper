@@ -13,23 +13,15 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-func ValidLogin(app *App, ctx context.Context, token string) (bool, error) {
-	// First check if it matches token from the flag
-	if subtle.ConstantTimeCompare([]byte(token), []byte(app.LoginToken)) == 1 {
-		return true, nil
-	}
-
-	// Check if it's an API key
+func ValidateAPIKey(app *App, ctx context.Context, token string) (bool, error) {
 	if !strings.HasPrefix(token, API_KEY_PREFIX) {
 		return false, nil
 	}
 
-	parts := strings.Split(strings.TrimPrefix(token, API_KEY_PREFIX), ".")
-	if len(parts) != 2 {
+	id := GetAPIKeyID(token)
+	if id == "" {
 		return false, nil
 	}
-
-	id := parts[0]
 
 	var storedKey APIKey
 	err := app.db.GetContext(ctx, &storedKey,
@@ -47,6 +39,24 @@ func ValidLogin(app *App, ctx context.Context, token string) (bool, error) {
 	hash := hex.EncodeToString(mac.Sum(nil))
 
 	return subtle.ConstantTimeCompare([]byte(hash), []byte(storedKey.Hash)) == 1, nil
+}
+
+func GetAPIKeyID(token string) string {
+	parts := strings.Split(strings.TrimPrefix(token, API_KEY_PREFIX), ".")
+	if len(parts) != 2 {
+		return ""
+	}
+	return parts[0]
+}
+
+func ValidLogin(app *App, ctx context.Context, token string) (bool, error) {
+	// First check if it matches token from the flag
+	if subtle.ConstantTimeCompare([]byte(token), []byte(app.LoginToken)) == 1 {
+		return true, nil
+	}
+
+	// Check if it's a valid API key
+	return ValidateAPIKey(app, ctx, token)
 }
 
 func ResetJWTSecret(app *App, ctx context.Context) ([]byte, error) {

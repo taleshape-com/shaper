@@ -36,20 +36,30 @@ type App struct {
 
 func New(
 	db *sqlx.DB,
-	nc *nats.Conn,
 	logger *slog.Logger,
 	loginToken string,
 	schema string,
 	jwtExp time.Duration,
-	persist bool,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
 	}
+	app := &App{
+		db:         db,
+		Logger:     logger,
+		LoginToken: loginToken,
+		Schema:     schema,
+		JWTExp:     jwtExp,
+	}
+	return app, nil
+}
 
+func (app *App) Init(nc *nats.Conn, persist bool) error {
+	app.NATSConn = nc
 	js, err := jetstream.New(nc)
+	app.JetStream = js
 	if err != nil {
-		return nil, err
+		return err
 	}
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()
@@ -63,42 +73,31 @@ func New(
 		Storage:  storageType,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	stateConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
 		Durable:       "shaper-state",
 		MaxAckPending: 1,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	configKV, err := js.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
 		Bucket:  NATS_KV_CONFIG_BUCKET,
 		Storage: storageType,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	app := &App{
-		db:         db,
-		Logger:     logger,
-		LoginToken: loginToken,
-		Schema:     schema,
-		JWTExp:     jwtExp,
-		NATSConn:   nc,
-		JetStream:  js,
-		ConfigKV:   configKV,
-	}
+	app.ConfigKV = configKV
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	app.StateConsumeCtx = stateConsumeCtx
 
-	loadJWTSecret(app)
-
-	return app, nil
+	return loadJWTSecret(app)
 }
 
 func (app *App) Close() {
