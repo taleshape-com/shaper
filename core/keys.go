@@ -2,6 +2,9 @@ package core
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -10,12 +13,15 @@ import (
 	"time"
 
 	"github.com/nrednav/cuid2"
-	"golang.org/x/crypto/bcrypt"
 )
+
+const API_KEY_PREFIX = "shaperkey."
 
 type APIKey struct {
 	ID        string    `db:"id" json:"id"`
 	Name      string    `db:"name" json:"name"`
+	Hash      string    `db:"hash" json:"-"`
+	Salt      string    `db:"salt" json:"-"`
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
 }
@@ -29,6 +35,7 @@ type CreateAPIKeyPayload struct {
 	Timestamp time.Time `json:"timestamp"`
 	Name      string    `json:"name"`
 	Hash      string    `json:"hash"`
+	Salt      string    `json:"salt"`
 }
 
 func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
@@ -46,18 +53,22 @@ func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
 func CreateAPIKey(app *App, ctx context.Context, name string) (string, string, error) {
 	name = strings.TrimSpace(name)
 	id := cuid2.Generate()
-	key := util.GenerateRandomString(64)
-	hash, err := hashPassword(key)
-	if err != nil {
-		return "", "", fmt.Errorf("error hashing password: %w", err)
-	}
+	suffix := util.GenerateRandomString(32)
+	key := fmt.Sprintf("%s%s.%s", API_KEY_PREFIX, id, suffix)
+
+	salt := util.GenerateRandomString(32)
+	mac := hmac.New(sha256.New, []byte(salt))
+	mac.Write([]byte(key))
+	hash := hex.EncodeToString(mac.Sum(nil))
+
 	payload := CreateAPIKeyPayload{
 		ID:        id,
 		Timestamp: time.Now(),
 		Name:      name,
 		Hash:      hash,
+		Salt:      salt,
 	}
-	err = app.SubmitState(ctx, "create_api_key", payload)
+	err := app.SubmitState(ctx, "create_api_key", payload)
 	return id, key, err
 }
 
@@ -71,25 +82,15 @@ func HandleCreateAPIKey(app *App, data []byte) bool {
 	// Insert into DB
 	_, err = app.db.Exec(
 		`INSERT OR IGNORE INTO `+app.Schema+`.api_keys (
-			id, hash, name, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $4)`,
-		payload.ID, payload.Hash, payload.Name, payload.Timestamp,
+			id, hash, salt, name, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $5)`,
+		payload.ID, payload.Hash, payload.Salt, payload.Name, payload.Timestamp,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert api key into DB", slog.Any("error", err))
 		return false
 	}
 	return true
-}
-
-func hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
-}
-
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
 }
 
 type DeleteAPIKeyPayload struct {

@@ -30,8 +30,8 @@ const server = http.createServer(async (req, res) => {
         })
         if (r.status !== 200) {
           console.error('failed fetching token:', await r.text())
-          res.writeHead(500)
-          res.end('Fail to get JWT')
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Fail to get JWT' }))
           return
         }
         const { jwt } = await r.json()

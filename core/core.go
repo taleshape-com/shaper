@@ -199,6 +199,7 @@ func initDB(db *sqlx.DB, schema string) error {
 		CREATE TABLE IF NOT EXISTS ` + schema + `.api_keys (
 			id VARCHAR PRIMARY KEY,
 			hash VARCHAR NOT NULL,
+			salt VARCHAR NOT NULL,
 			name VARCHAR NOT NULL,
 			created_at TIMESTAMP NOT NULL,
 			updated_at TIMESTAMP NOT NULL,

@@ -249,7 +249,7 @@ function APIKeyList() {
       )}
 
       {showNewKeyDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">
               {translate("Create New API Key")}
