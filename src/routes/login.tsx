@@ -17,7 +17,12 @@ export const Route = createFileRoute("/login")({
   loaderDeps: ({ search: { redirect } }) => ({
     redirectUrl: redirect,
   }),
-  loader: async ({ deps: { redirectUrl }, context: { auth: { testLogin } } }) => {
+  loader: async ({
+    deps: { redirectUrl },
+    context: {
+      auth: { testLogin },
+    },
+  }) => {
     if (await testLogin()) {
       throw redirect({
         to: redirectUrl || "/",

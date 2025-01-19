@@ -85,6 +85,8 @@ function Index() {
   const data = Route.useLoaderData();
   const { sort, order } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
+  const auth = useAuth();
+  const router = useRouter();
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -114,8 +116,6 @@ function Index() {
       <RiSortDesc className="inline size-4" />
     );
   };
-  const auth = useAuth();
-  const router = useRouter();
 
   const handleDelete = async (dashboard: IDashboard) => {
     if (
@@ -146,7 +146,7 @@ function Index() {
     } catch (err) {
       alert(
         "Error deleting dashboard: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+        (err instanceof Error ? err.message : "Unknown error"),
       );
     }
   };
@@ -171,19 +171,21 @@ function Index() {
         <Button asChild variant="secondary" className="h-fit ml-3">
           <Link to="/admin">{translate("Admin")}</Link>
         </Button>
-        <Button
-          onClick={() => {
-            logout();
-            navigate({
-              to: "/login",
-              replace: true,
-            });
-          }}
-          variant="secondary"
-          className="h-fit ml-3"
-        >
-          {translate("Logout")}
-        </Button>
+        {auth.loginRequired &&
+          <Button
+            onClick={() => {
+              logout();
+              navigate({
+                to: "/login",
+                replace: true,
+              });
+            }}
+            variant="secondary"
+            className="h-fit ml-3"
+          >
+            {translate("Logout")}
+          </Button>
+        }
       </div>
       {data.dashboards.length === 0 ? (
         <p>No dashboards yet</p>

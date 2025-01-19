@@ -23,6 +23,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	})
 
 	// API routes - no caching
+	e.GET("/api/auth/enabled", handler.AuthStatus(app))
 	e.POST("/api/login/token", handler.TokenLogin(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))

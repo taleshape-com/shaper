@@ -21,11 +21,16 @@ func TokenLogin(app *core.App) echo.HandlerFunc {
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		}
-		// Check if the token is valid
-		if ok, err := core.ValidLogin(app, c.Request().Context(), loginRequest.Token); err != nil {
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error error }{Error: err}, "  ")
-		} else if !ok {
-			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
+		// If a token is provided, validate it
+		if loginRequest.Token != "" {
+			if ok, err := core.ValidLogin(app, c.Request().Context(), loginRequest.Token); err != nil {
+				return c.JSONPretty(http.StatusBadRequest, struct{ Error error }{Error: err}, "  ")
+			} else if !ok {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
+			}
+		} else if app.LoginToken != "" {
+			// If login is enabled (login token is set), don't allow empty tokens
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Token required"})
 		}
 		claims := jwt.MapClaims{
 			"exp": time.Now().Add(app.JWTExp).Unix(),
@@ -66,6 +71,14 @@ func validateVariables(mixedMap map[string]interface{}) error {
 		}
 	}
 	return nil
+}
+
+func AuthStatus(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]bool{
+			"enabled": app.LoginToken != "",
+		})
+	}
 }
 
 func TokenAuth(app *core.App) echo.HandlerFunc {

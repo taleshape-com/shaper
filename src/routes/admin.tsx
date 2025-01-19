@@ -34,6 +34,7 @@ interface NewAPIKeyResponse {
 
 function Admin() {
   const navigate = useNavigate({ from: "/" });
+  const auth = useAuth();
 
   return (
     <div className="p-4 max-w-[720px] mx-auto">
@@ -49,19 +50,21 @@ function Admin() {
         <Button asChild className="h-fit">
           <Link to="/">{translate("Overview")}</Link>
         </Button>
-        <Button
-          onClick={() => {
-            logout();
-            navigate({
-              to: "/login",
-              replace: true,
-            });
-          }}
-          variant="secondary"
-          className="h-fit ml-3"
-        >
-          {translate("Logout")}
-        </Button>
+        {auth.loginRequired &&
+          <Button
+            onClick={() => {
+              logout();
+              navigate({
+                to: "/login",
+                replace: true,
+              });
+            }}
+            variant="secondary"
+            className="h-fit ml-3"
+          >
+            {translate("Logout")}
+          </Button>
+        }
       </div>
 
       <div className="mt-8">

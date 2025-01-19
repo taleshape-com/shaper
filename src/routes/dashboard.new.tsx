@@ -329,24 +329,26 @@ function NewDashboard() {
             </div>
           </div>
 
-          <div className="mt-auto px-5 pb-6">
-            <Button
-              onClick={() => {
-                logout();
-                navigate({
-                  to: "/login",
-                  replace: true,
-                  search: {
-                    redirect:
-                      location.pathname + location.search + location.hash,
-                  },
-                });
-              }}
-              variant="secondary"
-            >
-              {translate("Logout")}
-            </Button>
-          </div>
+          {auth.loginRequired &&
+            <div className="mt-auto px-5 pb-6">
+              <Button
+                onClick={() => {
+                  logout();
+                  navigate({
+                    to: "/login",
+                    replace: true,
+                    search: {
+                      redirect:
+                        location.pathname + location.search + location.hash,
+                    },
+                  });
+                }}
+                variant="secondary"
+              >
+                {translate("Logout")}
+              </Button>
+            </div>
+          }
         </div>
       </div>
     </div>

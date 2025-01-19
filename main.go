@@ -72,9 +72,6 @@ func loadConfig() Config {
 		ff.WithEnvVarPrefix("SHAPER"),
 		ff.WithConfigFileParser(ff.PlainParser),
 	)
-	if err == nil && *loginToken == "" {
-		err = fmt.Errorf("--token must be set")
-	}
 	if err != nil {
 		fmt.Printf("%s\n", ffhelp.Flags(flags))
 		fmt.Printf("err=%v\n", err)
