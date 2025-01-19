@@ -210,6 +210,24 @@ func initDB(db *sqlx.DB, schema string) error {
 		return fmt.Errorf("error creating config table: %w", err)
 	}
 
+	// Create users table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.users (
+			id VARCHAR PRIMARY KEY,
+			email VARCHAR NOT NULL,
+			password_hash VARCHAR,
+			name VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL,
+			created_by VARCHAR,
+			updated_by VARCHAR,
+			deleted_at TIMESTAMP,
+			deleted_by VARCHAR
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating users table: %w", err)
+	}
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(db, t.Name, t.Definition); err != nil {
