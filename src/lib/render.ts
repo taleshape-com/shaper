@@ -8,6 +8,9 @@ function parseLocalDate(d: string | number) {
 }
 
 export const formatValue = (value: string | number | boolean, columnType: Column['type']) => {
+  if (value === null || value === undefined) {
+    return ""
+  }
   if (typeof value === "boolean") {
     return value ? "YES" : "NO";
   }

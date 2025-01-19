@@ -106,17 +106,17 @@ function Admin() {
 
                 <form
                   className="mt-4 space-y-4"
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
                     const data = {
-                      email: formData.get("email"),
-                      name: formData.get("name"),
-                      password: formData.get("password"),
-                      confirmPassword: formData.get("confirmPassword"),
+                      email: formData.get("email") as string,
+                      name: formData.get("name") as string,
+                      password: formData.get("password") as string,
+                      confirmPassword: formData.get(
+                        "confirmPassword",
+                      ) as string,
                     };
-
-                    console.log("Form data:", data);
 
                     if (data.password !== data.confirmPassword) {
                       toast({
@@ -127,11 +127,41 @@ function Admin() {
                       return;
                     }
 
-                    toast({
-                      title: translate("Success"),
-                      description: translate("User created successfully"),
-                    });
-                    setShowAuthSetup(false);
+                    try {
+                      const response = await fetch("/api/auth/setup", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          email: data.email,
+                          name: data.name,
+                          password: data.password,
+                        }),
+                      });
+
+                      if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(
+                          errorData.error || "Failed to create user",
+                        );
+                      }
+
+                      toast({
+                        title: translate("Success"),
+                        description: translate("User created successfully"),
+                      });
+                      setShowAuthSetup(false);
+                    } catch (error) {
+                      toast({
+                        title: translate("Error"),
+                        description:
+                          error instanceof Error
+                            ? error.message
+                            : translate("An error occurred"),
+                        variant: "error",
+                      });
+                    }
                   }}
                 >
                   <div className="space-y-2">

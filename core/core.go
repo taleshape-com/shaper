@@ -127,6 +127,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleCreateAPIKey
 	case "delete_api_key":
 		handler = HandleDeleteAPIKey
+	case "create_user":
+		handler = HandleCreateUser
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -126,6 +127,37 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
 		}
 		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
+	}
+}
+
+func Setup(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var setupRequest struct {
+			Email    string `json:"email"`
+			Name     string `json:"name"`
+			Password string `json:"password"`
+		}
+		if err := c.Bind(&setupRequest); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		}
+
+		if setupRequest.Email == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Email is required"})
+		}
+		if setupRequest.Password == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Password is required"})
+		}
+
+		id, err := core.CreateUser(app, c.Request().Context(), setupRequest.Email, setupRequest.Password, setupRequest.Name)
+		if err != nil {
+			if errors.Is(err, core.ErrUserSetupCompleted) {
+				return c.JSON(http.StatusConflict, map[string]string{"error": "User setup already completed"})
+			}
+			c.Logger().Error("Failed to create user", slog.Any("error", err))
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"id": id})
 	}
 }
 

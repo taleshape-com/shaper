@@ -201,6 +201,12 @@ const translations: Record<string, Record<string, string>> = {
   "User created successfully": {
     de: "Benutzer erfolgreich erstellt",
   },
+  "User created successfully": {
+    de: "Benutzer erfolgreich erstellt",
+  },
+  "Failed to create user": {
+    de: "Benutzer konnte nicht erstellt werden",
+  },
 };
 
 export function translate(s: string) {
