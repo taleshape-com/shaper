@@ -1,31 +1,39 @@
 import http from 'http'
 import fs from 'fs'
 
+const BASE_URL = 'http://localhost:3000'
 const PORT = 3001
-const TOKEN = 'test'
+const VARIABLES = process.env.VARIABLES || '{}'
+const API_KEY = process.env.API_KEY
+const DASHBOARD_ID = process.env.DASHBOARD_ID
+
+if (!API_KEY) {
+  console.error('API_KEY env var is required')
+  process.exit(1)
+}
+if (!DASHBOARD_ID) {
+  console.error('DASHBOARD_ID env var is required')
+  process.exit(1)
+}
 
 const server = http.createServer(async (req, res) => {
   if (req.url === '/api/jwt' && req.method === 'POST') {
     // verify coookie and define customer here
-    const customerId = "10"
     let body = ''
     req.on('data', chunk => {
       body += chunk.toString()
     })
     req.on('end', async () => {
       try {
-        const { baseUrl, dashboardId } = JSON.parse(body)
-        const r = await fetch(`${baseUrl}/api/auth/token`, {
+        const r = await fetch(`${BASE_URL}/api/auth/token`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            token: TOKEN,
-            dashboardId,
-            variables: {
-              "customer_id": customerId,
-            }
+            token: API_KEY,
+            dashboardId: DASHBOARD_ID,
+            variables: JSON.parse(VARIABLES),
           }),
         })
         if (r.status !== 200) {
@@ -58,6 +66,8 @@ const server = http.createServer(async (req, res) => {
       return
     }
     res.writeHead(200, { 'Content-Type': 'text/html' })
+    content = content.toString().replace('$BASE_URL', BASE_URL)
+    content = content.toString().replace('$DASHBOARD_ID', DASHBOARD_ID)
     res.end(content)
   })
 })

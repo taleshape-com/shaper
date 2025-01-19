@@ -302,6 +302,7 @@ function APIKeyList() {
                   placeholder={translate("Key name")}
                   className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"
                   required
+                  autoFocus
                 />
                 <div className="flex justify-end gap-2">
                   <Button

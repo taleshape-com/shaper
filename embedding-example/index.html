@@ -8,9 +8,9 @@
     <h1>Embedding Demo</h1>
     <p>Dashboard will be embedded here:</p>
     <div id="dashboard-container"></div>
-    <script src="http://localhost:3000/embed/shaper.js"></script>
+    <script src="$BASE_URL/embed/shaper.js"></script>
     <script>
-      const dashboardId = 'embed'
+      const dashboardId = '$DASHBOARD_ID'
       shaper.embed({
         container: document.getElementById('dashboard-container'),
         dashboardId,
@@ -19,7 +19,6 @@
           const res = await fetch('/api/jwt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ baseUrl, dashboardId }),
           })
           return res.json()
         },
