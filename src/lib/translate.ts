@@ -129,43 +129,77 @@ const translations: Record<string, Record<string, string>> = {
     de: "JWT-Secret zurücksetzen",
   },
   "API Keys": {
-    de: "API-Keys"
+    de: "API-Keys",
   },
   "Loading API keys...": {
-    de: "API-Keys werden geladen..."
+    de: "API-Keys werden geladen...",
   },
   "No API keys found": {
-    de: "Keine API-Keys gefunden"
+    de: "Keine API-Keys gefunden",
   },
   "Create New API Key": {
-    de: "Neuen API-Key erstellen"
+    de: "Neuen API-Key erstellen",
   },
   "Key:": {
-    de: "Schlüssel:"
+    de: "Schlüssel:",
   },
   "API key copied to clipboard": {
-    de: "API-Key wurde in die Zwischenablage kopiert"
+    de: "API-Key wurde in die Zwischenablage kopiert",
   },
   "Make sure to copy the key. You won't be able to see it again.": {
-    de: "Kopieren Sie den Schlüssel. Sie werden ihn nicht nochmal sehen können."
+    de: "Kopieren Sie den Schlüssel. Sie werden ihn nicht nochmal sehen können.",
   },
   "Key name": {
-    de: "Name"
+    de: "Name",
   },
-  "Close": {
-    de: "Schließen"
+  Close: {
+    de: "Schließen",
   },
-  "Copy": {
-    de: "Kopieren"
+  Copy: {
+    de: "Kopieren",
   },
   'Are you sure you want to delete this API key "%%"?': {
-    de: 'Sind Sie sicher, dass Sie den API-Key "%%" löschen möchten?'
+    de: 'Sind Sie sicher, dass Sie den API-Key "%%" löschen möchten?',
   },
   "API key deleted successfully": {
-    de: "API-Key erfolgreich gelöscht"
+    de: "API-Key erfolgreich gelöscht",
   },
-  "Success": {
-    de: "Erfolg"
+  Success: {
+    de: "Erfolg",
+  },
+  "Setup Authentication": {
+    de: "Authentifizierung einrichten",
+  },
+  "Create a first user account to enable authentication and secure the system":
+    {
+      de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
+    },
+  "Create User": {
+    de: "Benutzer erstellen",
+  },
+  "Create First User": {
+    de: "Ersten Benutzer erstellen",
+  },
+  "Enter the details for the first administrative user": {
+    de: "Geben Sie die Details für den ersten Administrator ein",
+  },
+  Email: {
+    de: "E-Mail",
+  },
+  Password: {
+    de: "Passwort",
+  },
+  "Confirm Password": {
+    de: "Passwort bestätigen",
+  },
+  Administrator: {
+    de: "Administrator",
+  },
+  "Passwords do not match": {
+    de: "Passwörter stimmen nicht überein",
+  },
+  "User created successfully": {
+    de: "Benutzer erfolgreich erstellt",
   },
 };
 

@@ -14,6 +14,19 @@ import {
 } from "../components/tremor/Table";
 import { useCallback, useEffect } from "react";
 import { useState } from "react";
+import { Callout } from "../components/tremor/Callout";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/tremor/Dialog";
+import { Input } from "../components/tremor/Input";
+import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
 import { Toaster } from "../components/tremor/Toaster";
 
@@ -33,6 +46,8 @@ interface NewAPIKeyResponse {
 }
 
 function Admin() {
+  const [showAuthSetup, setShowAuthSetup] = useState(true);
+  const { toast } = useToast();
   const navigate = useNavigate({ from: "/" });
   const auth = useAuth();
 
@@ -50,7 +65,7 @@ function Admin() {
         <Button asChild className="h-fit">
           <Link to="/">{translate("Overview")}</Link>
         </Button>
-        {auth.loginRequired &&
+        {auth.loginRequired && (
           <Button
             onClick={() => {
               logout();
@@ -64,8 +79,118 @@ function Admin() {
           >
             {translate("Logout")}
           </Button>
-        }
+        )}
       </div>
+
+      {showAuthSetup && (
+        <div className="mb-6">
+          <Callout title={translate("Setup Authentication")}>
+            <p className="mb-4">
+              {translate(
+                "Create a first user account to enable authentication and secure the system",
+              )}
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="primary">{translate("Create User")}</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{translate("Create First User")}</DialogTitle>
+                  <DialogDescription>
+                    {translate(
+                      "Enter the details for the first administrative user",
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <form
+                  className="mt-4 space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const data = {
+                      email: formData.get("email"),
+                      name: formData.get("name"),
+                      password: formData.get("password"),
+                      confirmPassword: formData.get("confirmPassword"),
+                    };
+
+                    console.log("Form data:", data);
+
+                    if (data.password !== data.confirmPassword) {
+                      toast({
+                        title: translate("Error"),
+                        description: translate("Passwords do not match"),
+                        variant: "error",
+                      });
+                      return;
+                    }
+
+                    toast({
+                      title: translate("Success"),
+                      description: translate("User created successfully"),
+                    });
+                    setShowAuthSetup(false);
+                  }}
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{translate("Email")}</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="admin@example.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{translate("Name")}</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      type="text"
+                      placeholder={translate("Administrator")}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password">{translate("Password")}</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">
+                      {translate("Confirm Password")}
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      required
+                    />
+                  </div>
+
+                  <DialogFooter className="mt-6">
+                    <DialogClose asChild>
+                      <Button type="button" variant="secondary">
+                        {translate("Cancel")}
+                      </Button>
+                    </DialogClose>
+                    <Button type="submit">{translate("Create User")}</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </Callout>
+        </div>
+      )}
 
       <div className="mt-8">
         <h2 className="text-xl font-semibold mb-4">{translate("API Keys")}</h2>
