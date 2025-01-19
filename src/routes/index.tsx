@@ -187,88 +187,95 @@ function Index() {
           </Button>
         }
       </div>
-      {data.dashboards.length === 0 ? (
-        <p>No dashboards yet</p>
-      ) : (
-        <TableRoot>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell
-                  onClick={() => handleSort("name" as const)}
-                  className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
-                >
-                  {translate("Name")} <SortIcon field="name" />
-                </TableHeaderCell>
-                <TableHeaderCell
-                  className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
-                  onClick={() => handleSort("created" as const)}
-                >
-                  {translate("Created")} <SortIcon field="created" />
-                </TableHeaderCell>
-                <TableHeaderCell
-                  className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
-                  onClick={() => handleSort("updated" as const)}
-                >
-                  {translate("Updated")} <SortIcon field="updated" />
-                </TableHeaderCell>
-                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
-                  {translate("Actions")}
-                </TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.dashboards.map((dashboard) => (
-                <TableRow
-                  key={dashboard.id}
-                  className="group hover:bg-cbga dark:hover:bg-dbga cursor-pointer transition-colors duration-200"
-                  onClick={() =>
-                    navigate({
-                      to: "/dashboards/$dashboardId",
-                      params: { dashboardId: dashboard.id },
-                    })
-                  }
-                >
-                  <TableCell className="font-medium text-ctext dark:text-dtext">
-                    {dashboard.name}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
-                    <div title={new Date(dashboard.createdAt).toLocaleString()}>
-                      {new Date(dashboard.createdAt).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
-                    <div title={new Date(dashboard.updatedAt).toLocaleString()}>
-                      {new Date(dashboard.updatedAt).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex gap-4">
-                      <Link
-                        to="/dashboards/$dashboardId/edit"
-                        params={{ dashboardId: dashboard.id }}
-                        className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {translate("Edit")}
-                      </Link>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(dashboard);
-                        }}
-                        className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
-                      >
-                        {translate("Delete")}
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableRoot>
-      )}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="px-6 pt-4 pb-6">
+          <h1 className="text-2xl font-semibold font-display mb-2">
+            {translate("Dashboards")}
+          </h1>
+          {data.dashboards.length === 0 ? (
+            <p>No dashboards yet</p>
+          ) : (
+            <TableRoot>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell
+                      onClick={() => handleSort("name" as const)}
+                      className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                    >
+                      {translate("Name")} <SortIcon field="name" />
+                    </TableHeaderCell>
+                    <TableHeaderCell
+                      className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                      onClick={() => handleSort("created" as const)}
+                    >
+                      {translate("Created")} <SortIcon field="created" />
+                    </TableHeaderCell>
+                    <TableHeaderCell
+                      className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                      onClick={() => handleSort("updated" as const)}
+                    >
+                      {translate("Updated")} <SortIcon field="updated" />
+                    </TableHeaderCell>
+                    <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
+                      {translate("Actions")}
+                    </TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.dashboards.map((dashboard) => (
+                    <TableRow
+                      key={dashboard.id}
+                      className="group hover:bg-cbga dark:hover:bg-dbga cursor-pointer transition-colors duration-200"
+                      onClick={() =>
+                        navigate({
+                          to: "/dashboards/$dashboardId",
+                          params: { dashboardId: dashboard.id },
+                        })
+                      }
+                    >
+                      <TableCell className="font-medium text-ctext dark:text-dtext">
+                        {dashboard.name}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
+                        <div title={new Date(dashboard.createdAt).toLocaleString()}>
+                          {new Date(dashboard.createdAt).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
+                        <div title={new Date(dashboard.updatedAt).toLocaleString()}>
+                          {new Date(dashboard.updatedAt).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex gap-4">
+                          <Link
+                            to="/dashboards/$dashboardId/edit"
+                            params={{ dashboardId: dashboard.id }}
+                            className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {translate("Edit")}
+                          </Link>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(dashboard);
+                            }}
+                            className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
+                          >
+                            {translate("Delete")}
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableRoot>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

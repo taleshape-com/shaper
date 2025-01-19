@@ -213,6 +213,9 @@ const translations: Record<string, Record<string, string>> = {
   "User Management": {
     de: "Benutzerverwaltung",
   },
+  "Dashboards": {
+    de: "Dashboards",
+  },
 };
 
 export function translate(s: string) {
