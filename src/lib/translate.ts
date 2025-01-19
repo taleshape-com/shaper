@@ -171,9 +171,9 @@ const translations: Record<string, Record<string, string>> = {
     de: "Authentifizierung einrichten",
   },
   "Create a first user account to enable authentication and secure the system":
-    {
-      de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
-    },
+  {
+    de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
+  },
   "Create User": {
     de: "Benutzer erstellen",
   },
@@ -201,11 +201,17 @@ const translations: Record<string, Record<string, string>> = {
   "User created successfully": {
     de: "Benutzer erfolgreich erstellt",
   },
-  "User created successfully": {
-    de: "Benutzer erfolgreich erstellt",
-  },
   "Failed to create user": {
     de: "Benutzer konnte nicht erstellt werden",
+  },
+  "General": {
+    de: "Allgemein",
+  },
+  "Users": {
+    de: "Benutzer",
+  },
+  "User Management": {
+    de: "Benutzerverwaltung",
   },
 };
 
