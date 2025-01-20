@@ -3,10 +3,15 @@ import * as React from "react";
 
 export interface IAuthContext {
   getJwt: () => Promise<string>;
-  login: (token: string, variables?: Variables) => Promise<boolean>;
+  login: (
+    email: string,
+    password: string,
+    variables?: Variables,
+  ) => Promise<boolean>;
   testLogin: () => Promise<boolean>;
   hash: string;
-  loginRequired: boolean;
+  loginRequired: boolean | null;
+  setLoginRequired: (required: boolean) => void;
   variables: Variables;
   updateVariables: (text: string) => Promise<boolean>;
 }
@@ -17,7 +22,7 @@ export const zVariables = z.record(
 );
 export type Variables = (typeof zVariables)["_type"];
 
-export const localStorageTokenKey = "shaper-token";
+export const localStorageTokenKey = "shaper-session-token";
 export const localStorageJwtKey = "shaper-jwt";
 export const localStorageVariablesKey = "shaper-variables";
 

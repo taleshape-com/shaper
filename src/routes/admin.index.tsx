@@ -71,6 +71,7 @@ function APIKeyList() {
       const jwt = await auth.getJwt()
       const response = await fetch('/api/keys', {
         headers: {
+          "Content-Type": "application/json",
           Authorization: jwt,
         },
       })

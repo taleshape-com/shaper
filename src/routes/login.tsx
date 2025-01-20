@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { z } from "zod";
 import { ErrorComponentProps } from "@tanstack/react-router";
+import { Input } from "../components/tremor/Input";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
 
@@ -42,7 +43,8 @@ function LoginComponent() {
   const auth = useAuth();
   const router = useRouter();
   const search = Route.useSearch();
-  const [token, setToken] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
   const [err, setError] = React.useState("");
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
@@ -50,45 +52,53 @@ function LoginComponent() {
     e.preventDefault();
     setIsLoggingIn(true);
     setError("");
-    const ok = await auth.login(token)
+    const ok = await auth.login(email, password);
     if (ok) {
       router.history.push(search.redirect || "/");
     } else {
-      setError("Invalid token");
+      setError("Invalid email or password");
     }
     setIsLoggingIn(false);
   };
 
   return (
-    <div className="p-2">
+    <div className="max-w-md mx-auto p-6">
       <Helmet>
         <title>Login</title>
-        <meta
-          name="description"
-          content="Login to continue"
-        />
+        <meta name="description" content="Login to continue" />
       </Helmet>
-      <div>Login Required:</div>
-      <div className="h-2" />
-      <form onSubmit={onSubmit} className="flex gap-2">
-        <input
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder="Token"
-          autoFocus
-          className="border p-1 px-2 rounded"
-          disabled={isLoggingIn}
-          type="password"
-        />
+      <h1 className="text-xl font-semibold mb-6">Login</h1>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <Input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            type="email"
+            autoFocus
+            required
+            disabled={isLoggingIn}
+          />
+        </div>
+        <div>
+          <Input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            type="password"
+            required
+            disabled={isLoggingIn}
+          />
+        </div>
         <button
           type="submit"
-          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
-          disabled={token === "" || isLoggingIn}
+          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500"
+          disabled={!email || !password || isLoggingIn}
         >
-          Login
+          {isLoggingIn ? "Logging in..." : "Login"}
         </button>
       </form>
-      {err !== "" && <div className="text-red-500">{err}</div>}
+      {err && <div className="mt-4 text-red-500 text-sm">{err}</div>}
     </div>
   );
 }

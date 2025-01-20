@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import { isEqual } from "lodash";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   parseJwt,
   localStorageTokenKey,
@@ -33,7 +33,7 @@ const goToLoginPage = () => {
 
 // Check if login is required using the auth status endpoint
 const checkLoginRequired = async () => {
-  const response = await fetch("/api/auth/enabled");
+  const response = await fetch("/api/login/enabled");
   if (!response.ok) {
     // Assume auth is required if we can't determine the status
     return true;
@@ -42,14 +42,27 @@ const checkLoginRequired = async () => {
   return data.enabled;
 };
 
+const getSessionToken = async (email: string, password: string) => {
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  if (response.status !== 200) return null;
+  const data = await response.json();
+  return data.token;
+};
+
 const refreshJwt = async (token: string, vars: Variables) => {
-  return fetch(`/api/login/token`, {
+  return fetch(`/api/auth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      token,
+      token: token === "" ? undefined : token,
       variables: Object.keys(vars).length > 0 ? vars : undefined,
     }),
   }).then(async (response) => {
@@ -101,64 +114,67 @@ const internalTestLogin = async (loginRequired: boolean) => {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [loginRequired, setLoginRequired] = useState<boolean>(false);
+  const [loginRequired, setLoginRequired] = useState<boolean | null>(null);
   const [variables, setVariables] = useState<Variables>(
     getVariables(getVariablesString()),
   );
   const [hash, setHash] = useState<string>(getVariablesString());
 
-  // Check if login is required on mount
-  useEffect(() => {
-    checkLoginRequired().then((required) => {
-      setLoginRequired(required);
-    });
+  const getLoginRequired = useCallback(async () => {
+    if (loginRequired === null) {
+      const l = await checkLoginRequired()
+      setLoginRequired(l);
+      return l;
+    }
+    return loginRequired;
+  }, [loginRequired]);
+
+  const updateJwtWithVars = useCallback(async (token: string, vars: Variables) => {
+    const jwt = await refreshJwt(token, vars);
+    if (!jwt) {
+      return false;
+    }
+    localStorage.setItem(localStorageTokenKey, token);
+    localStorage.setItem(localStorageVariablesKey, JSON.stringify(vars));
+    setHash(JSON.stringify(vars));
+    setVariables(vars);
+    return true;
   }, []);
 
   const login = useCallback(
-    async (token: string, vars?: Variables) => {
+    async (email: string, password: string, vars?: Variables) => {
+      const sessionToken = await getSessionToken(email, password);
+      if (!sessionToken) return false;
       const v = vars ?? getVariables(getVariablesString());
-      const jwt = await refreshJwt(token, v);
-      if (jwt != null) {
-        if (loginRequired) {
-          localStorage.setItem(localStorageTokenKey, token);
-        }
-        localStorage.setItem(localStorageVariablesKey, JSON.stringify(v));
-        setHash(JSON.stringify(v));
-        setVariables(v);
+      return updateJwtWithVars(sessionToken, v);
+    },
+    [],
+  );
+
+  const updateVariables = useCallback(async (text: string) => {
+    try {
+      const vars = getVariables(text);
+      if (isEqual(vars, getVariables(getVariablesString()))) {
         return true;
       }
+      const token = localStorage.getItem(localStorageTokenKey);
+      if (!token) return false;
+
+      return await updateJwtWithVars(token, vars);
+    } catch {
       return false;
-    },
-    [loginRequired],
-  );
+    }
+  }, []);
 
-  const updateVariables = useCallback(
-    async (text: string) => {
-      try {
-        const vars = getVariables(text);
-        if (isEqual(vars, getVariables(getVariablesString()))) {
-          return true;
-        }
-        return await login(
-          localStorage.getItem(localStorageTokenKey) ?? "",
-          vars,
-        );
-      } catch {
-        return false;
-      }
-    },
-    [login],
-  );
+  const getJwt = useCallback(async () => {
+    const l = await getLoginRequired()
+    return internalGetJwt(l)
+  }, [getLoginRequired]);
 
-  const getJwt = useCallback(
-    () => internalGetJwt(loginRequired),
-    [loginRequired],
-  );
-
-  const testLogin = useCallback(
-    () => internalTestLogin(loginRequired),
-    [loginRequired],
-  );
+  const testLogin = useCallback(async () => {
+    const l = await getLoginRequired()
+    return internalTestLogin(l)
+  }, [getLoginRequired]);
 
   return (
     <AuthContext.Provider
@@ -170,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variables,
         updateVariables,
         loginRequired,
+        setLoginRequired,
       }}
     >
       {children}

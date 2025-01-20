@@ -1,12 +1,14 @@
 package web
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"shaper/core"
 	"shaper/web/handler"
 	"time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 )
@@ -15,7 +17,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	apiWithAuth := e.Group("/api", echojwt.WithConfig(echojwt.Config{
 		TokenLookup: "header:Authorization",
-		SigningKey:  app.JWTSecret,
+		KeyFunc:     GetJWTKeyfunc(app),
 	}))
 
 	e.GET("/status", func(c echo.Context) error {
@@ -23,8 +25,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	})
 
 	// API routes - no caching
-	e.GET("/api/auth/enabled", handler.AuthStatus(app))
-	e.POST("/api/login/token", handler.TokenLogin(app))
+	e.GET("/api/login/enabled", handler.LoginEnabled(app))
+	e.POST("/api/login", handler.Login(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
 	e.POST("/api/auth/setup", handler.Setup(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
@@ -63,4 +65,14 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	// Index HTML - light caching with revalidation
 	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, "/favicon.ico"))
+}
+
+// We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time
+func GetJWTKeyfunc(app *core.App) jwt.Keyfunc {
+	return func(token *jwt.Token) (interface{}, error) {
+		if token.Method.Alg() != echojwt.AlgorithmHS256 {
+			return nil, &echojwt.TokenError{Token: token, Err: fmt.Errorf("unexpected jwt signing method=%v", token.Header["alg"])}
+		}
+		return app.JWTSecret, nil
+	}
 }

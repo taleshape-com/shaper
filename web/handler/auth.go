@@ -12,47 +12,26 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func TokenLogin(app *core.App) echo.HandlerFunc {
+func Login(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
-			Token     string                 `json:"token"`
-			Variables map[string]interface{} `json:"variables"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		}
 		// If a token is provided, validate it
-		if loginRequest.Token != "" {
-			if ok, err := core.ValidLogin(app, c.Request().Context(), loginRequest.Token); err != nil {
-				return c.JSONPretty(http.StatusBadRequest, struct{ Error error }{Error: err}, "  ")
-			} else if !ok {
-				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
-			}
-		} else if app.LoginToken != "" {
-			// If login is enabled (login token is set), don't allow empty tokens
-			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Token required"})
-		}
-		claims := jwt.MapClaims{
-			"exp": time.Now().Add(app.JWTExp).Unix(),
-		}
-		if len(loginRequest.Variables) > 0 {
-			err := validateVariables(loginRequest.Variables)
-			if err != nil {
-				return c.JSON(http.StatusBadRequest, map[string]interface{}{
-					"error":     "Invalid variables format: " + err.Error(),
-					"variables": loginRequest.Variables,
-				})
-			}
-			claims["variables"] = loginRequest.Variables
-		}
-		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := jwtToken.SignedString(app.JWTSecret)
+		sessionToken, err := core.Login(app, c.Request().Context(), loginRequest.Email, loginRequest.Password)
 		if err != nil {
-			c.Logger().Error("Failed to sign token", slog.Any("error", err))
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		} else if sessionToken == "" {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid email or password"})
 		}
-		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
+		return c.JSON(http.StatusOK, map[string]string{"token": sessionToken})
 	}
 }
 
@@ -74,10 +53,10 @@ func validateVariables(mixedMap map[string]interface{}) error {
 	return nil
 }
 
-func AuthStatus(app *core.App) echo.HandlerFunc {
+func LoginEnabled(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]bool{
-			"enabled": app.LoginToken != "",
+			"enabled": app.LoginRequired,
 		})
 	}
 }
@@ -94,7 +73,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		}
 		// Check if the token is valid
-		if ok, err := core.ValidLogin(app, c.Request().Context(), loginRequest.Token); err != nil {
+		if ok, err := core.ValidToken(app, c.Request().Context(), loginRequest.Token); err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error error }{Error: err}, "  ")
 		} else if !ok {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})

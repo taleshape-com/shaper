@@ -29,7 +29,6 @@ type Config struct {
 	Address           string
 	Port              int
 	DBFile            string
-	LoginToken        string
 	Schema            string
 	ExecutableModTime time.Time
 	CustomCSS         string
@@ -55,7 +54,6 @@ func loadConfig() Config {
 	addr := flags.StringLong("addr", "0.0.0.0", "server address")
 	port := flags.Int('p', "port", 3000, "port to listen on")
 	dbFile := flags.String('d', "duckdb", "", "path to duckdb file (default: use in-memory db)")
-	loginToken := flags.String('t', "token", "", "token used for login (required)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
@@ -98,7 +96,6 @@ func loadConfig() Config {
 		Address:           *addr,
 		Port:              *port,
 		DBFile:            *dbFile,
-		LoginToken:        *loginToken,
 		Schema:            *schema,
 		ExecutableModTime: executableModTime,
 		CustomCSS:         *customCSS,
@@ -146,7 +143,6 @@ func Run(cfg Config) func(context.Context) {
 	app, err := core.New(
 		db,
 		logger,
-		cfg.LoginToken,
 		cfg.Schema,
 		cfg.JWTExp,
 	)

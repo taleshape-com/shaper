@@ -12,6 +12,7 @@ import (
 	"github.com/nrednav/cuid2"
 	"golang.org/x/crypto/bcrypt"
 )
+
 var ErrUserSetupCompleted = errors.New("user setup already completed")
 
 type User struct {
@@ -85,6 +86,13 @@ func HandleCreateUser(app *App, data []byte) bool {
 	if err != nil {
 		app.Logger.Error("failed to insert user into DB", slog.Any("error", err))
 		return false
+	}
+	if !app.LoginRequired {
+		app.LoginRequired = true
+		err := LoadJWTSecret(app)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return true
 }

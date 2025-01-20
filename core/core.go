@@ -24,7 +24,7 @@ const (
 type App struct {
 	db              *sqlx.DB
 	Logger          *slog.Logger
-	LoginToken      string
+	LoginRequired   bool
 	Schema          string
 	JWTSecret       []byte
 	JWTExp          time.Duration
@@ -37,19 +37,27 @@ type App struct {
 func New(
 	db *sqlx.DB,
 	logger *slog.Logger,
-	loginToken string,
 	schema string,
 	jwtExp time.Duration,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
 	}
+
+	loginRequired, err := isLoginRequired(db, schema)
+	if err != nil {
+		return nil, err
+	}
+	if !loginRequired {
+		logger.Info("SECURITY NOTE: No users found, login is disabled until first user is created")
+	}
+
 	app := &App{
-		db:         db,
-		Logger:     logger,
-		LoginToken: loginToken,
-		Schema:     schema,
-		JWTExp:     jwtExp,
+		db:            db,
+		Logger:        logger,
+		LoginRequired: loginRequired,
+		Schema:        schema,
+		JWTExp:        jwtExp,
 	}
 	return app, nil
 }
@@ -97,7 +105,7 @@ func (app *App) Init(nc *nats.Conn, persist bool) error {
 	}
 	app.StateConsumeCtx = stateConsumeCtx
 
-	return loadJWTSecret(app)
+	return LoadJWTSecret(app)
 }
 
 func (app *App) Close() {
@@ -129,6 +137,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleDeleteAPIKey
 	case "create_user":
 		handler = HandleCreateUser
+	case "create_session":
+		handler = HandleCreateSession
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
@@ -230,6 +240,19 @@ func initDB(db *sqlx.DB, schema string) error {
 	if err != nil {
 		return fmt.Errorf("error creating users table: %w", err)
 	}
+	// Create sessions table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.sessions (
+			id VARCHAR PRIMARY KEY,
+			user_id VARCHAR NOT NULL REFERENCES ` + schema + `.users(id),
+			hash VARCHAR NOT NULL,
+			salt VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating sessions table: %w", err)
+	}
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(db, t.Name, t.Definition); err != nil {
@@ -237,4 +260,14 @@ func initDB(db *sqlx.DB, schema string) error {
 		}
 	}
 	return nil
+}
+
+func isLoginRequired(db *sqlx.DB, schema string) (bool, error) {
+	var count int
+	err := db.Get(&count, `
+		SELECT count(*)
+		FROM `+schema+`.users
+		WHERE deleted_at IS NULL
+		`)
+	return count > 0, err
 }
