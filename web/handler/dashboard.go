@@ -15,14 +15,18 @@ func ListDashboards(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 		sort := c.QueryParam("sort")
 		order := c.QueryParam("order")
 		result, err := core.ListDashboards(app, c.Request().Context(), sort, order)
 		if err != nil {
 			c.Logger().Error("error listing dashboards:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
 	}
@@ -33,7 +37,9 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
-				struct{ Error string }{Error: "Unauthorized"}, "  ")
+				struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
 		}
 
 		var request struct {
@@ -42,7 +48,9 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 		}
 		if err := c.Bind(&request); err != nil {
 			return c.JSONPretty(http.StatusBadRequest,
-				struct{ Error string }{Error: "Invalid request"}, "  ")
+				struct {
+					Error string `json:"error"`
+				}{Error: "Invalid request"}, "  ")
 		}
 
 		// Validate dashboard name
@@ -57,7 +65,9 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 		if err != nil {
 			c.Logger().Error("error creating dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
-				struct{ Error string }{Error: err.Error()}, "  ")
+				struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
 		}
 
 		return c.JSONPretty(http.StatusCreated, struct {
@@ -73,13 +83,17 @@ func GetDashboardQuery(app *core.App) echo.HandlerFunc {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		// Embedding JWTs that are fixed to a dashboardId are not allowed to edit the board
 		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 
 		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting dashboard query:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 
 		return c.JSON(http.StatusOK, dashboard)
@@ -90,24 +104,32 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 
 		var request struct {
 			Name string `json:"name"`
 		}
 		if err := c.Bind(&request); err != nil {
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: "Invalid request"}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
 		}
 
 		if request.Name == "" {
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: "Dashboard name is required"}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Dashboard name is required"}, "  ")
 		}
 
 		err := core.SaveDashboardName(app, c.Request().Context(), c.Param("id"), request.Name)
 		if err != nil {
 			c.Logger().Error("error saving dashboard name:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 
 		return c.NoContent(http.StatusOK)
@@ -119,20 +141,26 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		// Embedding JWTs that are fixed to a dashboardId are not allowed to edit the board
 		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 
 		var request struct {
 			Content string `json:"content"`
 		}
 		if err := c.Bind(&request); err != nil {
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: "Invalid request"}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
 		}
 
 		err := core.SaveDashboardQuery(app, c.Request().Context(), c.Param("id"), request.Content)
 		if err != nil {
 			c.Logger().Error("error saving dashboard query:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 
 		return c.NoContent(http.StatusOK)
@@ -148,7 +176,9 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 			idParam = "ja1ce8t8x53fkpd8dsmh8qrt"
 		}
 		if id, hasId := claims["dashboardId"]; hasId && id != idParam {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 		variables := map[string]interface{}{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
@@ -157,7 +187,9 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct{ Error string }{Error: err.Error()}, "  ")
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
 	}
@@ -168,14 +200,18 @@ func DeleteDashboard(app *core.App) echo.HandlerFunc {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
-				struct{ Error string }{Error: "Unauthorized"}, "  ")
+				struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
 		}
 
 		err := core.DeleteDashboard(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error deleting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
-				struct{ Error string }{Error: err.Error()}, "  ")
+				struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
 		}
 
 		return c.NoContent(http.StatusOK)
@@ -187,7 +223,9 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 		variables := map[string]interface{}{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
@@ -229,7 +267,9 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 				c.Logger().Error("error downloading CSV:", slog.Any("error", err))
 				return c.JSONPretty(
 					http.StatusBadRequest,
-					struct{ Error string }{Error: err.Error()},
+					struct {
+						Error string `json:"error"`
+					}{Error: err.Error()},
 					"  ",
 				)
 			}
@@ -269,7 +309,9 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 				c.Logger().Error("error downloading .xlsx file:", slog.Any("error", err))
 				return c.JSONPretty(
 					http.StatusBadRequest,
-					struct{ Error string }{Error: err.Error()},
+					struct {
+						Error string `json:"error"`
+					}{Error: err.Error()},
 					"  ",
 				)
 			}
@@ -279,7 +321,9 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 
 		return c.JSONPretty(
 			http.StatusBadRequest,
-			struct{ Error string }{Error: "Invalid filename extension. Must be .csv or .xlsx"},
+			struct {
+				Error string `json:"error"`
+			}{Error: "Invalid filename extension. Must be .csv or .xlsx"},
 			"  ",
 		)
 	}
@@ -297,7 +341,9 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 		variables := map[string]interface{}{}
 		if vars, hasVariables := claims["variables"]; hasVariables {

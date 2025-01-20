@@ -20,6 +20,7 @@ import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
 import { Toaster } from "../components/tremor/Toaster";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
+import { useQueryApi } from "../hooks/useQueryApi";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
@@ -30,6 +31,7 @@ function Admin() {
   const { toast } = useToast();
   const navigate = useNavigate({ from: "/" });
   const auth = useAuth();
+  const queryApi = useQueryApi();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -65,7 +67,7 @@ function Admin() {
 
         {showAuthSetup && (
           <div className="mb-6">
-            {!auth.loginRequired && (
+            {auth.loginRequired === false && (
               <Callout title={translate("Setup Authentication")}>
                 <p className="mb-4">
                   {translate(
@@ -110,25 +112,14 @@ function Admin() {
                         }
 
                         try {
-                          const response = await fetch("/api/auth/setup", {
+                          await queryApi("/api/auth/setup", {
                             method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
+                            body: {
                               email: data.email,
                               name: data.name,
                               password: data.password,
-                            }),
+                            },
                           });
-
-                          if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(
-                              errorData.error || "Failed to create user",
-                            );
-                          }
-
                           toast({
                             title: translate("Success"),
                             description: translate("User created successfully"),

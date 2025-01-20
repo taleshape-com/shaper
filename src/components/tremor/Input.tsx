@@ -49,7 +49,7 @@ const inputStyles = tv({
 
 interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement>,
-    VariantProps<typeof inputStyles> {
+  VariantProps<typeof inputStyles> {
   inputClassName?: string;
 }
 
@@ -140,4 +140,4 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = "Input";
 
-export { Input, inputStyles, type InputProps };
+export { Input, type InputProps };

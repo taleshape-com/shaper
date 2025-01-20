@@ -26,6 +26,7 @@ import (
 var frontendFS embed.FS
 
 type Config struct {
+	SessionExp        time.Duration
 	Address           string
 	Port              int
 	DBFile            string
@@ -58,6 +59,7 @@ func loadConfig() Config {
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
+	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration (default: 30 days)")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
 	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
@@ -101,6 +103,7 @@ func loadConfig() Config {
 		CustomCSS:         *customCSS,
 		Favicon:           *favicon,
 		JWTExp:            *jwtExp,
+		SessionExp:        *sessionExp,
 		NatsHost:          *natsHost,
 		NatsPort:          *natsPort,
 		NatsToken:         *natsToken,
@@ -145,6 +148,7 @@ func Run(cfg Config) func(context.Context) {
 		logger,
 		cfg.Schema,
 		cfg.JWTExp,
+		cfg.SessionExp,
 	)
 	if err != nil {
 		panic(err)

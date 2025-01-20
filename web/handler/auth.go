@@ -144,7 +144,9 @@ func ResetJWTSecret(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct{ Error string }{Error: "Unauthorized"}, "  ")
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 		_, err := core.ResetJWTSecret(app, c.Request().Context())
 		if err != nil {

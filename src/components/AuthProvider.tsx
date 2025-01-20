@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const v = vars ?? getVariables(getVariablesString());
       return updateJwtWithVars(sessionToken, v);
     },
-    [],
+    [updateJwtWithVars],
   );
 
   const updateVariables = useCallback(async (text: string) => {
@@ -159,12 +159,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       const token = localStorage.getItem(localStorageTokenKey);
       if (!token) return false;
-
       return await updateJwtWithVars(token, vars);
     } catch {
       return false;
     }
-  }, []);
+  }, [updateJwtWithVars]);
 
   const getJwt = useCallback(async () => {
     const l = await getLoginRequired()

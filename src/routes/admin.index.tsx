@@ -1,7 +1,6 @@
 import { Button } from '../components/tremor/Button'
 import { useState } from 'react'
-import { useAuth } from '../lib/auth'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, isRedirect, useNavigate } from '@tanstack/react-router'
 import { useToast } from '../hooks/useToast'
 import { translate } from '../lib/translate'
 import {
@@ -14,6 +13,7 @@ import {
   TableRow,
 } from '../components/tremor/Table'
 import { useCallback, useEffect } from 'react'
+import { useQueryApi } from '../hooks/useQueryApi'
 
 interface APIKey {
   id: string
@@ -63,26 +63,19 @@ function APIKeyList() {
   const [loading, setLoading] = useState(true)
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false)
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null)
-  const auth = useAuth()
+  const queryApi = useQueryApi()
+  const navigate = useNavigate({ from: "/admin" })
+
   const { toast } = useToast()
 
   const fetchKeys = useCallback(async () => {
     try {
-      const jwt = await auth.getJwt()
-      const response = await fetch('/api/keys', {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: jwt,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch API keys')
-      }
-
-      const data = await response.json()
+      const data = await queryApi('/api/keys')
       setKeys(data.keys)
     } catch (error) {
+      if (isRedirect(error)) {
+        return navigate(error);
+      }
       toast({
         title: translate('Error'),
         description:
@@ -94,7 +87,7 @@ function APIKeyList() {
     } finally {
       setLoading(false)
     }
-  }, [auth, toast])
+  }, [queryApi, toast])
 
   useEffect(() => {
     fetchKeys()
@@ -113,24 +106,18 @@ function APIKeyList() {
     }
 
     try {
-      const jwt = await auth.getJwt()
-      const response = await fetch(`/api/keys/${key.id}`, {
+      await queryApi(`/api/keys/${key.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: jwt,
-        },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete API key')
-      }
-
       toast({
         title: translate('Success'),
         description: translate('API key deleted successfully'),
       })
       fetchKeys()
     } catch (error) {
+      if (isRedirect(error)) {
+        return navigate(error);
+      }
       toast({
         title: translate('Error'),
         description:
@@ -144,24 +131,16 @@ function APIKeyList() {
 
   const handleCreateKey = async (name: string) => {
     try {
-      const jwt = await auth.getJwt()
-      const response = await fetch('/api/keys', {
+      const data = await queryApi('/api/keys', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: jwt,
-        },
-        body: JSON.stringify({ name }),
+        body: { name },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to create API key')
-      }
-
-      const data = await response.json()
       setNewKey(data)
       fetchKeys()
     } catch (error) {
+      if (isRedirect(error)) {
+        return navigate(error);
+      }
       toast({
         title: translate('Error'),
         description:
@@ -296,29 +275,24 @@ function APIKeyList() {
 function ResetJWTButton() {
   const [isResetting, setIsResetting] = useState(false)
   const { toast } = useToast()
-  const auth = useAuth()
+  const queryApi = useQueryApi()
+  const navigate = useNavigate({ from: "/admin" })
+
 
   const handleReset = async () => {
     setIsResetting(true)
     try {
-      const jwt = await auth.getJwt()
-      const response = await fetch('/api/admin/reset-jwt-secret', {
+      await queryApi('/api/admin/reset-jwt-secret', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: jwt,
-        },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to reset JWT secret')
-      }
-
       toast({
         title: translate('Success'),
         description: translate('JWT secret reset successfully'),
       })
     } catch (error) {
+      if (isRedirect(error)) {
+        return navigate(error);
+      }
       toast({
         title: translate('Error'),
         description:

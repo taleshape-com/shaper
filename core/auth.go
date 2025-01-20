@@ -22,8 +22,9 @@ import (
 const SESSION_TOKEN_PREFIX = "shapersession."
 
 type Session struct {
-	Hash string `db:"hash"`
-	Salt string `db:"salt"`
+	Hash      string    `db:"hash"`
+	Salt      string    `db:"salt"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 type CreateSessionPayload struct {
@@ -143,12 +144,16 @@ func validateSessionToken(app *App, ctx context.Context, token string) (bool, er
 
 	var storedSession Session
 	err := app.db.GetContext(ctx, &storedSession,
-		`SELECT hash, salt FROM `+app.Schema+`.sessions WHERE id = $1`, id)
+		`SELECT hash, salt, created_at FROM `+app.Schema+`.sessions WHERE id = $1`, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
 		}
 		return false, err
+	}
+	// Check if session has expired
+	if time.Since(storedSession.CreatedAt) > app.SessionExp {
+		return false, nil
 	}
 
 	// Validate using HMAC with stored salt

@@ -4,7 +4,7 @@ import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 
 import { z } from "zod";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth, logout } from "../lib/auth";
@@ -26,6 +26,7 @@ import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 import { IDashboard, Result } from "../lib/dashboard";
 import { Button } from "../components/tremor/Button";
+import { useQueryApi } from "../hooks/useQueryApi";
 
 self.MonacoEnvironment = {
   getWorker() {
@@ -45,19 +46,10 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
   loader: async ({
     params: { dashboardId },
     context: {
-      auth: { getJwt },
+      queryApi,
     },
   }) => {
-    const jwt = await getJwt();
-    const response = await fetch(`/api/dashboards/${dashboardId}/query`, {
-      headers: {
-        Authorization: jwt,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to load dashboard query");
-    }
-    const data = await response.json();
+    const data = await queryApi(`/api/dashboards/${dashboardId}/query`);
     return data as IDashboard;
   },
   component: DashboardEditor,
@@ -68,6 +60,7 @@ function DashboardEditor() {
   const { vars } = Route.useSearch();
   const dashboard = Route.useLoaderData();
   const auth = useAuth();
+  const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
   const [query, setQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
@@ -116,28 +109,19 @@ function DashboardEditor() {
     setIsPreviewLoading(true);
     editorStorage.saveChanges(params.dashboardId, newQuery);
     try {
-      const jwt = await auth.getJwt();
       const searchParams = getSearchParamString(vars);
-      const response = await fetch(`/api/query/dashboard?${searchParams}`, {
+      const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: jwt,
-        },
-        body: JSON.stringify({
+        body: {
           dashboardId: params.dashboardId,
           content: newQuery,
-        }),
+        },
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to preview dashboard");
-      }
-
-      const data = await response.json();
       setPreviewData(data);
     } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err);
+      }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsPreviewLoading(false);
@@ -155,31 +139,25 @@ function DashboardEditor() {
     setSaving(true);
     setError(null);
     try {
-      const jwt = await auth.getJwt();
-      const response = await fetch(
+      await queryApi(
         `/api/dashboards/${params.dashboardId}/query`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: jwt,
-          },
-          body: JSON.stringify({ content: query }),
+          body: { content: query },
         },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to save dashboard query");
-      }
       dashboard.content = query;
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.dashboardId);
     } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err);
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSaving(false);
     }
-  }, [auth, params.dashboardId, query, dashboard]);
+  }, [queryApi, params.dashboardId, query, dashboard]);
 
   const handleDashboardError = useCallback((err: Error) => {
     setPreviewError(err.message);
@@ -222,26 +200,19 @@ function DashboardEditor() {
     setSavingName(true);
     setError(null);
     try {
-      const jwt = await auth.getJwt();
-      const response = await fetch(
+      await queryApi(
         `/api/dashboards/${params.dashboardId}/name`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: jwt,
-          },
-          body: JSON.stringify({ name: newName }),
+          body: { name: newName },
         },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to save dashboard name");
-      }
-
       dashboard.name = newName;
       setName(newName);
     } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err);
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
       // Revert name on error
       setName(dashboard.name);
@@ -262,21 +233,15 @@ function DashboardEditor() {
     }
 
     try {
-      const jwt = await auth.getJwt();
-      const response = await fetch(`/api/dashboards/${params.dashboardId}`, {
+      await queryApi(`/api/dashboards/${params.dashboardId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: jwt,
-        },
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete dashboard");
-      }
-
       // Navigate back to dashboard list
       navigate({ to: "/" });
     } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err);
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
     }
   };

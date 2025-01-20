@@ -48,7 +48,7 @@ const calloutVariants = tv({
 
 interface CalloutProps
   extends React.ComponentPropsWithoutRef<"div">,
-    VariantProps<typeof calloutVariants> {
+  VariantProps<typeof calloutVariants> {
   title: string;
   icon?: React.ElementType | React.ReactElement;
 }
@@ -86,4 +86,4 @@ const Callout = React.forwardRef<HTMLDivElement, CalloutProps>(
 
 Callout.displayName = "Callout";
 
-export { Callout, calloutVariants, type CalloutProps };
+export { Callout, type CalloutProps };

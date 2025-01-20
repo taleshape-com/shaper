@@ -1,5 +1,5 @@
 import z from "zod";
-import { redirect, useRouter } from "@tanstack/react-router";
+import { isRedirect, useRouter } from "@tanstack/react-router";
 import {
   ErrorComponent,
   createFileRoute,
@@ -22,6 +22,7 @@ import {
 import { RiSortAsc, RiSortDesc } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { Button } from "../components/tremor/Button";
+import { useQueryApi } from "../hooks/useQueryApi";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -37,38 +38,10 @@ export const Route = createFileRoute("/")({
     order,
   }),
   loader: async ({
-    context: { auth },
+    context: { queryApi },
     deps: { sort = "name", order = "asc" },
   }) => {
-    const jwt = await auth.getJwt();
-
-    return fetch(`/api/dashboards?sort=${sort}&order=${order}`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: jwt,
-      },
-    })
-      .then(async (response) => {
-        if (response.status === 401) {
-          throw redirect({
-            to: "/login",
-            search: {
-              // Use the current location to power a redirect after login
-              // (Do not use `router.state.resolvedLocation` as it can
-              // potentially lag behind the actual current location)
-              redirect: location.pathname + location.search + location.hash,
-            },
-          });
-        }
-        if (response.status !== 200) {
-          return response
-            .json()
-            .then((data: { Error: { Type: number; Msg: string } }) => {
-              throw new Error(data.Error.Msg);
-            });
-        }
-        return response.json();
-      })
+    return queryApi(`/api/dashboards?sort=${sort}&order=${order}`)
       .then((fetchedData: DashboardListResponse) => {
         return fetchedData;
       });
@@ -86,6 +59,8 @@ function Index() {
   const { sort, order } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const auth = useAuth();
+  const queryApi = useQueryApi();
+
   const router = useRouter();
 
   const handleSort = (field: "name" | "created" | "updated") => {
@@ -129,21 +104,15 @@ function Index() {
     }
 
     try {
-      const jwt = await auth.getJwt();
-      const response = await fetch(`/api/dashboards/${dashboard.id}`, {
+      await queryApi(`/api/dashboards/${dashboard.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: jwt,
-        },
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete dashboard");
-      }
-
       // Reload the page to refresh the list
       router.invalidate();
     } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err);
+      }
       alert(
         "Error deleting dashboard: " +
         (err instanceof Error ? err.message : "Unknown error"),

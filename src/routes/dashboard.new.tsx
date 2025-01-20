@@ -3,7 +3,7 @@ import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { z } from "zod";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth, logout } from "../lib/auth";
@@ -24,6 +24,7 @@ import {
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 import { Button } from "../components/tremor/Button";
+import { useQueryApi } from "../hooks/useQueryApi";
 
 const defaultQuery = "-- Enter your SQL query here"
 
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/dashboard/new")({
 function NewDashboard() {
   const { vars } = Route.useSearch();
   const auth = useAuth();
+  const queryApi = useQueryApi()
   const navigate = useNavigate({ from: "/dashboard/new" });
   const [query, setQuery] = useState(defaultQuery);
   const [creating, setCreating] = useState(false);
@@ -94,27 +96,18 @@ function NewDashboard() {
       editorStorage.clearChanges("new");
     }
     try {
-      const jwt = await auth.getJwt();
       const searchParams = getSearchParamString(vars);
-      const response = await fetch(`/api/query/dashboard?${searchParams}`, {
+      const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: jwt,
-        },
-        body: JSON.stringify({
+        body: {
           content: newQuery,
-        }),
+        },
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to preview dashboard");
-      }
-
-      const data = await response.json();
       setPreviewData(data);
     } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err);
+      }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsPreviewLoading(false);
@@ -138,26 +131,13 @@ function NewDashboard() {
     setCreating(true);
     setError(null);
     try {
-      const jwt = await auth.getJwt();
-      const response = await fetch("/api/dashboards", {
+      const { id } = await queryApi("/api/dashboards", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: jwt,
-        },
-        body: JSON.stringify({
+        body: {
           name,
           content: query,
-        }),
+        },
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create dashboard");
-      }
-
-      const { id } = await response.json();
-
       // Clear localStorage after successful save
       editorStorage.clearChanges("new");
 
@@ -169,11 +149,14 @@ function NewDashboard() {
         search: () => ({ vars }),
       });
     } catch (err) {
+      if (isRedirect(error)) {
+        return navigate(error);
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setCreating(false);
     }
-  }, [auth, query, navigate, vars]);
+  }, [queryApi, query, navigate, vars]);
 
   const handleDashboardError = useCallback((err: Error) => {
     setPreviewError(err.message);
