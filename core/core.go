@@ -51,7 +51,7 @@ func New(
 		return nil, err
 	}
 	if !loginRequired {
-		logger.Info("SECURITY NOTE: No users found, login is disabled until first user is created")
+		logger.Warn("No users found, login is disabled until first user is created")
 	}
 
 	app := &App{

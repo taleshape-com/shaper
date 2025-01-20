@@ -119,6 +119,7 @@ func New(config Config) (Comms, error) {
 	if config.JSDir != "" {
 		opts.StoreDir = config.JSDir
 	} else {
+		config.Logger.Info("No JetStream directory provided, using temporary directory and creating streams in memory")
 		tmpStoreDir, err := os.MkdirTemp("", "shaper-nats")
 		if err != nil {
 			return Comms{}, err

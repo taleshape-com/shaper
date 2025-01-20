@@ -136,9 +136,9 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 	if cfg.DBFile != "" {
-		fmt.Println("⇨ connected to duckdb", cfg.DBFile)
+		logger.Info("connected to duckdb", slog.Any("file", cfg.DBFile))
 	} else {
-		fmt.Println("⇨ connected to in-memory duckdb")
+		logger.Info("connected to in-memory duckdb")
 	}
 
 	persistNATS := cfg.NatsJSDir != ""
