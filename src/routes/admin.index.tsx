@@ -87,7 +87,7 @@ function APIKeyList() {
     } finally {
       setLoading(false)
     }
-  }, [queryApi, toast])
+  }, [queryApi, toast, navigate])
 
   useEffect(() => {
     fetchKeys()

@@ -157,7 +157,7 @@ function DashboardEditor() {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.dashboardId, query, dashboard]);
+  }, [queryApi, params.dashboardId, query, dashboard, navigate]);
 
   const handleDashboardError = useCallback((err: Error) => {
     setPreviewError(err.message);

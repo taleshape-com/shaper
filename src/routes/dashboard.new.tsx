@@ -149,8 +149,8 @@ function NewDashboard() {
         search: () => ({ vars }),
       });
     } catch (err) {
-      if (isRedirect(error)) {
-        return navigate(error);
+      if (isRedirect(err)) {
+        return navigate(err);
       }
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
