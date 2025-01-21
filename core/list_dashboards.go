@@ -28,5 +28,5 @@ func ListDashboards(app *App, ctx context.Context, sort string, order string) (L
 	if err != nil {
 		err = fmt.Errorf("error listing dashboards: %w", err)
 	}
-	return ListResult{Dashboards: dashboards}, nil
+	return ListResult{Dashboards: dashboards}, err
 }

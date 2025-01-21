@@ -142,6 +142,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleCreateUser
 	case "create_session":
 		handler = HandleCreateSession
+	case "delete_user":
+		handler = HandleDeleteUser
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)

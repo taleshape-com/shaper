@@ -23,6 +23,9 @@ type User struct {
 	CreatedAt    time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updatedAt"`
 	DeletedAt    *time.Time `db:"deleted_at" json:"deletedAt,omitempty"`
+	CreatedBy    *time.Time `db:"created_by" json:"-"`
+	UpdatedBy    *time.Time `db:"updated_by" json:"-"`
+	DeletedBy    *time.Time `db:"deleted_by" json:"-"`
 }
 
 type CreateUserPayload struct {
@@ -93,6 +96,116 @@ func HandleCreateUser(app *App, data []byte) bool {
 		if err != nil {
 			panic(err)
 		}
+	}
+	return true
+}
+
+type UserList struct {
+	Users []User `json:"users"`
+}
+
+func ListUsers(app *App, ctx context.Context, sort string, order string) (UserList, error) {
+	var orderBy string
+	switch sort {
+	case "name":
+		orderBy = "name"
+	case "email":
+		orderBy = "email"
+	default:
+		orderBy = "created_at"
+	}
+
+	if order != "asc" && order != "desc" {
+		order = "desc"
+	}
+
+	users := []User{}
+	err := app.db.SelectContext(ctx, &users,
+		fmt.Sprintf(`SELECT *
+		 FROM %s.users
+		 WHERE deleted_at IS NULL
+		 ORDER BY %s %s`, app.Schema, orderBy, order))
+	if err != nil {
+		err = fmt.Errorf("error listing users: %w", err)
+	}
+	fmt.Println("users", users, fmt.Sprintf(`SELECT *
+		 FROM %s.users
+		 WHERE deleted_at IS NULL
+		 ORDER BY %s %s`, app.Schema, orderBy, order))
+	return UserList{Users: users}, err
+}
+
+type DeleteUserPayload struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func DeleteUser(app *App, ctx context.Context, id string) error {
+	var count int
+	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return fmt.Errorf("failed to query user: %w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	// Don't allow deleting the last active user
+	err = app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
+	if err != nil {
+		return fmt.Errorf("failed to check remaining users: %w", err)
+	}
+	if count <= 1 {
+		return fmt.Errorf("cannot delete the last user")
+	}
+
+	err = app.SubmitState(ctx, "delete_user", DeleteUserPayload{
+		ID:        id,
+		Timestamp: time.Now(),
+	})
+	return err
+}
+
+func HandleDeleteUser(app *App, data []byte) bool {
+	var payload DeleteUserPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal delete user payload", slog.Any("error", err))
+		return false
+	}
+
+	tx, err := app.db.Begin()
+	if err != nil {
+		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
+		return false
+	}
+	defer tx.Rollback()
+
+	// Delete user's sessions first
+	_, err = tx.Exec(
+		`DELETE FROM "`+app.Schema+`".sessions WHERE user_id = $1`,
+		payload.ID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to delete user sessions", slog.Any("error", err))
+		return false
+	}
+
+	// Then soft delete the user
+	_, err = tx.Exec(
+		`UPDATE "`+app.Schema+`".users SET deleted_at = $1 WHERE id = $2`,
+		payload.Timestamp,
+		payload.ID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to soft delete user", slog.Any("error", err))
+		return false
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		app.Logger.Error("failed to commit transaction", slog.Any("error", err))
+		return false
 	}
 	return true
 }
