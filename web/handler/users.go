@@ -168,3 +168,33 @@ func ClaimInvite(app *core.App) echo.HandlerFunc {
 		}{Claimed: true}, "  ")
 	}
 }
+
+func DeleteInvite(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		code := c.Param("code")
+		if code == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invite code is required"}, "  ")
+		}
+
+		err := core.DeleteInvite(app, c.Request().Context(), code)
+		if err != nil {
+			c.Logger().Error("error deleting invite:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, struct {
+			Deleted bool `json:"deleted"`
+		}{Deleted: true}, "  ")
+	}
+}

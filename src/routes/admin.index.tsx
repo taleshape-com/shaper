@@ -1,10 +1,10 @@
-import z from 'zod'
+import z from "zod";
 import {
   createFileRoute,
   isRedirect,
   useNavigate,
-} from '@tanstack/react-router'
-import { translate } from '../lib/translate'
+} from "@tanstack/react-router";
+import { translate } from "../lib/translate";
 import {
   Table,
   TableBody,
@@ -13,13 +13,13 @@ import {
   TableHeaderCell,
   TableRoot,
   TableRow,
-} from '../components/tremor/Table'
-import { RiSortAsc, RiSortDesc } from '@remixicon/react'
+} from "../components/tremor/Table";
+import { RiSortAsc, RiSortDesc } from "@remixicon/react";
 import { useState } from "react";
-import { Button } from '../components/tremor/Button'
-import { useToast } from '../hooks/useToast'
-import { useRouter } from '@tanstack/react-router'
-import { useQueryApi } from '../hooks/useQueryApi'
+import { Button } from "../components/tremor/Button";
+import { useToast } from "../hooks/useToast";
+import { useRouter } from "@tanstack/react-router";
+import { useQueryApi } from "../hooks/useQueryApi";
 import { useAuth } from "../lib/auth";
 import { Callout } from "../components/tremor/Callout";
 import {
@@ -36,20 +36,27 @@ import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 
 interface IUser {
-  id: string
-  email: string
-  name: string
-  createdAt: string
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
+interface IInvite {
+  code: string;
+  email: string;
+  createdAt: string;
 }
 
 type UserListResponse = {
-  users: IUser[]
-}
+  users: IUser[];
+  invites: IInvite[];
+};
 
-export const Route = createFileRoute('/admin/')({
+export const Route = createFileRoute("/admin/")({
   validateSearch: z.object({
-    sort: z.enum(['name', 'email', 'created']).optional(),
-    order: z.enum(['asc', 'desc']).optional(),
+    sort: z.enum(["name", "email", "created"]).optional(),
+    order: z.enum(["asc", "desc"]).optional(),
   }),
   loaderDeps: ({ search: { sort, order } }) => ({
     sort,
@@ -57,276 +64,265 @@ export const Route = createFileRoute('/admin/')({
   }),
   loader: async ({
     context: { queryApi },
-    deps: { sort = 'created', order = 'desc' },
+    deps: { sort = "created", order = "desc" },
   }) => {
     return queryApi(
       `/api/users?sort=${sort}&order=${order}`,
-    ) as Promise<UserListResponse>
+    ) as Promise<UserListResponse>;
   },
   component: UsersManagement,
-})
+});
 
 const getInviteLink = (code: string) => {
-  const baseUrl = window.location.origin
-  return `${baseUrl}/signup?code=${code}`
-}
+  const baseUrl = window.location.origin;
+  return `${baseUrl}/signup?code=${code}`;
+};
 
 function UsersManagement() {
-  const router = useRouter()
-  const data = Route.useLoaderData()
+  const router = useRouter();
+  const data = Route.useLoaderData();
   const auth = useAuth();
-  const { sort, order } = Route.useSearch()
-  const navigate = useNavigate({ from: '/admin' })
-  const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const { sort, order } = Route.useSearch();
+  const navigate = useNavigate({ from: "/admin" });
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteCode, setInviteCode] = useState<{
-    code: string
-    email: string
-  } | null>(null)
-  const { toast } = useToast()
-  const [showAuthSetup, setShowAuthSetup] = useState(true);
+    code: string;
+    email: string;
+  } | null>(null);
+  const { toast } = useToast();
   const queryApi = useQueryApi();
 
-  const handleSort = (field: 'name' | 'email' | 'created') => {
+  const handleSort = (field: "name" | "email" | "created") => {
     const newOrder =
-      field === (sort ?? 'created')
-        ? (order ?? 'desc') === 'asc'
-          ? 'desc'
-          : 'asc'
-        : field === 'created'
-          ? 'desc'
-          : 'asc'
+      field === (sort ?? "created")
+        ? (order ?? "desc") === "asc"
+          ? "desc"
+          : "asc"
+        : field === "created"
+          ? "desc"
+          : "asc";
 
     navigate({
       replace: true,
       search: (prev) => ({
         ...prev,
-        sort: field === 'created' ? undefined : field,
+        sort: field === "created" ? undefined : field,
         order:
-          field === 'created' && newOrder === 'desc' ? undefined : newOrder,
+          field === "created" && newOrder === "desc" ? undefined : newOrder,
       }),
-    })
-  }
+    });
+  };
 
-  const SortIcon = ({ field }: { field: 'name' | 'email' | 'created' }) => {
-    if (field !== (sort ?? 'created')) return null
-    return (order ?? 'desc') === 'asc' ? (
+  const SortIcon = ({ field }: { field: "name" | "email" | "created" }) => {
+    if (field !== (sort ?? "created")) return null;
+    return (order ?? "desc") === "asc" ? (
       <RiSortAsc className="inline size-4" />
     ) : (
       <RiSortDesc className="inline size-4" />
-    )
-  }
+    );
+  };
 
   const handleDelete = async (user: IUser) => {
     if (
       !window.confirm(
-        translate('Are you sure you want to delete the user %%?').replace(
-          '%%',
+        translate("Are you sure you want to delete the user %%?").replace(
+          "%%",
           user.email,
         ),
       )
     ) {
-      return
+      return;
     }
 
     try {
       await queryApi(`/api/users/${user.id}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
       // Reload the page to refresh the list
-      router.invalidate()
+      router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err)
+        return navigate(err);
       }
       alert(
-        'Error deleting user: ' +
-        (err instanceof Error ? err.message : 'Unknown error'),
-      )
+        "Error deleting user: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
     }
-  }
+  };
 
   if (!data) {
-    return <div className="p-2">{translate('Loading users...')}</div>
+    return <div className="p-2">{translate("Loading users...")}</div>;
   }
 
   const handleCreateInvite = async (email: string) => {
     try {
-      const data = await queryApi('/api/invites', {
-        method: 'POST',
+      const data = await queryApi("/api/invites", {
+        method: "POST",
         body: { email },
-      })
-      setInviteCode({ code: data.code, email })
+      });
+      setInviteCode({ code: data.code, email });
+      router.invalidate();
     } catch (error) {
       if (isRedirect(error)) {
-        return navigate(error)
+        return navigate(error);
       }
       toast({
-        title: translate('Error'),
+        title: translate("Error"),
         description:
           error instanceof Error
             ? error.message
-            : translate('An error occurred'),
-        variant: 'error',
-      })
+            : translate("An error occurred"),
+        variant: "error",
+      });
     }
-  }
+  };
 
   return (
     <>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">
-          {translate('User Management')}
+          {translate("User Management")}
         </h2>
         {auth.loginRequired && (
           <Button onClick={() => setShowInviteDialog(true)}>
-            {translate('Invite User')}
+            {translate("Invite User")}
           </Button>
         )}
       </div>
 
-      {showAuthSetup && (
+      {auth.loginRequired === false && (
         <div className="mb-6">
-          {auth.loginRequired === false && (
-            <Callout title={translate("Setup Authentication")}>
-              <p className="mb-4">
-                {translate(
-                  "Create a first user account to enable authentication and secure the system",
-                )}
-              </p>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="primary">
-                    {translate("Create User")}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {translate("Create First User")}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {translate(
-                        "Enter the details for the first administrative user",
-                      )}
-                    </DialogDescription>
-                  </DialogHeader>
+          <Callout title={translate("Setup Authentication")}>
+            <p className="mb-4">
+              {translate(
+                "Create a first user account to enable authentication and secure the system",
+              )}
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="primary">{translate("Create User")}</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{translate("Create First User")}</DialogTitle>
+                  <DialogDescription>
+                    {translate(
+                      "Enter the details for the first administrative user",
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
 
-                  <form
-                    className="mt-4 space-y-4"
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      const formData = new FormData(e.currentTarget);
-                      const data = {
-                        email: formData.get("email") as string,
-                        name: formData.get("name") as string,
-                        password: formData.get("password") as string,
-                        confirmPassword: formData.get(
-                          "confirmPassword",
-                        ) as string,
-                      };
+                <form
+                  className="mt-4 space-y-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const data = {
+                      email: formData.get("email") as string,
+                      name: formData.get("name") as string,
+                      password: formData.get("password") as string,
+                      confirmPassword: formData.get(
+                        "confirmPassword",
+                      ) as string,
+                    };
 
-                      if (data.password !== data.confirmPassword) {
-                        toast({
-                          title: translate("Error"),
-                          description: translate("Passwords do not match"),
-                          variant: "error",
-                        });
-                        return;
-                      }
+                    if (data.password !== data.confirmPassword) {
+                      toast({
+                        title: translate("Error"),
+                        description: translate("Passwords do not match"),
+                        variant: "error",
+                      });
+                      return;
+                    }
 
-                      try {
-                        await queryApi("/api/auth/setup", {
-                          method: "POST",
-                          body: {
-                            email: data.email,
-                            name: data.name,
-                            password: data.password,
-                          },
-                        });
-                        toast({
-                          title: translate("Success"),
-                          description: translate("User created successfully"),
-                        });
-                        setShowAuthSetup(false);
-                        auth.setLoginRequired(true);
-                        navigate({
-                          to: "/login",
-                          replace: true,
-                        });
-                      } catch (error) {
-                        toast({
-                          title: translate("Error"),
-                          description:
-                            error instanceof Error
-                              ? error.message
-                              : translate("An error occurred"),
-                          variant: "error",
-                        });
-                      }
-                    }}
-                  >
-                    <div className="space-y-2">
-                      <Label htmlFor="email">{translate("Email")}</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="admin@example.com"
-                      />
-                    </div>
+                    try {
+                      await queryApi("/api/auth/setup", {
+                        method: "POST",
+                        body: {
+                          email: data.email,
+                          name: data.name,
+                          password: data.password,
+                        },
+                      });
+                      toast({
+                        title: translate("Success"),
+                        description: translate("User created successfully"),
+                      });
+                      auth.setLoginRequired(true);
+                      navigate({
+                        to: "/login",
+                        replace: true,
+                      });
+                    } catch (error) {
+                      toast({
+                        title: translate("Error"),
+                        description:
+                          error instanceof Error
+                            ? error.message
+                            : translate("An error occurred"),
+                        variant: "error",
+                      });
+                    }
+                  }}
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{translate("Email")}</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="admin@example.com"
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="name">{translate("Name")}</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        type="text"
-                        placeholder={translate("Administrator")}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{translate("Name")}</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      type="text"
+                      placeholder={translate("Administrator")}
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="password">
-                        {translate("Password")}
-                      </Label>
-                      <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        minLength={8}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">{translate("Password")}</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      minLength={8}
+                      required
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">
-                        {translate("Confirm Password")}
-                      </Label>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        minLength={8}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">
+                      {translate("Confirm Password")}
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      minLength={8}
+                      required
+                    />
+                  </div>
 
-                    <DialogFooter className="mt-6">
-                      <DialogClose asChild>
-                        <Button type="button" variant="secondary">
-                          {translate("Cancel")}
-                        </Button>
-                      </DialogClose>
-                      <Button type="submit">
-                        {translate("Create User")}
+                  <DialogFooter className="mt-6">
+                    <DialogClose asChild>
+                      <Button type="button" variant="secondary">
+                        {translate("Cancel")}
                       </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </Callout>
-          )}
+                    </DialogClose>
+                    <Button type="submit">{translate("Create User")}</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </Callout>
         </div>
       )}
 
@@ -334,26 +330,26 @@ function UsersManagement() {
         <Dialog
           open={true}
           onOpenChange={() => {
-            setShowInviteDialog(false)
-            setInviteCode(null)
+            setShowInviteDialog(false);
+            setInviteCode(null);
           }}
         >
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>
                 {inviteCode
-                  ? translate('Invite Link')
-                  : translate('Invite User')}
+                  ? translate("Invite Link")
+                  : translate("Invite User")}
               </DialogTitle>
               <DialogDescription>
                 {inviteCode
-                  ? translate('Share this link with %%').replace(
-                    '%%',
-                    inviteCode.email,
-                  )
+                  ? translate("Share this link with %%").replace(
+                      "%%",
+                      inviteCode.email,
+                    )
                   : translate(
-                    'Enter the email address of the user you want to invite',
-                  )}
+                      "Enter the email address of the user you want to invite",
+                    )}
               </DialogDescription>
             </DialogHeader>
 
@@ -367,27 +363,27 @@ function UsersManagement() {
                     onClick={() => {
                       navigator.clipboard.writeText(
                         getInviteLink(inviteCode.code),
-                      )
+                      );
                       toast({
-                        title: translate('Success'),
+                        title: translate("Success"),
                         description: translate(
-                          'Invite link copied to clipboard',
+                          "Invite link copied to clipboard",
                         ),
-                      })
+                      });
                     }}
                     variant="secondary"
                   >
-                    {translate('Copy')}
+                    {translate("Copy")}
                   </Button>
                 </div>
                 <DialogFooter>
                   <Button
                     onClick={() => {
-                      setShowInviteDialog(false)
-                      setInviteCode(null)
+                      setShowInviteDialog(false);
+                      setInviteCode(null);
                     }}
                   >
-                    {translate('Close')}
+                    {translate("Close")}
                   </Button>
                 </DialogFooter>
               </div>
@@ -395,13 +391,13 @@ function UsersManagement() {
               <form
                 className="space-y-4"
                 onSubmit={(e) => {
-                  e.preventDefault()
-                  const formData = new FormData(e.currentTarget)
-                  handleCreateInvite(formData.get('email') as string)
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  handleCreateInvite(formData.get("email") as string);
                 }}
               >
                 <div className="space-y-2">
-                  <Label htmlFor="email">{translate('Email')}</Label>
+                  <Label htmlFor="email">{translate("Email")}</Label>
                   <Input
                     id="email"
                     name="email"
@@ -414,10 +410,10 @@ function UsersManagement() {
                 <DialogFooter className="mt-6">
                   <DialogClose asChild>
                     <Button type="button" variant="secondary">
-                      {translate('Cancel')}
+                      {translate("Cancel")}
                     </Button>
                   </DialogClose>
-                  <Button type="submit">{translate('Create Invite')}</Button>
+                  <Button type="submit">{translate("Create Invite")}</Button>
                 </DialogFooter>
               </form>
             )}
@@ -426,33 +422,150 @@ function UsersManagement() {
       )}
 
       {auth.loginRequired && (
-        data.users.length === 0 ? (
-          <p className="text-gray-500">{translate('No users found')}</p>
-        ) : (
+        <>
+          {data.invites?.length > 0 && (
+            <>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">
+                  {translate("Pending Invites")}
+                </h3>
+                <TableRoot>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
+                          {translate("Email")}
+                        </TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
+                          {translate("Created")}
+                        </TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
+                          {translate("Invite Link")}
+                        </TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
+                          {translate("Actions")}
+                        </TableHeaderCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {data.invites.map((invite) => (
+                        <TableRow key={invite.code}>
+                          <TableCell className="text-ctext2 dark:text-dtext2">
+                            {invite.email}
+                          </TableCell>
+                          <TableCell className="text-ctext2 dark:text-dtext2">
+                            <div
+                              title={new Date(
+                                invite.createdAt,
+                              ).toLocaleString()}
+                            >
+                              {new Date(invite.createdAt).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-ctext2 dark:text-dtext2">
+                            <div className="flex items-center gap-2">
+                              <code className="bg-gray-100 dark:bg-gray-700 p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
+                                {getInviteLink(invite.code)}
+                              </code>
+                              <Button
+                                variant="secondary"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    getInviteLink(invite.code),
+                                  );
+                                  toast({
+                                    title: translate("Success"),
+                                    description: translate(
+                                      "Invite link copied to clipboard",
+                                    ),
+                                  });
+                                }}
+                              >
+                                {translate("Copy")}
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !window.confirm(
+                                    translate(
+                                      "Are you sure you want to delete the invite for %%?",
+                                    ).replace("%%", invite.email),
+                                  )
+                                ) {
+                                  return;
+                                }
+                                try {
+                                  await queryApi(
+                                    `/api/invites/${invite.code}`,
+                                    {
+                                      method: "DELETE",
+                                    },
+                                  );
+                                  toast({
+                                    title: translate("Success"),
+                                    description: translate(
+                                      "Invite deleted successfully",
+                                    ),
+                                  });
+                                  router.invalidate();
+                                } catch (error) {
+                                  if (isRedirect(error)) {
+                                    return navigate(error);
+                                  }
+                                  toast({
+                                    title: translate("Error"),
+                                    description:
+                                      error instanceof Error
+                                        ? error.message
+                                        : translate("An error occurred"),
+                                    variant: "error",
+                                  });
+                                }
+                              }}
+                              className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
+                            >
+                              {translate("Delete")}
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableRoot>
+              </div>
+              <h3 className="text-lg font-semibold mb-3">
+                {translate("Users")}
+              </h3>
+            </>
+          )}
+
           <TableRoot>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableHeaderCell
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort("name")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                   >
-                    {translate('Name')} <SortIcon field="name" />
+                    {translate("Name")} <SortIcon field="name" />
                   </TableHeaderCell>
                   <TableHeaderCell
-                    onClick={() => handleSort('email')}
+                    onClick={() => handleSort("email")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                   >
-                    {translate('Email')} <SortIcon field="email" />
+                    {translate("Email")} <SortIcon field="email" />
                   </TableHeaderCell>
                   <TableHeaderCell
-                    onClick={() => handleSort('created')}
+                    onClick={() => handleSort("created")}
                     className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                   >
-                    {translate('Created')} <SortIcon field="created" />
+                    {translate("Created")} <SortIcon field="created" />
                   </TableHeaderCell>
                   <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                    {translate('Actions')}
+                    {translate("Actions")}
                   </TableHeaderCell>
                 </TableRow>
               </TableHead>
@@ -475,7 +588,7 @@ function UsersManagement() {
                         onClick={() => handleDelete(user)}
                         className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                       >
-                        {translate('Delete')}
+                        {translate("Delete")}
                       </button>
                     </TableCell>
                   </TableRow>
@@ -483,8 +596,8 @@ function UsersManagement() {
               </TableBody>
             </Table>
           </TableRoot>
-        )
+        </>
       )}
     </>
-  )
+  );
 }

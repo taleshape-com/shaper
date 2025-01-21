@@ -102,8 +102,54 @@ func HandleCreateUser(app *App, data []byte) bool {
 	return true
 }
 
+type DeleteInvitePayload struct {
+	Code      string    `json:"code"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func DeleteInvite(app *App, ctx context.Context, code string) error {
+	// Check if invite exists
+	var exists bool
+	err := app.db.GetContext(ctx, &exists,
+		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE code = $1)`,
+		code)
+	if err != nil {
+		return fmt.Errorf("failed to check invite existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("invite not found")
+	}
+
+	payload := DeleteInvitePayload{
+		Code:      code,
+		Timestamp: time.Now(),
+	}
+
+	return app.SubmitState(ctx, "delete_invite", payload)
+}
+
+func HandleDeleteInvite(app *App, data []byte) bool {
+	var payload DeleteInvitePayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal delete invite payload", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.db.Exec(
+		`DELETE FROM "`+app.Schema+`".invites WHERE code = $1`,
+		payload.Code,
+	)
+	if err != nil {
+		app.Logger.Error("failed to delete invite from DB", slog.Any("error", err))
+		return false
+	}
+	return true
+}
+
 type UserList struct {
-	Users []User `json:"users"`
+	Users   []User   `json:"users"`
+	Invites []Invite `json:"invites"`
 }
 
 func ListUsers(app *App, ctx context.Context, sort string, order string) (UserList, error) {
@@ -128,9 +174,23 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 		 WHERE deleted_at IS NULL
 		 ORDER BY %s %s`, app.Schema, orderBy, order))
 	if err != nil {
-		err = fmt.Errorf("error listing users: %w", err)
+		return UserList{}, fmt.Errorf("error listing users: %w", err)
 	}
-	return UserList{Users: users}, err
+
+	// Get invites ordered by creation date
+	invites := []Invite{}
+	err = app.db.SelectContext(ctx, &invites,
+		`SELECT code, email, created_at
+		 FROM "`+app.Schema+`".invites
+		 ORDER BY created_at DESC`)
+	if err != nil {
+		return UserList{}, fmt.Errorf("error listing invites: %w", err)
+	}
+
+	return UserList{
+		Users:   users,
+		Invites: invites,
+	}, nil
 }
 
 type DeleteUserPayload struct {
@@ -426,4 +486,21 @@ func HandleClaimInvite(app *App, data []byte) bool {
 	}
 
 	return true
+}
+
+type InviteList struct {
+	Invites []Invite `json:"invites"`
+}
+
+func ListInvites(app *App, ctx context.Context) (InviteList, error) {
+	var invites []Invite
+	err := app.db.SelectContext(ctx,
+		&invites,
+		`SELECT code, email, created_at
+			 FROM "`+app.Schema+`".invites
+			 ORDER BY created_at DESC`)
+	if err != nil {
+		return InviteList{}, fmt.Errorf("failed to list invites: %w", err)
+	}
+	return InviteList{Invites: invites}, nil
 }

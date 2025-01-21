@@ -282,6 +282,15 @@ const translations: Record<string, Record<string, string>> = {
   "Create Invite": {
     de: "Einladung erstellen",
   },
+  "Pending Invites": {
+    de: "Ausstehende Einladungen",
+  },
+  "Invite deleted successfully": {
+    de: "Einladung erfolgreich gelöscht",
+  },
+  "Are you sure you want to delete the invite for %%?": {
+    de: "Sind Sie sicher, dass Sie die Einladung für %% löschen möchten?",
+  },
 };
 
 export function translate(s: string) {
