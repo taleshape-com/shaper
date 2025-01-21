@@ -35,12 +35,38 @@ type CreateSessionPayload struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+func deleteExpiredSessions(app *App, userID string) (int64, error) {
+	result, err := app.db.Exec(
+		`DELETE FROM `+app.Schema+`.sessions
+		WHERE user_id = $1
+		AND created_at < $2`,
+		userID,
+		time.Now().Add(-app.SessionExp),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete expired sessions: %w", err)
+	}
+
+	return result.RowsAffected()
+}
+
 func HandleCreateSession(app *App, data []byte) bool {
 	var payload CreateSessionPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
 		app.Logger.Error("failed to unmarshal create session payload", slog.Any("error", err))
 		return false
+	}
+
+	// Delete expired sessions before creating new one
+	deletedCount, err := deleteExpiredSessions(app, payload.UserID)
+	if err != nil {
+		app.Logger.Error("failed to delete expired sessions", slog.Any("error", err))
+	}
+	if deletedCount > 0 {
+		app.Logger.Info("deleted expired sessions",
+			slog.String("user_id", payload.UserID),
+			slog.Int64("count", deletedCount))
 	}
 
 	_, err = app.db.Exec(
