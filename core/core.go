@@ -144,6 +144,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleCreateSession
 	case "delete_user":
 		handler = HandleDeleteUser
+	case "create_invite":
+		handler = HandleCreateInvite
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
@@ -258,6 +260,20 @@ func initDB(db *sqlx.DB, schema string) error {
 	if err != nil {
 		return fmt.Errorf("error creating sessions table: %w", err)
 	}
+
+	// Create invites table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.invites (
+			code VARCHAR PRIMARY KEY,
+			email VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			created_by VARCHAR
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating invites table: %w", err)
+	}
+
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(db, t.Name, t.Definition); err != nil {

@@ -2,10 +2,12 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"strings"
 	"time"
 
@@ -208,4 +210,116 @@ func HandleDeleteUser(app *App, data []byte) bool {
 		return false
 	}
 	return true
+}
+
+type Invite struct {
+	Code      string    `db:"code" json:"code"`
+	Email     string    `db:"email" json:"email"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	CreatedBy *string   `db:"created_by" json:"-"`
+}
+
+type CreateInvitePayload struct {
+	Code      string    `json:"code"`
+	Email     string    `json:"email"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if email == "" {
+		return nil, fmt.Errorf("email is required")
+	}
+
+	// Check if email is already registered
+	var existingUser bool
+	err := app.db.GetContext(ctx, &existingUser,
+		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".users WHERE email = $1 AND deleted_at IS NULL)`,
+		email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing user: %w", err)
+	}
+	if existingUser {
+		return nil, fmt.Errorf("email is already registered")
+	}
+
+	// Check if there's already a pending invite
+	var existingInvite bool
+	err = app.db.GetContext(ctx, &existingInvite,
+		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE email = $1)`,
+		email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing invite: %w", err)
+	}
+	if existingInvite {
+		return nil, fmt.Errorf("invite already exists for this email")
+	}
+
+	code := generateInviteCode()
+	var exists bool
+	err = app.db.GetContext(ctx, &exists,
+		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE code = $1)`,
+		code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check invite code uniqueness: %w", err)
+	}
+	if exists {
+		return nil, fmt.Errorf("failed to generate unique invite code, please try again")
+	}
+
+	payload := CreateInvitePayload{
+		Code:      code,
+		Email:     email,
+		Timestamp: time.Now(),
+	}
+
+	err = app.SubmitState(ctx, "create_invite", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Invite{
+		Code:      code,
+		Email:     email,
+		CreatedAt: payload.Timestamp,
+	}, nil
+}
+
+func HandleCreateInvite(app *App, data []byte) bool {
+	var payload CreateInvitePayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal create invite payload", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.db.Exec(
+		`INSERT INTO "`+app.Schema+`".invites (
+			code, email, created_at
+		) VALUES ($1, $2, $3)`,
+		payload.Code, payload.Email, payload.Timestamp,
+	)
+	if err != nil {
+		app.Logger.Error("failed to insert invite into DB", slog.Any("error", err))
+		return false
+	}
+	return true
+}
+
+// generateInviteCode creates a secure random 12-character invite code using
+// characters that are unambiguous (no 0/O or 1/l confusion)
+func generateInviteCode() string {
+	const charset = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+	const length = 12
+
+	b := make([]byte, length)
+	for i := range b {
+		// Use crypto/rand for secure random numbers
+		randomNum, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			panic(err) // This should never happen in practice
+		}
+		b[i] = charset[randomNum.Int64()]
+	}
+	return string(b)
 }

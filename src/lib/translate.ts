@@ -171,9 +171,9 @@ const translations: Record<string, Record<string, string>> = {
     de: "Authentifizierung einrichten",
   },
   "Create a first user account to enable authentication and secure the system":
-    {
-      de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
-    },
+  {
+    de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
+  },
   "Create User": {
     de: "Benutzer erstellen",
   },
@@ -224,6 +224,24 @@ const translations: Record<string, Record<string, string>> = {
   },
   "Are you sure you want to delete the user %%?": {
     de: "Sind Sie sicher, dass Sie den Benutzer %% löschen möchten?",
+  },
+  "Invite User": {
+    de: "Benutzer einladen",
+  },
+  "Enter the email address of the user you want to invite": {
+    de: "Geben Sie die E-Mail-Adresse des Benutzers ein, den Sie einladen möchten",
+  },
+  "Invite Link": {
+    de: "Einladungslink",
+  },
+  "Share this link with %%": {
+    de: "Teilen Sie diesen Link mit %%",
+  },
+  "Send Invite": {
+    de: "Einladung erstellen",
+  },
+  "Invite link copied to clipboard": {
+    de: "Einladungslink in die Zwischenablage kopiert",
   },
 };
 

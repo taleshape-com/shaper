@@ -40,6 +40,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/query/dashboard", handler.PreviewDashboardQuery(app))
 	apiWithAuth.GET("/users", handler.ListUsers(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
+	apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
 	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
 	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
