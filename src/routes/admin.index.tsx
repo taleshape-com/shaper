@@ -1,7 +1,9 @@
-import { Button } from '../components/tremor/Button'
-import { useState } from 'react'
-import { createFileRoute, isRedirect, useNavigate } from '@tanstack/react-router'
-import { useToast } from '../hooks/useToast'
+import z from 'zod'
+import {
+  createFileRoute,
+  isRedirect,
+  useNavigate,
+} from '@tanstack/react-router'
 import { translate } from '../lib/translate'
 import {
   Table,
@@ -12,93 +14,114 @@ import {
   TableRoot,
   TableRow,
 } from '../components/tremor/Table'
-import { useCallback, useEffect } from 'react'
+import { RiSortAsc, RiSortDesc } from '@remixicon/react'
+import { useState } from "react";
+import { Button } from '../components/tremor/Button'
+import { useToast } from '../hooks/useToast'
+import { useRouter } from '@tanstack/react-router'
 import { useQueryApi } from '../hooks/useQueryApi'
+import { useAuth } from "../lib/auth";
+import { Callout } from "../components/tremor/Callout";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/tremor/Dialog";
+import { Input } from "../components/tremor/Input";
+import { Label } from "../components/tremor/Label";
 
-interface APIKey {
+interface IUser {
   id: string
+  email: string
   name: string
   createdAt: string
 }
 
-interface NewAPIKeyResponse {
-  id: string
-  key: string
+type UserListResponse = {
+  users: IUser[]
 }
 
 export const Route = createFileRoute('/admin/')({
-  component: Admin,
-});
+  validateSearch: z.object({
+    sort: z.enum(['name', 'email', 'created']).optional(),
+    order: z.enum(['asc', 'desc']).optional(),
+  }),
+  loaderDeps: ({ search: { sort, order } }) => ({
+    sort,
+    order,
+  }),
+  loader: async ({
+    context: { queryApi },
+    deps: { sort = 'created', order = 'desc' },
+  }) => {
+    return queryApi(
+      `/api/users?sort=${sort}&order=${order}`,
+    ) as Promise<UserListResponse>
+  },
+  component: UsersManagement,
+})
 
-function Admin() {
-  return (
-    <>
-      <div>
-        <h2 className="text-xl font-semibold mb-4">{translate("API Keys")}</h2>
-        <APIKeyList />
-      </div>
-
-      <div className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">
-          {translate('Security Settings')}
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-medium mb-2">JWT Secret</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {translate(
-                'Reset the JWT secret to invalidate all existing tokens.',
-              )}
-            </p>
-            <ResetJWTButton />
-          </div>
-        </div>
-      </div>
-    </>
-  )
+const getInviteLink = (code: string) => {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/signup?code=${code}`
 }
 
-function APIKeyList() {
-  const [keys, setKeys] = useState<APIKey[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showNewKeyDialog, setShowNewKeyDialog] = useState(false)
-  const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null)
-  const queryApi = useQueryApi()
-  const navigate = useNavigate({ from: "/admin" })
-
+function UsersManagement() {
+  const router = useRouter()
+  const data = Route.useLoaderData()
+  const auth = useAuth();
+  const { sort, order } = Route.useSearch()
+  const navigate = useNavigate({ from: '/admin' })
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [inviteCode, setInviteCode] = useState<{
+    code: string
+    email: string
+  } | null>(null)
   const { toast } = useToast()
+  const [showAuthSetup, setShowAuthSetup] = useState(true);
+  const queryApi = useQueryApi();
 
-  const fetchKeys = useCallback(async () => {
-    try {
-      const data = await queryApi('/api/keys')
-      setKeys(data.keys)
-    } catch (error) {
-      if (isRedirect(error)) {
-        return navigate(error);
-      }
-      toast({
-        title: translate('Error'),
-        description:
-          error instanceof Error
-            ? error.message
-            : translate('An error occurred'),
-        variant: 'error',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [queryApi, toast, navigate])
+  const handleSort = (field: 'name' | 'email' | 'created') => {
+    const newOrder =
+      field === (sort ?? 'created')
+        ? (order ?? 'desc') === 'asc'
+          ? 'desc'
+          : 'asc'
+        : field === 'created'
+          ? 'desc'
+          : 'asc'
 
-  useEffect(() => {
-    fetchKeys()
-  }, [fetchKeys])
+    navigate({
+      replace: true,
+      search: (prev) => ({
+        ...prev,
+        sort: field === 'created' ? undefined : field,
+        order:
+          field === 'created' && newOrder === 'desc' ? undefined : newOrder,
+      }),
+    })
+  }
 
-  const handleDelete = async (key: APIKey) => {
+  const SortIcon = ({ field }: { field: 'name' | 'email' | 'created' }) => {
+    if (field !== (sort ?? 'created')) return null
+    return (order ?? 'desc') === 'asc' ? (
+      <RiSortAsc className="inline size-4" />
+    ) : (
+      <RiSortDesc className="inline size-4" />
+    )
+  }
+
+  const handleDelete = async (user: IUser) => {
     if (
-      !confirm(
-        translate('Are you sure you want to delete this API key "%%"?').replace(
+      !window.confirm(
+        translate('Are you sure you want to delete the user %%?').replace(
           '%%',
-          key.name,
+          user.email,
         ),
       )
     ) {
@@ -106,40 +129,36 @@ function APIKeyList() {
     }
 
     try {
-      await queryApi(`/api/keys/${key.id}`, {
+      await queryApi(`/api/users/${user.id}`, {
         method: 'DELETE',
       })
-      toast({
-        title: translate('Success'),
-        description: translate('API key deleted successfully'),
-      })
-      fetchKeys()
-    } catch (error) {
-      if (isRedirect(error)) {
-        return navigate(error);
+      // Reload the page to refresh the list
+      router.invalidate()
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err)
       }
-      toast({
-        title: translate('Error'),
-        description:
-          error instanceof Error
-            ? error.message
-            : translate('An error occurred'),
-        variant: 'error',
-      })
+      alert(
+        'Error deleting user: ' +
+        (err instanceof Error ? err.message : 'Unknown error'),
+      )
     }
   }
 
-  const handleCreateKey = async (name: string) => {
+  if (!data) {
+    return <div className="p-2">{translate('Loading users...')}</div>
+  }
+
+  const handleCreateInvite = async (email: string) => {
     try {
-      const data = await queryApi('/api/keys', {
+      const data = await queryApi('/api/invites', {
         method: 'POST',
-        body: { name },
+        body: { email },
       })
-      setNewKey(data)
-      fetchKeys()
+      setInviteCode({ code: data.code, email })
     } catch (error) {
       if (isRedirect(error)) {
-        return navigate(error);
+        return navigate(error)
       }
       toast({
         title: translate('Error'),
@@ -153,69 +172,207 @@ function APIKeyList() {
   }
 
   return (
-    <div>
-      <Button onClick={() => setShowNewKeyDialog(true)} className="mb-4">
-        {translate('New')}
-      </Button>
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">
+          {translate('User Management')}
+        </h2>
+        {auth.loginRequired && (
+          <Button onClick={() => setShowInviteDialog(true)}>
+            {translate('Invite User')}
+          </Button>
+        )}
+      </div>
 
-      {loading ? (
-        <p>{translate('Loading API keys...')}</p>
-      ) : keys.length === 0 ? (
-        <p>{translate('No API keys found')}</p>
-      ) : (
-        <TableRoot>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>{translate('Name')}</TableHeaderCell>
-                <TableHeaderCell>{translate('Created')}</TableHeaderCell>
-                <TableHeaderCell>{translate('Actions')}</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {keys.map((key) => (
-                <TableRow key={key.id}>
-                  <TableCell>{key.name}</TableCell>
-                  <TableCell>
-                    <div title={new Date(key.createdAt).toLocaleString()}>
-                      {new Date(key.createdAt).toLocaleDateString()}
+      {showAuthSetup && (
+        <div className="mb-6">
+          {auth.loginRequired === false && (
+            <Callout title={translate("Setup Authentication")}>
+              <p className="mb-4">
+                {translate(
+                  "Create a first user account to enable authentication and secure the system",
+                )}
+              </p>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="primary">
+                    {translate("Create User")}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {translate("Create First User")}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {translate(
+                        "Enter the details for the first administrative user",
+                      )}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <form
+                    className="mt-4 space-y-4"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const data = {
+                        email: formData.get("email") as string,
+                        name: formData.get("name") as string,
+                        password: formData.get("password") as string,
+                        confirmPassword: formData.get(
+                          "confirmPassword",
+                        ) as string,
+                      };
+
+                      if (data.password !== data.confirmPassword) {
+                        toast({
+                          title: translate("Error"),
+                          description: translate("Passwords do not match"),
+                          variant: "error",
+                        });
+                        return;
+                      }
+
+                      try {
+                        await queryApi("/api/auth/setup", {
+                          method: "POST",
+                          body: {
+                            email: data.email,
+                            name: data.name,
+                            password: data.password,
+                          },
+                        });
+                        toast({
+                          title: translate("Success"),
+                          description: translate("User created successfully"),
+                        });
+                        setShowAuthSetup(false);
+                        auth.setLoginRequired(true);
+                        navigate({
+                          to: "/login",
+                          replace: true,
+                        });
+                      } catch (error) {
+                        toast({
+                          title: translate("Error"),
+                          description:
+                            error instanceof Error
+                              ? error.message
+                              : translate("An error occurred"),
+                          variant: "error",
+                        });
+                      }
+                    }}
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="email">{translate("Email")}</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="admin@example.com"
+                      />
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleDelete(key)}
-                      className="text-cerr dark:text-derr"
-                    >
-                      {translate('Delete')}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableRoot>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="name">{translate("Name")}</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        type="text"
+                        placeholder={translate("Administrator")}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password">
+                        {translate("Password")}
+                      </Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        minLength={8}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">
+                        {translate("Confirm Password")}
+                      </Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        minLength={8}
+                        required
+                      />
+                    </div>
+
+                    <DialogFooter className="mt-6">
+                      <DialogClose asChild>
+                        <Button type="button" variant="secondary">
+                          {translate("Cancel")}
+                        </Button>
+                      </DialogClose>
+                      <Button type="submit">
+                        {translate("Create User")}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </Callout>
+          )}
+        </div>
       )}
 
-      {showNewKeyDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-lg font-medium mb-4">
-              {translate('Create New API Key')}
-            </h3>
-            {newKey ? (
+      {showInviteDialog && (
+        <Dialog
+          open={true}
+          onOpenChange={() => {
+            setShowInviteDialog(false)
+            setInviteCode(null)
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {inviteCode
+                  ? translate('Invite Link')
+                  : translate('Invite User')}
+              </DialogTitle>
+              <DialogDescription>
+                {inviteCode
+                  ? translate('Share this link with %%').replace(
+                    '%%',
+                    inviteCode.email,
+                  )
+                  : translate(
+                    'Enter the email address of the user you want to invite',
+                  )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {inviteCode ? (
               <div>
-                <p className="mb-2">{translate('Your new API key:')}</p>
-                <div className="flex items-center gap-2 mb-4">
-                  <code className="bg-gray-100 dark:bg-gray-700 p-2 rounded flex-grow max-w-80 overflow-clip text-ellipsis">
-                    {newKey.key}
+                <div className="flex items-center gap-2 my-4">
+                  <code className="bg-gray-100 dark:bg-gray-700 p-2 rounded flex-grow overflow-hidden text-ellipsis">
+                    {getInviteLink(inviteCode.code)}
                   </code>
                   <Button
                     onClick={() => {
-                      navigator.clipboard.writeText(newKey.key)
+                      navigator.clipboard.writeText(
+                        getInviteLink(inviteCode.code),
+                      )
                       toast({
                         title: translate('Success'),
-                        description: translate('API key copied to clipboard'),
+                        description: translate(
+                          'Invite link copied to clipboard',
+                        ),
                       })
                     }}
                     variant="secondary"
@@ -223,92 +380,111 @@ function APIKeyList() {
                     {translate('Copy')}
                   </Button>
                 </div>
-                <p className="text-sm text-red-500 mb-4">
-                  {translate(
-                    "Make sure to copy this key now. You won't be able to see it again!",
-                  )}
-                </p>
-                <Button
-                  onClick={() => {
-                    setShowNewKeyDialog(false)
-                    setNewKey(null)
-                  }}
-                >
-                  {translate('Close')}
-                </Button>
+                <DialogFooter>
+                  <Button
+                    onClick={() => {
+                      setShowInviteDialog(false)
+                      setInviteCode(null)
+                    }}
+                  >
+                    {translate('Close')}
+                  </Button>
+                </DialogFooter>
               </div>
             ) : (
               <form
+                className="space-y-4"
                 onSubmit={(e) => {
                   e.preventDefault()
                   const formData = new FormData(e.currentTarget)
-                  handleCreateKey(formData.get('name') as string)
+                  handleCreateInvite(formData.get('email') as string)
                 }}
               >
-                <input
-                  type="text"
-                  name="name"
-                  placeholder={translate('Key name')}
-                  className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"
-                  required
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setShowNewKeyDialog(false)}
-                  >
-                    {translate('Cancel')}
-                  </Button>
-                  <Button type="submit">{translate('Create')}</Button>
+                <div className="space-y-2">
+                  <Label htmlFor="email">{translate('Email')}</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="user@example.com"
+                  />
                 </div>
+
+                <DialogFooter className="mt-6">
+                  <DialogClose asChild>
+                    <Button type="button" variant="secondary">
+                      {translate('Cancel')}
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit">{translate('Create Invite')}</Button>
+                </DialogFooter>
               </form>
             )}
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
-    </div>
-  )
-}
 
-function ResetJWTButton() {
-  const [isResetting, setIsResetting] = useState(false)
-  const { toast } = useToast()
-  const queryApi = useQueryApi()
-  const navigate = useNavigate({ from: "/admin" })
-
-
-  const handleReset = async () => {
-    setIsResetting(true)
-    try {
-      await queryApi('/api/admin/reset-jwt-secret', {
-        method: 'POST',
-      })
-      toast({
-        title: translate('Success'),
-        description: translate('JWT secret reset successfully'),
-      })
-    } catch (error) {
-      if (isRedirect(error)) {
-        return navigate(error);
-      }
-      toast({
-        title: translate('Error'),
-        description:
-          error instanceof Error
-            ? error.message
-            : translate('An error occurred'),
-        variant: 'error',
-      })
-    } finally {
-      setIsResetting(false)
-    }
-  }
-
-  return (
-    <Button onClick={handleReset} disabled={isResetting} variant="secondary">
-      {isResetting ? translate('Resetting...') : translate('Reset JWT Secret')}
-    </Button>
+      {auth.loginRequired && (
+        data.users.length === 0 ? (
+          <p className="text-gray-500">{translate('No users found')}</p>
+        ) : (
+          <TableRoot>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell
+                    onClick={() => handleSort('name')}
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                  >
+                    {translate('Name')} <SortIcon field="name" />
+                  </TableHeaderCell>
+                  <TableHeaderCell
+                    onClick={() => handleSort('email')}
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                  >
+                    {translate('Email')} <SortIcon field="email" />
+                  </TableHeaderCell>
+                  <TableHeaderCell
+                    onClick={() => handleSort('created')}
+                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                  >
+                    {translate('Created')} <SortIcon field="created" />
+                  </TableHeaderCell>
+                  <TableHeaderCell className="text-md text-ctext dark:text-dtext">
+                    {translate('Actions')}
+                  </TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data.users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium text-ctext dark:text-dtext">
+                      {user.name}
+                    </TableCell>
+                    <TableCell className="text-ctext2 dark:text-dtext2">
+                      {user.email}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
+                      <div title={new Date(user.createdAt).toLocaleString()}>
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => handleDelete(user)}
+                        className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
+                      >
+                        {translate('Delete')}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableRoot>
+        )
+      )}
+    </>
   )
 }

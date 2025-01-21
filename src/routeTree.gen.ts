@@ -18,7 +18,8 @@ import { Route as IndexImport } from './routes/index'
 import { Route as AdminIndexImport } from './routes/admin.index'
 import { Route as DashboardsDashboardIdImport } from './routes/dashboards.$dashboardId'
 import { Route as DashboardNewImport } from './routes/dashboard.new'
-import { Route as AdminUsersImport } from './routes/admin.users'
+import { Route as AdminSecurityImport } from './routes/admin.security'
+import { Route as AdminKeysImport } from './routes/admin.keys'
 import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$dashboardId.edit'
 
 // Create/Update Routes
@@ -65,9 +66,15 @@ const DashboardNewRoute = DashboardNewImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const AdminUsersRoute = AdminUsersImport.update({
-  id: '/users',
-  path: '/users',
+const AdminSecurityRoute = AdminSecurityImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminKeysRoute = AdminKeysImport.update({
+  id: '/keys',
+  path: '/keys',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -109,11 +116,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupImport
       parentRoute: typeof rootRoute
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersImport
+    '/admin/keys': {
+      id: '/admin/keys'
+      path: '/keys'
+      fullPath: '/admin/keys'
+      preLoaderRoute: typeof AdminKeysImport
+      parentRoute: typeof AdminImport
+    }
+    '/admin/security': {
+      id: '/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AdminSecurityImport
       parentRoute: typeof AdminImport
     }
     '/dashboard/new': {
@@ -150,12 +164,14 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface AdminRouteChildren {
-  AdminUsersRoute: typeof AdminUsersRoute
+  AdminKeysRoute: typeof AdminKeysRoute
+  AdminSecurityRoute: typeof AdminSecurityRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminUsersRoute: AdminUsersRoute,
+  AdminKeysRoute: AdminKeysRoute,
+  AdminSecurityRoute: AdminSecurityRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -166,7 +182,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/admin/users': typeof AdminUsersRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -177,7 +194,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/admin/users': typeof AdminUsersRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
   '/admin': typeof AdminIndexRoute
@@ -190,7 +208,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/admin/users': typeof AdminUsersRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -204,7 +223,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/signup'
-    | '/admin/users'
+    | '/admin/keys'
+    | '/admin/security'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
     | '/admin/'
@@ -214,7 +234,8 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
-    | '/admin/users'
+    | '/admin/keys'
+    | '/admin/security'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
     | '/admin'
@@ -225,7 +246,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/signup'
-    | '/admin/users'
+    | '/admin/keys'
+    | '/admin/security'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
     | '/admin/'
@@ -278,7 +300,8 @@ export const routeTree = rootRoute
     "/admin": {
       "filePath": "admin.tsx",
       "children": [
-        "/admin/users",
+        "/admin/keys",
+        "/admin/security",
         "/admin/"
       ]
     },
@@ -288,8 +311,12 @@ export const routeTree = rootRoute
     "/signup": {
       "filePath": "signup.tsx"
     },
-    "/admin/users": {
-      "filePath": "admin.users.tsx",
+    "/admin/keys": {
+      "filePath": "admin.keys.tsx",
+      "parent": "/admin"
+    },
+    "/admin/security": {
+      "filePath": "admin.security.tsx",
       "parent": "/admin"
     },
     "/dashboard/new": {

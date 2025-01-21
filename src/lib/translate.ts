@@ -113,6 +113,9 @@ const translations: Record<string, Record<string, string>> = {
   "Year to date": {
     de: "Jahr bis heute",
   },
+  "Security": {
+    de: "Sicherheit",
+  },
   "Security Settings": {
     de: "Sicherheitseinstellungen",
   },
@@ -171,9 +174,9 @@ const translations: Record<string, Record<string, string>> = {
     de: "Authentifizierung einrichten",
   },
   "Create a first user account to enable authentication and secure the system":
-    {
-      de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
-    },
+  {
+    de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
+  },
   "Create User": {
     de: "Benutzer erstellen",
   },

@@ -8,34 +8,15 @@ import { Helmet } from "react-helmet";
 import { logout, useAuth } from "../lib/auth";
 import { translate } from "../lib/translate";
 import { Button } from "../components/tremor/Button";
-import { useState } from "react";
-import { Callout } from "../components/tremor/Callout";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/tremor/Dialog";
-import { Input } from "../components/tremor/Input";
-import { Label } from "../components/tremor/Label";
-import { useToast } from "../hooks/useToast";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
-import { useQueryApi } from "../hooks/useQueryApi";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
 function Admin() {
-  const [showAuthSetup, setShowAuthSetup] = useState(true);
-  const { toast } = useToast();
   const navigate = useNavigate({ from: "/" });
   const auth = useAuth();
-  const queryApi = useQueryApi();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -68,164 +49,19 @@ function Admin() {
           )}
         </div>
 
-        {showAuthSetup && (
-          <div className="mb-6">
-            {auth.loginRequired === false && (
-              <Callout title={translate("Setup Authentication")}>
-                <p className="mb-4">
-                  {translate(
-                    "Create a first user account to enable authentication and secure the system",
-                  )}
-                </p>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="primary">
-                      {translate("Create User")}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>
-                        {translate("Create First User")}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {translate(
-                          "Enter the details for the first administrative user",
-                        )}
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <form
-                      className="mt-4 space-y-4"
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const formData = new FormData(e.currentTarget);
-                        const data = {
-                          email: formData.get("email") as string,
-                          name: formData.get("name") as string,
-                          password: formData.get("password") as string,
-                          confirmPassword: formData.get(
-                            "confirmPassword",
-                          ) as string,
-                        };
-
-                        if (data.password !== data.confirmPassword) {
-                          toast({
-                            title: translate("Error"),
-                            description: translate("Passwords do not match"),
-                            variant: "error",
-                          });
-                          return;
-                        }
-
-                        try {
-                          await queryApi("/api/auth/setup", {
-                            method: "POST",
-                            body: {
-                              email: data.email,
-                              name: data.name,
-                              password: data.password,
-                            },
-                          });
-                          toast({
-                            title: translate("Success"),
-                            description: translate("User created successfully"),
-                          });
-                          setShowAuthSetup(false);
-                          auth.setLoginRequired(true);
-                          navigate({
-                            to: "/login",
-                            replace: true,
-                          });
-                        } catch (error) {
-                          toast({
-                            title: translate("Error"),
-                            description:
-                              error instanceof Error
-                                ? error.message
-                                : translate("An error occurred"),
-                            variant: "error",
-                          });
-                        }
-                      }}
-                    >
-                      <div className="space-y-2">
-                        <Label htmlFor="email">{translate("Email")}</Label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          required
-                          placeholder="admin@example.com"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="name">{translate("Name")}</Label>
-                        <Input
-                          id="name"
-                          name="name"
-                          type="text"
-                          placeholder={translate("Administrator")}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="password">
-                          {translate("Password")}
-                        </Label>
-                        <Input
-                          id="password"
-                          name="password"
-                          type="password"
-                          minLength={8}
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">
-                          {translate("Confirm Password")}
-                        </Label>
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password"
-                          minLength={8}
-                          required
-                        />
-                      </div>
-
-                      <DialogFooter className="mt-6">
-                        <DialogClose asChild>
-                          <Button type="button" variant="secondary">
-                            {translate("Cancel")}
-                          </Button>
-                        </DialogClose>
-                        <Button type="submit">
-                          {translate("Create User")}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </Callout>
-            )}
-          </div>
-        )}
-
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
           <div className="px-6 pt-6">
-            <Tabs defaultValue="general" className="w-full">
+            <Tabs defaultValue="users" className="w-full">
               <TabsList>
-                <TabsTrigger value="general" asChild>
-                  <Link to="/admin">{translate("General")}</Link>
+                <TabsTrigger value="users" asChild>
+                  <Link to="/admin">{translate("Users")}</Link>
                 </TabsTrigger>
-                {auth.loginRequired && (
-                  <TabsTrigger value="users" asChild>
-                    <Link to="/admin/users">{translate("Users")}</Link>
-                  </TabsTrigger>
-                )}
+                <TabsTrigger value="keys" asChild>
+                  <Link to="/admin/keys">{translate("API Keys")}</Link>
+                </TabsTrigger>
+                <TabsTrigger value="security" asChild>
+                  <Link to="/admin/security">{translate("Security")}</Link>
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
