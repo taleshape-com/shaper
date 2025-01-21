@@ -1,4 +1,9 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+} from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { logout, useAuth } from "../lib/auth";
 import { translate } from "../lib/translate";
@@ -76,11 +81,15 @@ function Admin() {
                 </p>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="primary">{translate("Create User")}</Button>
+                    <Button variant="primary">
+                      {translate("Create User")}
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>{translate("Create First User")}</DialogTitle>
+                      <DialogTitle>
+                        {translate("Create First User")}
+                      </DialogTitle>
                       <DialogDescription>
                         {translate(
                           "Enter the details for the first administrative user",
@@ -164,11 +173,14 @@ function Admin() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="password">{translate("Password")}</Label>
+                        <Label htmlFor="password">
+                          {translate("Password")}
+                        </Label>
                         <Input
                           id="password"
                           name="password"
                           type="password"
+                          minLength={8}
                           required
                         />
                       </div>
@@ -181,6 +193,7 @@ function Admin() {
                           id="confirmPassword"
                           name="confirmPassword"
                           type="password"
+                          minLength={8}
                           required
                         />
                       </div>
@@ -191,7 +204,9 @@ function Admin() {
                             {translate("Cancel")}
                           </Button>
                         </DialogClose>
-                        <Button type="submit">{translate("Create User")}</Button>
+                        <Button type="submit">
+                          {translate("Create User")}
+                        </Button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
