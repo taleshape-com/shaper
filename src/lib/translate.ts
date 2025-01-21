@@ -171,9 +171,9 @@ const translations: Record<string, Record<string, string>> = {
     de: "Authentifizierung einrichten",
   },
   "Create a first user account to enable authentication and secure the system":
-  {
-    de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
-  },
+    {
+      de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
+    },
   "Create User": {
     de: "Benutzer erstellen",
   },
@@ -234,14 +234,50 @@ const translations: Record<string, Record<string, string>> = {
   "Invite Link": {
     de: "Einladungslink",
   },
-  "Share this link with %%": {
-    de: "Teilen Sie diesen Link mit %%",
+  "Share this link with the user you want to invite": {
+    de: "Teilen Sie diesen Link mit dem Benutzer, den Sie einladen möchten",
   },
-  "Send Invite": {
-    de: "Einladung erstellen",
+  " Invite": {
+    de: "Einladung senden",
   },
   "Invite link copied to clipboard": {
     de: "Einladungslink in die Zwischenablage kopiert",
+  },
+  "Sign Up": {
+    de: "Registrieren",
+  },
+  "Create Account": {
+    de: "Konto erstellen",
+  },
+  "Sign up with invite for": {
+    de: "Registrierung mit Einladung für",
+  },
+  "Already have an account?": {
+    de: "Bereits ein Konto?",
+  },
+  "Sign in": {
+    de: "Anmelden",
+  },
+  "Invalid Invite": {
+    de: "Ungültige Einladung",
+  },
+  "No invite code provided": {
+    de: "Kein Einladungscode angegeben",
+  },
+  "This invite code is invalid or has already been used": {
+    de: "Dieser Einladungscode ist ungültig oder wurde bereits verwendet",
+  },
+  "Go to Login": {
+    de: "Zur Anmeldung",
+  },
+  "Account created successfully": {
+    de: "Konto erfolgreich erstellt",
+  },
+  "Share this link with %%": {
+    de: "Teilen Sie diesen Link mit %%",
+  },
+  "Create Invite": {
+    de: "Einladung erstellen",
   },
 };
 

@@ -130,10 +130,6 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 	if err != nil {
 		err = fmt.Errorf("error listing users: %w", err)
 	}
-	fmt.Println("users", users, fmt.Sprintf(`SELECT *
-		 FROM %s.users
-		 WHERE deleted_at IS NULL
-		 ORDER BY %s %s`, app.Schema, orderBy, order))
 	return UserList{Users: users}, err
 }
 
@@ -217,6 +213,17 @@ type Invite struct {
 	Email     string    `db:"email" json:"email"`
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	CreatedBy *string   `db:"created_by" json:"-"`
+}
+
+func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
+	var invite Invite
+	err := app.db.GetContext(ctx, &invite,
+		`SELECT code, email, created_at FROM "`+app.Schema+`".invites WHERE code = $1`,
+		code)
+	if err != nil {
+		return nil, fmt.Errorf("invite not found")
+	}
+	return &invite, nil
 }
 
 type CreateInvitePayload struct {
@@ -322,4 +329,101 @@ func generateInviteCode() string {
 		b[i] = charset[randomNum.Int64()]
 	}
 	return string(b)
+}
+
+type ClaimInvitePayload struct {
+	Code         string    `json:"code"`
+	Email        string    `json:"email"`
+	Name         string    `json:"name"`
+	PasswordHash string    `json:"passwordHash"`
+	UserId       string    `json:"userId"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+func ClaimInvite(app *App, ctx context.Context, code string, name string, password string) error {
+	// Get invite details
+	var invite Invite
+	err := app.db.GetContext(ctx, &invite,
+		`SELECT * FROM "`+app.Schema+`".invites WHERE code = $1`,
+		code)
+	if err != nil {
+		return fmt.Errorf("invalid invite code")
+	}
+
+	// Check if email is already registered
+	var existingUser bool
+	err = app.db.GetContext(ctx, &existingUser,
+		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".users WHERE email = $1 AND deleted_at IS NULL)`,
+		invite.Email)
+	if err != nil {
+		return fmt.Errorf("failed to check existing user: %w", err)
+	}
+	if existingUser {
+		return fmt.Errorf("email is already registered")
+	}
+
+	// Generate password hash
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	userId := cuid2.Generate()
+	payload := ClaimInvitePayload{
+		Code:         code,
+		Email:        invite.Email,
+		Name:         name,
+		PasswordHash: string(passwordHash),
+		UserId:       userId,
+		Timestamp:    time.Now(),
+	}
+
+	err = app.SubmitState(ctx, "claim_invite", payload)
+	return err
+}
+
+func HandleClaimInvite(app *App, data []byte) bool {
+	var payload ClaimInvitePayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal claim invite payload", slog.Any("error", err))
+		return false
+	}
+
+	tx, err := app.db.Begin()
+	if err != nil {
+		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
+		return false
+	}
+	defer tx.Rollback()
+
+	// Create the user
+	_, err = tx.Exec(
+		`INSERT INTO "`+app.Schema+`".users (
+			id, email, name, password_hash, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $5)`,
+		payload.UserId, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp,
+	)
+	if err != nil {
+		app.Logger.Error("failed to insert user into DB", slog.Any("error", err))
+		return false
+	}
+
+	// Delete the invite
+	_, err = tx.Exec(
+		`DELETE FROM "`+app.Schema+`".invites WHERE code = $1`,
+		payload.Code,
+	)
+	if err != nil {
+		app.Logger.Error("failed to delete invite", slog.Any("error", err))
+		return false
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		app.Logger.Error("failed to commit transaction", slog.Any("error", err))
+		return false
+	}
+
+	return true
 }

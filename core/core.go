@@ -146,6 +146,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleDeleteUser
 	case "create_invite":
 		handler = HandleCreateInvite
+	case "claim_invite":
+		handler = HandleClaimInvite
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)

@@ -51,7 +51,9 @@ func DeleteUser(app *core.App) echo.HandlerFunc {
 				}{Error: err.Error()}, "  ")
 		}
 
-		return c.NoContent(http.StatusOK)
+		return c.JSONPretty(http.StatusOK, struct {
+			Deleted bool `json:"deleted"`
+		}{Deleted: true}, "  ")
 	}
 }
 
@@ -96,5 +98,73 @@ func CreateInvite(app *core.App) echo.HandlerFunc {
 		}
 
 		return c.JSONPretty(http.StatusOK, invite, "  ")
+	}
+}
+
+func GetInvite(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		code := c.Param("code")
+		if code == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invite code is required"}, "  ")
+		}
+
+		invite, err := core.GetInvite(app, c.Request().Context(), code)
+		if err != nil {
+			c.Logger().Error("error getting invite:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "Invite not found"}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, invite, "  ")
+	}
+}
+
+type ClaimInviteRequest struct {
+	Name     string `json:"name"`
+	Password string `json:"password"`
+}
+
+func ClaimInvite(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var req ClaimInviteRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request body"}, "  ")
+		}
+
+		if req.Name == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Name is required"}, "  ")
+		}
+
+		if req.Password == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Password is required"}, "  ")
+		}
+
+		code := c.Param("code")
+		if code == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invite code is required"}, "  ")
+		}
+
+		err := core.ClaimInvite(app, c.Request().Context(), code, req.Name, req.Password)
+		if err != nil {
+			c.Logger().Error("error claiming invite:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, struct {
+			Claimed bool `json:"claimed"`
+		}{Claimed: true}, "  ")
 	}
 }

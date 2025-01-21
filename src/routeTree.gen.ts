@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as SignupImport } from './routes/signup'
 import { Route as LoginImport } from './routes/login'
 import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
@@ -21,6 +22,12 @@ import { Route as AdminUsersImport } from './routes/admin.users'
 import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$dashboardId.edit'
 
 // Create/Update Routes
+
+const SignupRoute = SignupImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const LoginRoute = LoginImport.update({
   id: '/login',
@@ -95,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupImport
+      parentRoute: typeof rootRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -151,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
@@ -161,6 +176,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
@@ -173,6 +189,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
@@ -186,6 +203,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
     | '/admin/users'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
@@ -195,6 +213,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/signup'
     | '/admin/users'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
@@ -205,6 +224,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
     | '/admin/users'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
@@ -217,6 +237,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   DashboardNewRoute: typeof DashboardNewRoute
   DashboardsDashboardIdRoute: typeof DashboardsDashboardIdRoute
   DashboardsDashboardIdEditRoute: typeof DashboardsDashboardIdEditRoute
@@ -226,6 +247,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   DashboardNewRoute: DashboardNewRoute,
   DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
   DashboardsDashboardIdEditRoute: DashboardsDashboardIdEditRoute,
@@ -244,6 +266,7 @@ export const routeTree = rootRoute
         "/",
         "/admin",
         "/login",
+        "/signup",
         "/dashboard/new",
         "/dashboards/$dashboardId",
         "/dashboards_/$dashboardId/edit"
@@ -261,6 +284,9 @@ export const routeTree = rootRoute
     },
     "/login": {
       "filePath": "login.tsx"
+    },
+    "/signup": {
+      "filePath": "signup.tsx"
     },
     "/admin/users": {
       "filePath": "admin.users.tsx",

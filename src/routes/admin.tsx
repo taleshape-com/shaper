@@ -23,7 +23,6 @@ import {
 import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
-import { Toaster } from "../components/tremor/Toaster";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
 import { useQueryApi } from "../hooks/useQueryApi";
 
@@ -45,7 +44,6 @@ function Admin() {
           <title>{translate("Admin")}</title>
           <meta name="description" content="Admin Settings" />
         </Helmet>
-        <Toaster />
         <div className="mb-4 flex items-center">
           <h1 className="text-3xl font-semibold font-display flex-grow">
             {translate("Admin")}
