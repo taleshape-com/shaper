@@ -282,6 +282,21 @@ const translations: Record<string, Record<string, string>> = {
   "Create Invite": {
     de: "Einladung erstellen",
   },
+  Expired: {
+    de: "Abgelaufen",
+  },
+  "Expires in %% days": {
+    de: "Läuft in %% Tagen ab",
+  },
+  "Expires in %% hours": {
+    de: "Läuft in %% Stunden ab",
+  },
+  "Expires soon": {
+    de: "Läuft bald ab",
+  },
+  "This invite has expired": {
+    de: "Diese Einladung ist abgelaufen",
+  },
   "Pending Invites": {
     de: "Ausstehende Einladungen",
   },

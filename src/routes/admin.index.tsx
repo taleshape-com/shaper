@@ -51,7 +51,39 @@ interface IInvite {
 type UserListResponse = {
   users: IUser[];
   invites: IInvite[];
+  inviteValidTimeInSeconds: number;
 };
+
+interface InviteState {
+  isExpired: boolean
+  expiresIn?: string
+}
+
+function getInviteState(createdAt: string, validTimeInSeconds: number): InviteState {
+  const createdTime = new Date(createdAt).getTime()
+  const expirationTime = createdTime + (validTimeInSeconds * 1000)
+  const now = Date.now()
+  const isExpired = now > expirationTime
+
+  if (isExpired) {
+    return { isExpired: true }
+  }
+
+  const timeLeft = expirationTime - now
+  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+  let expiresIn = ''
+  if (days > 0) {
+    expiresIn = translate('Expires in %% days').replace('%%', days.toString())
+  } else if (hours > 0) {
+    expiresIn = translate('Expires in %% hours').replace('%%', hours.toString())
+  } else {
+    expiresIn = translate('Expires soon')
+  }
+
+  return { isExpired: false, expiresIn }
+}
 
 export const Route = createFileRoute("/admin/")({
   validateSearch: z.object({
@@ -146,7 +178,7 @@ function UsersManagement() {
       }
       alert(
         "Error deleting user: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+        (err instanceof Error ? err.message : "Unknown error"),
       );
     }
   };
@@ -344,12 +376,12 @@ function UsersManagement() {
               <DialogDescription>
                 {inviteCode
                   ? translate("Share this link with %%").replace(
-                      "%%",
-                      inviteCode.email,
-                    )
+                    "%%",
+                    inviteCode.email,
+                  )
                   : translate(
-                      "Enter the email address of the user you want to invite",
-                    )}
+                    "Enter the email address of the user you want to invite",
+                  )}
               </DialogDescription>
             </DialogHeader>
 
@@ -463,27 +495,40 @@ function UsersManagement() {
                             </div>
                           </TableCell>
                           <TableCell className="text-ctext2 dark:text-dtext2">
-                            <div className="flex items-center gap-2">
-                              <code className="bg-gray-100 dark:bg-gray-700 p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
-                                {getInviteLink(invite.code)}
-                              </code>
-                              <Button
-                                variant="secondary"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    getInviteLink(invite.code),
-                                  );
-                                  toast({
-                                    title: translate("Success"),
-                                    description: translate(
-                                      "Invite link copied to clipboard",
-                                    ),
-                                  });
-                                }}
-                              >
-                                {translate("Copy")}
-                              </Button>
-                            </div>
+                            {(() => {
+                              const inviteState = getInviteState(invite.createdAt, data.inviteValidTimeInSeconds)
+                              if (inviteState.isExpired) {
+                                return (
+                                  <span>
+                                    {translate('Expired')}
+                                  </span>
+                                )
+                              }
+                              return (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <code className="bg-gray-100 dark:bg-gray-700 p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
+                                      {getInviteLink(invite.code)}
+                                    </code>
+                                    <Button
+                                      variant="secondary"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(getInviteLink(invite.code))
+                                        toast({
+                                          title: translate('Success'),
+                                          description: translate('Invite link copied to clipboard'),
+                                        })
+                                      }}
+                                    >
+                                      {translate('Copy')}
+                                    </Button>
+                                  </div>
+                                  <div className="text-xs text-ctext2 dark:text-dtext2">
+                                    {inviteState.expiresIn}
+                                  </div>
+                                </div>
+                              )
+                            })()}
                           </TableCell>
                           <TableCell>
                             <button

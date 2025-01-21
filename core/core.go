@@ -29,6 +29,7 @@ type App struct {
 	JWTSecret       []byte
 	JWTExp          time.Duration
 	SessionExp      time.Duration
+	InviteExp       time.Duration
 	StateConsumeCtx jetstream.ConsumeContext
 	JetStream       jetstream.JetStream
 	ConfigKV        jetstream.KeyValue
@@ -41,6 +42,7 @@ func New(
 	schema string,
 	jwtExp time.Duration,
 	sessionExp time.Duration,
+	inviteExp time.Duration,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -61,6 +63,7 @@ func New(
 		Schema:        schema,
 		JWTExp:        jwtExp,
 		SessionExp:    sessionExp,
+		InviteExp:     inviteExp,
 	}
 	return app, nil
 }

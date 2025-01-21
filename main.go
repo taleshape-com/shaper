@@ -27,6 +27,7 @@ var frontendFS embed.FS
 
 type Config struct {
 	SessionExp        time.Duration
+	InviteExp         time.Duration
 	Address           string
 	Port              int
 	DBFile            string
@@ -60,6 +61,7 @@ func loadConfig() Config {
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration (default: 30 days)")
+	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration (default: 7 days)")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
 	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
@@ -104,6 +106,7 @@ func loadConfig() Config {
 		Favicon:           *favicon,
 		JWTExp:            *jwtExp,
 		SessionExp:        *sessionExp,
+		InviteExp:         *inviteExp,
 		NatsHost:          *natsHost,
 		NatsPort:          *natsPort,
 		NatsToken:         *natsToken,
@@ -149,6 +152,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.Schema,
 		cfg.JWTExp,
 		cfg.SessionExp,
+		cfg.InviteExp,
 	)
 	if err != nil {
 		panic(err)

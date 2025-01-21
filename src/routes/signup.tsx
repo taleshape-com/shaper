@@ -31,9 +31,9 @@ export const Route = createFileRoute("/signup")({
       })
       const data = await response.json();
       if (response.status !== 200) {
-        throw new Error(data.error);
+        return { error: data.error } as { invite?: Invite; error?: string };
       }
-      return data as Invite;
+      return { invite: data } as { invite?: Invite; error?: string };
     } catch (error) {
       console.error(error);
       return null;
@@ -45,7 +45,7 @@ export const Route = createFileRoute("/signup")({
 function SignupComponent() {
   const navigate = useNavigate({ from: "/signup" });
   const { toast } = useToast();
-  const invite = Route.useLoaderData();
+  const data = Route.useLoaderData();
   const { code } = Route.useSearch();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -118,16 +118,24 @@ function SignupComponent() {
     );
   }
 
-  if (!invite) {
+  if (data?.error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cbg dark:bg-dbg">
         <div className="w-full max-w-md space-y-4 p-6">
           <h1 className="text-2xl font-semibold text-center text-ctext dark:text-dtext">
             {translate("Invalid Invite")}
           </h1>
-          <p className="text-center text-ctext2 dark:text-dtext2">
-            {translate("This invite code is invalid or has already been used")}
-          </p>
+          {data.error === "invite has expired" ? (
+            <p className="text-center text-ctext2 dark:text-dtext2">
+              {translate("This invite has expired")}
+            </p>
+          ) : (
+            <p className="text-center text-ctext2 dark:text-dtext2">
+              {translate(
+                "This invite code is invalid or has already been used",
+              )}
+            </p>
+          )}
           <div className="text-center">
             <Button asChild>
               <a href="/login">{translate("Go to Login")}</a>
@@ -150,7 +158,7 @@ function SignupComponent() {
             {translate("Create Account")}
           </h1>
           <p className="mt-2 text-center text-ctext2 dark:text-dtext2">
-            {translate("Sign up with invite for")} {invite.email}
+            {translate("Sign up with invite for")} {data?.invite?.email}
           </p>
         </div>
 

@@ -148,8 +148,9 @@ func HandleDeleteInvite(app *App, data []byte) bool {
 }
 
 type UserList struct {
-	Users   []User   `json:"users"`
-	Invites []Invite `json:"invites"`
+	Users                    []User   `json:"users"`
+	Invites                  []Invite `json:"invites"`
+	InviteValidTimeInSeconds int64    `json:"inviteValidTimeInSeconds"`
 }
 
 func ListUsers(app *App, ctx context.Context, sort string, order string) (UserList, error) {
@@ -188,8 +189,9 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 	}
 
 	return UserList{
-		Users:   users,
-		Invites: invites,
+		Users:                    users,
+		Invites:                  invites,
+		InviteValidTimeInSeconds: int64(app.InviteExp.Seconds()),
 	}, nil
 }
 
@@ -275,6 +277,10 @@ type Invite struct {
 	CreatedBy *string   `db:"created_by" json:"-"`
 }
 
+func isInviteExpired(createdAt time.Time, expiration time.Duration) bool {
+	return time.Since(createdAt) > expiration
+}
+
 func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 	var invite Invite
 	err := app.db.GetContext(ctx, &invite,
@@ -282,6 +288,9 @@ func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 		code)
 	if err != nil {
 		return nil, fmt.Errorf("invite not found")
+	}
+	if isInviteExpired(invite.CreatedAt, app.InviteExp) {
+		return nil, fmt.Errorf("invite has expired")
 	}
 	return &invite, nil
 }
@@ -408,6 +417,9 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 		code)
 	if err != nil {
 		return fmt.Errorf("invalid invite code")
+	}
+	if isInviteExpired(invite.CreatedAt, app.InviteExp) {
+		return fmt.Errorf("invite has expired")
 	}
 
 	// Check if email is already registered
