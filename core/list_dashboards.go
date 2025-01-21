@@ -10,14 +10,14 @@ func ListDashboards(app *App, ctx context.Context, sort string, order string) (L
 	switch sort {
 	case "created":
 		orderBy = "created_at"
-	case "updated":
-		orderBy = "updated_at"
-	default:
+	case "name":
 		orderBy = "name"
+	default:
+		orderBy = "updated_at"
 	}
 
 	if order != "asc" && order != "desc" {
-		order = "asc"
+		order = "desc"
 	}
 
 	dashboards := []Dashboard{}

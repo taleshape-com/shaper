@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
   }),
   loader: async ({
     context: { queryApi },
-    deps: { sort = "name", order = "asc" },
+    deps: { sort = "updated", order = "desc" },
   }) => {
     return queryApi(`/api/dashboards?sort=${sort}&order=${order}`)
       .then((fetchedData: DashboardListResponse) => {
@@ -65,8 +65,8 @@ function Index() {
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
-      field === (sort ?? "name")
-        ? (order ?? "asc") === "asc"
+      field === (sort ?? "updated")
+        ? (order ?? "desc") === "asc"
           ? "desc"
           : "asc"
         : field === "name"
@@ -84,8 +84,8 @@ function Index() {
   };
 
   const SortIcon = ({ field }: { field: "name" | "created" | "updated" }) => {
-    if (field !== (sort ?? "name")) return null;
-    return (order ?? "asc") === "asc" ? (
+    if (field !== (sort ?? "updated")) return null;
+    return (order ?? "desc") === "asc" ? (
       <RiSortAsc className="inline size-4" />
     ) : (
       <RiSortDesc className="inline size-4" />
