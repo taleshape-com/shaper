@@ -13,12 +13,40 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func SetActor(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+
+		var actor *core.Actor
+		if userID, ok := claims["userId"].(string); ok {
+			actor = &core.Actor{
+				Type: core.ActorUser,
+				ID:   userID,
+			}
+		} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
+			actor = &core.Actor{
+				Type: core.ActorAPIKey,
+				ID:   apiKeyID,
+			}
+		}
+
+		if actor != nil {
+			c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
+		}
+
+		return next(c)
+	}
+}
+
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
 
-	apiWithAuth := e.Group("/api", echojwt.WithConfig(echojwt.Config{
-		TokenLookup: "header:Authorization",
-		KeyFunc:     GetJWTKeyfunc(app),
-	}))
+	apiWithAuth := e.Group("/api",
+		echojwt.WithConfig(echojwt.Config{
+			TokenLookup: "header:Authorization",
+			KeyFunc:     GetJWTKeyfunc(app),
+		}),
+		SetActor,
+	)
 
 	e.GET("/status", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)

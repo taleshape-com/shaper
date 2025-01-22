@@ -19,6 +19,40 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type contextKey string
+
+const ACTOR_CONTEXT_KEY contextKey = "actor"
+
+type ActorType string
+
+const (
+	ActorUser   ActorType = "user"
+	ActorAPIKey ActorType = "api_key"
+)
+
+type Actor struct {
+	Type ActorType
+	ID   string
+}
+
+func (a Actor) String() string {
+	return fmt.Sprintf("%s:%s", a.Type, a.ID)
+}
+
+func ActorFromContext(ctx context.Context) *Actor {
+	if ctx == nil {
+		return nil
+	}
+	if actor, ok := ctx.Value(ACTOR_CONTEXT_KEY).(*Actor); ok {
+		return actor
+	}
+	return nil
+}
+
+func ContextWithActor(ctx context.Context, actor *Actor) context.Context {
+	return context.WithValue(ctx, ACTOR_CONTEXT_KEY, actor)
+}
+
 const SESSION_TOKEN_PREFIX = "shapersession."
 
 type Session struct {
@@ -33,6 +67,16 @@ type CreateSessionPayload struct {
 	Hash      string    `json:"hash"`
 	Salt      string    `json:"salt"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+type AuthInfo struct {
+	Valid      bool
+	IsUser     bool
+	UserID     string
+	UserEmail  string
+	UserName   string
+	APIKeyID   string
+	APIKeyName string
 }
 
 func deleteExpiredSessions(app *App, userID string) (int64, error) {
@@ -198,15 +242,67 @@ func GetAPIKeyID(token string) string {
 	return parts[0]
 }
 
-func ValidToken(app *App, ctx context.Context, token string) (bool, error) {
+func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 	if !app.LoginRequired && token == "" {
-		return true, nil
+		return AuthInfo{Valid: true}, nil
 	}
-	ok, err := validateSessionToken(app, ctx, token)
-	if err != nil || ok {
-		return ok, err
+
+	// Check session token first
+	if strings.HasPrefix(token, SESSION_TOKEN_PREFIX) {
+		id := strings.Split(strings.TrimPrefix(token, SESSION_TOKEN_PREFIX), ".")[0]
+		var user struct {
+			ID    string `db:"id"`
+			Email string `db:"email"`
+			Name  string `db:"name"`
+		}
+		err := app.db.GetContext(ctx, &user,
+			`SELECT u.id, u.email, u.name
+			 FROM `+app.Schema+`.sessions s
+			 JOIN `+app.Schema+`.users u ON s.user_id = u.id
+			 WHERE s.id = $1`, id)
+		if err == nil {
+			ok, err := validateSessionToken(app, ctx, token)
+			if err != nil {
+				return AuthInfo{}, err
+			}
+			if ok {
+				return AuthInfo{
+					Valid:     true,
+					IsUser:    true,
+					UserID:    user.ID,
+					UserEmail: user.Email,
+					UserName:  user.Name,
+				}, nil
+			}
+		}
 	}
-	return ValidateAPIKey(app, ctx, token)
+
+	// Check API key
+	if strings.HasPrefix(token, API_KEY_PREFIX) {
+		id := GetAPIKeyID(token)
+		var key struct {
+			ID   string `db:"id"`
+			Name string `db:"name"`
+		}
+		err := app.db.GetContext(ctx, &key,
+			`SELECT id, name FROM `+app.Schema+`.api_keys WHERE id = $1`, id)
+		if err == nil {
+			ok, err := ValidateAPIKey(app, ctx, token)
+			if err != nil {
+				return AuthInfo{}, err
+			}
+			if ok {
+				return AuthInfo{
+					Valid:      true,
+					IsUser:     false,
+					APIKeyID:   key.ID,
+					APIKeyName: key.Name,
+				}, nil
+			}
+		}
+	}
+
+	return AuthInfo{Valid: false}, nil
 }
 
 func ResetJWTSecret(app *App, ctx context.Context) ([]byte, error) {

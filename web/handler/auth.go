@@ -72,14 +72,26 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		}
-		// Check if the token is valid
-		if ok, err := core.ValidToken(app, c.Request().Context(), loginRequest.Token); err != nil {
+		// Check if the token is valid and get auth info
+		authInfo, err := core.ValidToken(app, c.Request().Context(), loginRequest.Token)
+		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct{ Error error }{Error: err}, "  ")
-		} else if !ok {
+		}
+		if !authInfo.Valid {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
+
+		// Add user or API key info to claims
 		claims := jwt.MapClaims{
 			"exp": time.Now().Add(app.JWTExp).Unix(),
+		}
+		if authInfo.IsUser {
+			claims["userId"] = authInfo.UserID
+			claims["userEmail"] = authInfo.UserEmail
+			claims["userName"] = authInfo.UserName
+		} else if authInfo.APIKeyID != "" {
+			claims["apiKeyId"] = authInfo.APIKeyID
+			claims["apiKeyName"] = authInfo.APIKeyName
 		}
 		// TODO: remove after migration
 		if loginRequest.DashboardID == "embed" {

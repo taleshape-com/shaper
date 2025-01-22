@@ -12,12 +12,14 @@ type UpdateDashboardContentPayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
 	Content   string    `json:"content"`
+	UpdatedBy string    `json:"updatedBy"`
 }
 
 type UpdateDashboardNamePayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
 	Name      string    `json:"name"`
+	UpdatedBy string    `json:"updatedBy"`
 }
 
 func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
@@ -31,6 +33,10 @@ func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, err
 }
 
 func SaveDashboardName(app *App, ctx context.Context, id string, name string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
 	var count int
 	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
 	if err != nil {
@@ -43,11 +49,16 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 		ID:        id,
 		TimeStamp: time.Now(),
 		Name:      name,
+		UpdatedBy: actor.String(),
 	})
 	return err
 }
 
 func SaveDashboardQuery(app *App, ctx context.Context, id string, content string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
 	var count int
 	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
 	if err != nil {
@@ -60,6 +71,7 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		ID:        id,
 		TimeStamp: time.Now(),
 		Content:   content,
+		UpdatedBy: actor.String(),
 	})
 	return err
 }
@@ -73,9 +85,9 @@ func HandleUpdateDashboardContent(app *App, data []byte) bool {
 	}
 	_, err = app.db.Exec(
 		`UPDATE `+app.Schema+`.dashboards
-		 SET content = $1, updated_at = $2
-		 WHERE id = $3`,
-		payload.Content, payload.TimeStamp, payload.ID)
+		 SET content = $1, updated_at = $2, updated_by = $3
+		 WHERE id = $4`,
+		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false
@@ -92,9 +104,9 @@ func HandleUpdateDashboardName(app *App, data []byte) bool {
 	}
 	_, err = app.db.Exec(
 		`UPDATE `+app.Schema+`.dashboards
-		 SET name = $1, updated_at = $2
-		 WHERE id = $3`,
-		payload.Name, payload.TimeStamp, payload.ID)
+		 SET name = $1, updated_at = $2, updated_by = $3
+		 WHERE id = $4`,
+		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false

@@ -17,9 +17,14 @@ type CreateDashboardPayload struct {
 	Path      string    `json:"path"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
+	CreatedBy string    `json:"createdBy"`
 }
 
 func CreateDashboard(app *App, ctx context.Context, name string, content string) (string, error) {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return "", fmt.Errorf("no actor in context")
+	}
 	// Validate name
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -32,6 +37,7 @@ func CreateDashboard(app *App, ctx context.Context, name string, content string)
 		Path:      "/",
 		Name:      name,
 		Content:   content,
+		CreatedBy: actor.String(),
 	})
 	return id, err
 }
@@ -46,9 +52,9 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 	// Insert into DB
 	_, err = app.db.Exec(
 		`INSERT OR IGNORE INTO `+app.Schema+`.dashboards (
-			id, path, name, content, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $5)`,
-		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp,
+			id, path, name, content, created_at, updated_at, created_by, updated_by
+		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
+		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert dashboard into DB", slog.Any("error", err))

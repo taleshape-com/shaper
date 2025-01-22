@@ -36,6 +36,7 @@ type CreateUserPayload struct {
 	Name         string    `json:"name"`
 	PasswordHash string    `json:"passwordHash"`
 	Timestamp    time.Time `json:"timestamp"`
+	CreatedBy    string    `json:"createdBy"`
 }
 
 func CreateUser(app *App, ctx context.Context, email string, password string, name string) (string, error) {
@@ -61,6 +62,11 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return "", fmt.Errorf("no actor in context")
+	}
+
 	id := cuid2.Generate()
 	payload := CreateUserPayload{
 		ID:           id,
@@ -68,6 +74,7 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 		Name:         name,
 		PasswordHash: string(passwordHash),
 		Timestamp:    time.Now(),
+		CreatedBy:    actor.String(),
 	}
 
 	err = app.SubmitState(ctx, "create_user", payload)
@@ -84,9 +91,9 @@ func HandleCreateUser(app *App, data []byte) bool {
 
 	_, err = app.db.Exec(
 		`INSERT INTO "`+app.Schema+`".users (
-			id, email, name, password_hash, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $5)`,
-		payload.ID, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp,
+			id, email, name, password_hash, created_at, updated_at, created_by, updated_by
+		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
+		payload.ID, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert user into DB", slog.Any("error", err))
@@ -105,9 +112,15 @@ func HandleCreateUser(app *App, data []byte) bool {
 type DeleteInvitePayload struct {
 	Code      string    `json:"code"`
 	Timestamp time.Time `json:"timestamp"`
+	// TODO: Not used, but might want to log this in the future
+	DeletedBy string `json:"deletedBy"`
 }
 
 func DeleteInvite(app *App, ctx context.Context, code string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
 	// Check if invite exists
 	var exists bool
 	err := app.db.GetContext(ctx, &exists,
@@ -123,6 +136,7 @@ func DeleteInvite(app *App, ctx context.Context, code string) error {
 	payload := DeleteInvitePayload{
 		Code:      code,
 		Timestamp: time.Now(),
+		DeletedBy: actor.String(),
 	}
 
 	return app.SubmitState(ctx, "delete_invite", payload)
@@ -198,9 +212,14 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 type DeleteUserPayload struct {
 	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
+	DeletedBy string    `json:"deletedBy"`
 }
 
 func DeleteUser(app *App, ctx context.Context, id string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
 	var count int
 	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
@@ -222,6 +241,7 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 	err = app.SubmitState(ctx, "delete_user", DeleteUserPayload{
 		ID:        id,
 		Timestamp: time.Now(),
+		DeletedBy: actor.String(),
 	})
 	return err
 }
@@ -253,8 +273,9 @@ func HandleDeleteUser(app *App, data []byte) bool {
 
 	// Then soft delete the user
 	_, err = tx.Exec(
-		`UPDATE "`+app.Schema+`".users SET deleted_at = $1 WHERE id = $2`,
+		`UPDATE "`+app.Schema+`".users SET deleted_at = $1, deleted_by = $2 WHERE id = $3`,
 		payload.Timestamp,
+		payload.DeletedBy,
 		payload.ID,
 	)
 	if err != nil {
@@ -299,9 +320,14 @@ type CreateInvitePayload struct {
 	Code      string    `json:"code"`
 	Email     string    `json:"email"`
 	Timestamp time.Time `json:"timestamp"`
+	CreatedBy string    `json:"createdBy"`
 }
 
 func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return nil, fmt.Errorf("no actor in context")
+	}
 	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" {
 		return nil, fmt.Errorf("email is required")
@@ -347,6 +373,7 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 		Code:      code,
 		Email:     email,
 		Timestamp: time.Now(),
+		CreatedBy: actor.String(),
 	}
 
 	err = app.SubmitState(ctx, "create_invite", payload)
@@ -371,9 +398,9 @@ func HandleCreateInvite(app *App, data []byte) bool {
 
 	_, err = app.db.Exec(
 		`INSERT INTO "`+app.Schema+`".invites (
-			code, email, created_at
-		) VALUES ($1, $2, $3)`,
-		payload.Code, payload.Email, payload.Timestamp,
+			code, email, created_at, created_by
+		) VALUES ($1, $2, $3, $4)`,
+		payload.Code, payload.Email, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert invite into DB", slog.Any("error", err))
