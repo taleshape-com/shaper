@@ -1,26 +1,18 @@
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
-import { logout, useAuth } from "../lib/auth";
 import { translate } from "../lib/translate";
-import { Button } from "../components/tremor/Button";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
+import { Menu } from "../components/Menu";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
 function Admin() {
-  const navigate = useNavigate({ from: "/" });
-  const auth = useAuth();
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="p-4 max-w-[1200px] mx-auto">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Menu inline hideAdmin />
+      <div className="flex-1 p-4 overflow-auto">
         <Helmet>
           <title>{translate("Admin")}</title>
           <meta name="description" content="Admin Settings" />
@@ -29,20 +21,6 @@ function Admin() {
           <h1 className="text-3xl font-semibold font-display flex-grow">
             {translate("Admin")}
           </h1>
-          <Button asChild className="h-fit">
-            <Link to="/">{translate("Overview")}</Link>
-          </Button>
-          {auth.loginRequired && (
-            <Button
-              onClick={async () => {
-                navigate(await logout());
-              }}
-              variant="secondary"
-              className="h-fit ml-3"
-            >
-              {translate("Logout")}
-            </Button>
-          )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">

@@ -14,7 +14,7 @@ const translations: Record<string, Record<string, string>> = {
   loading: {
     de: "Einen Moment",
   },
-  Overview: {
+  Home: {
     de: "Übersicht",
   },
   Name: {
@@ -44,8 +44,8 @@ const translations: Record<string, Record<string, string>> = {
   "Delete Dashboard": {
     de: "Dashboard löschen",
   },
-  New: {
-    de: "Neu",
+  "New Dashboard": {
+    de: "Neu Dashboard",
   },
   Save: {
     de: "Speichern",

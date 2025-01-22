@@ -3,16 +3,11 @@ import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { z } from "zod";
-import { createFileRoute, isRedirect, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { useAuth, logout } from "../lib/auth";
+import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
-import {
-  RiCloseLargeLine,
-  RiMenuLine,
-  RiArrowLeftLine,
-} from "@remixicon/react";
 import { useDebouncedCallback } from "use-debounce";
 import {
   cx,
@@ -25,6 +20,7 @@ import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
+import { Menu } from "../components/Menu";
 
 const defaultQuery = "-- Enter your SQL query here"
 
@@ -51,7 +47,6 @@ function NewDashboard() {
   const [query, setQuery] = useState(defaultQuery);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -204,9 +199,27 @@ function NewDashboard() {
         <div className="w-full lg:w-1/2 overflow-hidden">
           <div className="flex justify-between items-center p-4 border-b">
             <div className="flex items-center space-x-4">
-              <button className="px-1" onClick={() => setIsMenuOpen(true)}>
-                <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
-              </button>
+              <Menu isNewPage>
+                <div className="mt-6 px-5 w-full sm:w-96">
+                  <label>
+                    <span className="text-lg font-medium font-display ml-1 mb-2 block">
+                      {translate("Variables")}
+                    </span>
+                    <textarea
+                      className={cx(
+                        "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+                        focusRing,
+                        hasVariableError && hasErrorInput,
+                      )}
+                      onChange={(event) => {
+                        onVariablesEdit(event.target.value);
+                      }}
+                      defaultValue={JSON.stringify(auth.variables, null, 2)}
+                      rows={4}
+                    ></textarea>
+                  </label>
+                </div>
+              </Menu>
             </div>
             <div className="space-x-2">
               <Button
@@ -267,63 +280,6 @@ function NewDashboard() {
               data={previewData} // Pass preview data directly to Dashboard
             />
           )}
-        </div>
-      </div>
-
-      {/* Menu */}
-      <div
-        className={cx(
-          "fixed top-0 h-dvh w-full sm:w-fit bg-cbga dark:bg-dbga shadow-xl ease-in-out delay-75 duration-300 z-40",
-          {
-            "-translate-x-[calc(100vw+50px)]": !isMenuOpen,
-          },
-        )}
-      >
-        <div className="flex flex-col h-full">
-          <div>
-            <button onClick={() => setIsMenuOpen(false)}>
-              <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
-            </button>
-            <Link
-              to="/"
-              className="block px-4 py-4 hover:bg-ctext dark:hover:bg-dtext hover:text-cbga dark:hover:text-dbga mb-4 mt-2 transition-colors"
-            >
-              <RiArrowLeftLine className="size-4 inline" />{" "}
-              {translate("Overview")}
-            </Link>
-            <div className="mt-6 px-5 w-full sm:w-96">
-              <label>
-                <span className="text-lg font-medium font-display ml-1 mb-2 block">
-                  {translate("Variables")}
-                </span>
-                <textarea
-                  className={cx(
-                    "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
-                    focusRing,
-                    hasVariableError && hasErrorInput,
-                  )}
-                  onChange={(event) => {
-                    onVariablesEdit(event.target.value);
-                  }}
-                  defaultValue={JSON.stringify(auth.variables, null, 2)}
-                  rows={4}
-                ></textarea>
-              </label>
-            </div>
-          </div>
-
-          {auth.loginRequired &&
-            <div className="mt-auto px-5 pb-6">
-              <Button
-                onClick={async () => {
-                  navigate(await logout());
-                }}
-                variant="secondary"
-              >
-                {translate("Logout")}
-              </Button>
-            </div>
-          }
         </div>
       </div>
     </div>

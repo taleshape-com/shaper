@@ -1,4 +1,3 @@
-import { redirect } from "@tanstack/react-router";
 import { useAuth } from '../lib/auth'
 import { useCallback } from "react";
 import { goToLoginPage } from "../lib/utils";
