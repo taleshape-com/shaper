@@ -45,8 +45,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 
 	for queryIndex, sqlString := range sqls {
-		if queryIndex == len(sqls)-1 {
-			// Ignore text after last semicolon
+		if strings.TrimSpace(sqlString) == "" {
 			break
 		}
 		if nextIsDownload {
