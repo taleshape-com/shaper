@@ -158,6 +158,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
+	// TODO: refactor - comms should be part of core
 	c, err := comms.New(comms.Config{
 		Logger:     logger.WithGroup("nats"),
 		Host:       cfg.NatsHost,

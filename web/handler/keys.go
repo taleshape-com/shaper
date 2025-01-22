@@ -65,7 +65,7 @@ func CreateAPIKey(app *core.App) echo.HandlerFunc {
 				}{Error: err.Error()}, "  ")
 		}
 
-		return c.JSONPretty(http.StatusCreated, struct {
+		return c.JSONPretty(http.StatusOK, struct {
 			ID  string `json:"id"`
 			Key string `json:"key"`
 		}{
@@ -94,6 +94,8 @@ func DeleteAPIKey(app *core.App) echo.HandlerFunc {
 				}{Error: err.Error()}, "  ")
 		}
 
-		return c.NoContent(http.StatusOK)
+		return c.JSONPretty(http.StatusOK, struct {
+			Deleted bool `json:"deleted"`
+		}{Deleted: true}, "  ")
 	}
 }

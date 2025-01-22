@@ -135,7 +135,7 @@ export function Menu({
               {!hideAdmin && (
                 <Link
                   to="/admin"
-                  className="block text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext"
+                  className="block text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext pb-2"
                 >
                   <RiAdminLine className="size-4 inline mr-2 mb-1" />
                   {translate("Admin")}
