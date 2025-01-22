@@ -142,7 +142,7 @@ export function Menu({
                 </Link>
               )}
               <div className="flex items-center gap-2">
-                <span className="text-sm text-ctext2 dark:text-dtext2 max-w-36 overflow-hidden whitespace-nowrap text-ellipsis">
+                <span className="text-sm text-ctext2 dark:text-dtext2 max-w-36 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}
                 </span>
                 <Button

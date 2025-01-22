@@ -200,7 +200,7 @@ function NewDashboard() {
           <div className="flex justify-between items-center p-4 border-b">
             <div className="flex items-center space-x-4">
               <Menu isNewPage>
-                <div className="mt-6 px-5 w-full sm:w-96">
+                <div className="mt-6 px-4 w-full">
                   <label>
                     <span className="text-lg font-medium font-display ml-1 mb-2 block">
                       {translate("Variables")}

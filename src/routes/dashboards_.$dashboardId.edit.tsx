@@ -263,11 +263,11 @@ function DashboardEditor() {
           <div className="flex justify-between items-center p-2 border-b">
             <div className="flex items-center space-x-4">
               <Menu>
-                <div className="mt-6 px-5 w-full sm:w-96">
-                  <label>
-                    <span className="text-lg font-medium font-display ml-1 mb-2 block">
+                <div className="mt-6 px-4">
+                  <label className="block">
+                    <p className="text-lg font-medium font-display ml-1 mb-2">
                       {translate("Variables")}
-                    </span>
+                    </p>
                     <textarea
                       className={cx(
                         "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
@@ -281,12 +281,13 @@ function DashboardEditor() {
                       rows={4}
                     ></textarea>
                   </label>
-                  <button
+                  <Button
                     onClick={handleDelete}
-                    className="px-4 py-2 bg-cerr dark:bg-derr text-ctext dark:text-dtext rounded opacity-90 hover:opacity-100 hover:underline transition-opacity mt-6"
+                    variant="destructive"
+                    className="mt-4"
                   >
                     {translate("Delete Dashboard")}
-                  </button>
+                  </Button>
                 </div>
               </Menu>
               {editingName ? (
