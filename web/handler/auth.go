@@ -12,6 +12,28 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func Logout(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+
+		// Only allow logout for user sessions
+		if _, hasAPIKey := claims["apiKeyId"]; hasAPIKey {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Cannot logout with API key"})
+		}
+
+		sessionID, ok := claims["sessionId"].(string)
+		if !ok || sessionID == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "No session ID in token"})
+		}
+
+		if err := core.Logout(app, c.Request().Context(), sessionID); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete session"})
+		}
+
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
 func Login(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
@@ -89,6 +111,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["userId"] = authInfo.UserID
 			claims["userEmail"] = authInfo.UserEmail
 			claims["userName"] = authInfo.UserName
+			claims["sessionId"] = authInfo.SessionID
 		} else if authInfo.APIKeyID != "" {
 			claims["apiKeyId"] = authInfo.APIKeyID
 			claims["apiKeyName"] = authInfo.APIKeyName

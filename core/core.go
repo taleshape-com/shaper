@@ -145,6 +145,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleCreateUser
 	case "create_session":
 		handler = HandleCreateSession
+	case "delete_session":
+		handler = HandleDeleteSession
 	case "delete_user":
 		handler = HandleDeleteUser
 	case "create_invite":

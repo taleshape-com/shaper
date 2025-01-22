@@ -142,12 +142,8 @@ function Index() {
         </Button>
         {auth.loginRequired &&
           <Button
-            onClick={() => {
-              logout();
-              navigate({
-                to: "/login",
-                replace: true,
-              });
+            onClick={async () => {
+              navigate(await logout());
             }}
             variant="secondary"
             className="h-fit ml-3"

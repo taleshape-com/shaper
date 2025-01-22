@@ -1,5 +1,6 @@
 import { z } from "zod";
 import * as React from "react";
+import { goToLoginPage } from "./utils";
 
 export interface IAuthContext {
   getJwt: () => Promise<string>;
@@ -53,5 +54,16 @@ export function parseJwt(token: string) {
 }
 
 export async function logout() {
+  const jwt = localStorage.getItem(localStorageJwtKey);
+  if (jwt) {
+    await fetch(`/api/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: jwt,
+      },
+    })
+  }
   localStorage.clear();
+  return goToLoginPage();
 }

@@ -182,16 +182,8 @@ function DashboardViewComponent() {
           {auth.loginRequired &&
             <div className="mt-auto px-5 pb-6">
               <Button
-                onClick={() => {
-                  logout();
-                  navigate({
-                    to: "/login",
-                    replace: true,
-                    search: {
-                      redirect:
-                        location.pathname + location.search + location.hash,
-                    },
-                  });
+                onClick={async () => {
+                  navigate(await logout());
                 }}
                 variant="secondary"
               >

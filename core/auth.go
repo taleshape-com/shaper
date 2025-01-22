@@ -68,6 +68,10 @@ type CreateSessionPayload struct {
 	Salt      string    `json:"salt"`
 	Timestamp time.Time `json:"timestamp"`
 }
+type DeleteSessionPayload struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+}
 
 type AuthInfo struct {
 	Valid      bool
@@ -75,6 +79,7 @@ type AuthInfo struct {
 	UserID     string
 	UserEmail  string
 	UserName   string
+	SessionID  string
 	APIKeyID   string
 	APIKeyName string
 }
@@ -92,6 +97,25 @@ func deleteExpiredSessions(app *App, userID string) (int64, error) {
 	}
 
 	return result.RowsAffected()
+}
+
+func HandleDeleteSession(app *App, data []byte) bool {
+	var payload DeleteSessionPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal delete session payload", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.db.Exec(
+		`DELETE FROM `+app.Schema+`.sessions WHERE id = $1`,
+		payload.ID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to delete session from DB", slog.Any("error", err))
+		return false
+	}
+	return true
 }
 
 func HandleCreateSession(app *App, data []byte) bool {
@@ -124,6 +148,19 @@ func HandleCreateSession(app *App, data []byte) bool {
 		return false
 	}
 	return true
+}
+
+func Logout(app *App, ctx context.Context, sessionID string) error {
+	if sessionID == "" {
+		return fmt.Errorf("session ID is required")
+	}
+
+	payload := DeleteSessionPayload{
+		ID:        sessionID,
+		Timestamp: time.Now(),
+	}
+
+	return app.SubmitState(ctx, "delete_session", payload)
 }
 
 func Login(app *App, ctx context.Context, email string, password string) (string, error) {
@@ -249,7 +286,7 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 
 	// Check session token first
 	if strings.HasPrefix(token, SESSION_TOKEN_PREFIX) {
-		id := strings.Split(strings.TrimPrefix(token, SESSION_TOKEN_PREFIX), ".")[0]
+		sessionID := strings.Split(strings.TrimPrefix(token, SESSION_TOKEN_PREFIX), ".")[0]
 		var user struct {
 			ID    string `db:"id"`
 			Email string `db:"email"`
@@ -259,7 +296,7 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 			`SELECT u.id, u.email, u.name
 			 FROM `+app.Schema+`.sessions s
 			 JOIN `+app.Schema+`.users u ON s.user_id = u.id
-			 WHERE s.id = $1`, id)
+			 WHERE s.id = $1`, sessionID)
 		if err == nil {
 			ok, err := validateSessionToken(app, ctx, token)
 			if err != nil {
@@ -272,6 +309,7 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 					UserID:    user.ID,
 					UserEmail: user.Email,
 					UserName:  user.Name,
+					SessionID: sessionID,
 				}, nil
 			}
 		}
