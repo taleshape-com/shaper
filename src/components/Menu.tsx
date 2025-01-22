@@ -130,18 +130,18 @@ export function Menu({
             {children}
           </div>
 
-          {auth.loginRequired && (
-            <div className="mt-auto px-5 pb-6 space-y-3">
-              {!hideAdmin && (
-                <Link
-                  to="/admin"
-                  className="block text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext pb-2"
-                >
-                  <RiAdminLine className="size-4 inline mr-2 mb-1" />
-                  {translate("Admin")}
-                </Link>
-              )}
-              <div className="flex items-center gap-2">
+          <div className="mt-auto px-5 pb-6 space-y-3">
+            {!hideAdmin && (
+              <Link
+                to="/admin"
+                className="block text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext"
+              >
+                <RiAdminLine className="size-4 inline mr-2 mb-1" />
+                {translate("Admin")}
+              </Link>
+            )}
+            {auth.loginRequired && (
+              <div className="flex items-center gap-2 pt-2">
                 <span className="text-sm text-ctext2 dark:text-dtext2 max-w-36 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}
                 </span>
@@ -155,8 +155,8 @@ export function Menu({
                   {translate("Logout")}
                 </Button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
