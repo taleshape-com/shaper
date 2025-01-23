@@ -250,23 +250,20 @@ function Admin() {
             </div>
           ) : (
             <form
-              className="space-y-4"
+              className="space-y-4 mt-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 handleCreateKey(formData.get("name") as string);
               }}
             >
-              <div className="space-y-2">
-                <Label htmlFor="name">{translate("Key Name")}</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder={translate("Enter key name")}
-                  required
-                  autoFocus
-                />
-              </div>
+              <Input
+                id="name"
+                name="name"
+                placeholder={translate("Enter key name")}
+                required
+                autoFocus
+              />
 
               <DialogFooter>
                 <DialogClose asChild>

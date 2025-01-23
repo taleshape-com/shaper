@@ -197,7 +197,7 @@ function NewDashboard() {
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-full lg:w-1/2 overflow-hidden">
-          <div className="flex justify-between items-center p-4 border-b">
+          <div className="flex justify-between items-center py-4 pl-2 pr-4 border-b">
             <div className="flex items-center space-x-4">
               <Menu isNewPage>
                 <div className="mt-6 px-4 w-full">

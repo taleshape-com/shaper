@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { cx } from "../lib/utils";
 import {
   RiMenuLine,
-  RiCloseLargeLine,
   RiHomeLine,
   RiFileAddLine,
   RiAdminLine,
@@ -84,11 +83,12 @@ export function Menu({
   return (
     <div>
       <button
-        className={cx("px-1", { hidden: inline && isMenuOpen, "ml-4 mt-4": inline })}
+        className={cx("px-1", { hidden: inline && isMenuOpen, "ml-1 mt-4": inline })}
         onClick={() => setIsMenuOpen(true)}
       >
         <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
       </button>
+
       <div
         ref={menuRef}
         className={cx(
@@ -107,7 +107,7 @@ export function Menu({
         <div className="flex flex-col h-full">
           <div>
             <button onClick={() => setIsMenuOpen(false)}>
-              <RiCloseLargeLine className="pl-1 py-1 ml-2 mt-2 mb-4 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+              <RiMenuLine className="pl-1 py-1 ml-2 mt-4 mb-4 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
             </button>
             {!hideHome && (
               <Link

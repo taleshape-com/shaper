@@ -421,23 +421,20 @@ function UsersManagement() {
               </div>
             ) : (
               <form
-                className="space-y-4"
+                className="space-y-4 mt-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
                   handleCreateInvite(formData.get("email") as string);
                 }}
               >
-                <div className="space-y-2">
-                  <Label htmlFor="email">{translate("Email")}</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="user@example.com"
-                  />
-                </div>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="user@example.com"
+                />
 
                 <DialogFooter className="mt-6">
                   <DialogClose asChild>
