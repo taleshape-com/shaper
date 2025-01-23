@@ -28,7 +28,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	nextLabel := ""
 	hideNextContentSection := false
 	nextIsDownload := false
-	sqls := strings.Split(dashboardQuery.Content, ";")
+	cleanContent := stripSQLComments(dashboardQuery.Content)
+	sqls := strings.Split(cleanContent, ";")
 
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
@@ -45,7 +46,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 
 	for queryIndex, sqlString := range sqls {
-		if strings.TrimSpace(sqlString) == "" {
+		sqlString = strings.TrimSpace(sqlString)
+		if sqlString == "" {
 			break
 		}
 		if nextIsDownload {
@@ -243,6 +245,23 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	}, queryParams, variables)
 }
 
+func stripSQLComments(sql string) string {
+	var result strings.Builder
+	lines := strings.Split(sql, "\n")
+
+	for _, line := range lines {
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			// Only take the part before the comment
+			line = line[:idx]
+		}
+		if strings.TrimSpace(line) != "" {
+			result.WriteString(line)
+			result.WriteString("\n")
+		}
+	}
+
+	return result.String()
+}
 func escapeSQLString(str string) string {
 	// Replace single quotes with doubled single quotes
 	escaped := strings.Replace(str, "'", "''", -1)
