@@ -18,18 +18,22 @@ export function Menu({
   hideHome = false,
   hideAdmin = false,
   isNewPage = false,
+  onOpenChange,
 }: {
   children?: React.ReactNode;
   inline?: boolean;
   hideHome?: boolean;
   hideAdmin?: boolean;
   isNewPage?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
+  const [defaultOpenState, setDefaultOpenState] = useState(false);
   const [userName, setUserName] = useState<string>("");
   const menuRef = useRef<HTMLDivElement>(null);
+  const actuallyOpen = isMenuOpen || (isMenuOpen === null && defaultOpenState);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -40,6 +44,9 @@ export function Menu({
         isMenuOpen
       ) {
         setIsMenuOpen(false);
+        if (onOpenChange) {
+          onOpenChange(false);
+        }
       }
     };
 
@@ -47,7 +54,7 @@ export function Menu({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [inline, isMenuOpen]);
+  }, [inline, isMenuOpen, onOpenChange]);
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -66,7 +73,11 @@ export function Menu({
   useEffect(() => {
     const handleResize = () => {
       // 640px is the 'sm' breakpoint
-      setIsMenuOpen(inline && window.innerWidth >= 640);
+      const state = inline && window.innerWidth >= 640;
+      setDefaultOpenState(state);
+      if (onOpenChange && isMenuOpen === null) {
+        onOpenChange(state);
+      }
     };
 
     // Set initial state
@@ -78,13 +89,21 @@ export function Menu({
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [inline]);
+  }, [inline, isMenuOpen, onOpenChange]);
 
   return (
-    <div>
+    <>
       <button
-        className={cx("px-1", { hidden: inline && isMenuOpen, "ml-1 mt-4": inline })}
-        onClick={() => setIsMenuOpen(true)}
+        className={cx("px-1", {
+          hidden: inline && actuallyOpen,
+          "mr-1": inline,
+        })}
+        onClick={() => {
+          setIsMenuOpen(true);
+          if (onOpenChange) {
+            onOpenChange(true);
+          }
+        }}
       >
         <RiMenuLine className="py-1 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
       </button>
@@ -92,22 +111,27 @@ export function Menu({
       <div
         ref={menuRef}
         className={cx(
-          "w-full sm:w-fit h-dvh ease-in-out delay-75 duration-300 z-40 min-w-72",
-          inline
-            ? cx({
-              hidden: !isMenuOpen,
-              "fixed sm:relative border-r border-cborder dark:border-dborder":
-                isMenuOpen,
-            })
-            : cx("bg-cbga dark:bg-dbga fixed top-0 left-0 shadow-xl !ml-0", {
-              "-translate-x-[calc(100vw+50px)]": !isMenuOpen,
-            }),
+          "fixed top-0 left-0 w-full sm:w-72 h-dvh ease-in-out delay-75 duration-300 z-40 bg-cbg dark:bg-dbg",
+          {
+            hidden: inline && !actuallyOpen,
+            "border-r border-cborder dark:border-dborder":
+              inline && actuallyOpen,
+            "bg-cbga dark:bg-dbga shadow-xl !ml-0": !inline,
+            "-translate-x-[calc(100vw+50px)]": !inline && !actuallyOpen,
+          },
         )}
       >
         <div className="flex flex-col h-full">
           <div>
-            <button onClick={() => setIsMenuOpen(false)}>
-              <RiMenuLine className="pl-1 py-1 ml-2 mt-4 mb-4 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                if (onOpenChange) {
+                  onOpenChange(false);
+                }
+              }}
+            >
+              <RiMenuLine className="pl-1 py-1 ml-2 mt-5 mb-4 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
             </button>
             {!hideHome && (
               <Link
@@ -142,7 +166,7 @@ export function Menu({
             )}
             {auth.loginRequired && (
               <div className="flex items-center gap-2 pt-2">
-                <span className="text-sm text-ctext2 dark:text-dtext2 max-w-36 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
+                <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}
                 </span>
                 <Button
@@ -159,6 +183,6 @@ export function Menu({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

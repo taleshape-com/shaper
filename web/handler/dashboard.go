@@ -132,7 +132,7 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 			}{Error: err.Error()}, "  ")
 		}
 
-		return c.NoContent(http.StatusOK)
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	}
 }
 
@@ -163,7 +163,7 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 			}{Error: err.Error()}, "  ")
 		}
 
-		return c.NoContent(http.StatusOK)
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	}
 }
 
@@ -214,7 +214,7 @@ func DeleteDashboard(app *core.App) echo.HandlerFunc {
 				}{Error: err.Error()}, "  ")
 		}
 
-		return c.NoContent(http.StatusOK)
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	}
 }
 
