@@ -65,7 +65,7 @@ func CreateAPIKey(app *core.App) echo.HandlerFunc {
 				}{Error: err.Error()}, "  ")
 		}
 
-		return c.JSONPretty(http.StatusOK, struct {
+		return c.JSONPretty(http.StatusCreated, struct {
 			ID  string `json:"id"`
 			Key string `json:"key"`
 		}{

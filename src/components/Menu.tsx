@@ -12,6 +12,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { translate } from "../lib/translate";
 import { Button } from "../components/tremor/Button";
 
+const isLg = () => window.innerWidth >= 1024;
+
 export function Menu({
   children,
   inline = false,
@@ -30,15 +32,15 @@ export function Menu({
   const auth = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
-  const [defaultOpenState, setDefaultOpenState] = useState(false);
+  const [actuallyInline, setActuallyInline] = useState(inline && isLg());
   const [userName, setUserName] = useState<string>("");
   const menuRef = useRef<HTMLDivElement>(null);
-  const actuallyOpen = isMenuOpen || (isMenuOpen === null && defaultOpenState);
+  const actuallyOpen = isMenuOpen || (isMenuOpen === null && actuallyInline);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        !inline &&
+        !actuallyInline &&
         menuRef.current &&
         !menuRef.current.contains(event.target as Node) &&
         isMenuOpen
@@ -54,7 +56,7 @@ export function Menu({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [inline, isMenuOpen, onOpenChange]);
+  }, [actuallyInline, isMenuOpen, onOpenChange]);
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -72,10 +74,9 @@ export function Menu({
 
   useEffect(() => {
     const handleResize = () => {
-      // 640px is the 'sm' breakpoint
-      const state = inline && window.innerWidth >= 640;
-      setDefaultOpenState(state);
-      if (onOpenChange && isMenuOpen === null) {
+      const state = inline && isLg();
+      setActuallyInline(state);
+      if (onOpenChange && (isMenuOpen === null || isMenuOpen)) {
         onOpenChange(state);
       }
     };
@@ -95,13 +96,13 @@ export function Menu({
     <>
       <button
         className={cx("px-1", {
-          hidden: inline && actuallyOpen,
-          "mr-1": inline,
+          hidden: actuallyInline && actuallyOpen,
+          "mr-1": actuallyInline,
         })}
         onClick={() => {
           setIsMenuOpen(true);
           if (onOpenChange) {
-            onOpenChange(true);
+            onOpenChange(actuallyInline);
           }
         }}
       >
@@ -113,11 +114,11 @@ export function Menu({
         className={cx(
           "fixed top-0 left-0 w-full sm:w-72 h-dvh ease-in-out delay-75 duration-300 z-40 bg-cbg dark:bg-dbg",
           {
-            hidden: inline && !actuallyOpen,
+            hidden: actuallyInline && !actuallyOpen,
             "border-r border-cborder dark:border-dborder":
-              inline && actuallyOpen,
-            "bg-cbga dark:bg-dbga shadow-xl !ml-0": !inline,
-            "-translate-x-[calc(100vw+50px)]": !inline && !actuallyOpen,
+              actuallyInline && actuallyOpen,
+            "bg-cbga dark:bg-dbga shadow-xl !ml-0": !actuallyInline,
+            "-translate-x-[calc(100vw+50px)]": !actuallyInline && !actuallyOpen,
           },
         )}
       >

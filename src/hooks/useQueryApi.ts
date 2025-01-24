@@ -19,7 +19,7 @@ export const useQueryApi = (): QueryApiFunc => {
     if (response.status === 401) {
       throw goToLoginPage();
     }
-    if (response.status !== 200) {
+    if (response.status !== 200 && response.status !== 201) {
       return response
         .json()
         .then((data: { error: string }) => {

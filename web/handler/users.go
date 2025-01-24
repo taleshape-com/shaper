@@ -97,7 +97,7 @@ func CreateInvite(app *core.App) echo.HandlerFunc {
 			}{Error: err.Error()}, "  ")
 		}
 
-		return c.JSONPretty(http.StatusOK, invite, "  ")
+		return c.JSONPretty(http.StatusCreated, invite, "  ")
 	}
 }
 

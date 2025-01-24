@@ -69,15 +69,7 @@ function NewDashboard() {
   useEffect(() => {
     const unsavedContent = editorStorage.getChanges("new");
     if (unsavedContent) {
-      if (
-        window.confirm(
-          translate("There are unsaved previous edits. Do you want to restore them?"),
-        )
-      ) {
-        setQuery(unsavedContent);
-      } else {
-        editorStorage.clearChanges("new");
-      }
+      setQuery(unsavedContent);
     }
   }, []);
 
@@ -148,7 +140,6 @@ function NewDashboard() {
         return navigate(err);
       }
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
       setCreating(false);
     }
   }, [queryApi, query, navigate, vars]);

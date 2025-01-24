@@ -11,16 +11,16 @@ export const Route = createFileRoute("/admin")({
 });
 
 function Admin() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isInlineMenuOpen, setIsInlineMenuOpen] = useState(false);
 
   return (
-    <div className={cx("flex-1 p-4 overflow-auto", { "ml-72": isMenuOpen })}>
+    <div className={cx("flex-1 p-4 overflow-auto", { "ml-72": isInlineMenuOpen })}>
       <Helmet>
         <title>{translate("Admin")}</title>
         <meta name="description" content="Admin Settings" />
       </Helmet>
-      <div className={cx("mb-4 flex", { "-ml-2": !isMenuOpen })}>
-        <Menu inline hideAdmin onOpenChange={setIsMenuOpen} />
+      <div className={cx("mb-4 flex", { "-ml-2": !isInlineMenuOpen })}>
+        <Menu inline hideAdmin onOpenChange={setIsInlineMenuOpen} />
         <h1 className="text-3xl font-semibold font-display flex-grow">
           {translate("Admin")}
         </h1>
