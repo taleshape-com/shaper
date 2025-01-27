@@ -116,10 +116,6 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["apiKeyId"] = authInfo.APIKeyID
 			claims["apiKeyName"] = authInfo.APIKeyName
 		}
-		// TODO: remove after migration
-		if loginRequest.DashboardID == "embed" {
-			loginRequest.DashboardID = "ja1ce8t8x53fkpd8dsmh8qrt"
-		}
 		if loginRequest.DashboardID != "" {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}
