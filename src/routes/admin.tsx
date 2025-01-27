@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { translate } from "../lib/translate";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
@@ -12,6 +12,14 @@ export const Route = createFileRoute("/admin")({
 
 function Admin() {
   const [isInlineMenuOpen, setIsInlineMenuOpen] = useState(false);
+  const location = useLocation()
+
+  let selectedTab = "users";
+  if (location.pathname === "/admin/keys") {
+    selectedTab = "keys";
+  } else if (location.pathname === "/admin/security") {
+    selectedTab = "security";
+  }
 
   return (
     <div className={cx("flex-1 p-4 overflow-auto", { "ml-72": isInlineMenuOpen })}>
@@ -28,7 +36,7 @@ function Admin() {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="px-6 pt-6">
-          <Tabs defaultValue="users" className="w-full">
+          <Tabs value={selectedTab} className="w-full">
             <TabsList>
               <TabsTrigger value="users" asChild>
                 <Link to="/admin">{translate("Users")}</Link>
