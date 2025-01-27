@@ -11,14 +11,24 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as SignupImport } from './routes/signup'
 import { Route as LoginImport } from './routes/login'
 import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
+import { Route as AdminIndexImport } from './routes/admin.index'
 import { Route as DashboardsDashboardIdImport } from './routes/dashboards.$dashboardId'
 import { Route as DashboardNewImport } from './routes/dashboard.new'
+import { Route as AdminSecurityImport } from './routes/admin.security'
+import { Route as AdminKeysImport } from './routes/admin.keys'
 import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$dashboardId.edit'
 
 // Create/Update Routes
+
+const SignupRoute = SignupImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const LoginRoute = LoginImport.update({
   id: '/login',
@@ -38,6 +48,12 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const AdminIndexRoute = AdminIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+
 const DashboardsDashboardIdRoute = DashboardsDashboardIdImport.update({
   id: '/dashboards/$dashboardId',
   path: '/dashboards/$dashboardId',
@@ -48,6 +64,18 @@ const DashboardNewRoute = DashboardNewImport.update({
   id: '/dashboard/new',
   path: '/dashboard/new',
   getParentRoute: () => rootRoute,
+} as any)
+
+const AdminSecurityRoute = AdminSecurityImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminKeysRoute = AdminKeysImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AdminRoute,
 } as any)
 
 const DashboardsDashboardIdEditRoute = DashboardsDashboardIdEditImport.update({
@@ -81,6 +109,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupImport
+      parentRoute: typeof rootRoute
+    }
+    '/admin/keys': {
+      id: '/admin/keys'
+      path: '/keys'
+      fullPath: '/admin/keys'
+      preLoaderRoute: typeof AdminKeysImport
+      parentRoute: typeof AdminImport
+    }
+    '/admin/security': {
+      id: '/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AdminSecurityImport
+      parentRoute: typeof AdminImport
+    }
     '/dashboard/new': {
       id: '/dashboard/new'
       path: '/dashboard/new'
@@ -95,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardsDashboardIdImport
       parentRoute: typeof rootRoute
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexImport
+      parentRoute: typeof AdminImport
+    }
     '/dashboards_/$dashboardId/edit': {
       id: '/dashboards_/$dashboardId/edit'
       path: '/dashboards/$dashboardId/edit'
@@ -107,31 +163,56 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
+interface AdminRouteChildren {
+  AdminKeysRoute: typeof AdminKeysRoute
+  AdminSecurityRoute: typeof AdminSecurityRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminKeysRoute: AdminKeysRoute,
+  AdminSecurityRoute: AdminSecurityRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/admin': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/dashboards_/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
 
@@ -141,32 +222,44 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
+    | '/admin/keys'
+    | '/admin/security'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
+    | '/admin/'
     | '/dashboards/$dashboardId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/login'
+    | '/signup'
+    | '/admin/keys'
+    | '/admin/security'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
+    | '/admin'
     | '/dashboards/$dashboardId/edit'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/login'
+    | '/signup'
+    | '/admin/keys'
+    | '/admin/security'
     | '/dashboard/new'
     | '/dashboards/$dashboardId'
+    | '/admin/'
     | '/dashboards_/$dashboardId/edit'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   DashboardNewRoute: typeof DashboardNewRoute
   DashboardsDashboardIdRoute: typeof DashboardsDashboardIdRoute
   DashboardsDashboardIdEditRoute: typeof DashboardsDashboardIdEditRoute
@@ -174,8 +267,9 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   DashboardNewRoute: DashboardNewRoute,
   DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
   DashboardsDashboardIdEditRoute: DashboardsDashboardIdEditRoute,
@@ -194,6 +288,7 @@ export const routeTree = rootRoute
         "/",
         "/admin",
         "/login",
+        "/signup",
         "/dashboard/new",
         "/dashboards/$dashboardId",
         "/dashboards_/$dashboardId/edit"
@@ -203,16 +298,36 @@ export const routeTree = rootRoute
       "filePath": "index.tsx"
     },
     "/admin": {
-      "filePath": "admin.tsx"
+      "filePath": "admin.tsx",
+      "children": [
+        "/admin/keys",
+        "/admin/security",
+        "/admin/"
+      ]
     },
     "/login": {
       "filePath": "login.tsx"
+    },
+    "/signup": {
+      "filePath": "signup.tsx"
+    },
+    "/admin/keys": {
+      "filePath": "admin.keys.tsx",
+      "parent": "/admin"
+    },
+    "/admin/security": {
+      "filePath": "admin.security.tsx",
+      "parent": "/admin"
     },
     "/dashboard/new": {
       "filePath": "dashboard.new.tsx"
     },
     "/dashboards/$dashboardId": {
       "filePath": "dashboards.$dashboardId.tsx"
+    },
+    "/admin/": {
+      "filePath": "admin.index.tsx",
+      "parent": "/admin"
     },
     "/dashboards_/$dashboardId/edit": {
       "filePath": "dashboards_.$dashboardId.edit.tsx"

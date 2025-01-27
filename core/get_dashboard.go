@@ -28,7 +28,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	nextLabel := ""
 	hideNextContentSection := false
 	nextIsDownload := false
-	sqls := strings.Split(dashboardQuery.Content, ";")
+	cleanContent := stripSQLComments(dashboardQuery.Content)
+	sqls := strings.Split(cleanContent, ";")
 
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
@@ -45,8 +46,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 
 	for queryIndex, sqlString := range sqls {
-		if queryIndex == len(sqls)-1 {
-			// Ignore text after last semicolon
+		sqlString = strings.TrimSpace(sqlString)
+		if sqlString == "" {
 			break
 		}
 		if nextIsDownload {
@@ -187,6 +188,27 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 					break
 				}
+				if colTypes[i].DatabaseTypeName() == "UUID" {
+					if byteSlice, ok := cell.([]uint8); ok {
+						// Format as standard UUID string format (8-4-4-4-12)
+						uuid := fmt.Sprintf("%x-%x-%x-%x-%x",
+							byteSlice[0:4],
+							byteSlice[4:6],
+							byteSlice[6:8],
+							byteSlice[8:10],
+							byteSlice[10:16])
+						row[i] = uuid
+					}
+					break
+				}
+				if query.Columns[i].Type == "time" {
+					if t, ok := cell.(time.Time); ok {
+						// Convert time to seconds since midnight
+						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
+						row[i] = seconds
+					}
+					break
+				}
 				if query.Columns[i].Type == "duration" {
 					v := row[i]
 					if v != nil {
@@ -244,6 +266,23 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	}, queryParams, variables)
 }
 
+func stripSQLComments(sql string) string {
+	var result strings.Builder
+	lines := strings.Split(sql, "\n")
+
+	for _, line := range lines {
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			// Only take the part before the comment
+			line = line[:idx]
+		}
+		if strings.TrimSpace(line) != "" {
+			result.WriteString(line)
+			result.WriteString("\n")
+		}
+	}
+
+	return result.String()
+}
 func escapeSQLString(str string) string {
 	// Replace single quotes with doubled single quotes
 	escaped := strings.Replace(str, "'", "''", -1)
@@ -321,7 +360,8 @@ func mapTag(index int, rInfo renderInfo) string {
 	return ""
 }
 
-// TODO: map all types
+// TODO: BIT types are not supported yet by Go duckdb lib
+// TODO: Support DECIMAL, ARRAY, STRUCT, MAP and UNION types
 func mapDBType(dbType string, index int, rows Rows, tag string) (string, error) {
 	// t := getTypeByDefinition(dbType)
 	// if t == "" {
@@ -356,14 +396,38 @@ func mapDBType(dbType string, index int, rows Rows, tag string) (string, error) 
 		return "number", nil
 	case "FLOAT":
 		return "number", nil
-	case "BIGINT":
+	case "INTEGER":
 		return "number", nil
 	case "DATE":
 		return "date", nil
-	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPZ":
+	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPTZ":
 		return "timestamp", nil
 	case "INTERVAL":
 		return "duration", nil
+	case "TIME":
+		return "time", nil
+	case "UUID":
+		return "string", nil
+	case "UINTEGER":
+		return "number", nil
+	case "BIGINT":
+		return "number", nil
+	case "SMALLINT":
+		return "number", nil
+	case "TINYINT":
+		return "number", nil
+	case "HUGEINT":
+		return "number", nil
+	case "UBIGINT":
+		return "number", nil
+	case "UHUGEINT":
+		return "number", nil
+	case "USMALLINT":
+		return "number", nil
+	case "UTINYINT":
+		return "number", nil
+	case "BLOB":
+		return "string", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
 }

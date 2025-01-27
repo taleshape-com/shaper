@@ -1,11 +1,18 @@
 import { z } from "zod";
 import * as React from "react";
+import { goToLoginPage } from "./utils";
 
 export interface IAuthContext {
   getJwt: () => Promise<string>;
-  login: (token: string, variables?: Variables) => Promise<boolean>;
+  login: (
+    email: string,
+    password: string,
+    variables?: Variables,
+  ) => Promise<boolean>;
   testLogin: () => Promise<boolean>;
   hash: string;
+  loginRequired: boolean | null;
+  setLoginRequired: (required: boolean) => void;
   variables: Variables;
   updateVariables: (text: string) => Promise<boolean>;
 }
@@ -16,7 +23,7 @@ export const zVariables = z.record(
 );
 export type Variables = (typeof zVariables)["_type"];
 
-export const localStorageTokenKey = "shaper-token";
+export const localStorageTokenKey = "shaper-session-token";
 export const localStorageJwtKey = "shaper-jwt";
 export const localStorageVariablesKey = "shaper-variables";
 
@@ -37,7 +44,7 @@ export function parseJwt(token: string) {
     window
       .atob(base64)
       .split("")
-      .map(function (c) {
+      .map(function(c) {
         return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
       })
       .join(""),
@@ -47,5 +54,16 @@ export function parseJwt(token: string) {
 }
 
 export async function logout() {
+  const jwt = localStorage.getItem(localStorageJwtKey);
+  if (jwt) {
+    await fetch(`/api/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: jwt,
+      },
+    })
+  }
   localStorage.clear();
+  return goToLoginPage();
 }

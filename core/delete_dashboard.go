@@ -11,9 +11,15 @@ import (
 type DeleteDashboardPayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
+	// TODO: Not used, but might want to log this in the future
+	DeletedBy string `json:"deletedBy"`
 }
 
 func DeleteDashboard(app *App, ctx context.Context, id string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
 	var count int
 	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
 	if err != nil {
@@ -25,6 +31,7 @@ func DeleteDashboard(app *App, ctx context.Context, id string) error {
 	err = app.SubmitState(ctx, "delete_dashboard", DeleteDashboardPayload{
 		ID:        id,
 		TimeStamp: time.Now(),
+		DeletedBy: actor.String(),
 	})
 	return err
 }

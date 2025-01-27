@@ -1,4 +1,3 @@
-import { redirect } from "@tanstack/react-router";
 import { isEqual } from "lodash";
 import { useCallback, useState } from "react";
 import {
@@ -10,6 +9,7 @@ import {
   zVariables,
   localStorageJwtKey,
 } from "../lib/auth";
+import { goToLoginPage } from "../lib/utils";
 
 const getVariablesString = () => {
   return localStorage.getItem(localStorageVariablesKey) ?? "{}";
@@ -18,27 +18,38 @@ const getVariables = (s: string): Variables => {
   return zVariables.parse(JSON.parse(s));
 };
 
-const goToLoginPage = () => {
-  return redirect({
-    to: "/login",
-    replace: true,
-    search: {
-      // Use the current location to power a redirect after login
-      // (Do not use `router.state.resolvedLocation` as it can
-      // potentially lag behind the actual current location)
-      redirect: location.pathname + location.search + location.hash,
+// Check if login is required using the auth status endpoint
+const checkLoginRequired = async () => {
+  const response = await fetch("/api/login/enabled");
+  if (!response.ok) {
+    // Assume auth is required if we can't determine the status
+    return true;
+  }
+  const data = await response.json();
+  return data.enabled;
+};
+
+const getSessionToken = async (email: string, password: string) => {
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ email, password }),
   });
+  if (response.status !== 200) return null;
+  const data = await response.json();
+  return data.token;
 };
 
 const refreshJwt = async (token: string, vars: Variables) => {
-  return fetch(`/api/login/token`, {
+  return fetch(`/api/auth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      token,
+      token: token === "" ? undefined : token,
       variables: Object.keys(vars).length > 0 ? vars : undefined,
     }),
   }).then(async (response) => {
@@ -51,7 +62,12 @@ const refreshJwt = async (token: string, vars: Variables) => {
   });
 };
 
-const getJwt = async () => {
+const internalGetJwt = async (loginRequired: boolean) => {
+  if (!loginRequired) {
+    const vars = getVariables(getVariablesString());
+    return refreshJwt("", vars) ?? "";
+  }
+
   const jwt = localStorage.getItem(localStorageJwtKey);
   if (jwt != null) {
     const claims = parseJwt(jwt);
@@ -60,10 +76,10 @@ const getJwt = async () => {
     }
   }
   const token = localStorage.getItem(localStorageTokenKey);
-  const vars = getVariables(getVariablesString());
   if (token == null) {
     throw goToLoginPage();
   }
+  const vars = getVariables(getVariablesString());
   const newJwt = await refreshJwt(token, vars);
   if (newJwt == null) {
     throw goToLoginPage();
@@ -71,7 +87,10 @@ const getJwt = async () => {
   return newJwt;
 };
 
-const testLogin = async () => {
+const internalTestLogin = async (loginRequired: boolean) => {
+  if (!loginRequired) {
+    return true;
+  }
   const token = localStorage.getItem(localStorageTokenKey);
   if (token == null) {
     return false;
@@ -82,43 +101,79 @@ const testLogin = async () => {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [loginRequired, setLoginRequired] = useState<boolean | null>(null);
   const [variables, setVariables] = useState<Variables>(
     getVariables(getVariablesString()),
   );
   const [hash, setHash] = useState<string>(getVariablesString());
 
-  const login = useCallback(async (token: string, vars?: Variables) => {
-    const v = vars ?? getVariables(getVariablesString());
-    const jwt = await refreshJwt(token, v);
-    if (jwt != null) {
-      localStorage.setItem(localStorageTokenKey, token);
-      localStorage.setItem(localStorageVariablesKey, JSON.stringify(v));
-      setHash(JSON.stringify(v));
-      setVariables(v);
-      return true;
+  const getLoginRequired = useCallback(async () => {
+    if (loginRequired === null) {
+      const l = await checkLoginRequired()
+      setLoginRequired(l);
+      return l;
     }
-    return false;
+    return loginRequired;
+  }, [loginRequired]);
+
+  const updateJwtWithVars = useCallback(async (token: string, vars: Variables) => {
+    const jwt = await refreshJwt(token, vars);
+    if (!jwt) {
+      return false;
+    }
+    localStorage.setItem(localStorageTokenKey, token);
+    localStorage.setItem(localStorageVariablesKey, JSON.stringify(vars));
+    setHash(JSON.stringify(vars));
+    setVariables(vars);
+    return true;
   }, []);
 
-  const updateVariables = useCallback(
-    async (text: string) => {
-      try {
-        const vars = getVariables(text);
-        if (isEqual(vars, getVariables(getVariablesString()))) {
-          return true;
-        }
-        await login(localStorage.getItem(localStorageTokenKey) ?? "", vars);
-        return true;
-      } catch {
-        return false;
-      }
+  const login = useCallback(
+    async (email: string, password: string, vars?: Variables) => {
+      const sessionToken = await getSessionToken(email, password);
+      if (!sessionToken) return false;
+      const v = vars ?? getVariables(getVariablesString());
+      return updateJwtWithVars(sessionToken, v);
     },
-    [login],
+    [updateJwtWithVars],
   );
+
+  const updateVariables = useCallback(async (text: string) => {
+    try {
+      const vars = getVariables(text);
+      if (isEqual(vars, getVariables(getVariablesString()))) {
+        return true;
+      }
+      const token = localStorage.getItem(localStorageTokenKey);
+      if (!token) return false;
+      return await updateJwtWithVars(token, vars);
+    } catch {
+      return false;
+    }
+  }, [updateJwtWithVars]);
+
+  const getJwt = useCallback(async () => {
+    const l = await getLoginRequired()
+    return internalGetJwt(l)
+  }, [getLoginRequired]);
+
+  const testLogin = useCallback(async () => {
+    const l = await getLoginRequired()
+    return internalTestLogin(l)
+  }, [getLoginRequired]);
 
   return (
     <AuthContext.Provider
-      value={{ getJwt, login, testLogin, hash, variables, updateVariables }}
+      value={{
+        getJwt,
+        login,
+        testLogin,
+        hash,
+        variables,
+        updateVariables,
+        loginRequired,
+        setLoginRequired,
+      }}
     >
       {children}
     </AuthContext.Provider>

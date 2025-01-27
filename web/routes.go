@@ -1,30 +1,65 @@
 package web
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"shaper/core"
 	"shaper/web/handler"
 	"time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 )
 
+func SetActor(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+
+		var actor *core.Actor
+		if userID, ok := claims["userId"].(string); ok {
+			actor = &core.Actor{
+				Type: core.ActorUser,
+				ID:   userID,
+			}
+		} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
+			actor = &core.Actor{
+				Type: core.ActorAPIKey,
+				ID:   apiKeyID,
+			}
+		}
+
+		if actor != nil {
+			c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
+		}
+
+		return next(c)
+	}
+}
+
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
 
-	apiWithAuth := e.Group("/api", echojwt.WithConfig(echojwt.Config{
-		TokenLookup: "header:Authorization",
-		SigningKey:  app.JWTSecret,
-	}))
+	apiWithAuth := e.Group("/api",
+		echojwt.WithConfig(echojwt.Config{
+			TokenLookup: "header:Authorization",
+			KeyFunc:     GetJWTKeyfunc(app),
+		}),
+		SetActor,
+	)
 
 	e.GET("/status", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 
 	// API routes - no caching
-	e.POST("/api/login/token", handler.TokenLogin(app))
+	e.GET("/api/login/enabled", handler.LoginEnabled(app))
+	e.POST("/api/login", handler.Login(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
+	e.POST("/api/auth/setup", handler.Setup(app))
+	e.GET("/api/invites/:code", handler.GetInvite(app))
+	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
+	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
@@ -34,10 +69,14 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 	apiWithAuth.POST("/query/dashboard", handler.PreviewDashboardQuery(app))
-	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
+	apiWithAuth.GET("/users", handler.ListUsers(app))
+	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
+	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
+	apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
 	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
 	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
+	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
 
 	// Static assets - aggressive caching
 	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{
@@ -61,4 +100,14 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	// Index HTML - light caching with revalidation
 	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, "/favicon.ico"))
+}
+
+// We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time
+func GetJWTKeyfunc(app *core.App) jwt.Keyfunc {
+	return func(token *jwt.Token) (interface{}, error) {
+		if token.Method.Alg() != echojwt.AlgorithmHS256 {
+			return nil, &echojwt.TokenError{Token: token, Err: fmt.Errorf("unexpected jwt signing method=%v", token.Header["alg"])}
+		}
+		return app.JWTSecret, nil
+	}
 }

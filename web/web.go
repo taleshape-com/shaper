@@ -20,6 +20,7 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	// Echo instance
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = true
 
 	// Middlewares
 	e.Use(slogecho.New(app.Logger.WithGroup("web")))
@@ -48,11 +49,13 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	routes(e, app, frontendFS, modTime, customCSS, favicon)
 
 	// Start server
+	addr := fmt.Sprintf("%s:%d", host, port)
 	go func() {
-		if err := e.Start(fmt.Sprintf("%s:%d", host, port)); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("error starting server", err)
 		}
 	}()
+	app.Logger.Info("HTTP server listening on " + addr)
 
 	return e
 }

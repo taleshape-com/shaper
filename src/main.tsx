@@ -2,8 +2,8 @@ import "./index.css";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { createRouter } from "@tanstack/react-router";
-import { AuthProvider } from './components/AuthProvider'
-import { App } from "./App"
+import { AuthProvider } from "./components/AuthProvider";
+import { App } from "./App";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
@@ -24,6 +24,7 @@ const router = createRouter({
   defaultStaleTime: 5000,
   context: {
     auth: undefined!, // This will be set after we wrap the app in an AuthProvider
+    queryApi: undefined!, // This will be set after we wrap the app in an AuthProvider
   },
 });
 

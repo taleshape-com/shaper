@@ -26,10 +26,11 @@ import (
 var frontendFS embed.FS
 
 type Config struct {
+	SessionExp        time.Duration
+	InviteExp         time.Duration
 	Address           string
 	Port              int
 	DBFile            string
-	LoginToken        string
 	Schema            string
 	ExecutableModTime time.Time
 	CustomCSS         string
@@ -55,11 +56,12 @@ func loadConfig() Config {
 	addr := flags.StringLong("addr", "0.0.0.0", "server address")
 	port := flags.Int('p', "port", 3000, "port to listen on")
 	dbFile := flags.String('d', "duckdb", "", "path to duckdb file (default: use in-memory db)")
-	loginToken := flags.String('t', "token", "", "token used for login (required)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
+	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration (default: 30 days)")
+	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration (default: 7 days)")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
 	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
@@ -72,9 +74,6 @@ func loadConfig() Config {
 		ff.WithEnvVarPrefix("SHAPER"),
 		ff.WithConfigFileParser(ff.PlainParser),
 	)
-	if err == nil && *loginToken == "" {
-		err = fmt.Errorf("--token must be set")
-	}
 	if err != nil {
 		fmt.Printf("%s\n", ffhelp.Flags(flags))
 		fmt.Printf("err=%v\n", err)
@@ -101,12 +100,13 @@ func loadConfig() Config {
 		Address:           *addr,
 		Port:              *port,
 		DBFile:            *dbFile,
-		LoginToken:        *loginToken,
 		Schema:            *schema,
 		ExecutableModTime: executableModTime,
 		CustomCSS:         *customCSS,
 		Favicon:           *favicon,
 		JWTExp:            *jwtExp,
+		SessionExp:        *sessionExp,
+		InviteExp:         *inviteExp,
 		NatsHost:          *natsHost,
 		NatsPort:          *natsPort,
 		NatsToken:         *natsToken,
@@ -139,9 +139,9 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 	if cfg.DBFile != "" {
-		fmt.Println("⇨ connected to duckdb", cfg.DBFile)
+		logger.Info("connected to duckdb", slog.Any("file", cfg.DBFile))
 	} else {
-		fmt.Println("⇨ connected to in-memory duckdb")
+		logger.Info("connected to in-memory duckdb")
 	}
 
 	persistNATS := cfg.NatsJSDir != ""
@@ -149,14 +149,16 @@ func Run(cfg Config) func(context.Context) {
 	app, err := core.New(
 		db,
 		logger,
-		cfg.LoginToken,
 		cfg.Schema,
 		cfg.JWTExp,
+		cfg.SessionExp,
+		cfg.InviteExp,
 	)
 	if err != nil {
 		panic(err)
 	}
 
+	// TODO: refactor - comms should be part of core
 	c, err := comms.New(comms.Config{
 		Logger:     logger.WithGroup("nats"),
 		Host:       cfg.NatsHost,

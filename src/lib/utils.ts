@@ -1,3 +1,4 @@
+import { redirect } from "@tanstack/react-router";
 import { z } from "zod";
 import clsx, { type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -45,3 +46,17 @@ export const getSearchParamString = (vars: VarsParamSchema) => {
   }, [] as string[][]);
   return new URLSearchParams(urlVars).toString();
 };
+
+export const goToLoginPage = () => {
+  return redirect({
+    to: "/login",
+    replace: true,
+    search: {
+      // Use the current location to power a redirect after login
+      // (Do not use `router.state.resolvedLocation` as it can
+      // potentially lag behind the actual current location)
+      redirect: location.pathname + location.search + location.hash,
+    },
+  });
+};
+

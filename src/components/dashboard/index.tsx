@@ -133,7 +133,9 @@ export function Dashboard({
                 >
                   {sectionIndex === 0 ? (
                     <>
-                      {menuButton}
+                      {menuButton && (
+                        <div className="mt-2">{menuButton}</div>
+                      )}
                       {section.title ? (
                         <h1 className="text-2xl text-left ml-1 mt-0.5">
                           {section.title}

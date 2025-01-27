@@ -8,6 +8,9 @@ function parseLocalDate(d: string | number) {
 }
 
 export const formatValue = (value: string | number | boolean, columnType: Column['type']) => {
+  if (value === null || value === undefined) {
+    return ""
+  }
   if (typeof value === "boolean") {
     return value ? "YES" : "NO";
   }
@@ -57,6 +60,12 @@ export const formatValue = (value: string | number | boolean, columnType: Column
         return "0s"
       }
       return mainParts.join(" ")
+    }
+    if (columnType === "time") {
+      const hours = Math.floor(value / 3600);
+      const minutes = Math.floor((value % 3600) / 60);
+      const seconds = value % 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     return value;
   }

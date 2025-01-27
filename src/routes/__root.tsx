@@ -1,6 +1,8 @@
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 //import React from "react";
 import { IAuthContext } from "../lib/auth";
+import { QueryApiFunc } from "../hooks/useQueryApi";
+import { Toaster } from "../components/tremor/Toaster";
 
 //const TanStackRouterDevtools =
 //process.env.NODE_ENV === "production"
@@ -16,11 +18,13 @@ import { IAuthContext } from "../lib/auth";
 
 interface RouterContext {
   auth: IAuthContext
+  queryApi: QueryApiFunc
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => (
     <>
+      <Toaster />
       <Outlet />
       {/* <TanStackRouterDevtools /> */}
     </>

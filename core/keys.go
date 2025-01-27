@@ -36,6 +36,7 @@ type CreateAPIKeyPayload struct {
 	Name      string    `json:"name"`
 	Hash      string    `json:"hash"`
 	Salt      string    `json:"salt"`
+	CreatedBy string    `json:"createdBy"`
 }
 
 func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
@@ -51,6 +52,10 @@ func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
 }
 
 func CreateAPIKey(app *App, ctx context.Context, name string) (string, string, error) {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return "", "", fmt.Errorf("no actor in context")
+	}
 	name = strings.TrimSpace(name)
 	id := cuid2.Generate()
 	suffix := util.GenerateRandomString(32)
@@ -67,6 +72,7 @@ func CreateAPIKey(app *App, ctx context.Context, name string) (string, string, e
 		Name:      name,
 		Hash:      hash,
 		Salt:      salt,
+		CreatedBy: actor.String(),
 	}
 	err := app.SubmitState(ctx, "create_api_key", payload)
 	return id, key, err
@@ -82,9 +88,9 @@ func HandleCreateAPIKey(app *App, data []byte) bool {
 	// Insert into DB
 	_, err = app.db.Exec(
 		`INSERT OR IGNORE INTO `+app.Schema+`.api_keys (
-			id, hash, salt, name, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $5)`,
-		payload.ID, payload.Hash, payload.Salt, payload.Name, payload.Timestamp,
+			id, hash, salt, name, created_at, updated_at, created_by, updated_by
+		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
+		payload.ID, payload.Hash, payload.Salt, payload.Name, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert api key into DB", slog.Any("error", err))
@@ -96,9 +102,15 @@ func HandleCreateAPIKey(app *App, data []byte) bool {
 type DeleteAPIKeyPayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
+	// TODO: Not used, but might want to log this in the future
+	DeletedBy string `json:"deletedBy"`
 }
 
 func DeleteAPIKey(app *App, ctx context.Context, id string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
 	var count int
 	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.api_keys WHERE id = $1`, id)
 	if err != nil {
@@ -110,6 +122,7 @@ func DeleteAPIKey(app *App, ctx context.Context, id string) error {
 	err = app.SubmitState(ctx, "delete_api_key", DeleteAPIKeyPayload{
 		ID:        id,
 		TimeStamp: time.Now(),
+		DeletedBy: actor.String(),
 	})
 	return err
 }

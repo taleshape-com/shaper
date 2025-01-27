@@ -24,10 +24,12 @@ const (
 type App struct {
 	db              *sqlx.DB
 	Logger          *slog.Logger
-	LoginToken      string
+	LoginRequired   bool
 	Schema          string
 	JWTSecret       []byte
 	JWTExp          time.Duration
+	SessionExp      time.Duration
+	InviteExp       time.Duration
 	StateConsumeCtx jetstream.ConsumeContext
 	JetStream       jetstream.JetStream
 	ConfigKV        jetstream.KeyValue
@@ -37,19 +39,31 @@ type App struct {
 func New(
 	db *sqlx.DB,
 	logger *slog.Logger,
-	loginToken string,
 	schema string,
 	jwtExp time.Duration,
+	sessionExp time.Duration,
+	inviteExp time.Duration,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
 	}
+
+	loginRequired, err := isLoginRequired(db, schema)
+	if err != nil {
+		return nil, err
+	}
+	if !loginRequired {
+		logger.Warn("No users found, login is disabled until first user is created")
+	}
+
 	app := &App{
-		db:         db,
-		Logger:     logger,
-		LoginToken: loginToken,
-		Schema:     schema,
-		JWTExp:     jwtExp,
+		db:            db,
+		Logger:        logger,
+		LoginRequired: loginRequired,
+		Schema:        schema,
+		JWTExp:        jwtExp,
+		SessionExp:    sessionExp,
+		InviteExp:     inviteExp,
 	}
 	return app, nil
 }
@@ -97,7 +111,7 @@ func (app *App) Init(nc *nats.Conn, persist bool) error {
 	}
 	app.StateConsumeCtx = stateConsumeCtx
 
-	return loadJWTSecret(app)
+	return LoadJWTSecret(app)
 }
 
 func (app *App) Close() {
@@ -127,6 +141,20 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleCreateAPIKey
 	case "delete_api_key":
 		handler = HandleDeleteAPIKey
+	case "create_user":
+		handler = HandleCreateUser
+	case "create_session":
+		handler = HandleCreateSession
+	case "delete_session":
+		handler = HandleDeleteSession
+	case "delete_user":
+		handler = HandleDeleteUser
+	case "create_invite":
+		handler = HandleCreateInvite
+	case "claim_invite":
+		handler = HandleClaimInvite
+	case "delete_invite":
+		handler = HandleDeleteInvite
 	}
 	app.Logger.Info("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
@@ -210,6 +238,51 @@ func initDB(db *sqlx.DB, schema string) error {
 		return fmt.Errorf("error creating config table: %w", err)
 	}
 
+	// Create users table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.users (
+			id VARCHAR PRIMARY KEY,
+			email VARCHAR NOT NULL,
+			password_hash VARCHAR,
+			name VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL,
+			created_by VARCHAR,
+			updated_by VARCHAR,
+			deleted_at TIMESTAMP,
+			deleted_by VARCHAR
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating users table: %w", err)
+	}
+	// Create sessions table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.sessions (
+			id VARCHAR PRIMARY KEY,
+			user_id VARCHAR NOT NULL REFERENCES ` + schema + `.users(id),
+			hash VARCHAR NOT NULL,
+			salt VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating sessions table: %w", err)
+	}
+
+	// Create invites table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + `.invites (
+			code VARCHAR PRIMARY KEY,
+			email VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			created_by VARCHAR
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating invites table: %w", err)
+	}
+
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(db, t.Name, t.Definition); err != nil {
@@ -217,4 +290,14 @@ func initDB(db *sqlx.DB, schema string) error {
 		}
 	}
 	return nil
+}
+
+func isLoginRequired(db *sqlx.DB, schema string) (bool, error) {
+	var count int
+	err := db.Get(&count, `
+		SELECT count(*)
+		FROM `+schema+`.users
+		WHERE deleted_at IS NULL
+		`)
+	return count > 0, err
 }
