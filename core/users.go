@@ -63,8 +63,9 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 	}
 
 	actor := ActorFromContext(ctx)
-	if actor == nil {
-		return "", fmt.Errorf("no actor in context")
+	createdBy := ""
+	if actor != nil {
+		createdBy = actor.String()
 	}
 
 	id := cuid2.Generate()
@@ -74,7 +75,7 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 		Name:         name,
 		PasswordHash: string(passwordHash),
 		Timestamp:    time.Now(),
-		CreatedBy:    actor.String(),
+		CreatedBy:    createdBy,
 	}
 
 	err = app.SubmitState(ctx, "create_user", payload)
