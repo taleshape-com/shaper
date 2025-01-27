@@ -162,7 +162,12 @@ function SignupComponent() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form
+          className="mt-8 space-y-6"
+          onSubmit={handleSubmit}
+          name="signup"
+          autoComplete="on"
+        >
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">{translate("Name")}</Label>
@@ -170,6 +175,7 @@ function SignupComponent() {
                 id="name"
                 name="name"
                 type="text"
+                autoComplete="name"
                 required
                 className="mt-1"
               />
@@ -181,6 +187,7 @@ function SignupComponent() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 required
                 minLength={8}
                 className="mt-1"
@@ -195,6 +202,7 @@ function SignupComponent() {
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
+                autoComplete="new-password"
                 required
                 minLength={8}
                 className="mt-1"

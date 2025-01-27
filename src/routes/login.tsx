@@ -68,7 +68,12 @@ function LoginComponent() {
         <meta name="description" content="Login to continue" />
       </Helmet>
       <h1 className="text-xl font-semibold mb-6">Login</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-4"
+        name="login"
+        autoComplete="on"
+      >
         <div>
           <Input
             value={email}
@@ -76,6 +81,9 @@ function LoginComponent() {
             placeholder="Email"
             type="email"
             autoFocus
+            name="email"
+            id="email"
+            autoComplete="username email"
             required
             disabled={isLoggingIn}
           />
@@ -86,6 +94,9 @@ function LoginComponent() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             type="password"
+            name="current-password"
+            id="current-password"
+            autoComplete="current-password"
             required
             disabled={isLoggingIn}
           />
