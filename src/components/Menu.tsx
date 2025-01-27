@@ -176,7 +176,7 @@ export function Menu({
                   onClick={async () => {
                     navigate(await logout());
                   }}
-                  variant="secondary"
+                  variant="light"
                 >
                   <RiLogoutBoxRLine className="size-4 inline mr-2 mb-1" />
                   {translate("Logout")}

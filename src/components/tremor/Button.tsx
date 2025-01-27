@@ -33,13 +33,13 @@ const buttonVariants = tv({
       ],
       secondary: [
         // border
-        "border-cb dark:border-dbga",
+        "border-cb dark:border-db",
         // text color
         "text-ctext dark:text-dtext",
         // background color
-        "bg-cbg dark:bg-db",
+        "bg-cbg dark:bg-dbg",
         //hover color
-        "hover:bg-cbga dark:hover:bg-dprimarya",
+        "hover:bg-cbga dark:hover:bg-dbga",
         // disabled
         "disabled:text-gray-400",
         "disabled:dark:text-gray-600",
@@ -48,13 +48,13 @@ const buttonVariants = tv({
         // base
         "shadow-none",
         // border
-        "border-transparent",
+        "border-cb dark:border-dbga",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-ctext dark:text-dtext",
         // background color
-        "bg-gray-200 dark:bg-gray-900",
-        // hover color
-        "hover:bg-gray-300/70 dark:hover:bg-gray-800/80",
+        "bg-cbg dark:bg-db",
+        //hover color
+        "hover:bg-cbga dark:hover:bg-dprimarya",
         // disabled
         "disabled:bg-gray-100 disabled:text-gray-400",
         "disabled:dark:bg-gray-800 disabled:dark:text-gray-600",

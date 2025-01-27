@@ -59,7 +59,7 @@ function Admin() {
               'Reset the JWT secret to invalidate all existing tokens.',
             )}
           </p>
-          <Button onClick={handleReset} disabled={isResetting} variant="secondary">
+          <Button onClick={handleReset} disabled={isResetting} variant="light">
             {isResetting ? translate('Resetting...') : translate('Reset JWT Secret')}
           </Button>
         </div>

@@ -173,9 +173,8 @@ function Admin() {
                   </TableCell>
                   <TableCell>
                     <Button
-                      variant="secondary"
+                      variant="destructive"
                       onClick={() => handleDelete(key)}
-                      className="text-cerr dark:text-derr"
                     >
                       {translate("Delete")}
                     </Button>
@@ -224,7 +223,7 @@ function Admin() {
                         description: translate("API key copied to clipboard"),
                       });
                     }}
-                    variant="secondary"
+                    variant="primary"
                   >
                     {translate("Copy")}
                   </Button>
@@ -239,6 +238,7 @@ function Admin() {
 
               <DialogFooter>
                 <Button
+                  variant="light"
                   onClick={() => {
                     setShowNewKeyDialog(false);
                     setNewKey(null);
@@ -267,7 +267,7 @@ function Admin() {
 
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="secondary">
+                  <Button type="button" variant="destructive">
                     {translate("Cancel")}
                   </Button>
                 </DialogClose>

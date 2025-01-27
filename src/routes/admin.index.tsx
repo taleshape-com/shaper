@@ -345,7 +345,7 @@ function UsersManagement() {
 
                   <DialogFooter className="mt-6">
                     <DialogClose asChild>
-                      <Button type="button" variant="secondary">
+                      <Button type="button" variant="destructive">
                         {translate("Cancel")}
                       </Button>
                     </DialogClose>
@@ -403,7 +403,7 @@ function UsersManagement() {
                         ),
                       });
                     }}
-                    variant="secondary"
+                    variant="light"
                   >
                     {translate("Copy")}
                   </Button>
@@ -438,7 +438,7 @@ function UsersManagement() {
 
                 <DialogFooter className="mt-6">
                   <DialogClose asChild>
-                    <Button type="button" variant="secondary">
+                    <Button type="button" variant="destructive">
                       {translate("Cancel")}
                     </Button>
                   </DialogClose>
@@ -508,7 +508,7 @@ function UsersManagement() {
                                       {getInviteLink(invite.code)}
                                     </code>
                                     <Button
-                                      variant="secondary"
+                                      variant="light"
                                       onClick={() => {
                                         navigator.clipboard.writeText(getInviteLink(invite.code))
                                         toast({
