@@ -324,6 +324,7 @@ func isUUID(s []byte) bool {
 }
 
 // formatValue converts various types to their string representation
+// TODO: We are not handling TIME values. Currently they are treated as timestamps with epoc date.
 func formatValue(value interface{}) string {
 	if value == nil {
 		return ""
