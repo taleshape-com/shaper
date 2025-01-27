@@ -132,7 +132,7 @@ function Index() {
         <meta name="description" content="Show a list of all dashboards" />
       </Helmet>
       <div className={cx("mb-4 flex", { "-ml-2": !isMenuOpen })}>
-        <Menu inline hideHome onOpenChange={setIsMenuOpen} />
+        <Menu inline isHome onOpenChange={setIsMenuOpen} />
         <h1 className="text-3xl font-semibold font-display">
           {translate("Home")}
         </h1>

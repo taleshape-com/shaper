@@ -17,15 +17,15 @@ const isLg = () => window.innerWidth >= 1024;
 export function Menu({
   children,
   inline = false,
-  hideHome = false,
-  hideAdmin = false,
+  isHome = false,
+  isAdmin = false,
   isNewPage = false,
   onOpenChange,
 }: {
   children?: React.ReactNode;
   inline?: boolean;
-  hideHome?: boolean;
-  hideAdmin?: boolean;
+  isHome?: boolean;
+  isAdmin?: boolean;
   isNewPage?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -134,39 +134,41 @@ export function Menu({
             >
               <RiMenuLine className="pl-1 py-1 ml-2 mt-5 mb-4 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
             </button>
-            {!hideHome && (
-              <Link
-                to="/"
-                className="block px-4 py-4 hover:bg-cprimary dark:hover:bg-dprimary hover:text-cbga dark:hover:text-cbga transition-colors"
-              >
-                <RiHomeLine className="size-4 inline mr-2 mb-1" />
-                {translate("Home")}
-              </Link>
-            )}
-            {!isNewPage && (
-              <Link
-                to="/dashboard/new"
-                className="block px-4 py-4 hover:bg-cprimary dark:hover:bg-dprimary hover:text-cbga dark:hover:text-cbga transition-colors"
-              >
-                <RiFileAddLine className="size-4 inline mr-2 mb-1" />
-                {translate("New Dashboard")}
-              </Link>
-            )}
+            <Link
+              to="/"
+              disabled={isHome}
+              className={cx("block px-4 py-4", {
+                "hover:underline": !isHome,
+                "bg-cprimary dark:bg-dprimary text-cbga dark:text-cbga": isHome,
+              })}
+            >
+              <RiHomeLine className="size-4 inline mr-2 mb-1" />
+              {translate("Home")}
+            </Link>
+            <Link
+              to="/dashboard/new"
+              disabled={isNewPage}
+              className={cx("block px-4 py-4", {
+                "hover:underline": !isNewPage,
+                "bg-cprimary dark:bg-dprimary text-cbga dark:text-cbga": isNewPage,
+              })}
+            >
+              <RiFileAddLine className="size-4 inline mr-2 mb-1" />
+              {translate("New Dashboard")}
+            </Link>
             {children}
           </div>
 
-          <div className="mt-auto px-5 pb-6 space-y-3">
-            {!hideAdmin && (
-              <Link
-                to="/admin"
-                className="block text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext"
-              >
-                <RiAdminLine className="size-4 inline mr-2 mb-1" />
-                {translate("Admin")}
-              </Link>
-            )}
+          <div className="mt-auto pb-6 space-y-1">
+            <Link to="/admin" disabled={isAdmin} className={cx(
+              "block px-5 py-2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext",
+              { "text-ctext2": !isAdmin }
+            )}>
+              <RiAdminLine className="size-4 inline mr-2 mb-1" />
+              {translate("Admin")}
+            </Link>
             {auth.loginRequired && (
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-2 px-5">
                 <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}
                 </span>

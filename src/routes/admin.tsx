@@ -28,7 +28,7 @@ function Admin() {
         <meta name="description" content="Admin Settings" />
       </Helmet>
       <div className={cx("mb-4 flex", { "-ml-2": !isInlineMenuOpen })}>
-        <Menu inline hideAdmin onOpenChange={setIsInlineMenuOpen} />
+        <Menu inline isAdmin onOpenChange={setIsInlineMenuOpen} />
         <h1 className="text-3xl font-semibold font-display flex-grow">
           {translate("Admin")}
         </h1>
