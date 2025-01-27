@@ -28,6 +28,7 @@ type ActorType string
 const (
 	ActorUser   ActorType = "user"
 	ActorAPIKey ActorType = "api_key"
+	ActorNoAuth ActorType = "no_auth"
 )
 
 type Actor struct {
@@ -36,6 +37,9 @@ type Actor struct {
 }
 
 func (a Actor) String() string {
+	if a.ID == "" {
+		return string(a.Type)
+	}
 	return fmt.Sprintf("%s:%s", a.Type, a.ID)
 }
 

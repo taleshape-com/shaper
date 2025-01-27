@@ -13,28 +13,34 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func SetActor(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 
-		var actor *core.Actor
-		if userID, ok := claims["userId"].(string); ok {
-			actor = &core.Actor{
-				Type: core.ActorUser,
-				ID:   userID,
+			var actor *core.Actor
+			if userID, ok := claims["userId"].(string); ok {
+				actor = &core.Actor{
+					Type: core.ActorUser,
+					ID:   userID,
+				}
+			} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
+				actor = &core.Actor{
+					Type: core.ActorAPIKey,
+					ID:   apiKeyID,
+				}
+			} else if !app.LoginRequired {
+				actor = &core.Actor{
+					Type: core.ActorNoAuth,
+				}
 			}
-		} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
-			actor = &core.Actor{
-				Type: core.ActorAPIKey,
-				ID:   apiKeyID,
+
+			if actor != nil {
+				c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
 			}
-		}
 
-		if actor != nil {
-			c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
+			return next(c)
 		}
-
-		return next(c)
 	}
 }
 
@@ -45,7 +51,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 			TokenLookup: "header:Authorization",
 			KeyFunc:     GetJWTKeyfunc(app),
 		}),
-		SetActor,
+		SetActor(app),
 	)
 
 	e.GET("/status", func(c echo.Context) error {

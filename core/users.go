@@ -25,9 +25,9 @@ type User struct {
 	CreatedAt    time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updatedAt"`
 	DeletedAt    *time.Time `db:"deleted_at" json:"deletedAt,omitempty"`
-	CreatedBy    *time.Time `db:"created_by" json:"-"`
-	UpdatedBy    *time.Time `db:"updated_by" json:"-"`
-	DeletedBy    *time.Time `db:"deleted_by" json:"-"`
+	CreatedBy    *string    `db:"created_by" json:"-"`
+	UpdatedBy    *string    `db:"updated_by" json:"-"`
+	DeletedBy    *string    `db:"deleted_by" json:"-"`
 }
 
 type CreateUserPayload struct {
@@ -63,9 +63,8 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 	}
 
 	actor := ActorFromContext(ctx)
-	createdBy := ""
-	if actor != nil {
-		createdBy = actor.String()
+	if actor == nil {
+		return "", fmt.Errorf("no actor in context")
 	}
 
 	id := cuid2.Generate()
@@ -75,7 +74,7 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 		Name:         name,
 		PasswordHash: string(passwordHash),
 		Timestamp:    time.Now(),
-		CreatedBy:    createdBy,
+		CreatedBy:    actor.String(),
 	}
 
 	err = app.SubmitState(ctx, "create_user", payload)
