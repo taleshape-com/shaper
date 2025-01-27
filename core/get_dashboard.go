@@ -203,8 +203,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				if query.Columns[i].Type == "duration" {
 					v := row[i]
 					if v != nil {
-						// in milliseconds
-						row[i] = (v.(duckdb.Interval)).Micros / 1000
+						row[i] = formatInterval(v)
 					}
 				}
 			}
@@ -1146,4 +1145,13 @@ func getTokenVars(variables map[string]interface{}) (map[string]string, map[stri
 // Format as standard UUID string format (8-4-4-4-12)
 func formatUUID(s []uint8) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", s[0:4], s[4:6], s[6:8], s[8:10], s[10:16])
+}
+
+// interval in milliseconds
+func formatInterval(v interface{}) int64 {
+	interval := v.(duckdb.Interval)
+	ms := interval.Micros / 1000
+	ms += int64(interval.Days) * 24 * 60 * 60 * 1000
+	ms += int64(interval.Months) * 30 * 24 * 60 * 60 * 1000
+	return ms
 }

@@ -12,8 +12,14 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/marcboeker/go-duckdb"
 	"github.com/xuri/excelize/v2"
 )
+
+// 1 day = 24 hours = 24 * 60 * 60 seconds = 24 * 60 * 60 * 1_000_000 micros
+const MICROSECONDS_PER_DAY = 24.0 * 60.0 * 60.0 * 1_000_000.0
+
+const EXCEL_INTERVAL_FORMAT = "[h]:mm:ss"
 
 func StreamQueryCSV(
 	app *App,
@@ -183,6 +189,12 @@ func StreamQueryXLSX(
 				WrapText:   true,
 			},
 		}),
+		"interval": createStyle(xlsx, &excelize.Style{
+			NumFmt: 46, // "[h]:mm:ss"
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+			},
+		}),
 	}
 
 	conn, err := app.db.Connx(ctx)
@@ -265,6 +277,12 @@ func StreamQueryXLSX(
 					xlsx.SetCellStyle(sheetName, cell, cell, styles["datetime"])
 				}
 
+			case isInterval(value):
+				if interval, ok := value.(duckdb.Interval); ok {
+					xlsx.SetCellFloat(sheetName, cell, intervalToDays(interval), 6, 64) // 6 decimal places precision
+					xlsx.SetCellStyle(sheetName, cell, cell, styles["interval"])
+				}
+
 			default:
 				xlsx.SetCellValue(sheetName, cell, formatValue(value))
 				xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
@@ -317,11 +335,57 @@ func formatValue(value interface{}) string {
 			return formatUUID(v)
 		}
 		return string(v)
+	case duckdb.Interval:
+		return intervalToString(v)
 	case time.Time:
 		return v.Format(time.RFC3339)
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// Express an interval as a number of days with fractions
+func intervalToDays(interval duckdb.Interval) float64 {
+	// Handle months (approximate months to days)
+	days := float64(interval.Days + (interval.Months * 30))
+	// Convert micros to days
+	daysFromMicros := float64(interval.Micros) / MICROSECONDS_PER_DAY
+	return days + daysFromMicros
+}
+
+// string looks like "10d 5h 30m 15.068s"
+func intervalToString(interval duckdb.Interval) string {
+	var parts []string
+
+	// Handle months (convert to days for simplicity)
+	totalDays := interval.Days + (interval.Months * 30) // approximate months to days
+	if totalDays != 0 {
+		parts = append(parts, fmt.Sprintf("%dd", totalDays))
+	}
+
+	// Handle time components from micros
+	remainingMicros := interval.Micros
+
+	// Calculate hours
+	hours := remainingMicros / (3600 * 1000000)
+	if hours != 0 {
+		parts = append(parts, fmt.Sprintf("%dh", hours))
+		remainingMicros -= hours * 3600 * 1000000
+	}
+
+	// Calculate minutes
+	minutes := remainingMicros / (60 * 1000000)
+	if minutes != 0 {
+		parts = append(parts, fmt.Sprintf("%dm", minutes))
+		remainingMicros -= minutes * 60 * 1000000
+	}
+
+	// Calculate seconds (including fractional part)
+	seconds := float64(remainingMicros) / 1000000.0
+	if seconds != 0 || len(parts) == 0 { // include 0s if no other parts
+		parts = append(parts, fmt.Sprintf("%.3fs", seconds))
+	}
+	return strings.Join(parts, " ")
 }
 
 func isNumber(value interface{}) bool {
@@ -347,6 +411,14 @@ func isDateTime(value interface{}) bool {
 	}
 	_, isTime := value.(time.Time)
 	return isTime
+}
+
+func isInterval(value interface{}) bool {
+	if value == nil {
+		return false
+	}
+	_, isInterval := value.(duckdb.Interval)
+	return isInterval
 }
 
 func createStyle(xlsx *excelize.File, style *excelize.Style) int {
