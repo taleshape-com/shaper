@@ -115,7 +115,7 @@ export function Menu({
           "fixed top-0 left-0 w-full sm:w-72 h-dvh ease-in-out delay-75 duration-300 z-40 bg-cbg dark:bg-dbg",
           {
             hidden: actuallyInline && !actuallyOpen,
-            "border-r border-cborder dark:border-dborder":
+            "border-r border-cbga dark:border-dbga":
               actuallyInline && actuallyOpen,
             "bg-cbga dark:bg-dbga shadow-xl !ml-0": !actuallyInline,
             "-translate-x-[calc(100vw+50px)]": !actuallyInline && !actuallyOpen,

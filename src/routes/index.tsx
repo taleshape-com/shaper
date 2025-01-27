@@ -137,7 +137,7 @@ function Index() {
           {translate("Home")}
         </h1>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div className="bg-white dark:bg-dbga rounded-lg shadow">
         <div className="px-6 pt-4 pb-6">
           <h1 className="text-2xl font-semibold font-display mb-2">
             {translate("Dashboards")}

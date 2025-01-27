@@ -203,9 +203,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				}
 				if query.Columns[i].Type == "time" {
 					if t, ok := cell.(time.Time); ok {
-						// Convert time to seconds since midnight
+						// Convert time to ms since midnight
 						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
-						row[i] = seconds
+						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
+						row[i] = ms
 					}
 					break
 				}

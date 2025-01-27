@@ -30,7 +30,7 @@ const variantStyles: Record<TabsListVariant, string> = {
     // base
     "flex items-center justify-start border-b",
     // border color
-    "border-gray-200 dark:border-gray-800",
+    "border-cb dark:border-db",
   ),
   solid: cx(
     // base
@@ -64,14 +64,14 @@ function getVariantStyles(tabVariant: TabsListVariant) {
         // base
         "-mb-px items-center justify-center whitespace-nowrap border-b-2 border-transparent px-3 pb-2 text-sm font-medium transition-all",
         // text color
-        "text-gray-500 dark:text-gray-500",
+        "text-ctext2 dark:text-dtext2",
         // hover
         "hover:text-gray-700 hover:dark:text-gray-400",
         // border hover
         "hover:border-gray-300 hover:dark:border-gray-400",
         // selected
-        "data-[state=active]:border-blue-500 data-[state=active]:text-blue-500",
-        "data-[state=active]:dark:border-blue-500 data-[state=active]:dark:text-blue-500",
+        "data-[state=active]:border-cprimarya data-[state=active]:text-cprimarya",
+        "data-[state=active]:dark:border-dprimarya data-[state=active]:dark:text-dprimarya",
         // disabled
         "data-[disabled]:pointer-events-none",
         "data-[disabled]:text-gray-300 data-[disabled]:dark:text-gray-700",
