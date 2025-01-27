@@ -186,20 +186,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					if n, err := strconv.ParseFloat(cell.(string), 64); err == nil {
 						row[i] = n
 					}
-					break
 				}
 				if colTypes[i].DatabaseTypeName() == "UUID" {
 					if byteSlice, ok := cell.([]uint8); ok {
-						// Format as standard UUID string format (8-4-4-4-12)
-						uuid := fmt.Sprintf("%x-%x-%x-%x-%x",
-							byteSlice[0:4],
-							byteSlice[4:6],
-							byteSlice[6:8],
-							byteSlice[8:10],
-							byteSlice[10:16])
-						row[i] = uuid
+						row[i] = formatUUID(byteSlice)
 					}
-					break
 				}
 				if query.Columns[i].Type == "time" {
 					if t, ok := cell.(time.Time); ok {
@@ -208,7 +199,6 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
 						row[i] = ms
 					}
-					break
 				}
 				if query.Columns[i].Type == "duration" {
 					v := row[i]
@@ -1151,4 +1141,9 @@ func getTokenVars(variables map[string]interface{}) (map[string]string, map[stri
 		}
 	}
 	return singleVars, multiVars, nil
+}
+
+// Format as standard UUID string format (8-4-4-4-12)
+func formatUUID(s []uint8) string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", s[0:4], s[4:6], s[6:8], s[8:10], s[10:16])
 }

@@ -301,6 +301,10 @@ func StreamQueryXLSX(
 	return xlsx.Write(writer)
 }
 
+func isUUID(s []byte) bool {
+	return len(s) == 16
+}
+
 // formatValue converts various types to their string representation
 func formatValue(value interface{}) string {
 	if value == nil {
@@ -309,6 +313,9 @@ func formatValue(value interface{}) string {
 
 	switch v := value.(type) {
 	case []byte:
+		if isUUID(v) {
+			return formatUUID(v)
+		}
 		return string(v)
 	case time.Time:
 		return v.Format(time.RFC3339)
