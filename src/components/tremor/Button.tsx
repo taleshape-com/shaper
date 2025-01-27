@@ -33,11 +33,11 @@ const buttonVariants = tv({
       ],
       secondary: [
         // border
-        "border-cb dark:border-db",
+        "border-cb dark:border-dbga",
         // text color
         "text-ctext dark:text-dtext",
         // background color
-        "bg-cbg dark:bg-dbg",
+        "bg-cbg dark:bg-db",
         //hover color
         "hover:bg-cbga dark:hover:bg-dprimarya",
         // disabled

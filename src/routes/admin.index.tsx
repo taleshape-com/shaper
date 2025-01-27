@@ -388,7 +388,7 @@ function UsersManagement() {
             {inviteCode ? (
               <div>
                 <div className="flex items-center gap-2 my-4">
-                  <code className="bg-gray-100 dark:bg-gray-700 p-2 rounded flex-grow overflow-hidden text-ellipsis">
+                  <code className="bg-cbga dark:bg-db p-2 rounded flex-grow overflow-hidden text-ellipsis">
                     {getInviteLink(inviteCode.code)}
                   </code>
                   <Button
@@ -504,7 +504,7 @@ function UsersManagement() {
                               return (
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
-                                    <code className="bg-gray-100 dark:bg-gray-700 p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
+                                    <code className="bg-cbga dark:bg-db p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
                                       {getInviteLink(invite.code)}
                                     </code>
                                     <Button
