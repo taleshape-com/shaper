@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -43,9 +44,6 @@ func StreamQueryCSV(
 	}
 	if len(sqls) <= queryIndex || queryIndex < 0 {
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
-	}
-	if queryIndex < 1 || !isDownloadButton(sqls[queryIndex-1]) {
-		return fmt.Errorf("query must be download query")
 	}
 	query := sqls[queryIndex]
 
@@ -146,9 +144,6 @@ func StreamQueryXLSX(
 	}
 	if len(sqls) <= queryIndex || queryIndex < 0 {
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
-	}
-	if queryIndex < 1 || !isDownloadButton(sqls[queryIndex-1]) {
-		return fmt.Errorf("query must be download query")
 	}
 	query := sqls[queryIndex]
 
@@ -468,7 +463,7 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 			data = append(data, row)
 		}
 
-		if isLabel(sqlString, data) || isSectionTitle(sqlString, data) {
+		if isLabel(colTypes, data) || isSectionTitle(colTypes, data) {
 			continue
 		}
 
@@ -493,4 +488,8 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 	}
 	varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
 	return varPrefix, varCleanup, nil
+}
+
+func isDownloadButton(columns []*sql.ColumnType) bool {
+	return getDownloadType(columns) != ""
 }

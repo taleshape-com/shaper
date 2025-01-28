@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -78,27 +77,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 			query.Rows = append(query.Rows, row)
 		}
-		// prefix with DESCRIBE and run query to get the details of the UNION type
-		// desc := []Desc{}
-		// err = conn.SelectContext(ctx, &desc, "DESCRIBE "+string(sql)+";")
-		// if err != nil {
-		// 	return result, err
-		// }
-		// for i, d := range desc {
-		// 	col := Column{
-		// 		Name:     d.ColumnName,
-		// 		Type:     mapDBType(d.ColumnType, i, query.Rows),
-		// 		Nullable: d.Null == "YES",
-		// 	}
-		// 	query.Columns = append(query.Columns, col)
-		// }
 
-		if isLabel(sqlString, query.Rows) {
+		if isLabel(colTypes, query.Rows) {
 			nextLabel = query.Rows[0][0].(string)
 			continue
 		}
 
-		if isSectionTitle(sqlString, query.Rows) {
+		if isSectionTitle(colTypes, query.Rows) {
 			result.Sections = append(result.Sections, Section{
 				Type:    "header",
 				Queries: []Query{},
@@ -133,7 +118,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		for colIndex, c := range colTypes {
 			nullable, ok := c.Nullable()
 			tag := mapTag(colIndex, rInfo)
-			colType, err := mapDBType(c.DatabaseTypeName(), colIndex, query.Rows, tag)
+			colType, err := mapDBType(c.DatabaseTypeName(), colIndex, query.Rows)
 			if err != nil {
 				return result, err
 			}
@@ -157,61 +142,58 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 		}
 
+		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		if err != nil {
+			return result, err
+		}
+
 		for _, row := range query.Rows {
 			for i, cell := range row {
-				// Convert date and datetime strings to int64 unix timestamp in milliseconds
-				// TODO: Once we can use TIMESTAMP and DATE types in UNION, this parsing can hopefully get easier
-				s, ok := cell.(string)
-				if ok {
-					t, err := time.Parse(time.DateOnly, s)
-					if err != nil {
-						t, err = time.Parse(time.DateTime, s)
+				if t, ok := cell.(time.Time); ok {
+					if query.Columns[i].Type == "time" {
+						// Convert time to ms since midnight
+						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
+						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
+						row[i] = ms
+						continue
 					}
-					if err == nil {
-						ms := t.UnixMilli()
-						// Find min/max time
-						if ms > maxTimeValue {
-							maxTimeValue = ms
-						} else if ms < minTimeValue {
-							minTimeValue = ms
-						}
+					ms := t.UnixMilli()
+					// Find min/max time
+					if ms > maxTimeValue {
+						maxTimeValue = ms
+					} else if ms < minTimeValue {
+						minTimeValue = ms
+					}
+					if query.Columns[i].Type == "string" {
+						row[i] = strconv.FormatInt(ms, 10)
+					} else {
 						row[i] = ms
 					}
+					continue
 				}
-				if n, ok := cell.(float64); ok && math.IsNaN(n) {
-					row[i] = nil
-				}
-				// TODO: Once UNION types work, we can return floats from the DB directly and don't have to guess
-				if colTypes[i].DatabaseTypeName() == "VARCHAR" && query.Columns[i].Type == "number" {
-					if n, err := strconv.ParseFloat(cell.(string), 64); err == nil {
-						row[i] = n
+				// Convert date and datetime strings to int64 unix timestamp in milliseconds
+				if n, ok := cell.(float64); ok {
+					if math.IsNaN(n) {
+						row[i] = nil
+					} else if query.Columns[i].Type == "string" {
+						row[i] = strconv.FormatFloat(n, 'f', -1, 64)
 					}
+					continue
 				}
 				if colTypes[i].DatabaseTypeName() == "UUID" {
 					if byteSlice, ok := cell.([]uint8); ok {
 						row[i] = formatUUID(byteSlice)
 					}
-				}
-				if query.Columns[i].Type == "time" {
-					if t, ok := cell.(time.Time); ok {
-						// Convert time to ms since midnight
-						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
-						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
-						row[i] = ms
-					}
+					continue
 				}
 				if query.Columns[i].Type == "duration" {
 					v := row[i]
 					if v != nil {
 						row[i] = formatInterval(v)
 					}
+					continue
 				}
 			}
-		}
-
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
-		if err != nil {
-			return result, err
 		}
 
 		wantedSectionType := "content"
@@ -273,6 +255,7 @@ func stripSQLComments(sql string) string {
 
 	return result.String()
 }
+
 func escapeSQLString(str string) string {
 	// Replace single quotes with doubled single quotes
 	escaped := strings.Replace(str, "'", "''", -1)
@@ -350,37 +333,22 @@ func mapTag(index int, rInfo renderInfo) string {
 	return ""
 }
 
-// TODO: BIT types are not supported yet by Go duckdb lib
-// TODO: Support DECIMAL, ARRAY, STRUCT, MAP and UNION types
-func mapDBType(dbType string, index int, rows Rows, tag string) (string, error) {
-	// t := getTypeByDefinition(dbType)
-	// if t == "" {
-	// t = dbType
-	// }
+// TODO: BIT type is not supported yet by Go duckdb lib
+// TODO: Support DECIMAL, ARRAY, STRUCT, MAP and generic UNION types
+func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
+	for _, dbType := range dbTypes {
+		if dbType.Definition == t {
+			if dbType.ResultType == "axis" {
+				return getAxisType(rows, index)
+			}
+			return dbType.ResultType, nil
+		}
+	}
 	switch t {
 	case "BOOLEAN":
 		return "boolean", nil
 	case "VARCHAR":
-		// TODO: Once we have union types, VARCHAR cannot be date anymore. We can use actual TIMESTAMP AND DATE types
-		if onlyYears(rows, index) {
-			return "year", nil
-		}
-		if onlyMonths(rows, index) {
-			return "month", nil
-		}
-		if onlyDates(rows, index) {
-			return "date", nil
-		}
-		if onlyHours(rows, index) {
-			return "hour", nil
-		}
-		if onlyTimestamps(rows, index) {
-			return "timestamp", nil
-		}
-		if tag == "index" && onlyNumbers(rows, index) {
-			return "number", nil
-		}
 		return "string", nil
 	case "DOUBLE":
 		return "number", nil
@@ -391,7 +359,7 @@ func mapDBType(dbType string, index int, rows Rows, tag string) (string, error) 
 	case "DATE":
 		return "date", nil
 	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPTZ":
-		return "timestamp", nil
+		return getTimestampType(rows, index)
 	case "INTERVAL":
 		return "duration", nil
 	case "TIME":
@@ -426,44 +394,59 @@ func isTimeType(columnType string) bool {
 	return columnType == "year" || columnType == "month" || columnType == "date" || columnType == "hour" || columnType == "timestamp"
 }
 
-// TODO: Once UNION types work, we need a more solid way to get tags
-func getTagName(sql string, tag string) string {
-	s := "::" + tag + " AS \"(.+)\""
-	r := regexp.MustCompile(s)
-	m := r.FindStringSubmatch(sql)
-	if len(m) != 2 {
-		return ""
+func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, int) {
+	unionDefinition := ""
+	for _, dbType := range dbTypes {
+		if dbType.Name == tag {
+			unionDefinition = dbType.Definition
+			break
+		}
 	}
-	return m[1]
+	if unionDefinition == "" {
+		return nil, 0
+	}
+	for i, c := range columns {
+		if c.DatabaseTypeName() == unionDefinition {
+			return c, i
+		}
+	}
+	return nil, 0
 }
 
-// TODO: Once UNION types work, we need a more solid way to detect labels
-func isLabel(sqlString string, rows Rows) bool {
-	return strings.Contains(sqlString, "::LABEL") && len(rows) == 1 && len(rows[0]) == 1
+func isLabel(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "LABEL")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
 }
 
-// TODO: Once UNION types work, we need a more solid way to detect labels
-func isSectionTitle(sqlString string, rows Rows) bool {
-	return strings.Contains(sqlString, "::SECTION") && (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
+func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "SECTION")
+	if col == nil {
+		return false
+	}
+	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
-// TODO: Once UNION types work, we need a more solid way to detect labels
-func isPlaceholder(sqlString string, rows Rows) bool {
-	return strings.Contains(sqlString, "::PLACEHOLDER") && (len(rows) == 1 && len(rows[0]) == 1)
+func isPlaceholder(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "PLACEHOLDER")
+	if col == nil {
+		return false
+	}
+	return (len(rows) == 1 && len(rows[0]) == 1)
 }
-func getDownloadType(sqlString string) string {
-	csvTag := getTagName(sqlString, "DOWNLOAD_CSV")
-	if csvTag != "" {
+
+func getDownloadType(columns []*sql.ColumnType) string {
+	csvColumn, _ := findColumnByTag(columns, "DOWNLOAD_CSV")
+	if csvColumn != nil {
 		return "csv"
 	}
-	xlsxTag := getTagName(sqlString, "DOWNLOAD_XLSX")
-	if xlsxTag != "" {
+	xlsxColumn, _ := findColumnByTag(columns, "DOWNLOAD_XLSX")
+	if xlsxColumn != nil {
 		return "xlsx"
 	}
 	return ""
-}
-func isDownloadButton(sqlString string) bool {
-	return getDownloadType(sqlString) != ""
 }
 
 // TODO: Charts should assert that only the required columns are present.
@@ -473,213 +456,126 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 	if label != "" {
 		labelValue = &label
 	}
-	xaxis := getTagName(sqlString, "XAXIS")
+	xaxis, xaxisIndex := findColumnByTag(columns, "XAXIS")
 
-	linechart := getTagName(sqlString, "LINECHART")
-	if linechart != "" && xaxis != "" {
-		lineCat := getTagName(sqlString, "LINECHART_CATEGORY")
+	linechart, linechartIndex := findColumnByTag(columns, "LINECHART")
+	if linechart != nil && xaxis != nil {
+		lineCat, lineCatIndex := findColumnByTag(columns, "LINECHART_CATEGORY")
 		r := renderInfo{
-			Label: labelValue,
-			Type:  "linechart",
+			Label:          labelValue,
+			Type:           "linechart",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &linechartIndex,
 		}
-		for i, c := range columns {
-			if lineCat != "" {
-				if c.Name() == lineCat {
-					r.CategoryIndex = &i
-				}
-			}
-			if c.Name() == xaxis {
-				r.IndexAxisIndex = &i
-			}
-			if c.Name() == linechart {
-				r.ValueAxisIndex = &i
-			}
+		if lineCat != nil {
+			r.CategoryIndex = &lineCatIndex
 		}
 		return r
 	}
 
-	barchart := getTagName(sqlString, "BARCHART")
-	barCat := getTagName(sqlString, "BARCHART_CATEGORY")
-	if barchart != "" && xaxis != "" {
+	barchart, barchartIndex := findColumnByTag(columns, "BARCHART")
+	barCat, barCatIndex := findColumnByTag(columns, "BARCHART_CATEGORY")
+	if barchart != nil && xaxis != nil {
 		r := renderInfo{
-			Label: labelValue,
-			Type:  "barchartHorizontal",
+			Label:          labelValue,
+			Type:           "barchartHorizontal",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &barchartIndex,
 		}
-		for i, c := range columns {
-			if barCat != "" {
-				if c.Name() == barCat {
-					r.CategoryIndex = &i
-				}
-			}
-			if c.Name() == xaxis {
-				r.IndexAxisIndex = &i
-			}
-			if c.Name() == barchart {
-				r.ValueAxisIndex = &i
-			}
+		if barCat != nil {
+			r.CategoryIndex = &barCatIndex
 		}
 		return r
 	}
-	barchartStacked := getTagName(sqlString, "BARCHART_STACKED")
-	if barchartStacked != "" && xaxis != "" && barCat != "" {
+	barchartStacked, barchartStackedIndex := findColumnByTag(columns, "BARCHART_STACKED")
+	if barchartStacked != nil && xaxis != nil && barCat != nil {
 		r := renderInfo{
-			Label: labelValue,
-			Type:  "barchartHorizontalStacked",
-		}
-		for i, c := range columns {
-			if c.Name() == barCat {
-				r.CategoryIndex = &i
-			}
-			if c.Name() == xaxis {
-				r.IndexAxisIndex = &i
-			}
-			if c.Name() == barchartStacked {
-				r.ValueAxisIndex = &i
-			}
+			Label:          labelValue,
+			Type:           "barchartHorizontalStacked",
+			CategoryIndex:  &barCatIndex,
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &barchartStackedIndex,
 		}
 		return r
 	}
 
-	yaxis := getTagName(sqlString, "YAXIS")
-	if barchart != "" && yaxis != "" {
+	yaxis, yaxisIndex := findColumnByTag(columns, "YAXIS")
+	if barchart != nil && yaxis != nil {
 		r := renderInfo{
-			Label: labelValue,
-			Type:  "barchartVertical",
+			Label:          labelValue,
+			Type:           "barchartVertical",
+			IndexAxisIndex: &yaxisIndex,
+			ValueAxisIndex: &barchartIndex,
 		}
-		for i, c := range columns {
-			if barCat != "" {
-				if c.Name() == barCat {
-					r.CategoryIndex = &i
-				}
-			}
-			if c.Name() == yaxis {
-				r.IndexAxisIndex = &i
-			}
-			if c.Name() == barchart {
-				r.ValueAxisIndex = &i
-			}
+		if barCat != nil {
+			r.CategoryIndex = &barCatIndex
 		}
 		return r
 	}
-	if barchartStacked != "" && yaxis != "" && barCat != "" {
+	if barchartStacked != nil && yaxis != nil && barCat != nil {
 		r := renderInfo{
-			Label: labelValue,
-			Type:  "barchartVerticalStacked",
-		}
-		for i, c := range columns {
-			if c.Name() == barCat {
-				r.CategoryIndex = &i
-			}
-			if c.Name() == yaxis {
-				r.IndexAxisIndex = &i
-			}
-			if c.Name() == barchartStacked {
-				r.ValueAxisIndex = &i
-			}
+			Label:          labelValue,
+			Type:           "barchartVerticalStacked",
+			CategoryIndex:  &barCatIndex,
+			IndexAxisIndex: &yaxisIndex,
+			ValueAxisIndex: &barchartStackedIndex,
 		}
 		return r
 	}
 
-	dropdown := getTagName(sqlString, "DROPDOWN")
-	if dropdown != "" {
-		label := getTagName(sqlString, "LABEL")
-		valueIndex := -1
-		var labelIndex *int
-		for i, c := range columns {
-			if c.Name() == dropdown {
-				valueIndex = i
-			}
-			if label != "" && c.Name() == label {
-				labelIndex = &i
-			}
-		}
-		if valueIndex == -1 {
-			panic(fmt.Sprintf("column %s not found", dropdown))
-		}
-		return renderInfo{
+	dropdown, dropdownIndex := findColumnByTag(columns, "DROPDOWN")
+	if dropdown != nil {
+		label, labelIndex := findColumnByTag(columns, "LABEL")
+		r := renderInfo{
 			Label:      labelValue,
 			Type:       "dropdown",
-			ValueIndex: &valueIndex,
-			LabelIndex: labelIndex,
+			ValueIndex: &dropdownIndex,
 		}
+		if label != nil {
+			r.LabelIndex = &labelIndex
+		}
+		return r
 	}
 
-	dropdownMulti := getTagName(sqlString, "DROPDOWN_MULTI")
-	if dropdownMulti != "" {
-		label := getTagName(sqlString, "LABEL")
-		hint := getTagName(sqlString, "HINT")
-		valueIndex := -1
-		var labelIndex *int
-		var hintIndex *int
-		for i, c := range columns {
-			if c.Name() == dropdownMulti {
-				valueIndex = i
-			}
-			if label != "" && c.Name() == label {
-				labelIndex = &i
-			}
-			if hint != "" && c.Name() == hint {
-				hintIndex = &i
-			}
-		}
-		if valueIndex == -1 {
-			panic(fmt.Sprintf("column %s not found", dropdownMulti))
-		}
-		return renderInfo{
+	dropdownMulti, dropdownMultiIndex := findColumnByTag(columns, "DROPDOWN_MULTI")
+	if dropdownMulti != nil {
+		label, labelIndex := findColumnByTag(columns, "LABEL")
+		hint, hintIndex := findColumnByTag(columns, "HINT")
+		r := renderInfo{
 			Label:      labelValue,
 			Type:       "dropdownMulti",
-			ValueIndex: &valueIndex,
-			LabelIndex: labelIndex,
-			HintIndex:  hintIndex,
+			ValueIndex: &dropdownMultiIndex,
 		}
+		if label != nil {
+			r.LabelIndex = &labelIndex
+		}
+		if hint != nil {
+			r.HintIndex = &hintIndex
+		}
+		return r
 	}
 
-	datepicker := getTagName(sqlString, "DATEPICKER")
-	if datepicker != "" {
-		defaultValueIndex := -1
-		for i, c := range columns {
-			if c.Name() == datepicker {
-				defaultValueIndex = i
-			}
-		}
-		if defaultValueIndex == -1 {
-			panic(fmt.Sprintf("column %s not found", datepicker))
-		}
+	datepicker, datepickerIndex := findColumnByTag(columns, "DATEPICKER")
+	if datepicker != nil {
 		return renderInfo{
 			Label:      labelValue,
 			Type:       "datepicker",
-			ValueIndex: &defaultValueIndex,
+			ValueIndex: &datepickerIndex,
 		}
 	}
 
-	daterangeFrom := getTagName(sqlString, "DATEPICKER_FROM")
-	daterangeTo := getTagName(sqlString, "DATEPICKER_TO")
-	if daterangeFrom != "" && daterangeTo != "" {
-		fromIndex := -1
-		toIndex := -1
-		for i, c := range columns {
-			if c.Name() == daterangeFrom {
-				fromIndex = i
-			}
-			if c.Name() == daterangeTo {
-				toIndex = i
-			}
-		}
-		if fromIndex == -1 {
-			panic(fmt.Sprintf("column %s not found", daterangeFrom))
-		}
-		if toIndex == -1 {
-			panic(fmt.Sprintf("column %s not found", daterangeFrom))
-		}
+	daterangeFrom, daterangeFromIndex := findColumnByTag(columns, "DATEPICKER_FROM")
+	daterangeTo, daterangeToIndex := findColumnByTag(columns, "DATEPICKER_TO")
+	if daterangeFrom != nil && daterangeTo != nil {
 		return renderInfo{
 			Label:     labelValue,
 			Type:      "daterangePicker",
-			FromIndex: &fromIndex,
-			ToIndex:   &toIndex,
+			FromIndex: &daterangeFromIndex,
+			ToIndex:   &daterangeToIndex,
 		}
 	}
 
-	downloadType := getDownloadType(sqlString)
+	downloadType := getDownloadType(columns)
 	if downloadType != "" {
 		return renderInfo{
 			Label:    labelValue,
@@ -688,7 +584,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 		}
 	}
 
-	if isPlaceholder(sqlString, rows) {
+	if isPlaceholder(columns, rows) {
 		return renderInfo{
 			Label: labelValue,
 			Type:  "placeholder",
@@ -704,165 +600,68 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 				Type:  "value",
 			}
 		}
-		compareTag := getTagName(sqlString, "COMPARE")
-		if compareTag != "" && len(firstRow) == 2 {
-			valueIndex := -1
-			compareIndex := -1
-			for i, c := range columns {
-				if c.Name() == compareTag {
-					compareIndex = i
-				} else {
-					valueIndex = i
-				}
-			}
-			if valueIndex == -1 {
-				panic("value index not found")
-			}
-			if compareIndex == -1 {
-				panic(fmt.Sprintf("column %s not found", compareTag))
-			}
+		compareTag, compareTagIndex := findColumnByTag(columns, "COMPARE")
+		if compareTag != nil && len(firstRow) == 2 {
 			return renderInfo{
 				Label:        labelValue,
-				CompareIndex: &compareIndex,
+				CompareIndex: &compareTagIndex,
 				Type:         "value",
 			}
 		}
 	}
 
-	trendTag := getTagName(sqlString, "TREND")
-	var trendIndex *int
-	if trendTag != "" {
-		for i, c := range columns {
-			if c.Name() == trendTag {
-				trendIndex = &i
-				break
-			}
-		}
+	trendTag, trendTagIndex := findColumnByTag(columns, "TREND")
+	r := renderInfo{
+		Label: labelValue,
+		Type:  "table",
 	}
-
-	return renderInfo{
-		Label:      labelValue,
-		Type:       "table",
-		TrendIndex: trendIndex,
+	if trendTag != nil {
+		r.TrendIndex = &trendTagIndex
 	}
+	return r
 }
 
-// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-func onlyDates(rows Rows, index int) bool {
+func getTimestampType(rows Rows, index int) (string, error) {
+	if len(rows) == 0 {
+		return "timestamp", nil
+	}
+	s := "year"
 	for _, row := range rows {
-		s, ok := row[index].(string)
+		t, ok := row[index].(time.Time)
 		if !ok {
-			return false
+			return "", fmt.Errorf("invalid timestamp value: %v", row[index])
 		}
-		_, err := time.Parse(time.DateOnly, s)
-		if err != nil {
-			return false
+		if s == "year" && t.Month() != 1 {
+			s = "month"
+		}
+		if s == "month" && t.Day() != 1 {
+			s = "date"
+		}
+		if s == "date" && t.Hour() != 0 {
+			s = "hour"
+		}
+		if s == "hour" && t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+			return "timestamp", nil
 		}
 	}
-	return true
+	return s, nil
 }
 
-// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-func onlyTimestamps(rows Rows, index int) bool {
+func getAxisType(rows Rows, index int) (string, error) {
+	if len(rows) == 0 {
+		return "string", nil
+	}
+	// Try timestamp first
+	if s, err := getTimestampType(rows, index); err == nil {
+		return s, nil
+	}
+	// Then try number and fallback to string
 	for _, row := range rows {
-		s, ok := row[index].(string)
-		if !ok {
-			return false
-		}
-		_, err := time.Parse(time.DateTime, s)
-		if err != nil {
-			return false
+		if _, ok := row[index].(float64); !ok {
+			return "string", nil
 		}
 	}
-	return true
-}
-
-func onlyYears(rows Rows, index int) bool {
-	for _, row := range rows {
-		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-		s, ok := row[index].(string)
-		if !ok {
-			return false
-		}
-		t, err := time.Parse(time.DateOnly, s)
-		if err != nil {
-			t, err = time.Parse(time.DateTime, s)
-			if err != nil {
-				return false
-			}
-		}
-		if t.Month() != 1 || t.Day() != 1 || t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func onlyMonths(rows Rows, index int) bool {
-	for _, row := range rows {
-		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-		s, ok := row[index].(string)
-		if !ok {
-			return false
-		}
-		t, err := time.Parse(time.DateOnly, s)
-		if err != nil {
-			t, err = time.Parse(time.DateTime, s)
-			if err != nil {
-				return false
-			}
-		}
-		if t.Day() != 1 || t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func onlyHours(rows Rows, index int) bool {
-	for _, row := range rows {
-		// TODO: Once we use union types, we should not have to use strings for dates and we should note attempt to parse dates
-		s, ok := row[index].(string)
-		if !ok {
-			return false
-		}
-		t, err := time.Parse(time.DateOnly, s)
-		if err != nil {
-			t, err = time.Parse(time.DateTime, s)
-			if err != nil {
-				return false
-			}
-		}
-		if t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func onlyNumbers(rows Rows, index int) bool {
-	for _, row := range rows {
-		s, ok := row[index].(string)
-		if !ok {
-			return false
-		}
-		if _, err := strconv.ParseFloat(s, 64); err != nil {
-			return false
-		}
-	}
-	return true
-}
-
-func hasOnlyUniqueValues(rows Rows, columnIndex int) bool {
-	seen := make(map[interface{}]bool)
-	for _, row := range rows {
-		value := row[columnIndex]
-		if seen[value] {
-			return false
-		}
-		seen[value] = true
-	}
-	return true
+	return "number", nil
 }
 
 // TODO: assert that variable names are alphanumeric
