@@ -1,6 +1,7 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
 import { formatValue, getIndexAxisDomain } from "../../lib/render";
+import { getNameIfSet } from "../../lib/utils";
 
 type LineProps = {
   chartId: string;
@@ -80,8 +81,8 @@ const DashboardLineChart = ({
       indexFormatter={(n: number) => {
         return formatValue(n, indexAxisHeader.type).toString();
       }}
-      xAxisLabel={isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
-      yAxisLabel={valueAxisName}
+      xAxisLabel={isTimeType(indexAxisHeader.type) ? undefined : getNameIfSet(indexAxisHeader.name)}
+      yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
       xAxisDomain={xAxisDomain}
     />

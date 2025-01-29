@@ -2,34 +2,42 @@ package core
 
 import "github.com/jmoiron/sqlx"
 
+// TODO: Consider making _shaper_ prefix configurable
+// TODO: Support DATE, TIME, INTERVAL and potential other types in axis
 var dbTypes = []struct {
 	Name       string
 	Definition string
+	ResultType string
 }{
-	{"LABEL", "VARCHAR"},
-	{"XAXIS", "VARCHAR"},
-	{"YAXIS", "VARCHAR"},
-	{"LINECHART", "DOUBLE"},
-	{"LINECHART_CATEGORY", "VARCHAR"},
-	{"BARCHART", "DOUBLE"},
-	{"BARCHART_STACKED", "DOUBLE"},
-	{"BARCHART_CATEGORY", "VARCHAR"},
-	{"DROPDOWN", "VARCHAR"},
-	{"DROPDOWN_MULTI", "VARCHAR"},
-	{"HINT", "VARCHAR"},
-	{"SECTION", "VARCHAR"},
-	{"DOWNLOAD_CSV", "VARCHAR"},
-	{"DOWNLOAD_XLSX", "VARCHAR"},
-	{"DATEPICKER", "DATE"},
-	{"DATEPICKER_FROM", "DATE"},
-	{"DATEPICKER_TO", "DATE"},
-	{"COMPARE", "DOUBLE"},
-	{"TREND", "DOUBLE"},
-	{"PLACEHOLDER", "VARCHAR"},
+	{"LABEL", "UNION(_shaper_label_varchar VARCHAR)", "string"},
+	{"XAXIS", "UNION(_shaper_xaxis_varchar VARCHAR, _shaper_xaxis_timestamp TIMESTAMP, _shaper_xaxis_double DOUBLE)", "axis"},
+	{"YAXIS", "UNION(_shaper_yaxis_varchar VARCHAR, _shaper_yaxis_timestamp TIMESTAMP, _shaper_yaxis_double DOUBLE)", "axis"},
+	{"LINECHART", "UNION(_shaper_linechart_double DOUBLE)", "number"},
+	{"LINECHART_CATEGORY", "UNION(_shaper_linechart_category_varchar VARCHAR)", "string"},
+	{"BARCHART", "UNION(_shaper_barchart_double DOUBLE)", "number"},
+	{"BARCHART_STACKED", "UNION(_shaper_barchart_stacked_double DOUBLE)", "number"},
+	{"BARCHART_CATEGORY", "UNION(_shaper_barchart_category_varchar VARCHAR)", "string"},
+	{"DROPDOWN", "UNION(_shaper_dropdown_varchar VARCHAR)", "string"},
+	{"DROPDOWN_MULTI", "UNION(_shaper_dropdown_multi_varchar VARCHAR)", "string"},
+	{"HINT", "UNION(_shaper_hint_varchar VARCHAR)", "string"},
+	{"SECTION", "UNION(_shaper_section_varchar VARCHAR)", "string"},
+	{"DOWNLOAD_CSV", "UNION(_shaper_download_csv_varchar VARCHAR)", "string"},
+	{"DOWNLOAD_XLSX", "UNION(_shaper_download_xlsx_varchar VARCHAR)", "string"},
+	{"DATEPICKER", "UNION(_shaper_datepicker_date DATE)", "date"},
+	{"DATEPICKER_FROM", "UNION(_shaper_datepicker_from_date DATE)", "date"},
+	{"DATEPICKER_TO", "UNION(_shaper_datepicker_to_date DATE)", "date"},
+	{"COMPARE", "UNION(_shaper_compare_double DOUBLE)", "number"},
+	{"TREND", "UNION(_shaper_trend_double DOUBLE)", "number"},
+	{"PLACEHOLDER", "UNION(_shaper_placeholder_varchar VARCHAR)", "string"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
-	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
+	// TODO: remove the DROP TYPE once this has been deployed to production
+	_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return err
 	}

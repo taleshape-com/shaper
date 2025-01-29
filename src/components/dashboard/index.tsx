@@ -357,7 +357,7 @@ const fetchDashboard = async (
   const json = await res.json();
   if (res.status !== 200) {
     throw new Error(
-      (json?.Error?.Msg ?? json?.Error ?? json?.message ?? json).toString(),
+      (json?.error ?? json?.Error?.Msg ?? json?.Error ?? json?.message ?? json).toString(),
     );
   }
   return json;

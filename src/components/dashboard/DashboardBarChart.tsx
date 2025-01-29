@@ -1,5 +1,6 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { formatValue, getIndexAxisDomain } from "../../lib/render";
+import { getNameIfSet } from "../../lib/utils";
 import { BarChart } from "../tremor/BarChart";
 
 type BarProps = {
@@ -85,8 +86,8 @@ const DashboardBarChart = ({
       indexFormatter={(n: number) => {
         return formatValue(n, indexAxisHeader.type).toString();
       }}
-      xAxisLabel={vertical ? valueAxisName : isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name}
-      yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : indexAxisHeader.name : valueAxisName}
+      xAxisLabel={vertical ? getNameIfSet(valueAxisName) : isTimeType(indexAxisHeader.type) ? undefined : getNameIfSet(indexAxisHeader.name)}
+      yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : getNameIfSet(indexAxisHeader.name) : getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
       indexAxisDomain={indexAxisDomain}
     />

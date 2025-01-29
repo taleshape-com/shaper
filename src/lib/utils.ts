@@ -60,3 +60,11 @@ export const goToLoginPage = () => {
   });
 };
 
+const castRegex = /^CAST\(.+ AS .+\)$/
+export const getNameIfSet = (name: string) => {
+  if (castRegex.test(name)) {
+    return undefined
+  }
+  return name
+}
+
