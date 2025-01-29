@@ -625,6 +625,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 
 func getTimestampType(rows Rows, index int) (string, error) {
 	s := "timestamp"
+	if len(rows) < 2 {
+		return s, nil
+	}
 	for _, row := range rows {
 		r := row[index]
 		if r == nil {
