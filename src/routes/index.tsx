@@ -176,30 +176,36 @@ function Index() {
                   {data.dashboards.map((dashboard) => (
                     <TableRow
                       key={dashboard.id}
-                      className="group hover:bg-cbga dark:hover:bg-dbga cursor-pointer transition-colors duration-200"
-                      onClick={() =>
-                        navigate({
-                          to: "/dashboards/$dashboardId",
-                          params: { dashboardId: dashboard.id },
-                        })
-                      }
+                      className="group hover:bg-cbga dark:hover:bg-dbga transition-colors duration-200"
                     >
-                      <TableCell className="font-medium text-ctext dark:text-dtext">
-                        {dashboard.name}
+                      <TableCell className="font-medium text-ctext dark:text-dtext p-0">
+                        <Link
+                          to="/dashboards/$dashboardId"
+                          params={{ dashboardId: dashboard.id }}
+                          className="block p-4"
+                        >
+                          {dashboard.name}
+                        </Link>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
-                        <div
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
+                        <Link
+                          to="/dashboards/$dashboardId"
+                          params={{ dashboardId: dashboard.id }}
+                          className="block p-4"
                           title={new Date(dashboard.createdAt).toLocaleString()}
                         >
                           {new Date(dashboard.createdAt).toLocaleDateString()}
-                        </div>
+                        </Link>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
-                        <div
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
+                        <Link
+                          to="/dashboards/$dashboardId"
+                          params={{ dashboardId: dashboard.id }}
+                          className="block p-4"
                           title={new Date(dashboard.updatedAt).toLocaleString()}
                         >
                           {new Date(dashboard.updatedAt).toLocaleDateString()}
-                        </div>
+                        </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex gap-4">
@@ -207,13 +213,11 @@ function Index() {
                             to="/dashboards/$dashboardId/edit"
                             params={{ dashboardId: dashboard.id }}
                             className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             {translate("Edit")}
                           </Link>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               handleDelete(dashboard);
                             }}
                             className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
