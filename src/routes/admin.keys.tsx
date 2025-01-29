@@ -271,7 +271,7 @@ function Admin() {
                     {translate("Cancel")}
                   </Button>
                 </DialogClose>
-                <Button type="submit">{translate("Create Key")}</Button>
+                <Button type="submit" className="mb-4 sm:mb-0">{translate("Create Key")}</Button>
               </DialogFooter>
             </form>
           )}

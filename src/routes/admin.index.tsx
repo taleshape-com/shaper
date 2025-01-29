@@ -436,13 +436,13 @@ function UsersManagement() {
                   placeholder="user@example.com"
                 />
 
-                <DialogFooter className="mt-6">
+                <DialogFooter>
                   <DialogClose asChild>
                     <Button type="button" variant="destructive">
                       {translate("Cancel")}
                     </Button>
                   </DialogClose>
-                  <Button type="submit">{translate("Create Invite")}</Button>
+                  <Button type="submit" className="mb-4 sm:mb-0">{translate("Create Invite")}</Button>
                 </DialogFooter>
               </form>
             )}

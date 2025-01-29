@@ -10,6 +10,7 @@ import { ErrorComponentProps } from "@tanstack/react-router";
 import { Input } from "../components/tremor/Input";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
+import { Button } from "../components/tremor/Button";
 
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({
@@ -101,13 +102,14 @@ function LoginComponent() {
             disabled={isLoggingIn}
           />
         </div>
-        <button
+        <Button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500"
+          variant="primary"
           disabled={!email || !password || isLoggingIn}
+          className="w-full"
         >
           {isLoggingIn ? "Logging in..." : "Login"}
-        </button>
+        </Button>
       </form>
       {err && <div className="mt-4 text-red-500 text-sm">{err}</div>}
     </div>
