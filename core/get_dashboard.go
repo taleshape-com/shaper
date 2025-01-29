@@ -158,11 +158,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 						continue
 					}
 					ms := t.UnixMilli()
-					// Find min/max time
-					if ms > maxTimeValue {
-						maxTimeValue = ms
-					} else if ms < minTimeValue {
-						minTimeValue = ms
+					// Find min/max time for index axis
+					if query.Columns[i].Tag == "index" {
+						if ms > maxTimeValue {
+							maxTimeValue = ms
+						} else if ms < minTimeValue {
+							minTimeValue = ms
+						}
 					}
 					if query.Columns[i].Type == "string" {
 						row[i] = strconv.FormatInt(ms, 10)
@@ -622,14 +624,18 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label
 }
 
 func getTimestampType(rows Rows, index int) (string, error) {
-	if len(rows) == 0 {
-		return "timestamp", nil
-	}
-	s := "year"
+	s := "timestamp"
 	for _, row := range rows {
-		t, ok := row[index].(time.Time)
+		r := row[index]
+		if r == nil {
+			continue
+		}
+		t, ok := r.(time.Time)
 		if !ok {
 			return "", fmt.Errorf("invalid timestamp value: %v", row[index])
+		}
+		if s == "timestamp" {
+			s = "year"
 		}
 		if s == "year" && t.Month() != 1 {
 			s = "month"
