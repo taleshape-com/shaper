@@ -62,8 +62,8 @@ const DashboardBarChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const indexAxisDomain = isTimeType(indexAxisHeader.type) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
+  const indexAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
 
   return (
     <BarChart
