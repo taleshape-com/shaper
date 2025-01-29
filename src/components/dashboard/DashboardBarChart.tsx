@@ -40,11 +40,7 @@ const DashboardBarChart = ({
       if (!acc[key]) {
         acc[key] = {
           [indexAxisHeader.name]:
-            indexAxisHeader.type === 'year' ||
-              indexAxisHeader.type === 'month' ||
-              indexAxisHeader.type === 'date' ||
-              indexAxisHeader.type === 'timestamp' ||
-              indexAxisHeader.type === 'hour' ?
+            isTimeType(indexAxisHeader.type) ?
               (new Date(key)).getTime() : key,
         };
       }
@@ -67,27 +63,29 @@ const DashboardBarChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexAxisDomain = isTimeType(indexAxisHeader.type) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
+  const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
 
   return (
     <BarChart
       chartId={chartId}
       className="h-full select-none"
       enableLegendSlider
-      startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexAxisHeader.type) ? 10 : 15)}
+      startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexType) ? 10 : 15)}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}
       index={indexAxisHeader.name}
-      indexType={indexAxisHeader.type}
+      // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
+      indexType={indexType}
       categories={Array.from(categories)}
       valueFormatter={(n: number) => {
         return n.toLocaleString();
       }}
       indexFormatter={(n: number) => {
-        return formatValue(n, indexAxisHeader.type).toString();
+        return formatValue(n, indexType).toString();
       }}
-      xAxisLabel={vertical ? getNameIfSet(valueAxisName) : isTimeType(indexAxisHeader.type) ? undefined : getNameIfSet(indexAxisHeader.name)}
-      yAxisLabel={vertical ? isTimeType(indexAxisHeader.type) ? undefined : getNameIfSet(indexAxisHeader.name) : getNameIfSet(valueAxisName)}
+      xAxisLabel={vertical ? getNameIfSet(valueAxisName) : isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name)}
+      yAxisLabel={vertical ? isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name) : getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
       indexAxisDomain={indexAxisDomain}
     />

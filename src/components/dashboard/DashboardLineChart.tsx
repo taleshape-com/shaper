@@ -36,11 +36,7 @@ const DashboardLineChart = ({
       if (!acc[key]) {
         acc[key] = {
           [indexAxisHeader.name]:
-            indexAxisHeader.type === 'year' ||
-              indexAxisHeader.type === 'month' ||
-              indexAxisHeader.type === 'date' ||
-              indexAxisHeader.type === 'timestamp' ||
-              indexAxisHeader.type === 'hour' ?
+            isTimeType(indexAxisHeader.type) ?
               (new Date(key)).getTime() : key,
         };
       }
@@ -62,26 +58,28 @@ const DashboardLineChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const xAxisDomain = isTimeType(indexAxisHeader.type) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
+  const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
+  const xAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
 
   return (
     <LineChart
       chartId={chartId}
       className="h-full select-none"
       enableLegendSlider
-      startEndOnly={isTimeType(indexAxisHeader.type)}
+      startEndOnly={isTimeType(indexType)}
       connectNulls
       data={chartdata}
       index={indexAxisHeader.name}
-      indexType={indexAxisHeader.type}
+      // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
+      indexType={indexType}
       categories={Array.from(categories)}
       valueFormatter={(number: number) => {
         return number.toLocaleString();
       }}
       indexFormatter={(n: number) => {
-        return formatValue(n, indexAxisHeader.type).toString();
+        return formatValue(n, indexType).toString();
       }}
-      xAxisLabel={isTimeType(indexAxisHeader.type) ? undefined : getNameIfSet(indexAxisHeader.name)}
+      xAxisLabel={isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
       xAxisDomain={xAxisDomain}
