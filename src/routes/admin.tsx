@@ -34,7 +34,7 @@ function Admin() {
         </h1>
       </div>
 
-      <div className="bg-white dark:bg-dbga rounded-lg shadow">
+      <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow">
         <div className="px-6 pt-6">
           <Tabs value={selectedTab} className="w-full">
             <TabsList>

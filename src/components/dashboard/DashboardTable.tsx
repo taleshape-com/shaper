@@ -21,7 +21,7 @@ function DashboardTable({ headers, data }: TableProps) {
   return (
     <TableRoot className="h-full">
       <Table>
-        <TableHead className="sticky top-0 bg-cbg dark:bg-dbg shadow-sm">
+        <TableHead className="sticky top-0 bg-cbgl dark:bg-dbgl shadow-sm">
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell className="text-center text-ctext dark:text-dtext" key={header.name}>{header.name}</TableHeaderCell>
@@ -31,7 +31,7 @@ function DashboardTable({ headers, data }: TableProps) {
         <TableBody>
           {
             data.map((items, index) => (
-              <TableRow key={index} className={index % 2 === 0 ? "bg-cbga dark:bg-dbga" : undefined}>
+              <TableRow key={index} className={index % 2 === 0 ? "bg-cbg dark:bg-dbga" : undefined}>
                 {items.map((item, index) => {
                   const header = headers[index]
                   const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined

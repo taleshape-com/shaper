@@ -157,16 +157,16 @@ function Admin() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell>{translate("Name")}</TableHeaderCell>
-                <TableHeaderCell>{translate("Created")}</TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext">{translate("Name")}</TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">{translate("Created")}</TableHeaderCell>
                 <TableHeaderCell>{translate("Actions")}</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {keys.map((key) => (
                 <TableRow key={key.id}>
-                  <TableCell>{key.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium text-ctext dark:text-dtext">{key.name}</TableCell>
+                  <TableCell className="font-medium text-ctext dark:text-dtext hidden md:table-cell">
                     <div title={new Date(key.createdAt).toLocaleString()}>
                       {new Date(key.createdAt).toLocaleDateString()}
                     </div>

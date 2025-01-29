@@ -57,9 +57,10 @@
   --shaper-text-color-secondary: #757a80;
   --shaper-text-color-invert: #f8fafc;
   --shaper-background-color: #f9fafd;
-  --shaper-background-color-alternate: #eef1f4;
+  --shaper-background-color-light: #fefefe;
+  --shaper-background-color-alternate: #f0f1f4;
   --shaper-background-color-invert: #131a25;
-  --shaper-border-color: #d5dae1;
+  --shaper-border-color: #e3e8ef;
   --shaper-error-color: #ff4d4f;
 
   --shaper-dark-mode-primary-color: #4f46e5;
@@ -67,10 +68,11 @@
   --shaper-dark-mode-text-color: rgb(239, 240, 244);
   --shaper-dark-mode-text-color-secondary: rgb(215, 216, 221);
   --shaper-dark-mode-text-color-invert: #080911;
-  --shaper-dark-mode-background-color: #131522;
-  --shaper-dark-mode-background-color-alternate: #252944;
+  --shaper-dark-mode-background-color: #181A27;
+  --shaper-dark-mode-background-color-light: #1C1F34;
+  --shaper-dark-mode-background-color-alternate: #2C304B;
   --shaper-dark-mode-background-color-invert: #ebecf2;
-  --shaper-dark-mode-border-color: #3b4063;
+  --shaper-dark-mode-border-color: #262B4E;
   --shaper-dark-mode-error-color: #ff4d4f;
 }
 

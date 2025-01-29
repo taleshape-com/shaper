@@ -67,7 +67,7 @@ const TimeSegment = ({ segment, state }: TimeSegmentProps) => {
         // text color
         "text-gray-900 dark:text-gray-50",
         // background color
-        "bg-cbg dark:bg-dbg",
+        "bg-cbgl dark:bg-dbgl",
         // focus
         focusInput,
         // invalid (optional)
@@ -156,7 +156,7 @@ const triggerStyles = tv({
     // base
     "peer flex w-full cursor-pointer appearance-none items-center gap-x-2 truncate rounded-md border px-2 py-1.5 shadow-sm outline-none transition-all text-sm",
     // background color
-    "bg-cbg dark:bg-dbg",
+    "bg-cbgl dark:bg-dbgl",
     // border color
     "border-cb dark:border-db",
     // text color
@@ -164,7 +164,7 @@ const triggerStyles = tv({
     // placeholder color
     "placeholder-gray-400 dark:placeholder-gray-500",
     // hover
-    "hover:bg-cbga hover:dark:bg-dbga",
+    "hover:bg-cbg hover:dark:bg-dbg",
     // disabled
     "disabled:pointer-events-none",
     "disabled:bg-gray-100 disabled:text-gray-400",
@@ -249,7 +249,7 @@ const CalendarPopover = React.forwardRef<
           // border color
           "border-cb dark:border-db",
           // background color
-          "bg-cbg dark:bg-dbg",
+          "bg-cbgl dark:bg-dbgl",
           // transition
           "will-change-[transform,opacity]",
           "data-[state=closed]:animate-hide",
@@ -907,7 +907,7 @@ const RangeDatePicker = ({
         {displayRange}
       </Trigger>
       <CalendarPopover align={align}>
-        <div className="flex bg-cbg dark:bg-dbg">
+        <div className="flex bg-cbgl dark:bg-dbgl">
           <div className="flex flex-col overflow-x-auto sm:flex-row sm:items-start">
             {presets && presets.length > 0 && (
               <div

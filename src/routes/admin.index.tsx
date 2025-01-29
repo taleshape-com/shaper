@@ -590,19 +590,19 @@ function UsersManagement() {
                 <TableRow>
                   <TableHeaderCell
                     onClick={() => handleSort("name")}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
                   >
                     {translate("Name")} <SortIcon field="name" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("email")}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
                   >
                     {translate("Email")} <SortIcon field="email" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("created")}
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
                   >
                     {translate("Created")} <SortIcon field="created" />
                   </TableHeaderCell>

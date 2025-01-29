@@ -82,7 +82,7 @@ function DashboardViewComponent() {
         to="/dashboards/$dashboardId/edit"
         params={{ dashboardId: params.dashboardId }}
         search={() => ({ vars })}
-        className="block px-4 py-4 hover:bg-cprimary dark:hover:bg-dprimary hover:text-cbga dark:hover:text-cbga transition-colors"
+        className="block px-4 py-4 hover:underline"
       >
         <RiPencilLine className="size-4 inline mr-2 mb-1" />
         {translate("Edit Dashboard")}
@@ -94,7 +94,7 @@ function DashboardViewComponent() {
           </span>
           <textarea
             className={cx(
-              "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+              "w-full px-3 py-1.5 bg-cbgl dark:bg-dbgl text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
               focusRing,
               hasVariableError && hasErrorInput,
             )}
