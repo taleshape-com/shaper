@@ -637,13 +637,13 @@ func getTimestampType(rows Rows, index int) (string, error) {
 		if s == "timestamp" {
 			s = "year"
 		}
-		if s == "year" && t.Month() != 1 {
+		if s != "date" && s != "hour" && s != "timestamp" && t.Month() != 1 {
 			s = "month"
 		}
-		if s == "month" && t.Day() != 1 {
+		if s != "hour" && s != "timestamp" && t.Day() != 1 {
 			s = "date"
 		}
-		if s == "date" && t.Hour() != 0 {
+		if s != "timestamp" && t.Hour() != 0 {
 			s = "hour"
 		}
 		if s == "hour" && t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {

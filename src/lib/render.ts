@@ -19,7 +19,7 @@ export const formatValue = (value: string | number | boolean, columnType: Column
     return d.getFullYear().toString();
   }
   if (columnType === "month") {
-    return d.toLocaleString(navigator.languages, { month: 'short', timeZone: 'UTC' });
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'short', timeZone: 'UTC' });
   }
   if (columnType === "date") {
     return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC', weekday: 'short' })
@@ -69,7 +69,6 @@ export const formatValue = (value: string | number | boolean, columnType: Column
       const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
       return ms > 0 ? `${timeString}.${String(ms).padStart(3, '0')}` : timeString;
     }
-    return value;
   }
   return value;
 };
