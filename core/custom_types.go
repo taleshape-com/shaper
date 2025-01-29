@@ -32,12 +32,7 @@ var dbTypes = []struct {
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
-	// TODO: remove the DROP TYPE once this has been deployed to production
-	_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
+	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return err
 	}
