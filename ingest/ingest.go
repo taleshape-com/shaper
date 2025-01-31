@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,7 @@ const (
 	SUBJECT_PREFIX = "shaper.ingest."
 	BATCH_SIZE     = 1000
 	BATCH_TIMEOUT  = 2000 * time.Millisecond
+	SLEEP_ON_ERROR = 60 * time.Second
 )
 
 type Ingest struct {
@@ -43,48 +45,74 @@ func Start(dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *
 	if err != nil {
 		return Ingest{}, err
 	}
-	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer initCancel()
+
+	consumer, err := setupStreamAndConsumer(js, persist)
+	if err != nil {
+		return Ingest{}, err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go processMessages(ctx, js, consumer, logger, dbConnector, db, persist)
+	return Ingest{ingestCancelFunc: cancel}, nil
+}
+
+func setupStreamAndConsumer(js jetstream.JetStream, persist bool) (jetstream.Consumer, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	storageType := jetstream.MemoryStorage
 	if persist {
 		storageType = jetstream.FileStorage
 	}
-	stream, err := js.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+
+	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:     "shaper-ingest",
 		Subjects: []string{SUBJECT_PREFIX + ">"},
 		Storage:  storageType,
 	})
 	if err != nil {
-		return Ingest{}, err
+		return nil, fmt.Errorf("failed to create/update stream: %w", err)
 	}
-	ingestConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
+
+	consumer, err := stream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
 		Durable: "shaper-ingest",
 	})
-	ctx, cancel := context.WithCancel(context.Background())
-	go handleMessages(ctx, ingestConsumer, logger, dbConnector, db)
-	return Ingest{ingestCancelFunc: cancel}, err
-}
-
-const tableColumnsQuery = "SELECT column_name, \"null\", column_type FROM (DESCRIBE (FROM query_table($1)))"
-
-func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
-	var columns []ColInfo
-	err := db.SelectContext(ctx, &columns, tableColumnsQuery, tableName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get table columns: %w", err)
+		return nil, fmt.Errorf("failed to create/update consumer: %w", err)
 	}
-	if len(columns) == 0 {
-		return nil, fmt.Errorf("table %s not found or has no columns", tableName)
-	}
-	return columns, nil
+
+	return consumer, nil
 }
 
-func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB) {
+func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, persist bool) {
 	tableCache := make(map[string]TableCache)
-	batch := make([]jetstream.Msg, 0, BATCH_SIZE)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := handleMessageBatches(ctx, consumer, logger, dbConnector, db, tableCache)
+			if err != nil {
+				logger.Error("Message handling failed, attempting to recreate consumer", slog.Any("error", err), slog.Duration("sleep", SLEEP_ON_ERROR))
+				time.Sleep(SLEEP_ON_ERROR)
 
-	// Create buffered channel for messages
+				logger.Info("Attempting to recreate consumer")
+				newConsumer, err := setupStreamAndConsumer(js, persist)
+				if err != nil {
+					logger.Error("Failed to recreate consumer", slog.Any("error", err))
+					os.Exit(1)
+				}
+				logger.Info("Recreated message consumer")
+				consumer = newConsumer
+			}
+		}
+	}
+}
+
+func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, tableCache map[string]TableCache) error {
+	batch := make([]jetstream.Msg, 0, BATCH_SIZE)
 	msgChan := make(chan jetstream.Msg, BATCH_SIZE)
+	errChan := make(chan error, 1)
 
 	// Start message consumer in separate goroutine
 	var wg sync.WaitGroup
@@ -96,6 +124,7 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 		msgs, err := c.Messages()
 		if err != nil {
 			logger.Error("Failed to get messages iterator", slog.Any("error", err))
+			errChan <- fmt.Errorf("failed to get messages iterator: %w", err)
 			return
 		}
 
@@ -109,9 +138,9 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 					if err == context.Canceled {
 						return
 					}
-					// TODO: we probably want to restart the system here. This could mean the consumer was removed
 					logger.Error("Failed to get next message", slog.Any("error", err))
-					continue
+					errChan <- fmt.Errorf("failed to get next message: %w", err)
+					return
 				}
 				select {
 				case msgChan <- msg:
@@ -124,7 +153,6 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 
 	// Create timer but don't start it yet
 	batchTimer := time.NewTimer(BATCH_TIMEOUT)
-	// Stop the timer initially since we don't have any messages yet
 	if !batchTimer.Stop() {
 		<-batchTimer.C
 	}
@@ -132,18 +160,20 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 
 	for {
 		select {
+		case err := <-errChan:
+			return err
 		case msg, ok := <-msgChan:
 			if !ok {
-				// Channel closed, process remaining messages and exit
+				// Channel closed, process remaining messages and return
 				if len(batch) > 0 {
 					processStartTime := time.Now()
 					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
-						logger.Error("Failed to process final batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
-					} else {
-						logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+						return fmt.Errorf("failed to process final batch: %w", err)
 					}
+					logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
-				return
+				wg.Wait()
+				return nil
 			}
 
 			// Add to batch
@@ -189,9 +219,23 @@ func handleMessages(ctx context.Context, c jetstream.Consumer, logger *slog.Logg
 				}
 			}
 			wg.Wait()
-			return
+			return nil
 		}
 	}
+}
+
+const tableColumnsQuery = "SELECT column_name, \"null\", column_type FROM (DESCRIBE (FROM query_table($1)))"
+
+func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
+	var columns []ColInfo
+	err := db.SelectContext(ctx, &columns, tableColumnsQuery, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get table columns: %w", err)
+	}
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("table %s not found or has no columns", tableName)
+	}
+	return columns, nil
 }
 
 func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB) error {
