@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	NATS_SUBJECT_PREFIX   = "shaper.state."
-	NATS_KV_CONFIG_BUCKET = "shaper-config"
-	CONFIG_KEY_JWT_SECRET = "jwt-secret"
+	NATS_SUBJECT_PREFIX                = "shaper.state."
+	NATS_KV_CONFIG_BUCKET              = "shaper-config"
+	CONFIG_KEY_JWT_SECRET              = "jwt-secret"
+	RECREATE_STREAM_AND_CONSUMER_DELAY = 60 * time.Second
 )
 
 type App struct {
@@ -34,6 +35,7 @@ type App struct {
 	JetStream       jetstream.JetStream
 	ConfigKV        jetstream.KeyValue
 	NATSConn        *nats.Conn
+	persist         bool
 }
 
 func New(
@@ -43,6 +45,7 @@ func New(
 	jwtExp time.Duration,
 	sessionExp time.Duration,
 	inviteExp time.Duration,
+	persist bool,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -64,24 +67,43 @@ func New(
 		JWTExp:        jwtExp,
 		SessionExp:    sessionExp,
 		InviteExp:     inviteExp,
+		persist:       persist,
 	}
 	return app, nil
 }
 
-func (app *App) Init(nc *nats.Conn, persist bool) error {
+func (app *App) Init(nc *nats.Conn) error {
 	app.NATSConn = nc
 	js, err := jetstream.New(nc)
 	app.JetStream = js
 	if err != nil {
 		return err
 	}
+
+	// Create stream and consumer
+	if err := app.setupStreamAndConsumer(); err != nil {
+		return err
+	}
+
+	// Start message processing
+	go app.processStateMessages()
+
+	return LoadJWTSecret(app)
+}
+
+func (app *App) setupStreamAndConsumer() error {
+
+	fmt.Println(app.persist)
+
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()
+
 	storageType := jetstream.MemoryStorage
-	if persist {
+	if app.persist {
 		storageType = jetstream.FileStorage
 	}
-	stream, err := js.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+
+	stream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
 		Name:     "shaper-state",
 		Subjects: []string{NATS_SUBJECT_PREFIX + ">"},
 		Storage:  storageType,
@@ -89,6 +111,7 @@ func (app *App) Init(nc *nats.Conn, persist bool) error {
 	if err != nil {
 		return err
 	}
+
 	stateConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
 		Durable:       "shaper-state",
 		MaxAckPending: 1,
@@ -96,7 +119,8 @@ func (app *App) Init(nc *nats.Conn, persist bool) error {
 	if err != nil {
 		return err
 	}
-	configKV, err := js.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
+
+	configKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
 		Bucket:  NATS_KV_CONFIG_BUCKET,
 		Storage: storageType,
 	})
@@ -111,7 +135,25 @@ func (app *App) Init(nc *nats.Conn, persist bool) error {
 	}
 	app.StateConsumeCtx = stateConsumeCtx
 
-	return LoadJWTSecret(app)
+	return nil
+}
+
+func (app *App) processStateMessages() {
+	const sleepOnError = 60 * time.Second
+
+	for {
+		select {
+		case <-app.StateConsumeCtx.Closed():
+			app.Logger.Info("State consumer context done, attempting to recreate")
+			time.Sleep(RECREATE_STREAM_AND_CONSUMER_DELAY)
+			if err := app.setupStreamAndConsumer(); err != nil {
+				app.Logger.Error("Failed to recreate stream/consumer", slog.Any("error", err))
+				time.Sleep(sleepOnError)
+				continue
+			}
+			app.Logger.Info("Successfully recreated state stream and consumer")
+		}
+	}
 }
 
 func (app *App) Close() {

@@ -181,6 +181,7 @@ func ResetJWTSecret(app *core.App) echo.HandlerFunc {
 		}
 		_, err := core.ResetJWTSecret(app, c.Request().Context())
 		if err != nil {
+			app.Logger.Error("Failed to reset JWT secret", slog.Any("error", err))
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to reset JWT secret"})
 		}
 		return c.JSON(http.StatusOK, map[string]bool{"ok": true})

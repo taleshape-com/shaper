@@ -153,6 +153,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.JWTExp,
 		cfg.SessionExp,
 		cfg.InviteExp,
+		persistNATS,
 	)
 	if err != nil {
 		panic(err)
@@ -174,7 +175,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	err = app.Init(c.Conn, persistNATS)
+	err = app.Init(c.Conn)
 	if err != nil {
 		panic(err)
 	}

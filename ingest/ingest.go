@@ -96,13 +96,13 @@ func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetst
 				logger.Error("Message handling failed, attempting to recreate consumer", slog.Any("error", err), slog.Duration("sleep", SLEEP_ON_ERROR))
 				time.Sleep(SLEEP_ON_ERROR)
 
-				logger.Info("Attempting to recreate consumer")
+				logger.Info("Attempting to recreate ingest consumer")
 				newConsumer, err := setupStreamAndConsumer(js, persist)
 				if err != nil {
-					logger.Error("Failed to recreate consumer", slog.Any("error", err))
+					logger.Error("Failed to recreate ingest consumer", slog.Any("error", err))
 					os.Exit(1)
 				}
-				logger.Info("Recreated message consumer")
+				logger.Info("Recreated ingest consumer")
 				consumer = newConsumer
 			}
 		}
