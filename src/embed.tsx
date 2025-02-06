@@ -1,5 +1,6 @@
 import "./index.css";
 import ReactDOM from "react-dom/client";
+import { RemoveScroll } from "react-remove-scroll/UI";
 import { VarsParamSchema } from "./lib/utils";
 import { EmbedComponent, EmbedProps } from "./components/Embed";
 
@@ -12,6 +13,8 @@ declare global {
     };
   }
 }
+
+(RemoveScroll.defaultProps ?? {}).enabled = false;
 
 function storeVarsInQuery(param: string, vars: VarsParamSchema) {
   const url = new URL(window.location.toString());

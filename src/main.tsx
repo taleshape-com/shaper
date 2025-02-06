@@ -1,6 +1,7 @@
 import "./index.css";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
+import { RemoveScroll } from "react-remove-scroll/UI";
 import { createRouter } from "@tanstack/react-router";
 import { AuthProvider } from "./components/AuthProvider";
 import { App } from "./App";
@@ -15,6 +16,8 @@ if (!supportsContainerQueries) {
   // @ts-expect-error - This is a dynamic import
   import("https://cdn.skypack.dev/container-query-polyfill");
 }
+
+(RemoveScroll.defaultProps ?? {}).enabled = false;
 
 // Create a new router instance
 const router = createRouter({

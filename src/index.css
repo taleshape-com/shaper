@@ -76,10 +76,6 @@
   --shaper-dark-mode-error-color: #ff4d4f;
 }
 
-body[data-scroll-locked] {
-  padding-top: 0 !important;
-}
-
 .shaper-scope body {
   margin: 0;
 }

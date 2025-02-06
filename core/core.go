@@ -93,8 +93,6 @@ func (app *App) Init(nc *nats.Conn) error {
 
 func (app *App) setupStreamAndConsumer() error {
 
-	fmt.Println(app.persist)
-
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()
 
