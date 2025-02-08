@@ -114,7 +114,7 @@ func getRequestURL(r *http.Request) *url.URL {
 	return &fullURL
 }
 
-func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) echo.HandlerFunc {
+func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		panic(err)

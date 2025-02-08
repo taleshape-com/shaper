@@ -105,7 +105,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}))
 
 	// Index HTML - light caching with revalidation
-	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, "/favicon.ico"))
+	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS))
 }
 
 // We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time
