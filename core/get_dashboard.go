@@ -205,6 +205,16 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 					continue
 				}
+				if query.Columns[i].Type == "stringArray" {
+					if arr, ok := cell.([]interface{}); ok {
+						s := make([]string, len(arr))
+						for i, v := range arr {
+							s[i] = fmt.Sprintf("%v", v)
+						}
+						row[i] = strings.Join(s, ", ")
+						continue
+					}
+				}
 			}
 		}
 
@@ -398,6 +408,8 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "number", nil
 	case "BLOB":
 		return "string", nil
+	case "VARCHAR[]":
+		return "stringArray", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
