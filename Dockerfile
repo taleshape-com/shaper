@@ -9,28 +9,6 @@ RUN npm run build
 
 FROM golang:1.23.2 AS build
 WORKDIR $GOPATH/src/shaper
-
-# Install build dependencies for DuckDB postgres extension
-RUN apt-get update && apt-get install -y \
-    git \
-    build-essential \
-    cmake \
-    libpq-dev
-
-# Clone and build the postgres extension
-WORKDIR /tmp/duckdb-postgres
-RUN git clone --recursive https://github.com/duckdb/duckdb-postgres.git . && \
-    make
-
-# Create DuckDB extension directory structure
-RUN mkdir -p /duckdb/extensions/v1.1.3/linux_amd64
-
-# Copy the built extension to the DuckDB extensions directory
-RUN cp build/release/extension/postgres_scanner/postgres_scanner.duckdb_extension \
-    /duckdb/extensions/v1.1.3/linux_amd64/
-
-# Back to building the main application
-WORKDIR $GOPATH/src/shaper
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
@@ -42,14 +20,10 @@ COPY . .
 COPY --from=frontend /app/dist dist
 RUN go vet ./...
 RUN go build -a -ldflags "-w -extldflags '-static'" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
+# If no directory is specified Jetstream will fallback to /tmp
+RUN mkdir /tmp/shapertmp
 
-FROM debian:bullseye-slim
-# Install required runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libpq5 \
-    && rm -rf /var/lib/apt/lists/*
-
+FROM scratch
 COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
-COPY --from=build /duckdb/extensions /root/.duckdb/extensions
-
+COPY --from=build /tmp/shapertmp /tmp
 ENTRYPOINT ["/usr/local/bin/shaper"]
