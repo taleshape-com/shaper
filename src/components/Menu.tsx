@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { cx } from "../lib/utils";
 import {
   RiMenuLine,
@@ -8,7 +8,7 @@ import {
   RiLogoutBoxRLine,
 } from "@remixicon/react";
 import { useAuth, logout, parseJwt } from "../lib/auth";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { translate } from "../lib/translate";
 import { Button } from "../components/tremor/Button";
 
@@ -37,6 +37,21 @@ export function Menu({
   const menuRef = useRef<HTMLDivElement>(null);
   const actuallyOpen = isMenuOpen || (isMenuOpen === null && actuallyInline);
 
+  const fetchUserName = useCallback(async () => {
+    try {
+      const jwt = await auth.getJwt();
+      const decoded = parseJwt(jwt);
+      setUserName(decoded.userName || "");
+    } catch (error) {
+      if (isRedirect(error)) {
+        navigate(error);
+        return;
+      }
+      console.error("Failed to fetch username:", error);
+    }
+  }, [auth, navigate]);
+
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -59,16 +74,6 @@ export function Menu({
   }, [actuallyInline, isMenuOpen, onOpenChange]);
 
   useEffect(() => {
-    const fetchUserName = async () => {
-      try {
-        const jwt = await auth.getJwt();
-        const decoded = parseJwt(jwt);
-        setUserName(decoded.userName || "");
-      } catch (error) {
-        console.error("Failed to fetch username:", error);
-      }
-    };
-
     fetchUserName();
   }, [auth]);
 

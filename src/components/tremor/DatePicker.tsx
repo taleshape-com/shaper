@@ -239,8 +239,7 @@ const CalendarPopover = React.forwardRef<
         sideOffset={10}
         side="bottom"
         align={align}
-        sticky={"always"}
-        avoidCollisions={false}
+        avoidCollisions
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={cx(
           // base

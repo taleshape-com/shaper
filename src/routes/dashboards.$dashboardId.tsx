@@ -50,19 +50,14 @@ function DashboardViewComponent() {
   const auth = useAuth();
   const navigate = useNavigate({ from: "/dashboards/$dashboardId" });
   const [hasVariableError, setHasVariableError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const [title, setTitle] = useState("Dashboard");
 
-  const handleRedirectError = useCallback(
-    (err: Error) => {
-      if (isRedirect(err)) {
-        navigate(err);
-        return;
-      }
-      setError(err);
-    },
-    [navigate],
-  );
+  const handleRedirectError = useCallback((err: Error) => {
+    if (isRedirect(err)) {
+      navigate(err);
+    }
+  }, [navigate]);
+
   const handleVarsChanged = useCallback(
     (newVars: VarsParamSchema) => {
       navigate({
@@ -123,10 +118,6 @@ function DashboardViewComponent() {
   const onDataChange = useCallback((data: Result) => {
     setTitle(data.name);
   }, [])
-
-  if (error) {
-    return <DashboardErrorComponent error={error} reset={() => { }} />;
-  }
 
   return (
     <>

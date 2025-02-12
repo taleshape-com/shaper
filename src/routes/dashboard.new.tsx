@@ -1,7 +1,4 @@
 import { Editor } from "@monaco-editor/react";
-import { loader } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { z } from "zod";
 import { createFileRoute, isRedirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
@@ -21,16 +18,10 @@ import { editorStorage } from "../lib/editorStorage";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { Menu } from "../components/Menu";
+import { Result } from "../lib/dashboard";
+import { useToast } from "../hooks/useToast";
 
 const defaultQuery = "-- Enter your SQL query here"
-
-self.MonacoEnvironment = {
-  getWorker() {
-    return new editorWorker();
-  },
-};
-loader.config({ monaco });
-loader.init();
 
 export const Route = createFileRoute("/dashboard/new")({
   validateSearch: z.object({
@@ -46,14 +37,14 @@ function NewDashboard() {
   const navigate = useNavigate({ from: "/dashboard/new" });
   const [query, setQuery] = useState(defaultQuery);
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [hasVariableError, setHasVariableError] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
+  const { toast } = useToast();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -73,12 +64,12 @@ function NewDashboard() {
     }
   }, []);
 
-  const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
+  const previewDashboard = useCallback(async () => {
     setPreviewError(null);
     setIsPreviewLoading(true);
     // Save to localStorage
-    if (newQuery !== defaultQuery && newQuery.trim() !== "") {
-      editorStorage.saveChanges("new", newQuery);
+    if (query !== defaultQuery && query.trim() !== "") {
+      editorStorage.saveChanges("new", query);
     } else {
       editorStorage.clearChanges("new");
     }
@@ -87,7 +78,7 @@ function NewDashboard() {
       const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
         body: {
-          content: newQuery,
+          content: query,
         },
       });
       setPreviewData(data);
@@ -99,16 +90,19 @@ function NewDashboard() {
     } finally {
       setIsPreviewLoading(false);
     }
+  }, [queryApi, vars, query, navigate]);
+
+  const debounceSetQuery = useDebouncedCallback(async (newQuery: string) => {
+    return setQuery(newQuery);
   }, 1000);
 
   useEffect(() => {
-    previewDashboard(query);
-  }, [previewDashboard, query, vars]); // Add vars to dependency array
+    previewDashboard();
+  }, [previewDashboard]);
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
-    setQuery(newQuery);
-    previewDashboard(newQuery);
+    debounceSetQuery(newQuery);
   };
 
   const handleCreate = useCallback(async () => {
@@ -116,8 +110,8 @@ function NewDashboard() {
     if (!name) return;
 
     setCreating(true);
-    setError(null);
     try {
+      throw new Error('erluiglre')
       const { id } = await queryApi("/api/dashboards", {
         method: "POST",
         body: {
@@ -139,14 +133,17 @@ function NewDashboard() {
       if (isRedirect(err)) {
         return navigate(err);
       }
-      setError(err instanceof Error ? err.message : "Unknown error");
+      toast({
+        title: translate("Error"),
+        description:
+          err instanceof Error
+            ? err.message
+            : translate("An error occurred"),
+        variant: "error",
+      });
       setCreating(false);
     }
   }, [queryApi, query, navigate, vars]);
-
-  const handleDashboardError = useCallback((err: Error) => {
-    setPreviewError(err.message);
-  }, []);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -167,7 +164,7 @@ function NewDashboard() {
         setHasVariableError(!ok);
         if (ok) {
           // Refresh preview when variables change
-          previewDashboard(query);
+          previewDashboard();
         }
       },
       () => {
@@ -181,10 +178,6 @@ function NewDashboard() {
       <Helmet>
         <title>New Dashboard</title>
       </Helmet>
-
-      {error && (
-        <div className="m-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
-      )}
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-full lg:w-1/2 overflow-hidden">
@@ -255,22 +248,14 @@ function NewDashboard() {
               </div>
             </div>
           )}
-          {isPreviewLoading && (
-            <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
-              <div className="text-gray-500">Loading preview...</div>
-            </div>
-          )}
-          {previewData && (
-            <Dashboard
-              id={"New"}
-              vars={vars}
-              hash={auth.hash}
-              getJwt={auth.getJwt}
-              onVarsChanged={handleVarsChanged}
-              onError={handleDashboardError}
-              data={previewData} // Pass preview data directly to Dashboard
-            />
-          )}
+          <Dashboard
+            vars={vars}
+            hash={auth.hash}
+            getJwt={auth.getJwt}
+            onVarsChanged={handleVarsChanged}
+            data={previewData} // Pass preview data directly to Dashboard
+            loading={isPreviewLoading}
+          />
         </div>
       </div>
     </div>

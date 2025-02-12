@@ -13,6 +13,8 @@ import (
 	"github.com/marcboeker/go-duckdb"
 )
 
+const QUERY_MAX_ROWS = 2000
+
 type DashboardQuery struct {
 	Content string
 	ID      string
@@ -76,6 +78,14 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				return result, err
 			}
 			query.Rows = append(query.Rows, row)
+			if len(query.Rows) > QUERY_MAX_ROWS {
+				// TODO: add a warning to the result and show to user
+				app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardQuery.ID, "query", sqlString, "maxRows", QUERY_MAX_ROWS)
+				if err := rows.Close(); err != nil {
+					return result, fmt.Errorf("Error closing rows while truncating (dashboard '%v'): %v", dashboardQuery.ID, err)
+				}
+				break
+			}
 		}
 
 		if isLabel(colTypes, query.Rows) {

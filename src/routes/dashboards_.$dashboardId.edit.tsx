@@ -1,7 +1,4 @@
 import { Editor } from "@monaco-editor/react";
-import { loader } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate } from "@tanstack/react-router";
@@ -23,14 +20,7 @@ import { IDashboard, Result } from "../lib/dashboard";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { Menu } from "../components/Menu";
-
-self.MonacoEnvironment = {
-  getWorker() {
-    return new editorWorker();
-  },
-};
-loader.config({ monaco });
-loader.init();
+import { useToast } from "../hooks/useToast";
 
 export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
   validateSearch: z.object({
@@ -60,17 +50,17 @@ function DashboardEditor() {
   const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
   const [query, setQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(dashboard.name);
   const [savingName, setSavingName] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
-  const [previewData, setPreviewData] = useState<Result | null>(null);
+  const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
+  const { toast } = useToast();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -98,18 +88,17 @@ function DashboardEditor() {
     }
   }, [params.dashboardId, dashboard.content]);
 
-  // Add debounced preview function
-  const previewDashboard = useDebouncedCallback(async (newQuery: string) => {
+  const previewDashboard = useCallback(async () => {
     setPreviewError(null);
     setIsPreviewLoading(true);
-    editorStorage.saveChanges(params.dashboardId, newQuery);
+    editorStorage.saveChanges(params.dashboardId, query);
     try {
       const searchParams = getSearchParamString(vars);
       const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
         body: {
           dashboardId: params.dashboardId,
-          content: newQuery,
+          content: query,
         },
       });
       setPreviewData(data);
@@ -121,18 +110,20 @@ function DashboardEditor() {
     } finally {
       setIsPreviewLoading(false);
     }
+  }, [queryApi, params, vars, query, navigate]);
+
+  const debounceSetQuery = useDebouncedCallback(async (newQuery: string) => {
+    return setQuery(newQuery);
   }, 1000);
 
   // Update textarea onChange handler
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
-    setQuery(newQuery);
-    previewDashboard(newQuery);
+    debounceSetQuery(newQuery);
   };
 
   const handleSave = useCallback(async () => {
     setSaving(true);
-    setError(null);
     try {
       await queryApi(
         `/api/dashboards/${params.dashboardId}/query`,
@@ -148,15 +139,18 @@ function DashboardEditor() {
       if (isRedirect(err)) {
         return navigate(err);
       }
-      setError(err instanceof Error ? err.message : "Unknown error");
+      toast({
+        title: translate("Error"),
+        description:
+          err instanceof Error
+            ? err.message
+            : translate("An error occurred"),
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }
   }, [queryApi, params.dashboardId, query, dashboard, navigate]);
-
-  const handleDashboardError = useCallback((err: Error) => {
-    setPreviewError(err.message);
-  }, []);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -177,7 +171,7 @@ function DashboardEditor() {
         setHasVariableError(!ok);
         if (ok) {
           // Refresh preview when variables change
-          previewDashboard(query);
+          previewDashboard();
         }
       },
       () => {
@@ -191,9 +185,7 @@ function DashboardEditor() {
       setEditingName(false);
       return;
     }
-
     setSavingName(true);
-    setError(null);
     try {
       await queryApi(
         `/api/dashboards/${params.dashboardId}/name`,
@@ -208,7 +200,14 @@ function DashboardEditor() {
       if (isRedirect(err)) {
         return navigate(err);
       }
-      setError(err instanceof Error ? err.message : "Unknown error");
+      toast({
+        title: translate("Error"),
+        description:
+          err instanceof Error
+            ? err.message
+            : translate("An error occurred"),
+        variant: "error",
+      });
       // Revert name on error
       setName(dashboard.name);
     } finally {
@@ -216,6 +215,7 @@ function DashboardEditor() {
       setEditingName(false);
     }
   };
+
   const handleDelete = async () => {
     if (
       !window.confirm(
@@ -226,7 +226,6 @@ function DashboardEditor() {
     ) {
       return;
     }
-
     try {
       await queryApi(`/api/dashboards/${params.dashboardId}`, {
         method: "DELETE",
@@ -237,14 +236,21 @@ function DashboardEditor() {
       if (isRedirect(err)) {
         return navigate(err);
       }
-      setError(err instanceof Error ? err.message : "Unknown error");
+      toast({
+        title: translate("Error"),
+        description:
+          err instanceof Error
+            ? err.message
+            : translate("An error occurred"),
+        variant: "error",
+      });
     }
   };
 
   // Load initial preview
   useEffect(() => {
-    previewDashboard(query);
-  }, [previewDashboard, query, vars]); // Add vars to dependency array
+    previewDashboard();
+  }, [previewDashboard]);
 
   return (
     <div className="h-screen flex flex-col">
@@ -253,10 +259,6 @@ function DashboardEditor() {
           {translate("Edit Dashboard")} - {dashboard.name}
         </title>
       </Helmet>
-
-      {error && (
-        <div className="m-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>
-      )}
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-full lg:w-1/2 overflow-hidden">
@@ -380,22 +382,14 @@ function DashboardEditor() {
               </div>
             </div>
           )}
-          {isPreviewLoading && (
-            <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
-              {translate("Loading preview")}...
-            </div>
-          )}
-          {previewData && (
-            <Dashboard
-              id={params.dashboardId}
-              vars={vars}
-              hash={auth.hash}
-              getJwt={auth.getJwt}
-              onVarsChanged={handleVarsChanged}
-              onError={handleDashboardError}
-              data={previewData} // Pass preview data directly to Dashboard
-            />
-          )}
+          <Dashboard
+            vars={vars}
+            hash={auth.hash}
+            getJwt={auth.getJwt}
+            onVarsChanged={handleVarsChanged}
+            data={previewData} // Pass preview data directly to Dashboard
+            loading={isPreviewLoading}
+          />
         </div>
       </div>
     </div>
