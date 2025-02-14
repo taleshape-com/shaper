@@ -9,8 +9,10 @@ import (
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo-contrib/echoprometheus"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -45,7 +47,6 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
-
 	apiWithAuth := e.Group("/api",
 		echojwt.WithConfig(echojwt.Config{
 			TokenLookup: "header:Authorization",
@@ -57,6 +58,16 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/status", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
+	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
+		Skipper: func(echo.Context) bool {
+			return !app.LoginRequired
+		},
+		KeyLookup:  "header:" + echo.HeaderAuthorization,
+		AuthScheme: "Bearer",
+		Validator: func(key string, c echo.Context) (bool, error) {
+			return core.ValidateAPIKey(app, c.Request().Context(), key)
+		},
+	}))
 
 	// API routes - no caching
 	e.GET("/api/login/enabled", handler.LoginEnabled(app))

@@ -23,6 +23,7 @@ const (
 )
 
 type App struct {
+	Name            string
 	db              *sqlx.DB
 	Logger          *slog.Logger
 	LoginRequired   bool
@@ -39,6 +40,7 @@ type App struct {
 }
 
 func New(
+	name string,
 	db *sqlx.DB,
 	logger *slog.Logger,
 	schema string,
@@ -60,6 +62,7 @@ func New(
 	}
 
 	app := &App{
+		Name:          name,
 		db:            db,
 		Logger:        logger,
 		LoginRequired: loginRequired,

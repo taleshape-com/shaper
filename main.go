@@ -10,6 +10,7 @@ import (
 	"shaper/comms"
 	"shaper/core"
 	"shaper/ingest"
+	"shaper/metrics"
 	"shaper/util/signals"
 	"shaper/web"
 	"strconv"
@@ -24,6 +25,8 @@ import (
 
 //go:embed dist
 var frontendFS embed.FS
+
+const APP_NAME = "shaper"
 
 type Config struct {
 	SessionExp        time.Duration
@@ -128,6 +131,8 @@ func Run(cfg Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
+	metrics.Init()
+
 	// connect to duckdb
 	dbConnector, err := duckdb.NewConnector(cfg.DBFile, nil)
 	if err != nil {
@@ -147,6 +152,7 @@ func Run(cfg Config) func(context.Context) {
 	persistNATS := cfg.NatsJSDir != ""
 
 	app, err := core.New(
+		APP_NAME,
 		db,
 		logger,
 		cfg.Schema,

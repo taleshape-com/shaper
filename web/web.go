@@ -1,4 +1,3 @@
-// TODO: metrics https://echo.labstack.com/docs/middleware/prometheus
 // TODO: rate limit https://echo.labstack.com/docs/middleware/rate-limiter
 // TODO: TLS https://echo.labstack.com/docs/cookbook/auto-tls#server
 package web
@@ -10,6 +9,7 @@ import (
 	"shaper/core"
 	"time"
 
+	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -44,6 +44,8 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 		StackSize: 1 << 10, // 1 KB
 		LogLevel:  log.ERROR,
 	}))
+	// Promethues metrics
+	e.Use(echoprometheus.NewMiddleware(app.Name)) // adds middleware to gather metrics
 
 	// Routes
 	routes(e, app, frontendFS, modTime, customCSS, favicon)
