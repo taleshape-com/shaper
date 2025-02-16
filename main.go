@@ -10,7 +10,6 @@ import (
 	"shaper/comms"
 	"shaper/core"
 	"shaper/ingest"
-	"shaper/metrics"
 	"shaper/util/signals"
 	"shaper/web"
 	"strconv"
@@ -131,8 +130,6 @@ func Run(cfg Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	metrics.Init()
-
 	// connect to duckdb
 	dbConnector, err := duckdb.NewConnector(cfg.DBFile, nil)
 	if err != nil {
@@ -140,9 +137,6 @@ func Run(cfg Config) func(context.Context) {
 	}
 	sqlDB := sql.OpenDB(dbConnector)
 	db := sqlx.NewDb(sqlDB, "duckdb")
-	if err != nil {
-		panic(err)
-	}
 	if cfg.DBFile != "" {
 		logger.Info("connected to duckdb", slog.Any("file", cfg.DBFile))
 	} else {
