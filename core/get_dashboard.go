@@ -371,9 +371,9 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	case "BOOLEAN":
 		return "boolean", nil
 	case "VARCHAR":
-		if len(rows) > 0 {
-			// Check if it's a JSON object or array. Unfortunately the database doesn't tell us if it's JSON.
-			cell := rows[0][index]
+		// Check if it's a JSON object or array. Unfortunately the database doesn't tell us if it's JSON.
+		cell := getFirstNonEmtpyCell(rows, index)
+		if cell != nil {
 			if _, ok := cell.(map[string]interface{}); ok {
 				return "object", nil
 			}
@@ -422,6 +422,15 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "stringArray", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
+}
+
+func getFirstNonEmtpyCell(rows Rows, index int) interface{} {
+	for _, row := range rows {
+		if row[index] != nil {
+			return row[index]
+		}
+	}
+	return nil
 }
 
 func isTimeType(columnType string) bool {
