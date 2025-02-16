@@ -11,7 +11,7 @@ export interface IDashboard {
 
 export type Column = {
   name: string;
-  type: "year" | "month" | "hour" | "date" | "timestamp" | "duration" | "time" | "number" | "string" | "boolean";
+  type: "year" | "month" | "hour" | "date" | "timestamp" | "duration" | "time" | "number" | "string" | "boolean" | "object" | "array";
   nullable: boolean;
   tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "defaultFrom" | "defaultTo" | "compare" | "trend" | "";
 };

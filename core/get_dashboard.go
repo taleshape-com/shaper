@@ -371,6 +371,16 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	case "BOOLEAN":
 		return "boolean", nil
 	case "VARCHAR":
+		if len(rows) > 0 {
+			// Check if it's a JSON object or array. Unfortunately the database doesn't tell us if it's JSON.
+			cell := rows[0][index]
+			if _, ok := cell.(map[string]interface{}); ok {
+				return "object", nil
+			}
+			if _, ok := cell.([]interface{}); ok {
+				return "array", nil
+			}
+		}
 		return "string", nil
 	case "DOUBLE":
 		return "number", nil

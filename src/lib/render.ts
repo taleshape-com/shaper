@@ -11,6 +11,9 @@ export const formatValue = (value: string | number | boolean, columnType: Column
   if (value === null || value === undefined) {
     return ""
   }
+  if (columnType === "array" || columnType === "object") {
+    return JSON.stringify(value);
+  }
   if (typeof value === "boolean") {
     return value ? "YES" : "NO";
   }
