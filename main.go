@@ -71,9 +71,11 @@ func loadConfig() Config {
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes (0 for unlimited)")
 	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
+	flags.StringLong("config-file", "", "path to config file (optional)")
 
 	err := ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
+		ff.WithConfigFileFlag("config-file"),
 		ff.WithConfigFileParser(ff.PlainParser),
 	)
 	if err != nil {

@@ -111,7 +111,6 @@ function NewDashboard() {
 
     setCreating(true);
     try {
-      throw new Error('erluiglre')
       const { id } = await queryApi("/api/dashboards", {
         method: "POST",
         body: {
