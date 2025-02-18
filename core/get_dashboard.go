@@ -113,7 +113,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, query.Rows, sqlString, nextLabel)
+		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel)
 		query.Render = Render{
 			Type:  rInfo.Type,
 			Label: rInfo.Label,
@@ -494,7 +494,7 @@ func getDownloadType(columns []*sql.ColumnType) string {
 
 // TODO: Charts should assert that only the required columns are present.
 // TODO: BARCHART_STACKED must have CATEGORY column
-func getRenderInfo(columns []*sql.ColumnType, rows Rows, sqlString string, label string) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
@@ -721,8 +721,8 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 	varPrefix := strings.Builder{}
 	varCleanup := strings.Builder{}
 	for k, v := range singleVars {
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = %s;\n", escapeSQLIdentifier(k), v))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE %s;\n", escapeSQLIdentifier(k)))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", escapeSQLIdentifier(k), v))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", escapeSQLIdentifier(k)))
 	}
 	for k, v := range multiVars {
 		l := ""
@@ -733,8 +733,8 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 			}
 			l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
 		}
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE %s = [%s]::VARCHAR[];\n", escapeSQLIdentifier(k), l))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE %s;\n", escapeSQLIdentifier(k)))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", escapeSQLIdentifier(k), l))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", escapeSQLIdentifier(k)))
 	}
 	return varPrefix.String(), varCleanup.String()
 }
@@ -744,16 +744,11 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 	if renderType == "dropdown" {
 		columnName := ""
 		columnIndex := -1
-		labelName := ""
-		labelIndex := -1
 		for i, col := range columns {
 			if col.Tag == "value" {
 				columnName = col.Name
 				columnIndex = i
-			}
-			if col.Tag == "label" {
-				labelName = col.Name
-				labelIndex = i
+				break
 			}
 		}
 		if columnName == "" {
@@ -781,33 +776,17 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		singleVars[columnName] = "'" + escapeSQLString(param) + "'"
-		if labelIndex != -1 {
-			for _, row := range data {
-				val := row[columnIndex].(string)
-				// Checking len of row to avoid out of bounds error in case of label being NULL
-				if val == param && len(row) > labelIndex {
-					label := row[labelIndex].(string)
-					singleVars[labelName] = "'" + escapeSQLString(label) + "'"
-					break
-				}
-			}
-		}
 	}
 
 	// Fetch vars from dropdownMulti
 	if renderType == "dropdownMulti" {
 		columnName := ""
 		columnIndex := -1
-		labelName := ""
-		labelIndex := -1
 		for i, col := range columns {
 			if col.Tag == "value" {
 				columnName = col.Name
 				columnIndex = i
-			}
-			if col.Tag == "label" {
-				labelName = col.Name
-				labelIndex = i
+				break
 			}
 		}
 		if columnName == "" {
@@ -841,20 +820,6 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		multiVars[columnName] = params
-		labels := []string{}
-		if labelIndex != -1 {
-			for _, param := range params {
-				for _, row := range data {
-					val := row[columnIndex].(string)
-					// Checking len of row to avoid out of bounds error in case of label being NULL
-					if val == param && len(row) > labelIndex {
-						label := row[labelIndex].(string)
-						labels = append(labels, label)
-					}
-				}
-			}
-			multiVars[labelName] = labels
-		}
 	}
 
 	// Fetch vars from datepicker
