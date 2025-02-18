@@ -40,14 +40,16 @@ declare module "@tanstack/react-router" {
 }
 
 // Render the app
-const rootElement = document.getElementById("root")!;
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <StrictMode>
-      <AuthProvider initialLoginRequired={await checkLoginRequired()}>
-        <App router={router} />
-      </AuthProvider>
-    </StrictMode>,
-  );
-}
+(async () => {
+  const rootElement = document.getElementById("root")!;
+  if (!rootElement.innerHTML) {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <StrictMode>
+        <AuthProvider initialLoginRequired={await checkLoginRequired()}>
+          <App router={router} />
+        </AuthProvider>
+      </StrictMode>,
+    );
+  }
+})();
