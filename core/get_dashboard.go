@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -186,7 +187,6 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 					continue
 				}
-				// Convert date and datetime strings to int64 unix timestamp in milliseconds
 				if n, ok := cell.(float64); ok {
 					if math.IsNaN(n) {
 						row[i] = nil
@@ -216,6 +216,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 						}
 						row[i] = strings.Join(s, ", ")
 						continue
+					}
+				}
+				if query.Columns[i].Type == "number" {
+					if d, ok := cell.(duckdb.Decimal); ok {
+						row[i] = d.Float64()
 					}
 				}
 			}
@@ -358,6 +363,9 @@ func mapTag(index int, rInfo renderInfo) string {
 	return ""
 }
 
+// regex match for DECIMAL(X,Y)
+var matchDecimal = regexp.MustCompile(`DECIMAL\(\d+,\d+\)`)
+
 // TODO: BIT type is not supported yet by Go duckdb lib
 // TODO: Support DECIMAL, ARRAY, STRUCT, MAP and generic UNION types
 func mapDBType(dbType string, index int, rows Rows) (string, error) {
@@ -423,6 +431,9 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "string", nil
 	case "VARCHAR[]":
 		return "stringArray", nil
+	}
+	if matchDecimal.MatchString(t) {
+		return "number", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
