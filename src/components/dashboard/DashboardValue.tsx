@@ -24,24 +24,23 @@ function DashboardValue({ headers, data }: ValueProps) {
   return (
     <div className="items-center h-full flex flex-col justify-center">
       <div className={cx("font-bold", {
-        "font-display": !isJSONType(valueHeader.type),
         "font-mono": isJSONType(valueHeader.type),
-        "text-xs": formattedValue.length >= 49,
-        "text-sm": formattedValue.length < 49 && formattedValue.length >= 42,
-        "text-lg": formattedValue.length < 42 && formattedValue.length >= 37,
-        "text-xl": formattedValue.length < 37 && formattedValue.length >= 32,
-        "text-2xl": formattedValue.length < 32 && formattedValue.length >= 27,
-        "text-3xl": formattedValue.length < 27 && formattedValue.length >= 22,
-        "text-4xl": formattedValue.length < 22 && formattedValue.length >= 17,
+        "text-xs": formattedValue.length >= 47,
+        "text-sm": formattedValue.length < 47 && formattedValue.length >= 42,
+        "text-lg": formattedValue.length < 38 && formattedValue.length >= 34,
+        "text-xl": formattedValue.length < 34 && formattedValue.length >= 29,
+        "text-2xl": formattedValue.length < 29 && formattedValue.length >= 25,
+        "text-3xl": formattedValue.length < 25 && formattedValue.length >= 21,
+        "text-4xl": formattedValue.length < 21 && formattedValue.length >= 17,
         "text-5xl": formattedValue.length < 17 && formattedValue.length >= 13,
         "text-6xl": formattedValue.length < 13 && formattedValue.length >= 6,
         "text-7xl": formattedValue.length < 6,
       })}>
         {formattedValue}
       </div>
-      <div className={cx("mt-3 font-semibold", {
+      <div className={cx("mt-3 font-semibold font-display", {
         "text-xs": valueHeader.name.length >= 40,
-        "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 30,
+        "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 35,
         "text-lg": valueHeader.name.length < 30 && valueHeader.name.length >= 20,
         "text-xl": valueHeader.name.length < 20,
       })}>
