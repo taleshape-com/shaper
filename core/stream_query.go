@@ -36,7 +36,10 @@ func StreamQueryCSV(
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := stripSQLComments(dashboard.Content)
-	sqls := strings.Split(cleanContent, ";")
+	sqls, err := splitSQLQueries(cleanContent)
+	if err != nil {
+		return err
+	}
 
 	queryIndex, err := strconv.Atoi(queryID)
 	if err != nil {
@@ -136,7 +139,10 @@ func StreamQueryXLSX(
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := stripSQLComments(dashboard.Content)
-	sqls := strings.Split(cleanContent, ";")
+	sqls, err := splitSQLQueries(cleanContent)
+	if err != nil {
+		return err
+	}
 
 	queryIndex, err := strconv.Atoi(queryID)
 	if err != nil {
