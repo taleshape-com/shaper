@@ -163,8 +163,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 		for _, row := range query.Rows {
 			for i, cell := range row {
+				colType := query.Columns[i].Type
 				if t, ok := cell.(time.Time); ok {
-					if query.Columns[i].Type == "time" {
+					if colType == "time" {
 						// Convert time to ms since midnight
 						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
 						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
@@ -180,7 +181,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 							minTimeValue = ms
 						}
 					}
-					if query.Columns[i].Type == "string" {
+					if colType == "string" {
 						row[i] = strconv.FormatInt(ms, 10)
 					} else {
 						row[i] = ms
@@ -190,7 +191,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				if n, ok := cell.(float64); ok {
 					if math.IsNaN(n) {
 						row[i] = nil
-					} else if query.Columns[i].Type == "string" {
+					} else if colType == "string" {
 						row[i] = strconv.FormatFloat(n, 'f', -1, 64)
 					}
 					continue
@@ -201,14 +202,14 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 					continue
 				}
-				if query.Columns[i].Type == "duration" {
+				if colType == "duration" {
 					v := row[i]
 					if v != nil {
 						row[i] = formatInterval(v)
 					}
 					continue
 				}
-				if query.Columns[i].Type == "stringArray" {
+				if colType == "stringArray" {
 					if arr, ok := cell.([]interface{}); ok {
 						s := make([]string, len(arr))
 						for i, v := range arr {
@@ -218,9 +219,31 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 						continue
 					}
 				}
-				if query.Columns[i].Type == "number" {
+				if colType == "number" {
 					if d, ok := cell.(duckdb.Decimal); ok {
 						row[i] = d.Float64()
+					}
+				}
+				if colType == "object" {
+					if d, ok := cell.(duckdb.Map); ok {
+						allGood := true
+						m := make(map[string]string)
+						for k, v := range d {
+							kStr, ok := k.(string)
+							if !ok {
+								allGood = false
+								break
+							}
+							vStr, ok := v.(string)
+							if !ok {
+								allGood = false
+								break
+							}
+							m[kStr] = vStr
+						}
+						if allGood {
+							row[i] = m
+						}
 					}
 				}
 			}
@@ -367,7 +390,7 @@ func mapTag(index int, rInfo renderInfo) string {
 var matchDecimal = regexp.MustCompile(`DECIMAL\(\d+,\d+\)`)
 
 // TODO: BIT type is not supported yet by Go duckdb lib
-// TODO: Support DECIMAL, ARRAY, STRUCT, MAP and generic UNION types
+// TODO: Support ARRAY, STRUCT, more MAP types and generic UNION types
 func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
 	for _, dbType := range dbTypes {
@@ -431,6 +454,8 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "string", nil
 	case "VARCHAR[]":
 		return "stringArray", nil
+	case "MAP(VARCHAR, VARCHAR)":
+		return "object", nil
 	}
 	if matchDecimal.MatchString(t) {
 		return "number", nil
