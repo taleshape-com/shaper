@@ -29,7 +29,7 @@ export function Menu({
   isNewPage?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const auth = useAuth();
+  const { getJwt, loginRequired } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [actuallyInline, setActuallyInline] = useState(inline && isLg());
@@ -39,7 +39,7 @@ export function Menu({
 
   const fetchUserName = useCallback(async () => {
     try {
-      const jwt = await auth.getJwt();
+      const jwt = await getJwt();
       const decoded = parseJwt(jwt);
       setUserName(decoded.userName || "");
     } catch (error) {
@@ -49,7 +49,7 @@ export function Menu({
       }
       console.error("Failed to fetch username:", error);
     }
-  }, [auth, navigate]);
+  }, [getJwt, navigate]);
 
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export function Menu({
 
   useEffect(() => {
     fetchUserName();
-  }, [auth]);
+  }, [fetchUserName]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -172,7 +172,7 @@ export function Menu({
               <RiAdminLine className="size-4 inline mr-2 mb-1" />
               {translate("Admin")}
             </Link>
-            {auth.loginRequired && (
+            {loginRequired && (
               <div className="flex items-center gap-2 pt-2 px-5">
                 <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}

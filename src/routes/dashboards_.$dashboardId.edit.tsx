@@ -150,7 +150,7 @@ function DashboardEditor() {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.dashboardId, query, dashboard, navigate]);
+  }, [queryApi, params.dashboardId, query, dashboard, navigate, toast]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {

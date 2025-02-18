@@ -223,7 +223,7 @@ function UsersManagement() {
         )}
       </div>
 
-      {auth.loginRequired === false && (
+      {!auth.loginRequired && (
         <div className="mb-6">
           <Callout title={translate("Setup Authentication")}>
             <p className="mb-4">
@@ -282,10 +282,12 @@ function UsersManagement() {
                         description: translate("User created successfully"),
                       });
                       auth.setLoginRequired(true);
-                      navigate({
-                        to: "/login",
-                        replace: true,
-                      });
+                      setTimeout(() => {
+                        navigate({
+                          to: "/login",
+                          replace: true,
+                        });
+                      }, 0)
                     } catch (error) {
                       toast({
                         title: translate("Error"),

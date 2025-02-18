@@ -11,7 +11,7 @@ export interface IAuthContext {
   ) => Promise<boolean>;
   testLogin: () => Promise<boolean>;
   hash: string;
-  loginRequired: boolean | null;
+  loginRequired: boolean;
   setLoginRequired: (required: boolean) => void;
   variables: Variables;
   updateVariables: (text: string) => Promise<boolean>;
@@ -26,6 +26,7 @@ export type Variables = (typeof zVariables)["_type"];
 export const localStorageTokenKey = "shaper-session-token";
 export const localStorageJwtKey = "shaper-jwt";
 export const localStorageVariablesKey = "shaper-variables";
+export const localStorageLoginRequiredKey = "shaper-login-required";
 
 export const AuthContext = React.createContext<IAuthContext | null>(null);
 
@@ -67,3 +68,23 @@ export async function logout() {
   localStorage.clear();
   return goToLoginPage();
 }
+
+// Check if login is required using the auth status endpoint
+export const checkLoginRequired = async (): Promise<boolean> => {
+  const storedVal = localStorage.getItem(localStorageLoginRequiredKey)
+  if (storedVal === "true") {
+    return true;
+  }
+  if (storedVal === "false") {
+    return false;
+  }
+  const response = await fetch("/api/login/enabled");
+  if (!response.ok) {
+    // Assume auth is required if we can't determine the status
+    return true;
+  }
+  const data = await response.json() as { enabled: boolean };
+  localStorage.setItem(localStorageLoginRequiredKey, data.enabled ? "true" : "false");
+  return data.enabled;
+};
+

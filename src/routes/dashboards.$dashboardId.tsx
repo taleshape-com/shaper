@@ -71,6 +71,17 @@ function DashboardViewComponent() {
     [navigate],
   );
 
+  const onVariablesEdit = useDebouncedCallback((event) => {
+    auth.updateVariables(event.target.value).then(
+      (ok) => {
+        setHasVariableError(!ok);
+      },
+      () => {
+        setHasVariableError(true);
+      },
+    );
+  }, 500);
+
   const MenuButton = (
     <Menu>
       <Link
@@ -93,9 +104,7 @@ function DashboardViewComponent() {
               focusRing,
               hasVariableError && hasErrorInput,
             )}
-            onChange={(event) => {
-              onVariablesEdit(event.target.value);
-            }}
+            onChange={onVariablesEdit}
             defaultValue={JSON.stringify(auth.variables, null, 2)}
             rows={4}
           ></textarea>
@@ -103,17 +112,6 @@ function DashboardViewComponent() {
       </div>
     </Menu>
   );
-
-  const onVariablesEdit = useDebouncedCallback((value) => {
-    auth.updateVariables(value).then(
-      (ok) => {
-        setHasVariableError(!ok);
-      },
-      () => {
-        setHasVariableError(true);
-      },
-    );
-  }, 500);
 
   const onDataChange = useCallback((data: Result) => {
     setTitle(data.name);

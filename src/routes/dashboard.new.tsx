@@ -142,7 +142,7 @@ function NewDashboard() {
       });
       setCreating(false);
     }
-  }, [queryApi, query, navigate, vars]);
+  }, [queryApi, query, navigate, vars, toast]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {

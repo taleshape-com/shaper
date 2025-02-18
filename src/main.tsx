@@ -9,6 +9,7 @@ import { App } from "./App";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "@tanstack/react-router";
+import { checkLoginRequired } from "./lib/auth";
 
 // Polyfill container queries
 const supportsContainerQueries = "container" in document.documentElement.style;
@@ -44,7 +45,7 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <AuthProvider>
+      <AuthProvider initialLoginRequired={await checkLoginRequired()}>
         <App router={router} />
       </AuthProvider>
     </StrictMode>,
