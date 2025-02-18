@@ -26,16 +26,16 @@ function DashboardValue({ headers, data }: ValueProps) {
       <div className={cx("font-bold", {
         "font-display": !isJSONType(valueHeader.type),
         "font-mono": isJSONType(valueHeader.type),
-        "text-xs": formattedValue.length >= 55,
-        "text-sm": formattedValue.length < 55 && formattedValue.length >= 50,
-        "text-lg": formattedValue.length < 45 && formattedValue.length >= 40,
-        "text-xl": formattedValue.length < 40 && formattedValue.length >= 35,
-        "text-2xl": formattedValue.length < 35 && formattedValue.length >= 30,
-        "text-3xl": formattedValue.length < 30 && formattedValue.length >= 25,
-        "text-4xl": formattedValue.length < 25 && formattedValue.length >= 20,
-        "text-5xl": formattedValue.length < 20 && formattedValue.length >= 15,
-        "text-6xl": formattedValue.length < 15 && formattedValue.length >= 10,
-        "text-7xl": formattedValue.length < 10,
+        "text-xs": formattedValue.length >= 49,
+        "text-sm": formattedValue.length < 49 && formattedValue.length >= 42,
+        "text-lg": formattedValue.length < 42 && formattedValue.length >= 37,
+        "text-xl": formattedValue.length < 37 && formattedValue.length >= 32,
+        "text-2xl": formattedValue.length < 32 && formattedValue.length >= 27,
+        "text-3xl": formattedValue.length < 27 && formattedValue.length >= 22,
+        "text-4xl": formattedValue.length < 22 && formattedValue.length >= 17,
+        "text-5xl": formattedValue.length < 17 && formattedValue.length >= 13,
+        "text-6xl": formattedValue.length < 13 && formattedValue.length >= 6,
+        "text-7xl": formattedValue.length < 6,
       })}>
         {formattedValue}
       </div>
