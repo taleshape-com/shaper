@@ -77,7 +77,7 @@ const DashboardLineChart = ({
         return number.toLocaleString();
       }}
       indexFormatter={(n: number) => {
-        return formatValue(n, indexType).toString();
+        return formatValue(n, indexType, true).toString();
       }}
       xAxisLabel={isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}

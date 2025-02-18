@@ -19,13 +19,23 @@ function DashboardValue({ headers, data }: ValueProps) {
   const compareValue = compareIndex !== -1 ? data[0][compareIndex] : undefined
   const percent = typeof value === 'number' && typeof compareValue === 'number' && compareValue !== value ?
     Math.round(-100 * (1 - (value / compareValue))) : undefined
+  const formattedValue = formatValue(value, valueHeader.type, true).toString()
 
   return (
     <div className="items-center h-full flex flex-col justify-center">
-      <div className="text-7xl font-display font-bold">
-        {typeof value === "number" && valueHeader.type === "number"
-          ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-          : formatValue(value, valueHeader.type)}
+      <div className={cx("font-display font-bold", {
+        "text-xs": formattedValue.length >= 55,
+        "text-sm": formattedValue.length < 55 && formattedValue.length >= 50,
+        "text-lg": formattedValue.length < 45 && formattedValue.length >= 40,
+        "text-xl": formattedValue.length < 40 && formattedValue.length >= 35,
+        "text-2xl": formattedValue.length < 35 && formattedValue.length >= 30,
+        "text-3xl": formattedValue.length < 30 && formattedValue.length >= 25,
+        "text-4xl": formattedValue.length < 25 && formattedValue.length >= 20,
+        "text-5xl": formattedValue.length < 20 && formattedValue.length >= 15,
+        "text-6xl": formattedValue.length < 15 && formattedValue.length >= 10,
+        "text-7xl": formattedValue.length < 10,
+      })}>
+        {formattedValue}
       </div>
       <div className="text-xl mt-1 font-semibold">
         {valueHeader.name}
@@ -33,7 +43,7 @@ function DashboardValue({ headers, data }: ValueProps) {
       {compareValue && compareHeader ? (
         <div className="text-sm mt-2 flex items-center justify-center font-medium">
           <span>{compareHeader.name}:</span>
-          <span className="ml-1">{formatValue(compareValue, valueHeader.type)}</span>
+          <span className="ml-1">{formatValue(compareValue, valueHeader.type, true)}</span>
           {percent && <div
             className={cx(
               "ml-2 rounded px-1 py-1 text-sm font-medium text-ctexti dark:text-dtexti flex flex-nowrap items-center b bg-cbgi dark:bg-dbgi",

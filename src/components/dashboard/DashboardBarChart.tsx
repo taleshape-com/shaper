@@ -82,7 +82,7 @@ const DashboardBarChart = ({
         return n.toLocaleString();
       }}
       indexFormatter={(n: number) => {
-        return formatValue(n, indexType).toString();
+        return formatValue(n, indexType, true).toString();
       }}
       xAxisLabel={vertical ? getNameIfSet(valueAxisName) : isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={vertical ? isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name) : getNameIfSet(valueAxisName)}

@@ -63,7 +63,7 @@ function DashboardDropdownMulti({
                   onChange({ ...vars, [varName]: Array.from(valSet) });
                 }}
                 hint={
-                  hintIndex !== -1 ? formatValue(row[hintIndex], headers[hintIndex].type).toString() : undefined
+                  hintIndex !== -1 ? formatValue(row[hintIndex], headers[hintIndex].type, true).toString() : undefined
                 }
               >
                 {row[labelIndex !== -1 ? labelIndex : valueIndex]}

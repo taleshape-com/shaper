@@ -7,7 +7,7 @@ function parseLocalDate(d: string | number) {
   return new Date(d);
 }
 
-export const formatValue = (value: string | number | boolean, columnType: Column['type']) => {
+export const formatValue = (value: string | number | boolean, columnType: Column['type'], shouldFormatNumbers?: boolean) => {
   if (value === null || value === undefined) {
     return ""
   }
@@ -37,6 +37,9 @@ export const formatValue = (value: string | number | boolean, columnType: Column
     return "0"
   }
   if (typeof value === "number") {
+    if (shouldFormatNumbers && columnType === "number") {
+      return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    }
     // duration comes in ms
     if (columnType === "duration") {
       const day = Math.floor(value / 86400000);

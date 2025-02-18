@@ -35,6 +35,7 @@ function DashboardTable({ headers, data }: TableProps) {
                 {items.map((item, index) => {
                   const header = headers[index]
                   const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
+                  const formattedValue = percent !== undefined ? '' : formatValue(item, header.type, true).toString()
                   return (
                     <TableCell key={index} className="text-center text-ctext dark:text-dtext">
                       {percent !== undefined ? percent === 0 ? '-' : (
@@ -50,7 +51,9 @@ function DashboardTable({ headers, data }: TableProps) {
                               : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
                           }
                         </div>) :
-                        formatValue(item, header.type)
+                        <span className={cx({ "text-xs": formattedValue.length > 30 })}>
+                          {formattedValue}
+                        </span>
                       }
                     </TableCell>
                   );
