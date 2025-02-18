@@ -7,9 +7,7 @@ RUN npm run lint
 ENV NODE_ENV=production
 RUN npm run build
 
-FROM golang:1-alpine AS build
-# Install GCC for CGO
-RUN apk add --no-cache build-base
+FROM golang:1 AS build
 WORKDIR $GOPATH/src/shaper
 COPY go.mod .
 COPY go.sum .
