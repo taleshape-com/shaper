@@ -85,3 +85,6 @@ export const getIndexAxisDomain = (minTimeValue: number, maxTimeValue: number) =
   return [minTimeValue - margin, maxTimeValue + margin]
 }
 
+export const isJSONType = (columnType: Column['type']) => {
+  return columnType === "array" || columnType === "object"
+}

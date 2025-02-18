@@ -1,6 +1,6 @@
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
-import { formatValue } from "../../lib/render";
+import { formatValue, isJSONType } from "../../lib/render";
 import {
   Table,
   TableBody,
@@ -51,7 +51,11 @@ function DashboardTable({ headers, data }: TableProps) {
                               : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
                           }
                         </div>) :
-                        <span className={cx({ "text-xs": formattedValue.length > 30 })}>
+                        <span className={cx({
+                          "font-display": !isJSONType(header.type),
+                          "font-mono": isJSONType(header.type),
+                          "text-xs": formattedValue.length > 30,
+                        })}>
                           {formattedValue}
                         </span>
                       }

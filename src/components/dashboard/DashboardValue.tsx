@@ -1,7 +1,7 @@
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 
-import { formatValue } from "../../lib/render";
+import { formatValue, isJSONType } from "../../lib/render";
 import { cx } from "../../lib/utils";
 
 type ValueProps = {
@@ -23,7 +23,9 @@ function DashboardValue({ headers, data }: ValueProps) {
 
   return (
     <div className="items-center h-full flex flex-col justify-center">
-      <div className={cx("font-display font-bold", {
+      <div className={cx("font-bold", {
+        "font-display": !isJSONType(valueHeader.type),
+        "font-mono": isJSONType(valueHeader.type),
         "text-xs": formattedValue.length >= 55,
         "text-sm": formattedValue.length < 55 && formattedValue.length >= 50,
         "text-lg": formattedValue.length < 45 && formattedValue.length >= 40,
@@ -37,7 +39,12 @@ function DashboardValue({ headers, data }: ValueProps) {
       })}>
         {formattedValue}
       </div>
-      <div className="text-xl mt-1 font-semibold">
+      <div className={cx("mt-3 font-semibold", {
+        "text-xs": valueHeader.name.length >= 40,
+        "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 30,
+        "text-lg": valueHeader.name.length < 30 && valueHeader.name.length >= 20,
+        "text-xl": valueHeader.name.length < 20,
+      })}>
         {valueHeader.name}
       </div>
       {compareValue && compareHeader ? (
