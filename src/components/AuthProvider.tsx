@@ -63,17 +63,16 @@ const refreshJwt = async (token: string, vars: Variables) => {
 };
 
 const internalGetJwt = async (loginRequired: boolean) => {
-  if (!loginRequired) {
-    const vars = getVariables(getVariablesString());
-    return refreshJwt("", vars) ?? "";
-  }
-
   const jwt = localStorage.getItem(localStorageJwtKey);
   if (jwt != null) {
     const claims = parseJwt(jwt);
     if (Date.now() / 1000 < claims.exp) {
       return jwt;
     }
+  }
+  if (!loginRequired) {
+    const vars = getVariables(getVariablesString());
+    return refreshJwt("", vars) ?? "";
   }
   const token = localStorage.getItem(localStorageTokenKey);
   if (token == null) {
@@ -92,12 +91,7 @@ const internalTestLogin = async (loginRequired: boolean) => {
     return true;
   }
   const token = localStorage.getItem(localStorageTokenKey);
-  if (token == null) {
-    return false;
-  }
-  const vars = getVariables(getVariablesString());
-  const jwt = await refreshJwt(token, vars);
-  return jwt != null;
+  return token != null;
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
