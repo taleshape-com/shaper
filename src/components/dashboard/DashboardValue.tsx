@@ -22,7 +22,7 @@ function DashboardValue({ headers, data }: ValueProps) {
   const formattedValue = formatValue(value, valueHeader.type, true).toString()
 
   return (
-    <div className="items-center h-full flex flex-col justify-center">
+    <div className="items-center h-full flex flex-col justify-center text-center overflow-auto">
       <div className={cx("font-bold", {
         "font-mono": isJSONType(valueHeader.type),
         "text-xs": formattedValue.length >= 47,
