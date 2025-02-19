@@ -776,6 +776,12 @@ const RangeDatePicker = ({
     onChange?.(range)
   }
 
+  const onPresetSelect = (range: DateRange | undefined) => {
+    onRangeChange(range);
+    setOpen(false)
+    onChange?.(range)
+  }
+
   const onCancel = () => {
     setRange(initialRange)
     setStartTime(
@@ -921,7 +927,7 @@ const RangeDatePicker = ({
                   <PresetContainer
                     currentValue={range}
                     presets={presets}
-                    onSelect={onRangeChange}
+                    onSelect={onPresetSelect}
                   />
                 </div>
               </div>

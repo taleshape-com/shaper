@@ -69,6 +69,7 @@ export async function logout() {
   return goToLoginPage();
 }
 
+// TODO: consider replacing this with putting a flag into the rendered .html file instead
 // Check if login is required using the auth status endpoint
 export const checkLoginRequired = async (): Promise<boolean> => {
   const storedVal = localStorage.getItem(localStorageLoginRequiredKey)
