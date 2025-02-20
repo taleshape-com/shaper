@@ -124,6 +124,24 @@ func StreamQueryCSV(
 	return rows.Err()
 }
 
+// getDisplayWidth returns the approximate display width of a value.
+// This is a simple implementation that could be enhanced for better accuracy.
+func getDisplayWidth(value interface{}) float64 {
+	if value == nil {
+		return 4 // Width of "null"
+	}
+
+	switch v := value.(type) {
+	case time.Time:
+		return 20 // Approximate width for RFC3339 format
+	case duckdb.Interval:
+		return float64(len(intervalToString(v)))
+	default:
+		str := fmt.Sprintf("%v", value)
+		return float64(len(str))
+	}
+}
+
 func StreamQueryXLSX(
 	app *App,
 	ctx context.Context,
@@ -225,6 +243,9 @@ func StreamQueryXLSX(
 		return fmt.Errorf("error getting columns: %w", err)
 	}
 
+	// Initialize maxWidths slice to track maximum width for each column
+	maxWidths := make([]float64, len(columns))
+
 	// Write headers
 	for colIdx, column := range columns {
 		cell, err := excelize.CoordinatesToCellName(colIdx+1, 1)
@@ -233,12 +254,7 @@ func StreamQueryXLSX(
 		}
 		xlsx.SetCellValue(sheetName, cell, column)
 		xlsx.SetCellStyle(sheetName, cell, cell, headerStyle)
-		width := float64(len(column)) + 2 // +2 for some padding
-		colName, err := excelize.ColumnNumberToName(colIdx + 1)
-		if err != nil {
-			return fmt.Errorf("error converting column number: %w", err)
-		}
-		xlsx.SetColWidth(sheetName, colName, colName, math.Max(width, 6))
+		maxWidths[colIdx] = float64(len(column)) + 2 // Start with header width + padding
 	}
 
 	// Prepare containers for row data
@@ -288,6 +304,10 @@ func StreamQueryXLSX(
 				xlsx.SetCellValue(sheetName, cell, formatValue(value))
 				xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
 			}
+
+			// Update maximum width for this column
+			width := getDisplayWidth(value) + 2 // +2 for padding
+			maxWidths[colIdx] = math.Max(maxWidths[colIdx], width)
 		}
 
 		rowIdx++
@@ -299,6 +319,17 @@ func StreamQueryXLSX(
 
 	if err := rows.Err(); err != nil {
 		return err
+	}
+
+	// Set column widths based on content
+	for colIdx := range columns {
+		colName, err := excelize.ColumnNumberToName(colIdx + 1)
+		if err != nil {
+			return fmt.Errorf("error converting column number: %w", err)
+		}
+		// Clamp width between minimum of 6 and maximum of 100
+		width := math.Max(6, math.Min(100, maxWidths[colIdx]))
+		xlsx.SetColWidth(sheetName, colName, colName, width)
 	}
 
 	// Set up autofilter
