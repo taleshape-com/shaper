@@ -456,6 +456,8 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "number", nil
 	case "BLOB":
 		return "string", nil
+	case "ENUM":
+		return "string", nil
 	case "VARCHAR[]":
 		return "stringArray", nil
 	case "MAP(VARCHAR, VARCHAR)":
