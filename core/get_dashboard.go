@@ -794,18 +794,34 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdown")
 		}
 		param := queryParams.Get(columnName)
+		var ok bool
 		if param == "" {
 			if len(data) == 0 {
 				// No vars for dropdown without options
 				return nil
 			}
 			// Set default value to first row
-			param = data[0][columnIndex].(string)
+			param, ok = data[0][columnIndex].(string)
+			if !ok {
+				if data[0][columnIndex] == nil {
+					param = ""
+				} else {
+					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+				}
+			}
 		} else {
 			// Check if param actually exists in the dropdown
 			isValidVar := false
-			for _, row := range data {
-				if row[columnIndex].(string) == param {
+			for i, row := range data {
+				val, ok := row[columnIndex].(string)
+				if !ok {
+					if row[columnIndex] == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				if val == param {
 					isValidVar = true
 					break
 				}
@@ -834,8 +850,16 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		params := queryParams[columnName]
 		if len(params) == 0 {
 			// Set default value to all rows
-			for _, row := range data {
-				params = append(params, row[columnIndex].(string))
+			for i, row := range data {
+				val, ok := row[columnIndex].(string)
+				if !ok {
+					if row[columnIndex] == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				params = append(params, val)
 			}
 		} else {
 			// Check if all params actually exist in the dropdown
@@ -844,8 +868,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			for _, param := range params {
 				paramsToCheck[param] = true
 			}
-			for _, row := range data {
-				val := row[columnIndex].(string)
+			for i, row := range data {
+				val, ok := row[columnIndex].(string)
+				if !ok {
+					if row[columnIndex] == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
 				if paramsToCheck[val] {
 					delete(paramsToCheck, val)
 					if len(paramsToCheck) == 0 {
