@@ -104,7 +104,9 @@ export function AuthProvider({ children, initialLoginRequired }: { children: Rea
     if (!jwt) {
       return false;
     }
-    localStorage.setItem(localStorageTokenKey, token);
+    if (token !== "") {
+      localStorage.setItem(localStorageTokenKey, token);
+    }
     localStorage.setItem(localStorageVariablesKey, JSON.stringify(vars));
     setHash(JSON.stringify(vars));
     setVariables(vars);
@@ -128,9 +130,9 @@ export function AuthProvider({ children, initialLoginRequired }: { children: Rea
         return true;
       }
       const token = localStorage.getItem(localStorageTokenKey);
-      if (!token) return false;
-      return await updateJwtWithVars(token, vars);
-    } catch {
+      return await updateJwtWithVars(token ?? "", vars);
+    } catch (error) {
+      console.error(error)
       return false;
     }
   }, [updateJwtWithVars]);
