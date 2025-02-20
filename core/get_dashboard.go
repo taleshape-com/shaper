@@ -93,7 +93,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isLabel(colTypes, query.Rows) {
-			nextLabel = query.Rows[0][0].(string)
+			l, ok := query.Rows[0][0].(string)
+			if !ok {
+				l = ""
+			}
+			nextLabel = l
 			continue
 		}
 
@@ -108,8 +112,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				hideNextContentSection = true
 				continue
 			}
-			sectionTitle := query.Rows[0][0].(string)
-			if sectionTitle == "" {
+			sectionTitle, ok := query.Rows[0][0].(string)
+			if !ok || sectionTitle == "" {
 				lastSection.Title = nil
 			} else {
 				lastSection.Title = &sectionTitle
