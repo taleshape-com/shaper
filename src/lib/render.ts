@@ -7,7 +7,7 @@ function parseLocalDate(d: string | number) {
   return new Date(d);
 }
 
-export const formatValue = (value: string | number | boolean, columnType: Column['type'], shouldFormatNumbers?: boolean) => {
+export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column['type'], shouldFormatNumbers?: boolean) => {
   if (value === null || value === undefined) {
     return ""
   }

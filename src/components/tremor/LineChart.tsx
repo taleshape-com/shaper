@@ -24,7 +24,7 @@ import {
   hasOnlyOneValueForKey,
 } from "../../lib/chartUtils";
 import { useOnWindowResize } from "../../hooks/useOnWindowResize";
-import { cx } from "../../lib/utils";
+import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { Column, isTimeType } from "../../lib/dashboard";
 
@@ -411,42 +411,50 @@ const ChartTooltip = ({
           </p>
         </div>
         <div className={cx("space-y-1 px-4 py-2")}>
-          {legendPayload.map(({ value, category, color }, index) => (
-            <div
-              key={`id-${index}`}
-              className="flex items-center justify-between space-x-8"
-            >
-              <div className="flex items-center space-x-2">
-                <span
-                  aria-hidden="true"
-                  className={cx(
-                    "h-[3px] w-3.5 shrink-0 rounded-full",
-                    getColorClassName(color, "bg"),
+          {legendPayload.map(({ value, category, color }, index) => {
+            const cat = getNameIfSet(category)
+            return (
+              <div
+                key={`id-${index}`}
+                className={cx("flex items-center justify-between", {
+                  "space-x-8": cat != null,
+                  "space-x-2": cat == null,
+                })}
+              >
+                <div className="flex items-center space-x-2">
+                  <span
+                    aria-hidden="true"
+                    className={cx(
+                      "h-[3px] w-3.5 shrink-0 rounded-full",
+                      getColorClassName(color, "bg"),
+                    )}
+                  />
+                  {cat && (
+                    <p
+                      className={cx(
+                        // base
+                        "whitespace-nowrap text-right",
+                        // text color
+                        "text-ctext dark:text-dtext",
+                      )}
+                    >
+                      {cat}
+                    </p>
                   )}
-                />
+                </div>
                 <p
                   className={cx(
                     // base
-                    "whitespace-nowrap text-right",
+                    "whitespace-nowrap font-medium text-right tabular-nums",
                     // text color
                     "text-ctext dark:text-dtext",
                   )}
                 >
-                  {category}
+                  {valueFormatter(value)}
                 </p>
               </div>
-              <p
-                className={cx(
-                  // base
-                  "whitespace-nowrap text-right font-medium tabular-nums",
-                  // text color
-                  "text-ctext dark:text-dtext",
-                )}
-              >
-                {valueFormatter(value)}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
