@@ -63,19 +63,19 @@ function LoginComponent() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <Helmet>
-        <title>Login</title>
-        <meta name="description" content="Login to continue" />
-      </Helmet>
-      <h1 className="text-xl font-semibold mb-6">Login</h1>
-      <form
-        onSubmit={onSubmit}
-        className="space-y-4"
-        name="login"
-        autoComplete="on"
-      >
-        <div>
+    <div className="flex items-center justify-center h-screen">
+      <div className="px-6 pt-2 pb-10">
+        <Helmet>
+          <title>Login</title>
+          <meta name="description" content="Login to continue" />
+        </Helmet>
+        <form
+          onSubmit={onSubmit}
+          className="space-y-4 w-80 "
+          name="login"
+          autoComplete="on"
+        >
+          <h1 className="text-xl font-semibold text-center">Welcome</h1>
           <Input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -88,8 +88,6 @@ function LoginComponent() {
             required
             disabled={isLoggingIn}
           />
-        </div>
-        <div>
           <Input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -101,17 +99,17 @@ function LoginComponent() {
             required
             disabled={isLoggingIn}
           />
-        </div>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={!email || !password || isLoggingIn}
-          className="w-full"
-        >
-          {isLoggingIn ? "Logging in..." : "Login"}
-        </Button>
-      </form>
-      {err && <div className="mt-4 text-red-500 text-sm">{err}</div>}
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!email || !password || isLoggingIn}
+            className="w-full py-2"
+          >
+            {isLoggingIn ? "Logging in..." : "Login"}
+          </Button>
+        </form>
+        {err && <div className="mt-4 text-red-500 text-sm">{err}</div>}
+      </div>
     </div>
   );
 }
