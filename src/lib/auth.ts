@@ -69,7 +69,16 @@ export async function logout() {
   return goToLoginPage();
 }
 
-// TODO: consider replacing this with putting a flag into the rendered .html file instead
+export const checkLoginRequiredWithoutCache = async (): Promise<boolean> => {
+  const response = await fetch("/api/login/enabled");
+  if (!response.ok) {
+    // Assume auth is required if we can't determine the status
+    return true;
+  }
+  const data = await response.json() as { enabled: boolean };
+  return data.enabled;
+};
+
 // Check if login is required using the auth status endpoint
 export const checkLoginRequired = async (): Promise<boolean> => {
   const storedVal = localStorage.getItem(localStorageLoginRequiredKey)
@@ -79,13 +88,6 @@ export const checkLoginRequired = async (): Promise<boolean> => {
   if (storedVal === "false") {
     return false;
   }
-  const response = await fetch("/api/login/enabled");
-  if (!response.ok) {
-    // Assume auth is required if we can't determine the status
-    return true;
-  }
-  const data = await response.json() as { enabled: boolean };
-  localStorage.setItem(localStorageLoginRequiredKey, data.enabled ? "true" : "false");
-  return data.enabled;
+  return checkLoginRequiredWithoutCache();
 };
 

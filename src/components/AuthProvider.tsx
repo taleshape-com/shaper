@@ -1,5 +1,5 @@
 import { isEqual } from "lodash";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   parseJwt,
   localStorageTokenKey,
@@ -9,6 +9,7 @@ import {
   zVariables,
   localStorageJwtKey,
   localStorageLoginRequiredKey,
+  checkLoginRequiredWithoutCache,
 } from "../lib/auth";
 import { goToLoginPage } from "../lib/utils";
 
@@ -76,22 +77,6 @@ const internalGetJwt = async (loginRequired: boolean) => {
   return newJwt;
 };
 
-const internalTestLogin = async (loginRequired: boolean) => {
-  if (!loginRequired) {
-    return true;
-  }
-  const token = localStorage.getItem(localStorageTokenKey);
-  if (token == null || token === "") {
-    return false;
-  }
-  const response = await fetch(`/api/auth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
-  });
-  return response.status === 200;
-};
-
 export function AuthProvider({ children, initialLoginRequired }: { children: React.ReactNode, initialLoginRequired: boolean }) {
   const [loginRequired, setLoginRequired] = useState(initialLoginRequired);
   const [variables, setVariables] = useState<Variables>(
@@ -141,14 +126,45 @@ export function AuthProvider({ children, initialLoginRequired }: { children: Rea
     return internalGetJwt(loginRequired)
   }, [loginRequired]);
 
-  const testLogin = useCallback(async () => {
-    return internalTestLogin(loginRequired)
-  }, [loginRequired]);
-
-  const handleSetLoginRequired = useCallback((isLoginRequired: boolean) => {
-    localStorage.setItem(localStorageLoginRequiredKey, isLoginRequired ? "true" : "false")
-    setLoginRequired(isLoginRequired);
+  const handleSetLoginRequired = useCallback((l: boolean) => {
+    localStorage.setItem(localStorageLoginRequiredKey, l ? "true" : "false")
+    if (!l) {
+      localStorage.removeItem(localStorageTokenKey)
+    }
+    setLoginRequired(l);
   }, [])
+
+  const testLogin = useCallback(async () => {
+    const l = await checkLoginRequiredWithoutCache()
+    handleSetLoginRequired(l)
+    if (!l) {
+      localStorage.removeItem(localStorageJwtKey)
+      return true;
+    }
+    const token = localStorage.getItem(localStorageTokenKey);
+    if (token == null || token === "") {
+      return false;
+    }
+    const response = await fetch(`/api/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    return response.status === 200;
+  }, [handleSetLoginRequired]);
+
+  useEffect(() => {
+    const l = localStorage.getItem(localStorageLoginRequiredKey)
+    if (l === null) {
+      handleSetLoginRequired(loginRequired)
+      return
+    }
+    checkLoginRequiredWithoutCache().then((l) => {
+      if (l !== loginRequired) {
+        handleSetLoginRequired(l)
+      }
+    });
+  }, [loginRequired, handleSetLoginRequired]);
 
   return (
     <AuthContext.Provider
