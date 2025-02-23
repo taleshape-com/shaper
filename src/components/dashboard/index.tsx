@@ -312,7 +312,7 @@ const DataView = ({
     })}
     {numContentSections === 0 ? (
       <div className="text-center text-ctext2 dark:text-dtext2">
-        <div className="mt-4 flex min-h-[calc(70vh)] items-center justify-center">
+        <div className="mt-4 flex min-h-[calc(75vh)] items-center justify-center">
           <div className="text-center">
             <RiLayoutFill
               className="mx-auto size-9"

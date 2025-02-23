@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
 import { Menu } from "../components/Menu";
 import { cx } from "../lib/utils";
 import { useState } from "react";
+import { RiAdminLine } from "@remixicon/react";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
@@ -29,7 +30,8 @@ function Admin() {
       </Helmet>
       <div className={cx("mb-4 flex", { "-ml-2": !isInlineMenuOpen })}>
         <Menu inline isAdmin onOpenChange={setIsInlineMenuOpen} />
-        <h1 className="text-3xl font-semibold font-display flex-grow">
+        <h1 className="text-2xl font-semibold font-display flex-grow">
+          <RiAdminLine className="size-5 inline mr-1 -mt-1" />
           {translate("Admin")}
         </h1>
       </div>
@@ -51,7 +53,7 @@ function Admin() {
           </Tabs>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 min-h-[calc(82.95vh)]">
           <Outlet />
         </div>
       </div>

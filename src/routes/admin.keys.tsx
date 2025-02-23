@@ -29,6 +29,7 @@ import {
 } from "../components/tremor/Table";
 import { useCallback, useEffect } from "react";
 import { useQueryApi } from "../hooks/useQueryApi";
+import { RiAddFill, RiKeyFill, RiTableFill } from "@remixicon/react";
 
 interface APIKey {
   id: string;
@@ -142,16 +143,26 @@ function Admin() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">{translate("API Keys")}</h2>
-
-      <Button onClick={() => setShowNewKeyDialog(true)} className="mb-4">
-        {translate("New")}
-      </Button>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold mb-4">
+          <RiKeyFill className="size-4 inline mr-1 -mt-0.5" />
+          {translate("API Keys")}
+        </h2>
+        <Button onClick={() => setShowNewKeyDialog(true)}>
+          <RiAddFill className="-ml-1 mr-0.5 size-4 shrink-0" aria-hidden={true} />
+          {translate("New")}
+        </Button>
+      </div>
 
       {loading ? (
         <p>{translate("Loading API keys...")}</p>
       ) : keys.length === 0 ? (
-        <p>{translate("No API keys found")}</p>
+        <div className="mt-4 flex flex-col h-44 items-center justify-center rounded-sm p-4 bg-cbg text-center">
+          <RiTableFill className="text-ctext2 dark:text-dtext2 mx-auto h-7 w-7" aria-hidden={true} />
+          <p className="mt-2 text-ctext2 dark:text-dtext2 font-medium">
+            {translate("No API keys found")}
+          </p>
+        </div>
       ) : (
         <TableRoot>
           <Table>

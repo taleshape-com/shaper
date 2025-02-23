@@ -8,6 +8,7 @@ import {
 import { useToast } from '../hooks/useToast'
 import { translate } from '../lib/translate'
 import { useQueryApi } from '../hooks/useQueryApi'
+import { RiLockLine } from '@remixicon/react'
 
 export const Route = createFileRoute('/admin/security')({
   component: Admin,
@@ -49,6 +50,7 @@ function Admin() {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4">
+        <RiLockLine className="size-4 inline mr-1 -mt-0.5" />
         {translate('Security Settings')}
       </h2>
       <div className="space-y-4">

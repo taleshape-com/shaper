@@ -14,7 +14,7 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
-import { RiSortAsc, RiSortDesc } from "@remixicon/react";
+import { RiGroupLine, RiSortAsc, RiSortDesc, RiUserAddFill, RiUserAddLine } from "@remixicon/react";
 import { useState } from "react";
 import { Button } from "../components/tremor/Button";
 import { useToast } from "../hooks/useToast";
@@ -214,10 +214,12 @@ function UsersManagement() {
     <>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">
+          <RiGroupLine className="size-4 inline mr-1 -mt-1" />
           {translate("User Management")}
         </h2>
         {auth.loginRequired && (
           <Button onClick={() => setShowInviteDialog(true)}>
+            <RiUserAddLine className="size-4 inline mr-1 -ml-0.5 -mt-0.5" />
             {translate("Invite User")}
           </Button>
         )}
@@ -373,7 +375,13 @@ function UsersManagement() {
               <DialogTitle>
                 {inviteCode
                   ? translate("Invite Link")
-                  : translate("Invite User")}
+                  : (
+                    <span>
+                      <RiUserAddFill
+                        className="size-4 inline mr-1 -mt-1" />
+                      {translate("Invite User")}
+                    </span>
+                  )}
               </DialogTitle>
               <DialogDescription>
                 {inviteCode
