@@ -3,10 +3,10 @@
 package web
 
 import (
-	"fmt"
 	"io/fs"
 	"net/http"
 	"shaper/core"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo-contrib/echoprometheus"
@@ -16,7 +16,7 @@ import (
 	slogecho "github.com/samber/slog-echo"
 )
 
-func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) *echo.Echo {
+func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) *echo.Echo {
 	// Echo instance
 	e := echo.New()
 	e.HideBanner = true
@@ -51,13 +51,16 @@ func Start(host string, port int, app *core.App, frontendFS fs.FS, modTime time.
 	routes(e, app, frontendFS, modTime, customCSS, favicon)
 
 	// Start server
-	addr := fmt.Sprintf("%s:%d", host, port)
 	go func() {
 		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("error starting server", err)
 		}
 	}()
-	app.Logger.Info("HTTP server listening on " + addr)
+	logPrefix := ""
+	if !strings.HasPrefix(addr, ":") {
+		logPrefix = "http://"
+	}
+	app.Logger.Info("web server listening on " + logPrefix + addr)
 
 	return e
 }

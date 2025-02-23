@@ -31,7 +31,6 @@ type Config struct {
 	SessionExp        time.Duration
 	InviteExp         time.Duration
 	Address           string
-	Port              int
 	DBFile            string
 	Schema            string
 	ExecutableModTime time.Time
@@ -55,8 +54,7 @@ func main() {
 func loadConfig() Config {
 	flags := ff.NewFlagSet("shaper")
 	help := flags.Bool('h', "help", "show help")
-	addr := flags.StringLong("addr", "0.0.0.0", "server address")
-	port := flags.Int('p', "port", 3000, "port to listen on")
+	addr := flags.StringLong("addr", "localhost:3000", "server address")
 	dbFile := flags.String('d', "duckdb", "", "path to duckdb file (default: use in-memory db)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
@@ -102,7 +100,6 @@ func loadConfig() Config {
 
 	config := Config{
 		Address:           *addr,
-		Port:              *port,
 		DBFile:            *dbFile,
 		Schema:            *schema,
 		ExecutableModTime: executableModTime,
@@ -142,7 +139,7 @@ func Run(cfg Config) func(context.Context) {
 	if cfg.DBFile != "" {
 		logger.Info("connected to duckdb", slog.Any("file", cfg.DBFile))
 	} else {
-		logger.Info("connected to in-memory duckdb")
+		logger.Warn("Connected to in-memory duckdb. All data will be lost on shutdown.")
 	}
 
 	persistNATS := cfg.NatsJSDir != ""
@@ -187,7 +184,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	e := web.Start(cfg.Address, cfg.Port, app, frontendFS, cfg.ExecutableModTime, cfg.CustomCSS, cfg.Favicon)
+	e := web.Start(cfg.Address, app, frontendFS, cfg.ExecutableModTime, cfg.CustomCSS, cfg.Favicon)
 
 	return func(ctx context.Context) {
 		logger.Info("initiating shutdown...")

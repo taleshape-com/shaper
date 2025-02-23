@@ -3,6 +3,7 @@ package comms
 import (
 	"context"
 	"crypto/subtle"
+	"fmt"
 	"log/slog"
 	"os"
 	"shaper/core"
@@ -114,12 +115,19 @@ func New(config Config) (Comms, error) {
 	// Configure authentication if token is provided
 	if config.Token != "" {
 		opts.Authorization = config.Token
+	} else {
+		if !config.DontListen {
+			config.Logger.Warn(fmt.Sprintf("nats: No nats-token provided and NATS is listening. If running in production make sure %s:%d is not exposed, configure a nats-token or set nats-dont-listen", config.Host, config.Port))
+		}
+	}
+	if config.DontListen {
+		config.Logger.Info("nats: Not listening on any network interfaces")
 	}
 	// Configure JetStream directory if provided
 	if config.JSDir != "" {
 		opts.StoreDir = config.JSDir
 	} else {
-		config.Logger.Info("No JetStream directory provided, using temporary directory and creating streams in memory")
+		config.Logger.Warn("nats: No JetStream directory provided, using temporary directory and creating streams in memory.")
 		tmpStoreDir, err := os.MkdirTemp("", "shaper-nats")
 		if err != nil {
 			return Comms{}, err

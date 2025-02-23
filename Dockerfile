@@ -23,5 +23,7 @@ RUN go build -a -ldflags "-w -extldflags '-static'" -tags="no_duckdb_arrow" -o /
 
 FROM alpine:3
 RUN apk add --no-cache ca-certificates
+# When running in a container, listen on all interfaces (including IPv6) by default
+ENV SHAPER_ADDR=:3000
 COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
 ENTRYPOINT ["/usr/local/bin/shaper"]

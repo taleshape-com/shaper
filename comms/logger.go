@@ -19,26 +19,26 @@ func newNATSLogger(logger *slog.Logger) server.Logger {
 }
 
 func (n *natsLogger) Noticef(format string, v ...any) {
-	n.logger.Info(fmt.Sprintf(format, v...))
+	n.logger.Info("nats: " + fmt.Sprintf(format, v...))
 }
 
 func (n *natsLogger) Warnf(format string, v ...any) {
-	n.logger.Warn(fmt.Sprintf(format, v...))
+	n.logger.Warn("nats: " + fmt.Sprintf(format, v...))
 }
 
 func (n *natsLogger) Fatalf(format string, v ...any) {
-	n.logger.Error(fmt.Sprintf(format, v...), slog.String("level", "fatal"))
+	n.logger.Error("nats: "+fmt.Sprintf(format, v...), slog.String("level", "fatal"))
 	os.Exit(1)
 }
 
 func (n *natsLogger) Errorf(format string, v ...any) {
-	n.logger.Error(fmt.Sprintf(format, v...))
+	n.logger.Error("nats: " + fmt.Sprintf(format, v...))
 }
 
 func (n *natsLogger) Debugf(format string, v ...any) {
-	n.logger.Debug(fmt.Sprintf(format, v...))
+	n.logger.Debug("nats: " + fmt.Sprintf(format, v...))
 }
 
 func (n *natsLogger) Tracef(format string, v ...any) {
-	n.logger.Debug(fmt.Sprintf(format, v...), slog.String("level", "trace"))
+	n.logger.Debug("nats: "+fmt.Sprintf(format, v...), slog.String("level", "trace"))
 }
