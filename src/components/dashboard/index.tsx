@@ -337,14 +337,14 @@ const renderContent = (
 ) => {
   if (query.rows.length === 0) {
     return (
-      <div className="h-full py-1 px-3 mb-1 flex items-center justify-center text-cb dark:text-db rounded-sm border border-dashed border-cb dark:border-db">
+      <div className="h-full py-1 px-3 mb-1 flex items-center justify-center text-ctext2 dark:text-ctext2">
         <div className="text-center">
           <RiBarChartFill
             className="mx-auto size-9"
             aria-hidden={true}
           />
           <p className="mt-2 font-medium">
-            {translate("Empty result")}
+            {translate("No data")}
           </p>
         </div>
       </div>

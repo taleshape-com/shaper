@@ -144,7 +144,7 @@ function Index() {
             {translate("Dashboards")}
           </h1>
           {data.dashboards.length === 0 ? (
-            <div className="mt-4 flex min-h-64 items-center justify-center rounded-sm border border-dashed border-cb dark:border-db">
+            <div className="mt-4 flex min-h-64 items-center justify-center">
               <div className="text-center">
                 <RiLayoutFill
                   className="mx-auto size-9 text-ctext dark:text-dtext"

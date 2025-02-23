@@ -71,8 +71,8 @@ const translations: Record<string, Record<string, string>> = {
   "There are unsaved previous edits. Do you want to restore them?": {
     de: "Es gibt ungespeicherte Änderungen. Möchten Sie diese wiederherstellen?",
   },
-  "Empty result": {
-    de: "Keine Daten verfügbar",
+  "No Data": {
+    de: "Keine Daten",
   },
   "Nothing to show yet": {
     de: "Noch nichts zu zeigen",
