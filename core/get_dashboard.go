@@ -711,9 +711,6 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 
 func getTimestampType(rows Rows, index int) (string, error) {
 	s := "timestamp"
-	if len(rows) < 2 {
-		return s, nil
-	}
 	for _, row := range rows {
 		r := row[index]
 		if r == nil {
@@ -722,6 +719,9 @@ func getTimestampType(rows Rows, index int) (string, error) {
 		t, ok := r.(time.Time)
 		if !ok {
 			return "", fmt.Errorf("invalid timestamp value: %v", row[index])
+		}
+		if len(rows) < 2 {
+			continue
 		}
 		if s == "timestamp" {
 			s = "year"
