@@ -18,12 +18,13 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
-import { RiSortAsc, RiSortDesc } from "@remixicon/react";
+import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { Menu } from "../components/Menu";
 import { useState } from "react";
 import { cx } from "../lib/utils";
+import { Button } from "../components/tremor/Button";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -143,9 +144,27 @@ function Index() {
             {translate("Dashboards")}
           </h1>
           {data.dashboards.length === 0 ? (
-            <p>No dashboards yet</p>
+            <div className="mt-4 flex min-h-64 items-center justify-center rounded-sm border border-dashed border-cb dark:border-db">
+              <div className="text-center">
+                <RiLayoutFill
+                  className="mx-auto size-9 text-ctext dark:text-dtext"
+                  aria-hidden={true}
+                />
+                <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
+                  No dashboards yet
+                </p>
+                <Link
+                  to="/dashboard/new"
+                >
+                  <Button>
+                    <RiAddFill className="-ml-1 lr-1 size-5 shrink-0" aria-hidden={true} />
+                    {translate("New Dashboard")}
+                  </Button>
+                </Link>
+              </div>
+            </div>
           ) : (
-            <TableRoot>
+            <TableRoot className="min-h-64">
               <Table>
                 <TableHead>
                   <TableRow>

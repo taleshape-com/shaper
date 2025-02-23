@@ -13,7 +13,7 @@ import DashboardBarChart from "./DashboardBarChart";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState } from "react";
-import { RiLoader3Fill } from "@remixicon/react";
+import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 
 export interface DashboardProps {
   id?: string;
@@ -291,7 +291,7 @@ const DataView = ({
                   </h2>
                 ) : null}
                 <div
-                  className={cx("pb-4 mx-4", {
+                  className={cx("pb-5 mx-4", {
                     "h-[calc(100%-3rem)]": query.render.label,
                     "h-full pt-4": !query.render.label,
                   })}
@@ -311,8 +311,18 @@ const DataView = ({
       );
     })}
     {numContentSections === 0 ? (
-      <div className="text-center text-ctext2 dark:text-dtext2 leading-[calc(70vh)]">
-        {translate("Nothing to show yet")} ...
+      <div className="text-center text-ctext2 dark:text-dtext2">
+        <div className="mt-4 flex min-h-[calc(70vh)] items-center justify-center">
+          <div className="text-center">
+            <RiLayoutFill
+              className="mx-auto size-9"
+              aria-hidden={true}
+            />
+            <p className="mt-3 font-medium">
+              {translate("Nothing to show yet")}
+            </p>
+          </div>
+        </div>
       </div>
     ) : null}
   </ChartHoverProvider>)
@@ -327,8 +337,16 @@ const renderContent = (
 ) => {
   if (query.rows.length === 0) {
     return (
-      <div className="h-full py-1 px-3 flex items-center justify-center text-ctext2 dark:text-dtext2">
-        {translate("No data available")}
+      <div className="h-full py-1 px-3 mb-1 flex items-center justify-center text-cb dark:text-db rounded-sm border border-dashed border-cb dark:border-db">
+        <div className="text-center">
+          <RiBarChartFill
+            className="mx-auto size-9"
+            aria-hidden={true}
+          />
+          <p className="mt-2 font-medium">
+            {translate("Empty result")}
+          </p>
+        </div>
       </div>
     );
   }
