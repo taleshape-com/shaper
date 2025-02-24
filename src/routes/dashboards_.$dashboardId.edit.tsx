@@ -363,8 +363,6 @@ function DashboardEditor() {
                   </h1>
                 </Tooltip>
               )}
-            </div>
-            <div className="space-x-2">
               <Link
                 to="/dashboards/$dashboardId"
                 params={{ dashboardId: params.dashboardId }}
@@ -373,6 +371,8 @@ function DashboardEditor() {
               >
                 {translate("View Dashboard")}
               </Link>
+            </div>
+            <div className="space-x-2">
               <Tooltip
                 showArrow={false}
                 asChild
@@ -380,6 +380,7 @@ function DashboardEditor() {
               >
                 <Button
                   onClick={handleSave}
+                  className={cx({ "opacity-0": saving || editorQuery === dashboard.content })}
                   disabled={saving || editorQuery === dashboard.content}
                   isLoading={saving}
                   variant='secondary'
