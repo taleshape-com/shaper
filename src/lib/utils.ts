@@ -60,11 +60,12 @@ export const goToLoginPage = () => {
   });
 };
 
-const castRegex = /^CAST\(.+ AS .+\)$/
+const castRegex = /^CAST\(.+ AS .+\)$/;
 export const getNameIfSet = (name: string) => {
   if (castRegex.test(name)) {
-    return undefined
+    return undefined;
   }
-  return name
-}
+  return name;
+};
 
+export const isMac = () => navigator.userAgent.includes("Mac");

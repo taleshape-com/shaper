@@ -1,7 +1,12 @@
 import { Editor } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
 import { z } from "zod";
-import { createFileRoute, isRedirect, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import {
+  createFileRoute,
+  isRedirect,
+  useNavigate,
+} from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
@@ -11,6 +16,7 @@ import {
   focusRing,
   getSearchParamString,
   hasErrorInput,
+  isMac,
   varsParamSchema,
 } from "../lib/utils";
 import { translate } from "../lib/translate";
@@ -20,8 +26,9 @@ import { useQueryApi } from "../hooks/useQueryApi";
 import { Menu } from "../components/Menu";
 import { Result } from "../lib/dashboard";
 import { useToast } from "../hooks/useToast";
+import { Tooltip } from "../components/tremor/Tooltip";
 
-const defaultQuery = "-- Enter your SQL query here"
+const defaultQuery = "-- Enter your SQL query here";
 
 export const Route = createFileRoute("/dashboard/new")({
   validateSearch: z.object({
@@ -33,9 +40,10 @@ export const Route = createFileRoute("/dashboard/new")({
 function NewDashboard() {
   const { vars } = Route.useSearch();
   const auth = useAuth();
-  const queryApi = useQueryApi()
+  const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/dashboard/new" });
-  const [query, setQuery] = useState(defaultQuery);
+  const [editorQuery, setEditorQuery] = useState(defaultQuery);
+  const [runningQuery, setRunningQuery] = useState(defaultQuery);
   const [creating, setCreating] = useState(false);
   const [hasVariableError, setHasVariableError] = useState(false);
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
@@ -60,25 +68,20 @@ function NewDashboard() {
   useEffect(() => {
     const unsavedContent = editorStorage.getChanges("new");
     if (unsavedContent) {
-      setQuery(unsavedContent);
+      setEditorQuery(unsavedContent);
+      setRunningQuery(unsavedContent);
     }
   }, []);
 
   const previewDashboard = useCallback(async () => {
     setPreviewError(null);
     setIsPreviewLoading(true);
-    // Save to localStorage
-    if (query !== defaultQuery && query.trim() !== "") {
-      editorStorage.saveChanges("new", query);
-    } else {
-      editorStorage.clearChanges("new");
-    }
     try {
       const searchParams = getSearchParamString(vars);
       const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
         body: {
-          content: query,
+          content: runningQuery,
         },
       });
       setPreviewData(data);
@@ -90,23 +93,55 @@ function NewDashboard() {
     } finally {
       setIsPreviewLoading(false);
     }
-  }, [queryApi, vars, query, navigate]);
-
-  const debounceSetQuery = useDebouncedCallback(async (newQuery: string) => {
-    return setQuery(newQuery);
-  }, 1000);
+  }, [queryApi, vars, runningQuery, navigate]);
 
   useEffect(() => {
     previewDashboard();
   }, [previewDashboard]);
 
+  const handleRun = useCallback(() => {
+    if (editorQuery !== runningQuery) {
+      setRunningQuery(editorQuery);
+    } else {
+      previewDashboard();
+    }
+  }, [editorQuery, runningQuery, previewDashboard]);
+
+  const handleRunRef = useRef(handleRun);
+
+  useEffect(() => {
+    handleRunRef.current = handleRun;
+  }, [handleRun]);
+
+  // We handle this command in monac and outside
+  // so even if the editor is not focused the shortcut works
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+Enter or Cmd+Enter (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleRun();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleRun]);
+
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
-    debounceSetQuery(newQuery);
+    // Save to localStorage
+    if (newQuery !== defaultQuery && newQuery.trim() !== "") {
+      editorStorage.saveChanges("new", newQuery);
+    } else {
+      editorStorage.clearChanges("new");
+    }
+    setEditorQuery(newQuery);
   };
 
   const handleCreate = useCallback(async () => {
-    const name = window.prompt(`${translate("Enter a name for the dashboard")}:`);
+    const name = window.prompt(
+      `${translate("Enter a name for the dashboard")}:`,
+    );
     if (!name) return;
 
     setCreating(true);
@@ -115,7 +150,7 @@ function NewDashboard() {
         method: "POST",
         body: {
           name,
-          content: query,
+          content: editorQuery,
         },
       });
       // Clear localStorage after successful save
@@ -135,14 +170,12 @@ function NewDashboard() {
       toast({
         title: translate("Error"),
         description:
-          err instanceof Error
-            ? err.message
-            : translate("An error occurred"),
+          err instanceof Error ? err.message : translate("An error occurred"),
         variant: "error",
       });
       setCreating(false);
     }
-  }, [queryApi, query, navigate, vars, toast]);
+  }, [queryApi, editorQuery, navigate, vars, toast]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -202,28 +235,41 @@ function NewDashboard() {
                   </label>
                 </div>
               </Menu>
-              <h1
-                className="text-xl font-semibold font-display px-1 hidden md:block lg:hidden 2xl:block"
-              >
+              <h1 className="text-xl font-semibold font-display px-1 hidden md:block lg:hidden 2xl:block">
                 {translate("New Dashboard")}
               </h1>
             </div>
             <div className="space-x-2">
-              <Button
-                onClick={handleCreate}
-                disabled={creating}
-                isLoading={creating}
-                loadingText={translate("Creating")}
+              <Tooltip showArrow={false} asChild content="Create Dashboard">
+                <Button
+                  onClick={handleCreate}
+                  disabled={creating}
+                  isLoading={creating}
+                  variant="secondary"
+                >
+                  {translate("Create")}
+                </Button>
+              </Tooltip>
+              <Tooltip
+                showArrow={false}
+                asChild
+                content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
               >
-                {translate("Create")}
-              </Button>
+                <Button
+                  onClick={handleRun}
+                  disabled={isPreviewLoading}
+                  isLoading={isPreviewLoading}
+                >
+                  {translate("Run")}
+                </Button>
+              </Tooltip>
             </div>
           </div>
 
           <Editor
             height="100%"
             defaultLanguage="sql"
-            value={query}
+            value={editorQuery}
             onChange={handleQueryChange}
             theme={isDarkMode ? "vs-dark" : "light"}
             options={{
@@ -239,6 +285,14 @@ function NewDashboard() {
               quickSuggestions: true,
               tabSize: 2,
               bracketPairColorization: { enabled: true },
+            }}
+            onMount={(editor) => {
+              editor.addCommand(
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+                () => {
+                  handleRunRef.current();
+                },
+              );
             }}
           />
         </div>

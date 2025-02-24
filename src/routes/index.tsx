@@ -25,6 +25,7 @@ import { Menu } from "../components/Menu";
 import { useState } from "react";
 import { cx } from "../lib/utils";
 import { Button } from "../components/tremor/Button";
+import { Tooltip } from "../components/tremor/Tooltip";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -209,9 +210,13 @@ function Index() {
                         to="/dashboards/$dashboardId"
                         params={{ dashboardId: dashboard.id }}
                         className="block p-4"
-                        title={new Date(dashboard.createdAt).toLocaleString()}
                       >
-                        {new Date(dashboard.createdAt).toLocaleDateString()}
+                        <Tooltip
+                          showArrow={false}
+                          content={new Date(dashboard.createdAt).toLocaleString()}
+                        >
+                          {new Date(dashboard.createdAt).toLocaleDateString()}
+                        </Tooltip>
                       </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
@@ -219,9 +224,13 @@ function Index() {
                         to="/dashboards/$dashboardId"
                         params={{ dashboardId: dashboard.id }}
                         className="block p-4"
-                        title={new Date(dashboard.updatedAt).toLocaleString()}
                       >
-                        {new Date(dashboard.updatedAt).toLocaleDateString()}
+                        <Tooltip
+                          showArrow={false}
+                          content={new Date(dashboard.updatedAt).toLocaleString()}
+                        >
+                          {new Date(dashboard.updatedAt).toLocaleDateString()}
+                        </Tooltip>
                       </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">

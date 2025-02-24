@@ -1,8 +1,9 @@
 import { Editor } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
 
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
@@ -21,6 +22,7 @@ import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { Menu } from "../components/Menu";
 import { useToast } from "../hooks/useToast";
+import { Tooltip } from "../components/tremor/Tooltip";
 
 export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
   validateSearch: z.object({
@@ -48,7 +50,8 @@ function DashboardEditor() {
   const auth = useAuth();
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
-  const [query, setQuery] = useState(dashboard.content);
+  const [editorQuery, setEditorQuery] = useState(dashboard.content);
+  const [runningQuery, setRunningQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(dashboard.name);
@@ -81,7 +84,8 @@ function DashboardEditor() {
           "There are unsaved previous edits. Do you want to restore them?",
         )
       ) {
-        setQuery(unsavedContent);
+        setEditorQuery(unsavedContent);
+        setRunningQuery(unsavedContent);
       } else {
         editorStorage.clearChanges(params.dashboardId);
       }
@@ -91,14 +95,13 @@ function DashboardEditor() {
   const previewDashboard = useCallback(async () => {
     setPreviewError(null);
     setIsPreviewLoading(true);
-    editorStorage.saveChanges(params.dashboardId, query);
     try {
       const searchParams = getSearchParamString(vars);
       const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
         method: "POST",
         body: {
           dashboardId: params.dashboardId,
-          content: query,
+          content: runningQuery,
         },
       });
       setPreviewData(data);
@@ -110,16 +113,43 @@ function DashboardEditor() {
     } finally {
       setIsPreviewLoading(false);
     }
-  }, [queryApi, params, vars, query, navigate]);
+  }, [queryApi, params, vars, runningQuery, navigate]);
 
-  const debounceSetQuery = useDebouncedCallback(async (newQuery: string) => {
-    return setQuery(newQuery);
-  }, 1000);
+  const handleRun = useCallback(() => {
+    if (editorQuery !== runningQuery) {
+      setRunningQuery(editorQuery);
+    } else {
+      previewDashboard();
+    }
+  }, [editorQuery, runningQuery, previewDashboard]);
+
+  const handleRunRef = useRef(handleRun);
+
+  useEffect(() => {
+    handleRunRef.current = handleRun;
+  }, [handleRun]);
+
+  // We handle this command in monac and outside
+  // so even if the editor is not focused the shortcut works
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+Enter or Cmd+Enter (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleRun();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleRun]);
+
 
   // Update textarea onChange handler
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
-    debounceSetQuery(newQuery);
+    // Save to localStorage
+    editorStorage.saveChanges(params.dashboardId, newQuery);
+    setEditorQuery(newQuery);
   };
 
   const handleSave = useCallback(async () => {
@@ -129,10 +159,10 @@ function DashboardEditor() {
         `/api/dashboards/${params.dashboardId}/query`,
         {
           method: "POST",
-          body: { content: query },
+          body: { content: editorQuery },
         },
       );
-      dashboard.content = query;
+      dashboard.content = editorQuery;
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.dashboardId);
     } catch (err) {
@@ -150,7 +180,7 @@ function DashboardEditor() {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.dashboardId, query, dashboard, navigate, toast]);
+  }, [queryApi, params.dashboardId, editorQuery, dashboard, navigate, toast]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -320,13 +350,18 @@ function DashboardEditor() {
                   />
                 </form>
               ) : (
-                <h1
-                  className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden md:block lg:hidden 2xl:block"
-                  onClick={() => setEditingName(true)}
-                  title={translate("Click to edit dashboard name")}
+                <Tooltip
+                  showArrow={false}
+                  asChild
+                  content={translate("Click to edit dashboard name")}
                 >
-                  {name}
-                </h1>
+                  <h1
+                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden md:block lg:hidden 2xl:block"
+                    onClick={() => setEditingName(true)}
+                  >
+                    {name}
+                  </h1>
+                </Tooltip>
               )}
             </div>
             <div className="space-x-2">
@@ -338,21 +373,40 @@ function DashboardEditor() {
               >
                 {translate("View Dashboard")}
               </Link>
-              <Button
-                onClick={handleSave}
-                disabled={saving || query === dashboard.content}
-                isLoading={saving}
-                loadingText={translate("Saving")}
+              <Tooltip
+                showArrow={false}
+                asChild
+                content="Save Dashboard"
               >
-                {translate("Save")}
-              </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || editorQuery === dashboard.content}
+                  isLoading={saving}
+                  variant='secondary'
+                >
+                  {translate("Save")}
+                </Button>
+              </Tooltip>
+              <Tooltip
+                showArrow={false}
+                asChild
+                content="Press Ctrl + Enter to run"
+              >
+                <Button
+                  onClick={handleRun}
+                  disabled={isPreviewLoading}
+                  isLoading={isPreviewLoading}
+                >
+                  {translate("Run")}
+                </Button>
+              </Tooltip>
             </div>
           </div>
 
           <Editor
             height="100%"
             defaultLanguage="sql"
-            value={query}
+            value={editorQuery}
             onChange={handleQueryChange}
             theme={isDarkMode ? "vs-dark" : "light"}
             options={{
@@ -368,6 +422,14 @@ function DashboardEditor() {
               quickSuggestions: true,
               tabSize: 2,
               bracketPairColorization: { enabled: true },
+            }}
+            onMount={(editor) => {
+              editor.addCommand(
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+                () => {
+                  handleRunRef.current();
+                },
+              );
             }}
           />
         </div>

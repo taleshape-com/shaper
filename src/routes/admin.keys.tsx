@@ -30,6 +30,7 @@ import {
 import { useCallback, useEffect } from "react";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { RiAddFill, RiKeyFill, RiTableFill } from "@remixicon/react";
+import { Tooltip } from "../components/tremor/Tooltip";
 
 interface APIKey {
   id: string;
@@ -178,9 +179,12 @@ function Admin() {
                 <TableRow key={key.id}>
                   <TableCell className="font-medium text-ctext dark:text-dtext">{key.name}</TableCell>
                   <TableCell className="font-medium text-ctext dark:text-dtext hidden md:table-cell">
-                    <div title={new Date(key.createdAt).toLocaleString()}>
+                    <Tooltip
+                      showArrow={false}
+                      content={new Date(key.createdAt).toLocaleString()}
+                    >
                       {new Date(key.createdAt).toLocaleDateString()}
-                    </div>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>
                     <Button

@@ -34,6 +34,7 @@ import {
 } from "../components/tremor/Dialog";
 import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
+import { Tooltip } from "../components/tremor/Tooltip";
 
 interface IUser {
   id: string;
@@ -493,13 +494,14 @@ function UsersManagement() {
                             {invite.email}
                           </TableCell>
                           <TableCell className="text-ctext2 dark:text-dtext2">
-                            <div
-                              title={new Date(
+                            <Tooltip
+                              showArrow={false}
+                              content={new Date(
                                 invite.createdAt,
                               ).toLocaleString()}
                             >
                               {new Date(invite.createdAt).toLocaleDateString()}
-                            </div>
+                            </Tooltip>
                           </TableCell>
                           <TableCell className="text-ctext2 dark:text-dtext2">
                             {(() => {
@@ -631,9 +633,12 @@ function UsersManagement() {
                       {user.email}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2">
-                      <div title={new Date(user.createdAt).toLocaleString()}>
+                      <Tooltip
+                        showArrow={false}
+                        content={new Date(user.createdAt).toLocaleString()}
+                      >
                         {new Date(user.createdAt).toLocaleDateString()}
-                      </div>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <button
