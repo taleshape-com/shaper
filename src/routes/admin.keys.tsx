@@ -15,6 +15,7 @@ import {
   createFileRoute,
   isRedirect,
   useNavigate,
+  useRouter,
 } from "@tanstack/react-router";
 import { useToast } from "../hooks/useToast";
 import { translate } from "../lib/translate";
@@ -43,43 +44,25 @@ interface NewAPIKeyResponse {
   key: string;
 }
 
+type APIKeysResponse = {
+  keys: APIKey[];
+};
+
 export const Route = createFileRoute("/admin/keys")({
+  loader: async ({ context: { queryApi } }) => {
+    return queryApi("/api/keys") as Promise<APIKeysResponse>;
+  },
   component: Admin,
 });
 
 function Admin() {
-  const [keys, setKeys] = useState<APIKey[]>([]);
-  const [loading, setLoading] = useState(true);
+  const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/admin" });
+  const router = useRouter();
   const { toast } = useToast();
-
-  const fetchKeys = useCallback(async () => {
-    try {
-      const data = await queryApi("/api/keys");
-      setKeys(data.keys);
-    } catch (error) {
-      if (isRedirect(error)) {
-        return navigate(error);
-      }
-      toast({
-        title: translate("Error"),
-        description:
-          error instanceof Error
-            ? error.message
-            : translate("An error occurred"),
-        variant: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [queryApi, toast, navigate]);
-
-  useEffect(() => {
-    fetchKeys();
-  }, [fetchKeys]);
 
   const handleDelete = async (key: APIKey) => {
     if (
@@ -101,7 +84,7 @@ function Admin() {
         title: translate("Success"),
         description: translate("API key deleted successfully"),
       });
-      fetchKeys();
+      router.invalidate();
     } catch (error) {
       if (isRedirect(error)) {
         return navigate(error);
@@ -125,7 +108,7 @@ function Admin() {
       });
       console.log("hellp");
       setNewKey(data);
-      fetchKeys();
+      router.invalidate();
     } catch (error) {
       console.log("er", error);
       if (isRedirect(error)) {
@@ -150,16 +133,22 @@ function Admin() {
           {translate("API Keys")}
         </h2>
         <Button onClick={() => setShowNewKeyDialog(true)}>
-          <RiAddFill className="-ml-1 mr-0.5 size-4 shrink-0" aria-hidden={true} />
+          <RiAddFill
+            className="-ml-1 mr-0.5 size-4 shrink-0"
+            aria-hidden={true}
+          />
           {translate("New")}
         </Button>
       </div>
 
-      {loading ? (
+      {!data ? (
         <p>{translate("Loading API keys...")}</p>
-      ) : keys.length === 0 ? (
+      ) : data.keys.length === 0 ? (
         <div className="mt-4 flex flex-col h-44 items-center justify-center rounded-sm p-4 bg-cbg text-center">
-          <RiTableFill className="text-ctext2 dark:text-dtext2 mx-auto h-7 w-7" aria-hidden={true} />
+          <RiTableFill
+            className="text-ctext2 dark:text-dtext2 mx-auto h-7 w-7"
+            aria-hidden={true}
+          />
           <p className="mt-2 text-ctext2 dark:text-dtext2 font-medium">
             {translate("No API keys found")}
           </p>
@@ -169,15 +158,21 @@ function Admin() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="text-md text-ctext dark:text-dtext">{translate("Name")}</TableHeaderCell>
-                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">{translate("Created")}</TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext">
+                  {translate("Name")}
+                </TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
+                  {translate("Created")}
+                </TableHeaderCell>
                 <TableHeaderCell>{translate("Actions")}</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {keys.map((key) => (
+              {data.keys.map((key) => (
                 <TableRow key={key.id}>
-                  <TableCell className="font-medium text-ctext dark:text-dtext">{key.name}</TableCell>
+                  <TableCell className="font-medium text-ctext dark:text-dtext">
+                    {key.name}
+                  </TableCell>
                   <TableCell className="font-medium text-ctext dark:text-dtext hidden md:table-cell">
                     <Tooltip
                       showArrow={false}
@@ -286,7 +281,9 @@ function Admin() {
                     {translate("Cancel")}
                   </Button>
                 </DialogClose>
-                <Button type="submit" className="mb-4 sm:mb-0">{translate("Create Key")}</Button>
+                <Button type="submit" className="mb-4 sm:mb-0">
+                  {translate("Create Key")}
+                </Button>
               </DialogFooter>
             </form>
           )}
