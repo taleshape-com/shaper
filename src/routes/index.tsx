@@ -196,7 +196,7 @@ function Index() {
                     key={dashboard.id}
                     className="group hover:bg-cbg dark:hover:bg-dbga transition-colors duration-200"
                   >
-                    <TableCell className="font-medium text-ctext dark:text-dtext p-0">
+                    <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
                       <Link
                         to="/dashboards/$dashboardId"
                         params={{ dashboardId: dashboard.id }}
