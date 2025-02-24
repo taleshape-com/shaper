@@ -127,12 +127,12 @@ function Index() {
   }
 
   return (
-    <div className={cx("flex-1 px-4 pb-4 overflow-auto", { "ml-72": isMenuOpen })}>
+    <div className={cx("flex-1 px-4 pb-4 overflow-auto", { "ml-64": isMenuOpen })}>
       <Helmet>
         <title>{translate("Home")}</title>
         <meta name="description" content="Show a list of all dashboards" />
       </Helmet>
-      <div className={cx("mb-4 flex", { "-ml-2": !isMenuOpen })}>
+      <div className={cx("mb-4 flex", { "-ml-2 mt-3": !isMenuOpen })}>
         <Menu inline isHome onOpenChange={setIsMenuOpen} />
       </div>
       <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow px-6 pt-4 pb-6">

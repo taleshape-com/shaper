@@ -180,8 +180,8 @@ function NewDashboard() {
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-full lg:w-1/2 overflow-hidden">
-          <div className="flex justify-between items-center py-4 pl-2 pr-4 border-b">
-            <div className="flex items-center space-x-4">
+          <div className="flex justify-between items-center p-2 lg:pr-0 border-b">
+            <div className="flex items-center space-x-2">
               <Menu isNewPage>
                 <div className="mt-6 px-4 w-full">
                   <label>
@@ -190,7 +190,7 @@ function NewDashboard() {
                     </span>
                     <textarea
                       className={cx(
-                        "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+                        "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-32",
                         focusRing,
                         hasVariableError && hasErrorInput,
                       )}
@@ -198,11 +198,15 @@ function NewDashboard() {
                         onVariablesEdit(event.target.value);
                       }}
                       defaultValue={JSON.stringify(auth.variables, null, 2)}
-                      rows={4}
                     ></textarea>
                   </label>
                 </div>
               </Menu>
+              <h1
+                className="text-xl font-semibold font-display px-1 hidden md:block lg:hidden 2xl:block"
+              >
+                {translate("New Dashboard")}
+              </h1>
             </div>
             <div className="space-x-2">
               <Button

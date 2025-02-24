@@ -23,7 +23,7 @@ function Admin() {
   }
 
   return (
-    <div className={cx("flex-1 p-4 overflow-auto", { "ml-72": isInlineMenuOpen })}>
+    <div className={cx("flex-1 p-4 overflow-auto", { "ml-64": isInlineMenuOpen })}>
       <Helmet>
         <title>{translate("Admin")}</title>
         <meta name="description" content="Admin Settings" />

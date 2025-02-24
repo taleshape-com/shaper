@@ -120,7 +120,7 @@ export function Menu({
           "fixed top-0 left-0 w-full sm:w-72 h-dvh ease-in-out delay-75 duration-300 z-40 bg-cbg dark:bg-dbg",
           {
             hidden: actuallyInline && !actuallyOpen,
-            "border-r border-cbga dark:border-dbga":
+            "border-r border-cbga dark:border-dbga sm:w-64":
               actuallyInline && actuallyOpen,
             "bg-cbga dark:bg-dbga shadow-xl !ml-0": !actuallyInline,
             "-translate-x-[calc(100vw+50px)]": !actuallyInline && !actuallyOpen,
@@ -137,7 +137,7 @@ export function Menu({
                 }
               }}
             >
-              <RiMenuLine className="pl-1 py-1 ml-2 mt-5 mb-4 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+              <RiMenuLine className="pl-1 py-1 ml-2 mt-3 mb-3 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
             </button>
             <Link
               to="/"
@@ -164,16 +164,16 @@ export function Menu({
             {children}
           </div>
 
-          <div className="mt-auto pb-6 space-y-1">
+          <div className="mt-auto pb-4 space-y-3">
             <Link to="/admin" disabled={isAdmin} className={cx(
-              "block px-5 py-2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext",
+              "block px-4 pt-2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext text-sm",
               { "text-ctext2": !isAdmin }
             )}>
-              <RiAdminLine className="size-4 inline mr-2 mb-1" />
+              <RiAdminLine className="size-4 inline mr-1 -mt-1" />
               {translate("Admin")}
             </Link>
             {loginRequired && (
-              <div className="flex items-center gap-2 pt-2 px-5">
+              <div className="flex items-center gap-2 pt-4 px-4 border-t border-cb dark:border-db">
                 <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}
                 </span>
@@ -183,7 +183,7 @@ export function Menu({
                   }}
                   variant="light"
                 >
-                  <RiLogoutBoxRLine className="size-4 inline mr-2 mb-1" />
+                  <RiLogoutBoxRLine className="size-4 inline mr-0.5 -ml-0.5 -mt-0.5" />
                   {translate("Logout")}
                 </Button>
               </div>

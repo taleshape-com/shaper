@@ -255,15 +255,13 @@ function DashboardEditor() {
   return (
     <div className="h-screen flex flex-col">
       <Helmet>
-        <title>
-          {translate("Edit Dashboard")} - {dashboard.name}
-        </title>
+        <title>{translate("Edit Dashboard")} - {dashboard.name}</title>
       </Helmet>
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-full lg:w-1/2 overflow-hidden">
-          <div className="flex justify-between items-center p-2 border-b">
-            <div className="flex items-center space-x-4">
+          <div className="flex justify-between items-center p-2 lg:pr-0 border-b">
+            <div className="flex items-center space-x-2">
               <Menu>
                 <div className="mt-6 px-4">
                   <label className="block">
@@ -313,8 +311,8 @@ function DashboardEditor() {
                       }
                     }}
                     className={cx(
-                      "text-2xl font-semibold font-display px-2 py-1 border rounded",
-                      "bg-cbga dark:bg-dbga border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
+                      "text-xl font-semibold font-display px-1 py-0 border rounded",
+                      "bg-cbgl dark:bg-dbgl border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
                       focusRing,
                     )}
                     autoFocus
@@ -323,7 +321,7 @@ function DashboardEditor() {
                 </form>
               ) : (
                 <h1
-                  className="text-2xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-1 rounded hidden md:block lg:hidden 2xl:block"
+                  className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden md:block lg:hidden 2xl:block"
                   onClick={() => setEditingName(true)}
                   title={translate("Click to edit dashboard name")}
                 >
@@ -336,7 +334,7 @@ function DashboardEditor() {
                 to="/dashboards/$dashboardId"
                 params={{ dashboardId: params.dashboardId }}
                 search={() => ({ vars })}
-                className="px-4 py-2 text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+                className="px-2 py-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
               >
                 {translate("View Dashboard")}
               </Link>
