@@ -92,6 +92,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 		}
 
+		if isSideEffect(colTypes, query.Rows) {
+			continue
+		}
+
 		if isLabel(colTypes, query.Rows) {
 			l, ok := query.Rows[0][0].(string)
 			if !ok {
@@ -499,6 +503,24 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 		}
 	}
 	return nil, 0
+}
+
+// This is a heuristic to determine if a query is something like `ATTACH` or `CREATE TABLE`.
+// They don't return anything useful and for now we want to allow users to put them directly into dashboards.
+func isSideEffect(cols []*sql.ColumnType, rows Rows) bool {
+	if len(rows) > 0 || len(cols) != 1 {
+		return false
+	}
+	c := cols[0]
+	n := c.Name()
+	t := c.DatabaseTypeName()
+	if n == "Success" && t == "BOOLEAN" {
+		return true
+	}
+	if n == "Count" && t == "BIGINT" {
+		return true
+	}
+	return false
 }
 
 func isLabel(columns []*sql.ColumnType, rows Rows) bool {
