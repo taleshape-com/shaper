@@ -28,7 +28,6 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
-import { useCallback, useEffect } from "react";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { RiAddFill, RiKeyFill, RiTableFill } from "@remixicon/react";
 import { Tooltip } from "../components/tremor/Tooltip";
