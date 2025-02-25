@@ -28,22 +28,23 @@ var frontendFS embed.FS
 const APP_NAME = "shaper"
 
 type Config struct {
-	SessionExp        time.Duration
-	InviteExp         time.Duration
-	Address           string
-	DBFile            string
-	Schema            string
-	ExecutableModTime time.Time
-	CustomCSS         string
-	Favicon           string
-	JWTExp            time.Duration
-	NatsHost          string
-	NatsPort          int
-	NatsToken         string
-	NatsJSDir         string
-	NatsJSKey         string
-	NatsMaxStore      int64 // in bytes
-	NatsDontListen    bool
+	SessionExp          time.Duration
+	InviteExp           time.Duration
+	Address             string
+	DBFile              string
+	Schema              string
+	ExecutableModTime   time.Time
+	CustomCSS           string
+	Favicon             string
+	JWTExp              time.Duration
+	NatsHost            string
+	NatsPort            int
+	NatsToken           string
+	NatsJSDir           string
+	NatsJSKey           string
+	NatsMaxStore        int64 // in bytes
+	NatsDontListen      bool
+	IngestSubjectPrefix string
 }
 
 func main() {
@@ -69,6 +70,7 @@ func loadConfig() Config {
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes (0 for unlimited)")
 	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
+	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
 	flags.StringLong("config-file", "", "path to config file (optional)")
 
 	err := ff.Parse(flags, os.Args[1:],
@@ -99,22 +101,23 @@ func loadConfig() Config {
 	}
 
 	config := Config{
-		Address:           *addr,
-		DBFile:            *dbFile,
-		Schema:            *schema,
-		ExecutableModTime: executableModTime,
-		CustomCSS:         *customCSS,
-		Favicon:           *favicon,
-		JWTExp:            *jwtExp,
-		SessionExp:        *sessionExp,
-		InviteExp:         *inviteExp,
-		NatsHost:          *natsHost,
-		NatsPort:          *natsPort,
-		NatsToken:         *natsToken,
-		NatsJSDir:         *natsJSDir,
-		NatsJSKey:         *natsJSKey,
-		NatsMaxStore:      maxStore,
-		NatsDontListen:    *natsDontListen,
+		Address:             *addr,
+		DBFile:              *dbFile,
+		Schema:              *schema,
+		ExecutableModTime:   executableModTime,
+		CustomCSS:           *customCSS,
+		Favicon:             *favicon,
+		JWTExp:              *jwtExp,
+		SessionExp:          *sessionExp,
+		InviteExp:           *inviteExp,
+		NatsHost:            *natsHost,
+		NatsPort:            *natsPort,
+		NatsToken:           *natsToken,
+		NatsJSDir:           *natsJSDir,
+		NatsJSKey:           *natsJSKey,
+		NatsMaxStore:        maxStore,
+		NatsDontListen:      *natsDontListen,
+		IngestSubjectPrefix: *ingestSubjectPrefix,
 	}
 	return config
 }
@@ -153,6 +156,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.SessionExp,
 		cfg.InviteExp,
 		persistNATS,
+		cfg.IngestSubjectPrefix,
 	)
 	if err != nil {
 		panic(err)
@@ -174,12 +178,12 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	err = app.Init(c.Conn)
+	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, persistNATS)
 	if err != nil {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(dbConnector, db, logger.WithGroup("ingest"), c.Conn, persistNATS)
+	err = app.Init(c.Conn)
 	if err != nil {
 		panic(err)
 	}

@@ -19,7 +19,6 @@ import (
 
 // TODO: Move consts to config
 const (
-	SUBJECT_PREFIX = "shaper.ingest."
 	BATCH_SIZE     = 1000
 	BATCH_TIMEOUT  = 2000 * time.Millisecond
 	SLEEP_ON_ERROR = 60 * time.Second
@@ -27,6 +26,7 @@ const (
 
 type Ingest struct {
 	ingestCancelFunc context.CancelFunc
+	subjectPrefix    string
 }
 
 type ColInfo struct {
@@ -40,23 +40,26 @@ type TableCache struct {
 	lastUpdate time.Time
 }
 
-func Start(dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn, persist bool) (Ingest, error) {
+func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn, persist bool) (Ingest, error) {
 	js, err := jetstream.New(nc)
 	if err != nil {
 		return Ingest{}, err
 	}
 
-	consumer, err := setupStreamAndConsumer(js, persist)
+	consumer, err := setupStreamAndConsumer(js, subjectPrefix, persist)
 	if err != nil {
 		return Ingest{}, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go processMessages(ctx, js, consumer, logger, dbConnector, db, persist)
-	return Ingest{ingestCancelFunc: cancel}, nil
+	go processMessages(ctx, js, consumer, logger, dbConnector, db, persist, subjectPrefix)
+	return Ingest{
+		ingestCancelFunc: cancel,
+		subjectPrefix:    subjectPrefix,
+	}, nil
 }
 
-func setupStreamAndConsumer(js jetstream.JetStream, persist bool) (jetstream.Consumer, error) {
+func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, persist bool) (jetstream.Consumer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -67,7 +70,7 @@ func setupStreamAndConsumer(js jetstream.JetStream, persist bool) (jetstream.Con
 
 	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:     "shaper-ingest",
-		Subjects: []string{SUBJECT_PREFIX + ">"},
+		Subjects: []string{subjectPrefix + ">"},
 		Storage:  storageType,
 	})
 	if err != nil {
@@ -84,20 +87,20 @@ func setupStreamAndConsumer(js jetstream.JetStream, persist bool) (jetstream.Con
 	return consumer, nil
 }
 
-func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, persist bool) {
+func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, persist bool, subjectPrefix string) {
 	tableCache := make(map[string]TableCache)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			err := handleMessageBatches(ctx, consumer, logger, dbConnector, db, tableCache)
+			err := handleMessageBatches(ctx, consumer, logger, dbConnector, db, tableCache, subjectPrefix)
 			if err != nil {
 				logger.Error("Message handling failed, attempting to recreate consumer", slog.Any("error", err), slog.Duration("sleep", SLEEP_ON_ERROR))
 				time.Sleep(SLEEP_ON_ERROR)
 
 				logger.Info("Attempting to recreate ingest consumer")
-				newConsumer, err := setupStreamAndConsumer(js, persist)
+				newConsumer, err := setupStreamAndConsumer(js, subjectPrefix, persist)
 				if err != nil {
 					logger.Error("Failed to recreate ingest consumer", slog.Any("error", err))
 					os.Exit(1)
@@ -109,7 +112,7 @@ func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetst
 	}
 }
 
-func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, tableCache map[string]TableCache) error {
+func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, tableCache map[string]TableCache, subjectPrefix string) error {
 	batch := make([]jetstream.Msg, 0, BATCH_SIZE)
 	msgChan := make(chan jetstream.Msg, BATCH_SIZE)
 	errChan := make(chan error, 1)
@@ -167,7 +170,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 				// Channel closed, process remaining messages and return
 				if len(batch) > 0 {
 					processStartTime := time.Now()
-					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
+					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
 						return fmt.Errorf("failed to process final batch: %w", err)
 					}
 					logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -187,7 +190,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process if batch is full
 			if len(batch) >= BATCH_SIZE {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
 					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -203,7 +206,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process non-empty batch
 			if len(batch) > 0 {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
 					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -214,7 +217,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 		case <-ctx.Done():
 			// Process remaining messages before shutting down
 			if len(batch) > 0 {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
 					logger.Error("Failed to process final batch", slog.Any("error", err))
 				}
 			}
@@ -238,11 +241,11 @@ func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColI
 	return columns, nil
 }
 
-func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB) error {
+func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string) error {
 	// Group messages by table
 	tableMessages := make(map[string][]jetstream.Msg)
 	for _, msg := range batch {
-		tableName := strings.TrimPrefix(msg.Subject(), SUBJECT_PREFIX)
+		tableName := strings.TrimPrefix(msg.Subject(), subjectPrefix)
 		tableMessages[tableName] = append(tableMessages[tableName], msg)
 	}
 

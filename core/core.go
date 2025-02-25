@@ -23,20 +23,21 @@ const (
 )
 
 type App struct {
-	Name            string
-	db              *sqlx.DB
-	Logger          *slog.Logger
-	LoginRequired   bool
-	Schema          string
-	JWTSecret       []byte
-	JWTExp          time.Duration
-	SessionExp      time.Duration
-	InviteExp       time.Duration
-	StateConsumeCtx jetstream.ConsumeContext
-	JetStream       jetstream.JetStream
-	ConfigKV        jetstream.KeyValue
-	NATSConn        *nats.Conn
-	persist         bool
+	Name                string
+	db                  *sqlx.DB
+	Logger              *slog.Logger
+	LoginRequired       bool
+	Schema              string
+	JWTSecret           []byte
+	JWTExp              time.Duration
+	SessionExp          time.Duration
+	InviteExp           time.Duration
+	StateConsumeCtx     jetstream.ConsumeContext
+	JetStream           jetstream.JetStream
+	ConfigKV            jetstream.KeyValue
+	NATSConn            *nats.Conn
+	persist             bool
+	IngestSubjectPrefix string
 }
 
 func New(
@@ -48,6 +49,7 @@ func New(
 	sessionExp time.Duration,
 	inviteExp time.Duration,
 	persist bool,
+	ingestSubjectPrefix string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -62,15 +64,16 @@ func New(
 	}
 
 	app := &App{
-		Name:          name,
-		db:            db,
-		Logger:        logger,
-		LoginRequired: loginRequired,
-		Schema:        schema,
-		JWTExp:        jwtExp,
-		SessionExp:    sessionExp,
-		InviteExp:     inviteExp,
-		persist:       persist,
+		Name:                name,
+		db:                  db,
+		Logger:              logger,
+		LoginRequired:       loginRequired,
+		Schema:              schema,
+		JWTExp:              jwtExp,
+		SessionExp:          sessionExp,
+		InviteExp:           inviteExp,
+		persist:             persist,
+		IngestSubjectPrefix: ingestSubjectPrefix,
 	}
 	return app, nil
 }
