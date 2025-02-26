@@ -19,10 +19,9 @@ ENV GOARCH=amd64
 COPY . .
 COPY --from=frontend /app/dist dist
 RUN go vet ./...
-RUN go build -a -ldflags "-w -extldflags '-static'" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
+RUN go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
 
-FROM alpine:3
-RUN apk add --no-cache ca-certificates
+FROM debian:12-slim
 # When running in a container, listen on all interfaces (including IPv6) by default
 ENV SHAPER_ADDR=:3000
 COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
