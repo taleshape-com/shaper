@@ -77,7 +77,6 @@ function Index() {
           : "desc";
 
     navigate({
-      replace: true,
       search: (prev) => ({
         ...prev,
         sort: field === "name" ? undefined : field,

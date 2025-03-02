@@ -136,7 +136,6 @@ function UsersManagement() {
           : "asc";
 
     navigate({
-      replace: true,
       search: (prev) => ({
         ...prev,
         sort: field === "created" ? undefined : field,

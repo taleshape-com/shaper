@@ -25,17 +25,27 @@ const server = http.createServer(async (req, res) => {
     })
     req.on('end', async () => {
       try {
+
         const r = await fetch(`${BASE_URL}/api/auth/token`, {
+
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           body: JSON.stringify({
+
             token: API_KEY,
+
             dashboardId: DASHBOARD_ID,
+
             variables: JSON.parse(VARIABLES),
+
           }),
+
         })
+
         if (r.status !== 200) {
           console.error('failed fetching token:', await r.text())
           res.writeHead(500, { 'Content-Type': 'application/json' })

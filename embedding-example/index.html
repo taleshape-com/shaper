@@ -4,17 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
+
   <body>
     <h1>Embedding Demo</h1>
     <p>Dashboard will be embedded here:</p>
+
     <div id="dashboard-container"></div>
+
     <script src="$BASE_URL/embed/shaper.js"></script>
+
     <script>
       const dashboardId = '$DASHBOARD_ID'
+
       shaper.embed({
+
         container: document.getElementById('dashboard-container'),
+
         dashboardId,
+
         storeVarsInQueryParam: 'analytics',
+
         async getJwt({ baseUrl }) {
           const res = await fetch('/api/jwt', {
             method: 'POST',
@@ -22,7 +31,9 @@
           })
           return res.json()
         },
+
       })
+
     </script>
   </body>
 </html>

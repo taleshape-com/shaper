@@ -61,7 +61,6 @@ function DashboardViewComponent() {
   const handleVarsChanged = useCallback(
     (newVars: VarsParamSchema) => {
       navigate({
-        replace: true,
         search: (old) => ({
           ...old,
           vars: newVars,

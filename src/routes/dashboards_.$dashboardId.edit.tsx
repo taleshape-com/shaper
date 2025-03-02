@@ -185,7 +185,6 @@ function DashboardEditor() {
   const handleVarsChanged = useCallback(
     (newVars: any) => {
       navigate({
-        replace: true,
         search: (old) => ({
           ...old,
           vars: newVars,

@@ -180,7 +180,6 @@ function NewDashboard() {
   const handleVarsChanged = useCallback(
     (newVars: any) => {
       navigate({
-        replace: true,
         search: (old: any) => ({
           ...old,
           vars: newVars,

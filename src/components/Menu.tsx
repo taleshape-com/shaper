@@ -120,7 +120,7 @@ export function Menu({
           "fixed top-0 left-0 w-full sm:w-72 h-dvh ease-in-out delay-75 duration-300 z-40 bg-cbg dark:bg-dbg",
           {
             hidden: actuallyInline && !actuallyOpen,
-            "border-r border-cbga dark:border-dbga sm:w-64":
+            "border-r border-cbga dark:border-dbg sm:w-64":
               actuallyInline && actuallyOpen,
             "bg-cbga dark:bg-dbga shadow-xl !ml-0": !actuallyInline,
             "-translate-x-[calc(100vw+50px)]": !actuallyInline && !actuallyOpen,
@@ -173,7 +173,7 @@ export function Menu({
               {translate("Admin")}
             </Link>
             {loginRequired && (
-              <div className="flex items-center gap-2 pt-4 px-4 border-t border-cb dark:border-db">
+              <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-dbga">
                 <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                   {userName}
                 </span>
