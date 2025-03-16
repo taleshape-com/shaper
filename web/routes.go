@@ -66,7 +66,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		},
 	}
 
-	e.GET("/status", func(c echo.Context) error {
+	e.GET("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
