@@ -23,7 +23,7 @@ function DashboardValue({ headers, data }: ValueProps) {
 
   return (
     <div className="items-center h-full flex flex-col justify-center text-center overflow-auto">
-      <div className={cx("font-bold", {
+      <div className={cx("font-semibold", {
         "font-mono": isJSONType(valueHeader.type),
         "text-xs": formattedValue.length >= 47,
         "text-sm": formattedValue.length < 47 && formattedValue.length >= 42,
@@ -38,7 +38,7 @@ function DashboardValue({ headers, data }: ValueProps) {
       })}>
         {formattedValue}
       </div>
-      <div className={cx("mt-3 font-semibold font-display", {
+      <div className={cx("mt-3 font-medium font-display", {
         "text-xs": valueHeader.name.length >= 40,
         "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 35,
         "text-lg": valueHeader.name.length < 30 && valueHeader.name.length >= 20,

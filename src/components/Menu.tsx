@@ -122,7 +122,7 @@ export function Menu({
             hidden: actuallyInline && !actuallyOpen,
             "border-r border-cbga dark:border-dbg sm:w-64":
               actuallyInline && actuallyOpen,
-            "bg-cbga dark:bg-dbga shadow-xl !ml-0": !actuallyInline,
+            "bg-cbgl dark:bg-dbgl shadow-xl !ml-0": !actuallyInline,
             "-translate-x-[calc(100vw+50px)]": !actuallyInline && !actuallyOpen,
           },
         )}

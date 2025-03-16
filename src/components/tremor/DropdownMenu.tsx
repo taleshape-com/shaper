@@ -116,7 +116,7 @@ const DropdownMenuContent = React.forwardRef<
           // heights
           "max-h-[var(--radix-popper-available-height)]",
           // background color
-          "bg-cbgl dark:bg-dbgl",
+          "bg-cbg dark:bg-dbg",
           // text color
           "text-ctext dark:text-dtext",
           // border color

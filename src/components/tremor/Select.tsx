@@ -31,7 +31,7 @@ const selectTriggerStyles = [
     // placeholder
     "data-[placeholder]:text-ctext2 data-[placeholder]:dark:text-dtext2",
     // background color
-    "bg-cbgl dark:bg-dbgl",
+    "bg-cbg dark:bg-dbg",
     // hover
     "hover:bg-cbg hover:dark:bg-dbg",
     // disabled
@@ -140,7 +140,7 @@ const SelectContent = React.forwardRef<
           // heights
           "max-h-[--radix-select-content-available-height]",
           // background color
-          "bg-cbgl dark:bg-dbgl",
+          "bg-cbg dark:bg-dbg",
           // text color
           "text-ctext dark:text-dtext",
           // border color

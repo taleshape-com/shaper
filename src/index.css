@@ -3,52 +3,52 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'Poppins';
-  src: url('./assets/fonts/poppins-regular-webfont.woff2') format('woff2');
+  font-family: 'DMSans';
+  src: url('./assets/fonts/DMSans-Regular.woff2') format('woff2');
   font-style: normal;
   font-weight: 400;
 }
 @font-face {
-  font-family: 'Poppins';
-  src: url('./assets/fonts/poppins-medium-webfont.woff2') format('woff2');
+  font-family: 'DMSans';
+  src: url('./assets/fonts/DMSans-Medium.woff2') format('woff2');
   font-style: normal;
   font-weight: 500;
 }
 @font-face {
-  font-family: 'Poppins';
-  src: url('./assets/fonts/poppins-semibold-webfont.woff2') format('woff2');
+  font-family: 'DMSans';
+  src: url('./assets/fonts/DMSans-SemiBold.woff2') format('woff2');
   font-style: normal;
   font-weight: 600;
 }
 @font-face {
-  font-family: 'Poppins';
-  src: url('./assets/fonts/poppins-bold-webfont.woff2') format('woff2');
+  font-family: 'DMSans';
+  src: url('./assets/fonts/DMSans-Bold.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
 }
 
 
 @font-face {
-  font-family: 'Arimo';
-  src: url('./assets/fonts/arimo.woff2') format('woff2');
+  font-family: 'SourceSansPro';
+  src: url('./assets/fonts/SourceSansPro-Regular.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 500;
 }
 @font-face {
-  font-family: 'Arimo';
-  src: url('./assets/fonts/arimobold.woff2') format('woff2');
+  font-family: 'SourceSansPro';
+  src: url('./assets/fonts/SourceSansPro-Bold.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
 }
 
 
 :root {
-  --shaper-font: Poppins;
-  --shaper-display-font: Arimo;
+  --shaper-font: DMSans;
+  --shaper-display-font: SourceSansPro;
   --shaper-reference-line-color: rgb(244 114 182 / 0.5);
 
-  --shaper-primary-color: #7272db;
-  --shaper-primary-color-alternate: #5252ba;
+  --shaper-primary-color: #3544ff;
+  --shaper-primary-color-alternate: #2732d1;
   --shaper-color-two: #7ae4e9;
   --shaper-color-three: #ec74f6;
   --shaper-color-four: #fef08a;
@@ -56,15 +56,15 @@
   --shaper-text-color: #181919;
   --shaper-text-color-secondary: #757a80;
   --shaper-text-color-invert: #f8fafc;
-  --shaper-background-color: #f9fafd;
-  --shaper-background-color-light: #fefefe;
-  --shaper-background-color-alternate: #f0f1f4;
+  --shaper-background-color: #fff;
+  --shaper-background-color-light: #f0f4f9;
+  --shaper-background-color-alternate: #e5e8f2;
   --shaper-background-color-invert: #131a25;
-  --shaper-border-color: #e3e8ef;
+  --shaper-border-color: #dadaef;
   --shaper-error-color: #ff4d4f;
 
-  --shaper-dark-mode-primary-color: #7272db;
-  --shaper-dark-mode-primary-color-alternate: #5252ba;
+  --shaper-dark-mode-primary-color: #3544ff;
+  --shaper-dark-mode-primary-color-alternate: #2732d1;
   --shaper-dark-mode-text-color: rgb(239, 240, 244);
   --shaper-dark-mode-text-color-secondary: rgb(215, 216, 221);
   --shaper-dark-mode-text-color-invert: #080911;

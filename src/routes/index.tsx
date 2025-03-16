@@ -168,18 +168,18 @@ function Index() {
                 <TableRow>
                   <TableHeaderCell
                     onClick={() => handleSort("name" as const)}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                   >
                     {translate("Name")} <SortIcon field="name" />
                   </TableHeaderCell>
                   <TableHeaderCell
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                     onClick={() => handleSort("created" as const)}
                   >
                     {translate("Created")} <SortIcon field="created" />
                   </TableHeaderCell>
                   <TableHeaderCell
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
                     onClick={() => handleSort("updated" as const)}
                   >
                     {translate("Updated")} <SortIcon field="updated" />
@@ -193,7 +193,7 @@ function Index() {
                 {data.dashboards.map((dashboard) => (
                   <TableRow
                     key={dashboard.id}
-                    className="group hover:bg-cbg dark:hover:bg-dbga transition-colors duration-200"
+                    className="group hover:bg-cbga dark:hover:bg-dbga transition-colors duration-200"
                   >
                     <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
                       <Link
