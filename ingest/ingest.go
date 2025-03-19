@@ -19,9 +19,9 @@ import (
 
 // TODO: Move consts to config
 const (
-	BATCH_SIZE     = 1000
+	BATCH_SIZE     = 10000
 	BATCH_TIMEOUT  = 2000 * time.Millisecond
-	SLEEP_ON_ERROR = 60 * time.Second
+	SLEEP_ON_ERROR = 10 * time.Second
 )
 
 type Ingest struct {
@@ -78,7 +78,8 @@ func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, persis
 	}
 
 	consumer, err := stream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
-		Durable: "shaper-ingest",
+		Durable:       "shaper-ingest",
+		MaxAckPending: BATCH_SIZE,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create/update consumer: %w", err)
