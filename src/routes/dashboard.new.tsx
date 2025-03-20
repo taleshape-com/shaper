@@ -210,7 +210,7 @@ function NewDashboard() {
         <title>New Dashboard</title>
       </Helmet>
 
-      <div className="h-[50dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 border-b">
+      <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 border-b">
         <div className="flex justify-between items-center p-2 border-b">
           <div className="flex items-center space-x-2">
             <Menu isNewPage>
