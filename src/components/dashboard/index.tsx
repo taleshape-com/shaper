@@ -311,18 +311,14 @@ const DataView = ({
       );
     })}
     {numContentSections === 0 ? (
-      <div className="text-center text-ctext2 dark:text-dtext2">
-        <div className="mt-4 flex min-h-[calc(75vh)] items-center justify-center">
-          <div className="text-center">
-            <RiLayoutFill
-              className="mx-auto size-9"
-              aria-hidden={true}
-            />
-            <p className="mt-3 font-medium">
-              {translate("Nothing to show yet")}
-            </p>
-          </div>
-        </div>
+      <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
+        <RiLayoutFill
+          className="mx-auto size-9"
+          aria-hidden={true}
+        />
+        <p className="mt-3 font-medium">
+          {translate("Nothing to show yet")}
+        </p>
       </div>
     ) : null}
   </ChartHoverProvider>)

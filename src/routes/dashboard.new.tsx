@@ -205,66 +205,66 @@ function NewDashboard() {
   }, 500);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-dvh flex flex-col">
       <Helmet>
         <title>New Dashboard</title>
       </Helmet>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-full lg:w-1/2 overflow-hidden">
-          <div className="flex justify-between items-center p-2 lg:pr-0 border-b">
-            <div className="flex items-center space-x-2">
-              <Menu isNewPage>
-                <div className="mt-6 px-4 w-full">
-                  <label>
-                    <span className="text-lg font-medium font-display ml-1 mb-2 block">
-                      {translate("Variables")}
-                    </span>
-                    <textarea
-                      className={cx(
-                        "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-32",
-                        focusRing,
-                        hasVariableError && hasErrorInput,
-                      )}
-                      onChange={(event) => {
-                        onVariablesEdit(event.target.value);
-                      }}
-                      defaultValue={JSON.stringify(auth.variables, null, 2)}
-                    ></textarea>
-                  </label>
-                </div>
-              </Menu>
-              <h1 className="text-xl font-semibold font-display px-1 hidden md:block lg:hidden 2xl:block">
-                {translate("New Dashboard")}
-              </h1>
-            </div>
-            <div className="space-x-2">
-              <Tooltip showArrow={false} asChild content="Create Dashboard">
-                <Button
-                  onClick={handleCreate}
-                  disabled={creating}
-                  isLoading={creating}
-                  variant="secondary"
-                >
-                  {translate("Create")}
-                </Button>
-              </Tooltip>
-              <Tooltip
-                showArrow={false}
-                asChild
-                content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
-              >
-                <Button
-                  onClick={handleRun}
-                  disabled={isPreviewLoading}
-                  isLoading={isPreviewLoading}
-                >
-                  {translate("Run")}
-                </Button>
-              </Tooltip>
-            </div>
+      <div className="h-[50dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 border-b">
+        <div className="flex justify-between items-center p-2 border-b">
+          <div className="flex items-center space-x-2">
+            <Menu isNewPage>
+              <div className="mt-6 px-4 w-full">
+                <label>
+                  <span className="text-lg font-medium font-display ml-1 mb-2 block">
+                    {translate("Variables")}
+                  </span>
+                  <textarea
+                    className={cx(
+                      "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-32",
+                      focusRing,
+                      hasVariableError && hasErrorInput,
+                    )}
+                    onChange={(event) => {
+                      onVariablesEdit(event.target.value);
+                    }}
+                    defaultValue={JSON.stringify(auth.variables, null, 2)}
+                  ></textarea>
+                </label>
+              </div>
+            </Menu>
+            <h1 className="text-xl font-semibold font-display px-1 hidden md:block lg:hidden 2xl:block">
+              {translate("New Dashboard")}
+            </h1>
           </div>
+          <div className="space-x-2">
+            <Tooltip showArrow={false} asChild content="Create Dashboard">
+              <Button
+                onClick={handleCreate}
+                disabled={creating}
+                isLoading={creating}
+                variant="secondary"
+              >
+                {translate("Create")}
+              </Button>
+            </Tooltip>
+            <Tooltip
+              showArrow={false}
+              asChild
+              content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
+            >
+              <Button
+                onClick={handleRun}
+                disabled={isPreviewLoading}
+                isLoading={isPreviewLoading}
+              >
+                {translate("Run")}
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
 
+        <div className="flex-grow">
           <Editor
             height="100%"
             defaultLanguage="sql"
@@ -295,24 +295,24 @@ function NewDashboard() {
             }}
           />
         </div>
+      </div>
 
-        <div className="hidden lg:block w-1/2 overflow-auto relative">
-          {previewError && (
-            <div className="fixed w-1/2 h-full p-4 z-50 backdrop-blur-sm flex justify-center items-center">
-              <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
-                {previewError}
-              </div>
+      <div className="flex-grow overflow-scroll relative pt-1">
+        {previewError && (
+          <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
+            <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
+              {previewError}
             </div>
-          )}
-          <Dashboard
-            vars={vars}
-            hash={auth.hash}
-            getJwt={auth.getJwt}
-            onVarsChanged={handleVarsChanged}
-            data={previewData} // Pass preview data directly to Dashboard
-            loading={isPreviewLoading}
-          />
-        </div>
+          </div>
+        )}
+        <Dashboard
+          vars={vars}
+          hash={auth.hash}
+          getJwt={auth.getJwt}
+          onVarsChanged={handleVarsChanged}
+          data={previewData} // Pass preview data directly to Dashboard
+          loading={isPreviewLoading}
+        />
       </div>
     </div>
   );

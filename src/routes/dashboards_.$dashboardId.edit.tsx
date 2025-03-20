@@ -282,127 +282,127 @@ function DashboardEditor() {
   }, [previewDashboard]);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-dvh flex flex-col">
       <Helmet>
         <title>{translate("Edit Dashboard")} - {dashboard.name}</title>
       </Helmet>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-full lg:w-1/2 overflow-hidden">
-          <div className="flex justify-between items-center p-2 lg:pr-0 border-b">
-            <div className="flex items-center space-x-2">
-              <Menu>
-                <div className="mt-6 px-4">
-                  <label className="block">
-                    <p className="text-lg font-medium font-display ml-1 mb-2">
-                      {translate("Variables")}
-                    </p>
-                    <textarea
-                      className={cx(
-                        "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
-                        focusRing,
-                        hasVariableError && hasErrorInput,
-                      )}
-                      onChange={(event) => {
-                        onVariablesEdit(event.target.value);
-                      }}
-                      defaultValue={JSON.stringify(auth.variables, null, 2)}
-                      rows={4}
-                    ></textarea>
-                  </label>
-                  <Button
-                    onClick={handleDelete}
-                    variant="destructive"
-                    className="mt-4"
-                  >
-                    {translate("Delete Dashboard")}
-                  </Button>
-                </div>
-              </Menu>
-              {editingName ? (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const input = e.currentTarget.querySelector("input");
-                    if (input) {
-                      input.blur();
+      <div className="h-[50dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 border-b">
+        <div className="flex justify-between items-center p-2 border-b">
+          <div className="flex items-center space-x-2">
+            <Menu>
+              <div className="mt-6 px-4">
+                <label className="block">
+                  <p className="text-lg font-medium font-display ml-1 mb-2">
+                    {translate("Variables")}
+                  </p>
+                  <textarea
+                    className={cx(
+                      "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
+                      focusRing,
+                      hasVariableError && hasErrorInput,
+                    )}
+                    onChange={(event) => {
+                      onVariablesEdit(event.target.value);
+                    }}
+                    defaultValue={JSON.stringify(auth.variables, null, 2)}
+                    rows={4}
+                  ></textarea>
+                </label>
+                <Button
+                  onClick={handleDelete}
+                  variant="destructive"
+                  className="mt-4"
+                >
+                  {translate("Delete Dashboard")}
+                </Button>
+              </div>
+            </Menu>
+            {editingName ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const input = e.currentTarget.querySelector("input");
+                  if (input) {
+                    input.blur();
+                  }
+                }}
+                className="inline-block"
+              >
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={() => {
+                    if (!savingName) {
+                      handleSaveName(name);
                     }
                   }}
-                  className="inline-block"
-                >
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onBlur={() => {
-                      if (!savingName) {
-                        handleSaveName(name);
-                      }
-                    }}
-                    className={cx(
-                      "text-xl font-semibold font-display px-1 py-0 border rounded",
-                      "bg-cbgl dark:bg-dbgl border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
-                      focusRing,
-                    )}
-                    autoFocus
-                    disabled={savingName}
-                  />
-                </form>
-              ) : (
-                <Tooltip
-                  showArrow={false}
-                  asChild
-                  content={translate("Click to edit dashboard name")}
-                >
-                  <h1
-                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden md:block lg:hidden 2xl:block"
-                    onClick={() => setEditingName(true)}
-                  >
-                    {name}
-                  </h1>
-                </Tooltip>
-              )}
-              <Link
-                to="/dashboards/$dashboardId"
-                params={{ dashboardId: params.dashboardId }}
-                search={() => ({ vars })}
-                className="px-2 py-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
-              >
-                {translate("View Dashboard")}
-              </Link>
-            </div>
-            <div className="space-x-2">
+                  className={cx(
+                    "text-xl font-semibold font-display px-1 py-0 border rounded",
+                    "bg-cbgl dark:bg-dbgl border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
+                    focusRing,
+                  )}
+                  autoFocus
+                  disabled={savingName}
+                />
+              </form>
+            ) : (
               <Tooltip
                 showArrow={false}
                 asChild
-                content="Save Dashboard"
+                content={translate("Click to edit dashboard name")}
               >
-                <Button
-                  onClick={handleSave}
-                  className={cx({ "opacity-0": saving || editorQuery === dashboard.content })}
-                  disabled={saving || editorQuery === dashboard.content}
-                  isLoading={saving}
-                  variant='secondary'
+                <h1
+                  className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden sm:block"
+                  onClick={() => setEditingName(true)}
                 >
-                  {translate("Save")}
-                </Button>
+                  {name}
+                </h1>
               </Tooltip>
-              <Tooltip
-                showArrow={false}
-                asChild
-                content="Press Ctrl + Enter to run"
-              >
-                <Button
-                  onClick={handleRun}
-                  disabled={isPreviewLoading}
-                  isLoading={isPreviewLoading}
-                >
-                  {translate("Run")}
-                </Button>
-              </Tooltip>
-            </div>
+            )}
+            <Link
+              to="/dashboards/$dashboardId"
+              params={{ dashboardId: params.dashboardId }}
+              search={() => ({ vars })}
+              className="px-2 py-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+            >
+              {translate("View Dashboard")}
+            </Link>
           </div>
+          <div className="space-x-2">
+            <Tooltip
+              showArrow={false}
+              asChild
+              content="Save Dashboard"
+            >
+              <Button
+                onClick={handleSave}
+                className={cx({ "opacity-0": saving || editorQuery === dashboard.content })}
+                disabled={saving || editorQuery === dashboard.content}
+                isLoading={saving}
+                variant='secondary'
+              >
+                {translate("Save")}
+              </Button>
+            </Tooltip>
+            <Tooltip
+              showArrow={false}
+              asChild
+              content="Press Ctrl + Enter to run"
+            >
+              <Button
+                onClick={handleRun}
+                disabled={isPreviewLoading}
+                isLoading={isPreviewLoading}
+              >
+                {translate("Run")}
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
 
+        <div className="flex-grow">
           <Editor
             height="100%"
             defaultLanguage="sql"
@@ -433,24 +433,24 @@ function DashboardEditor() {
             }}
           />
         </div>
+      </div>
 
-        <div className="hidden lg:block w-1/2 overflow-auto relative">
-          {previewError && (
-            <div className="fixed w-1/2 h-full p-4 z-50 backdrop-blur-sm flex justify-center items-center">
-              <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
-                {previewError}
-              </div>
+      <div className="flex-grow overflow-scroll relative pt-1">
+        {previewError && (
+          <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
+            <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
+              {previewError}
             </div>
-          )}
-          <Dashboard
-            vars={vars}
-            hash={auth.hash}
-            getJwt={auth.getJwt}
-            onVarsChanged={handleVarsChanged}
-            data={previewData} // Pass preview data directly to Dashboard
-            loading={isPreviewLoading}
-          />
-        </div>
+          </div>
+        )}
+        <Dashboard
+          vars={vars}
+          hash={auth.hash}
+          getJwt={auth.getJwt}
+          onVarsChanged={handleVarsChanged}
+          data={previewData} // Pass preview data directly to Dashboard
+          loading={isPreviewLoading}
+        />
       </div>
     </div>
   );
