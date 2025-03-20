@@ -10,6 +10,8 @@ import {
 import { Label } from "../tremor/Label";
 import { cx } from "../../lib/utils";
 
+const EMPTY = '<<EMPTY>>';
+
 type DropdownProps = {
   label?: string;
   headers: Column[];
@@ -45,6 +47,9 @@ function DashboardDropdown({
             headers[valueIndex].type,
           ).toString()}
           onValueChange={(value) => {
+            if (value === EMPTY) {
+              value = "";
+            }
             onChange({ ...vars, [varName]: value });
           }}
           value={selectedValue}
@@ -62,7 +67,7 @@ function DashboardDropdown({
                 value={formatValue(
                   row[valueIndex],
                   headers[valueIndex].type,
-                ).toString()}
+                ).toString() || EMPTY}
               >
                 {row[labelIndex !== -1 ? labelIndex : valueIndex]}
               </SelectItem>
