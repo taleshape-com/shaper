@@ -24,9 +24,5 @@ RUN go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper m
 FROM debian:12-slim
 # When running in a container, listen on all interfaces (including IPv6) by default
 ENV SHAPER_ADDR=:3000
-RUN groupadd --gid 1000 shaper && useradd --uid 1000 --gid 1000 -m shaper
 COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
-RUN chown shaper:shaper /usr/local/bin/shaper
-WORKDIR /home/shaper
-USER shaper
 ENTRYPOINT ["/usr/local/bin/shaper"]
