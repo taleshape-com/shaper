@@ -21,7 +21,7 @@ function Admin() {
   }
 
   return (
-    <MenuProvider>
+    <MenuProvider isAdmin>
       <Helmet>
         <title>{translate("Admin")}</title>
         <meta name="description" content="Admin Settings" />

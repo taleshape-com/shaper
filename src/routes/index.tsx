@@ -125,7 +125,7 @@ function Index() {
   }
 
   return (
-    <MenuProvider>
+    <MenuProvider isHome>
       <Helmet>
         <title>{translate("Home")}</title>
         <meta name="description" content="Show a list of all dashboards" />

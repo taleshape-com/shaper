@@ -206,7 +206,7 @@ function NewDashboard() {
   }, 500);
 
   return (
-    <MenuProvider>
+    <MenuProvider isNewPage>
       <Helmet>
         <title>New Dashboard</title>
       </Helmet>

@@ -8,21 +8,30 @@ import {
   RiLogoutBoxRLine,
 } from "@remixicon/react";
 import { useAuth, logout, parseJwt } from "../lib/auth";
-import { isRedirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { translate } from "../lib/translate";
 import { Button } from "../components/tremor/Button";
 import { MenuContext } from "../contexts/MenuContext";
 
 const isLg = () => window.innerWidth >= 1024;
 
-export function MenuProvider({ children }: { children: React.ReactNode }) {
+export function MenuProvider({
+  children,
+  isHome = false,
+  isAdmin = false,
+  isNewPage = false,
+}: {
+  children: React.ReactNode;
+  isHome?: boolean;
+  isAdmin?: boolean;
+  isNewPage?: boolean;
+}) {
   const { getJwt, loginRequired } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(isLg())
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
   const [userName, setUserName] = useState<string>("");
-  const { location } = useRouterState()
 
   const fetchUserName = useCallback(async () => {
     try {
@@ -53,10 +62,6 @@ export function MenuProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
-
-  const isHome = location.pathname === '/';
-  const isNewPage = location.pathname === '/dashboard/new';
-  const isAdmin = location.pathname.startsWith('/admin');
 
   const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
 
