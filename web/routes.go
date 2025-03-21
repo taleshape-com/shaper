@@ -78,7 +78,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
-	e.POST("/api/events/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
