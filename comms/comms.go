@@ -148,7 +148,7 @@ func New(config Config) (Comms, error) {
 		return Comms{}, err
 	}
 	ns.SetLoggerV2(newNATSLogger(config.Logger), false, false, false)
-	go ns.Start()
+	ns.Start()
 	if !ns.ReadyForConnections(CONNECT_TIMEOUT) {
 		return Comms{}, err
 	}
