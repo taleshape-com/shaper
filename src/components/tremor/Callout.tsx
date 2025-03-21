@@ -13,7 +13,7 @@ const calloutVariants = tv({
         // text color
         "text-ctext dark:text-dtext2",
         // background color
-        "bg-cbg dark:bg-db",
+        "bg-cbga dark:bg-dbga",
       ],
       success: [
         // text color

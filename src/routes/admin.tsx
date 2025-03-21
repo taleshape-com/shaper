@@ -2,9 +2,8 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { Helmet } from "react-helmet";
 import { translate } from "../lib/translate";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
-import { Menu } from "../components/Menu";
-import { cx } from "../lib/utils";
-import { useState } from "react";
+import { MenuProvider } from "../components/MenuProvider";
+import { MenuTrigger } from "../components/MenuTrigger";
 import { RiAdminLine } from "@remixicon/react";
 
 export const Route = createFileRoute("/admin")({
@@ -12,7 +11,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 function Admin() {
-  const [isInlineMenuOpen, setIsInlineMenuOpen] = useState(false);
   const location = useLocation()
 
   let selectedTab = "users";
@@ -23,40 +21,43 @@ function Admin() {
   }
 
   return (
-    <div className={cx("flex-1 p-4 overflow-auto", { "ml-64": isInlineMenuOpen })}>
+    <MenuProvider>
       <Helmet>
         <title>{translate("Admin")}</title>
         <meta name="description" content="Admin Settings" />
       </Helmet>
-      <div className={cx("mb-4 flex", { "-ml-2": !isInlineMenuOpen })}>
-        <Menu inline isAdmin onOpenChange={setIsInlineMenuOpen} />
-        <h1 className="text-2xl font-semibold font-display flex-grow">
-          <RiAdminLine className="size-5 inline mr-1 -mt-1" />
-          {translate("Admin")}
-        </h1>
-      </div>
 
-      <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow">
-        <div className="px-6 pt-6">
-          <Tabs value={selectedTab} className="w-full">
-            <TabsList>
-              <TabsTrigger value="users" asChild>
-                <Link to="/admin">{translate("Users")}</Link>
-              </TabsTrigger>
-              <TabsTrigger value="keys" asChild>
-                <Link to="/admin/keys">{translate("API Keys")}</Link>
-              </TabsTrigger>
-              <TabsTrigger value="security" asChild>
-                <Link to="/admin/security">{translate("Security")}</Link>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <div className="px-4 pb-4 min-h-dvh flex flex-col">
+        <div className="flex">
+          <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
+          <h1 className="text-2xl font-semibold font-display flex-grow pb-2 pt-2.5">
+            <RiAdminLine className="size-5 inline mr-1 -mt-1" />
+            {translate("Admin")}
+          </h1>
         </div>
 
-        <div className="p-6 min-h-[calc(82.95vh)]">
-          <Outlet />
+        <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow flex-grow">
+          <div className="px-6 pt-6">
+            <Tabs value={selectedTab} className="w-full">
+              <TabsList>
+                <TabsTrigger value="users" asChild>
+                  <Link to="/admin">{translate("Users")}</Link>
+                </TabsTrigger>
+                <TabsTrigger value="keys" asChild>
+                  <Link to="/admin/keys">{translate("API Keys")}</Link>
+                </TabsTrigger>
+                <TabsTrigger value="security" asChild>
+                  <Link to="/admin/security">{translate("Security")}</Link>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <div className="p-6">
+            <Outlet />
+          </div>
         </div>
       </div>
-    </div>
+    </MenuProvider>
   );
 }

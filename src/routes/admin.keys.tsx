@@ -143,7 +143,7 @@ function Admin() {
       {!data ? (
         <p>{translate("Loading API keys...")}</p>
       ) : data.keys.length === 0 ? (
-        <div className="mt-4 flex flex-col h-44 items-center justify-center rounded-sm p-4 bg-cbg dark:bg-dbga text-center">
+        <div className="mt-4 flex flex-col h-44 items-center justify-center rounded-sm p-4 text-center">
           <RiTableFill
             className="text-ctext2 dark:text-dtext2 mx-auto h-7 w-7"
             aria-hidden={true}

@@ -17,7 +17,8 @@ import { useAuth } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
 import { Result } from "../lib/dashboard";
-import { Menu } from "../components/Menu";
+import { MenuProvider } from "../components/MenuProvider";
+import { MenuTrigger } from "../components/MenuTrigger";
 
 export const Route = createFileRoute("/dashboards/$dashboardId")({
   validateSearch: z.object({
@@ -82,7 +83,7 @@ function DashboardViewComponent() {
   }, 500);
 
   const MenuButton = (
-    <Menu>
+    <MenuTrigger className="-ml-1">
       <Link
         to="/dashboards/$dashboardId/edit"
         params={{ dashboardId: params.dashboardId }}
@@ -109,7 +110,7 @@ function DashboardViewComponent() {
           ></textarea>
         </label>
       </div>
-    </Menu>
+    </MenuTrigger>
   );
 
   const onDataChange = useCallback((data: Result) => {
@@ -117,11 +118,12 @@ function DashboardViewComponent() {
   }, [])
 
   return (
-    <>
+    <MenuProvider>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={title} />
       </Helmet>
+
       <Dashboard
         id={params.dashboardId}
         vars={vars}
@@ -132,6 +134,6 @@ function DashboardViewComponent() {
         onError={handleRedirectError}
         onDataChange={onDataChange}
       />
-    </>
+    </MenuProvider>
   );
 }

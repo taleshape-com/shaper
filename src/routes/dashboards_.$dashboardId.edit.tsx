@@ -20,7 +20,8 @@ import { editorStorage } from "../lib/editorStorage";
 import { IDashboard, Result } from "../lib/dashboard";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { Menu } from "../components/Menu";
+import { MenuProvider } from "../components/MenuProvider";
+import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
 
@@ -282,15 +283,15 @@ function DashboardEditor() {
   }, [previewDashboard]);
 
   return (
-    <div className="h-dvh flex flex-col">
+    <MenuProvider>
       <Helmet>
         <title>{translate("Edit Dashboard")} - {dashboard.name}</title>
       </Helmet>
 
-      <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 border-b">
-        <div className="flex justify-between items-center p-2 border-b">
-          <div className="flex items-center space-x-2">
-            <Menu>
+      <div className="h-dvh flex flex-col">
+        <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 border-b">
+          <div className="flex items-center p-2 border-b border-cb dark:border-db">
+            <MenuTrigger className="pr-2">
               <div className="mt-6 px-4">
                 <label className="block">
                   <p className="text-lg font-medium font-display ml-1 mb-2">
@@ -317,7 +318,8 @@ function DashboardEditor() {
                   {translate("Delete Dashboard")}
                 </Button>
               </div>
-            </Menu>
+            </MenuTrigger>
+
             {editingName ? (
               <form
                 onSubmit={(e) => {
@@ -327,7 +329,7 @@ function DashboardEditor() {
                     input.blur();
                   }
                 }}
-                className="inline-block"
+                className="inline-block flex-grow"
               >
                 <input
                   type="text"
@@ -354,104 +356,106 @@ function DashboardEditor() {
                 content={translate("Click to edit dashboard name")}
               >
                 <h1
-                  className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden sm:block"
+                  className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden sm:block flex-grow"
                   onClick={() => setEditingName(true)}
                 >
                   {name}
                 </h1>
               </Tooltip>
             )}
+
             <Link
               to="/dashboards/$dashboardId"
               params={{ dashboardId: params.dashboardId }}
               search={() => ({ vars })}
-              className="px-2 py-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+              className="text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200 flex-grow sm:grow-0"
             >
               {translate("View Dashboard")}
             </Link>
+
+            <div className="space-x-2">
+              <Tooltip
+                showArrow={false}
+                asChild
+                content="Save Dashboard"
+              >
+                <Button
+                  onClick={handleSave}
+                  className={cx("ml-2", { "hidden": editorQuery === dashboard.content })}
+                  disabled={saving || editorQuery === dashboard.content}
+                  isLoading={saving}
+                  variant='secondary'
+                >
+                  {translate("Save")}
+                </Button>
+              </Tooltip>
+              <Tooltip
+                showArrow={false}
+                asChild
+                content="Press Ctrl + Enter to run"
+              >
+                <Button
+                  onClick={handleRun}
+                  disabled={isPreviewLoading}
+                  isLoading={isPreviewLoading}
+                >
+                  {translate("Run")}
+                </Button>
+              </Tooltip>
+            </div>
           </div>
-          <div className="space-x-2">
-            <Tooltip
-              showArrow={false}
-              asChild
-              content="Save Dashboard"
-            >
-              <Button
-                onClick={handleSave}
-                className={cx({ "opacity-0": saving || editorQuery === dashboard.content })}
-                disabled={saving || editorQuery === dashboard.content}
-                isLoading={saving}
-                variant='secondary'
-              >
-                {translate("Save")}
-              </Button>
-            </Tooltip>
-            <Tooltip
-              showArrow={false}
-              asChild
-              content="Press Ctrl + Enter to run"
-            >
-              <Button
-                onClick={handleRun}
-                disabled={isPreviewLoading}
-                isLoading={isPreviewLoading}
-              >
-                {translate("Run")}
-              </Button>
-            </Tooltip>
+
+          <div className="flex-grow">
+            <Editor
+              height="100%"
+              defaultLanguage="sql"
+              value={editorQuery}
+              onChange={handleQueryChange}
+              theme={isDarkMode ? "vs-dark" : "light"}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: "on",
+                scrollBeyondLastLine: true,
+                wordWrap: "on",
+                automaticLayout: true,
+                formatOnPaste: true,
+                formatOnType: true,
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: true,
+                tabSize: 2,
+                bracketPairColorization: { enabled: true },
+              }}
+              onMount={(editor) => {
+                editor.addCommand(
+                  monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+                  () => {
+                    handleRunRef.current();
+                  },
+                );
+              }}
+            />
           </div>
         </div>
 
-        <div className="flex-grow">
-          <Editor
-            height="100%"
-            defaultLanguage="sql"
-            value={editorQuery}
-            onChange={handleQueryChange}
-            theme={isDarkMode ? "vs-dark" : "light"}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: "on",
-              scrollBeyondLastLine: true,
-              wordWrap: "on",
-              automaticLayout: true,
-              formatOnPaste: true,
-              formatOnType: true,
-              suggestOnTriggerCharacters: true,
-              quickSuggestions: true,
-              tabSize: 2,
-              bracketPairColorization: { enabled: true },
-            }}
-            onMount={(editor) => {
-              editor.addCommand(
-                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                () => {
-                  handleRunRef.current();
-                },
-              );
-            }}
+        <div className="flex-grow overflow-scroll relative pt-1">
+          {previewError && (
+            <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
+              <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
+                {previewError}
+              </div>
+            </div>
+          )}
+          <Dashboard
+            vars={vars}
+            hash={auth.hash}
+            getJwt={auth.getJwt}
+            onVarsChanged={handleVarsChanged}
+            data={previewData} // Pass preview data directly to Dashboard
+            loading={isPreviewLoading}
           />
         </div>
       </div>
-
-      <div className="flex-grow overflow-scroll relative pt-1">
-        {previewError && (
-          <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
-            <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
-              {previewError}
-            </div>
-          </div>
-        )}
-        <Dashboard
-          vars={vars}
-          hash={auth.hash}
-          getJwt={auth.getJwt}
-          onVarsChanged={handleVarsChanged}
-          data={previewData} // Pass preview data directly to Dashboard
-          loading={isPreviewLoading}
-        />
-      </div>
-    </div>
+    </MenuProvider>
   );
 }

@@ -21,9 +21,8 @@ import {
 import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { Menu } from "../components/Menu";
-import { useState } from "react";
-import { cx } from "../lib/utils";
+import { MenuProvider } from "../components/MenuProvider";
+import { MenuTrigger } from "../components/MenuTrigger";
 import { Button } from "../components/tremor/Button";
 import { Tooltip } from "../components/tremor/Tooltip";
 
@@ -64,7 +63,6 @@ function Index() {
   const navigate = useNavigate({ from: "/" });
   const queryApi = useQueryApi();
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -127,24 +125,26 @@ function Index() {
   }
 
   return (
-    <div className={cx("flex-1 px-4 pb-4 overflow-auto", { "ml-64": isMenuOpen })}>
+    <MenuProvider>
       <Helmet>
         <title>{translate("Home")}</title>
         <meta name="description" content="Show a list of all dashboards" />
       </Helmet>
-      <div className={cx("mb-4 flex", { "-ml-2 mt-3": !isMenuOpen })}>
-        <Menu inline isHome onOpenChange={setIsMenuOpen} />
-      </div>
-      <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow px-6 pt-4 pb-6">
-        <h1 className="text-2xl font-semibold font-display mb-2">
-          <RiLayoutFill
-            className="mx-auto -mt-1 mr-1 size-6 text-ctext dark:text-dtext inline"
-            aria-hidden={true}
-          />
-          {translate("Dashboards")}
-        </h1>
+
+      <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow px-4 pt-4 pb-6 m-4 min-h-[calc(100dvh-2rem)] flex flex-col">
+        <div className="flex">
+          <MenuTrigger className="-ml-1.5 -mt-2 pr-1.5" />
+          <h1 className="text-2xl font-semibold font-display mb-2">
+            <RiLayoutFill
+              className="mx-auto -mt-1 mr-1 size-6 text-ctext dark:text-dtext inline"
+              aria-hidden={true}
+            />
+            {translate("Dashboards")}
+          </h1>
+        </div>
+
         {data.dashboards.length === 0 ? (
-          <div className="my-4 flex flex-col items-center justify-center min-h-[calc(100vh-8.65rem)]">
+          <div className="my-4 flex flex-col items-center justify-center flex-grow">
             <RiLayoutFill
               className="mx-auto size-9 text-ctext dark:text-dtext"
               aria-hidden={true}
@@ -162,7 +162,7 @@ function Index() {
             </Link>
           </div>
         ) : (
-          <TableRoot className=" min-h-[calc(100vh-7.15rem)]">
+          <TableRoot className="">
             <Table>
               <TableHead>
                 <TableRow>
@@ -258,6 +258,6 @@ function Index() {
           </TableRoot>
         )}
       </div>
-    </div>
+    </MenuProvider>
   );
 }

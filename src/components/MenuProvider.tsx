@@ -1,0 +1,142 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { cx } from "../lib/utils";
+import {
+  RiMenuLine,
+  RiHomeLine,
+  RiFileAddLine,
+  RiAdminLine,
+  RiLogoutBoxRLine,
+} from "@remixicon/react";
+import { useAuth, logout, parseJwt } from "../lib/auth";
+import { isRedirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { translate } from "../lib/translate";
+import { Button } from "../components/tremor/Button";
+import { MenuContext } from "../contexts/MenuContext";
+
+const isLg = () => window.innerWidth >= 1024;
+
+export function MenuProvider({ children }: { children: React.ReactNode }) {
+  const { getJwt, loginRequired } = useAuth();
+  const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
+  const [defaultOpen, setDefaultOpen] = useState(isLg())
+  const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
+  const [userName, setUserName] = useState<string>("");
+  const { location } = useRouterState()
+
+  const fetchUserName = useCallback(async () => {
+    try {
+      const jwt = await getJwt();
+      const decoded = parseJwt(jwt);
+      setUserName(decoded.userName || "");
+    } catch (error) {
+      if (isRedirect(error)) {
+        navigate(error);
+        return;
+      }
+      console.error("Failed to fetch username:", error);
+    }
+  }, [getJwt, navigate]);
+
+  useEffect(() => {
+    fetchUserName();
+  }, [fetchUserName]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const state = isLg();
+      setDefaultOpen(state);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const isHome = location.pathname === '/';
+  const isNewPage = location.pathname === '/dashboard/new';
+  const isAdmin = location.pathname.startsWith('/admin');
+
+  const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
+
+  return (
+    <MenuContext.Provider value={{
+      isMenuOpen: actuallyOpen,
+      setIsMenuOpen,
+      setExtraContent,
+    }}>
+      <div
+        className={cx(
+          "fixed top-0 bottom-0 left-0 z-50 overflow-y-scroll bg-cbg dark:bg-dbg w-full sm:w-56 sm:border-r sm:border-cbga sm:dark:border-dbg flex flex-col",
+          {
+            "hidden": !actuallyOpen,
+          },
+        )}
+      >
+        <div>
+          <button
+            onClick={() => {
+              setIsMenuOpen(false);
+            }}
+          >
+            <RiMenuLine className="pl-1 py-1 ml-[0.4rem] mt-[0.675rem] mb-3 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
+          </button>
+          <Link
+            to="/"
+            disabled={isHome}
+            className={cx("block px-4 py-4", {
+              "hover:underline": !isHome,
+              "bg-cprimary dark:bg-dprimary text-cbga dark:text-cbga": isHome,
+            })}
+          >
+            <RiHomeLine className="size-4 inline mr-2 mb-1" />
+            {translate("Home")}
+          </Link>
+          <Link
+            to="/dashboard/new"
+            disabled={isNewPage}
+            className={cx("block px-4 py-4", {
+              "hover:underline": !isNewPage,
+              "bg-cprimary dark:bg-dprimary text-cbga dark:text-cbga": isNewPage,
+            })}
+          >
+            <RiFileAddLine className="size-4 inline mr-2 mb-1" />
+            {translate("New")}
+          </Link>
+          {extraContent}
+        </div>
+
+        <div className="mt-auto pt-4 pb-4 space-y-3">
+          <Link to="/admin" disabled={isAdmin} className={cx(
+            "block px-4 pt-2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext text-sm",
+            { "text-ctext2": !isAdmin }
+          )}>
+            <RiAdminLine className="size-4 inline mr-1 -mt-1" />
+            {translate("Admin")}
+          </Link>
+          {loginRequired && (
+            <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-dbga">
+              <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
+                {userName}
+              </span>
+              <Button
+                onClick={async () => {
+                  navigate(await logout());
+                }}
+                variant="light"
+              >
+                <RiLogoutBoxRLine className="size-4 inline mr-0.5 -ml-0.5 -mt-0.5" />
+                {translate("Logout")}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={cx({ "sm:ml-56 overflow-auto": actuallyOpen })}>
+        {children}
+      </div>
+    </MenuContext.Provider>
+  );
+}

@@ -73,9 +73,7 @@ export function Dashboard({
   if (error) {
     return (
       <div>
-        {menuButton && (
-          <div className="mt-3 ml-3">{menuButton}</div>
-        )}
+        {menuButton}
         <div>
           <div className="p-4 z-50 flex justify-center items-center">
             <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
@@ -149,7 +147,7 @@ const DataView = ({
           <section
             key={sectionIndex}
             className={cx("flex flex-wrap items-center ml-2 mr-4", {
-              "mb-2 mt-1":
+              "mt-3 mb-3":
                 section.queries.length > 0 ||
                 section.title ||
                 sectionIndex === 0,
@@ -163,9 +161,7 @@ const DataView = ({
             >
               {sectionIndex === 0 ? (
                 <>
-                  {menuButton && (
-                    <div className="mt-2">{menuButton}</div>
-                  )}
+                  {menuButton}
                   {section.title ? (
                     <h1 className="text-2xl text-left ml-1 mt-0.5">
                       {section.title}
@@ -271,11 +267,11 @@ const DataView = ({
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 h-[calc(50vh-2.6rem)] min-h-[18rem] bg-cbgl dark:bg-dbgl border-none shadow-sm",
+                  "mr-4 mb-4 h-[calc(50vh-3.1rem)] min-h-[18rem] bg-cbgl dark:bg-dbgl border-none shadow-sm",
                   {
-                    "h-[calc(65vh-4.7rem)] @sm:h-[calc(100vh-4.7rem)]":
+                    "h-[calc(65vh-5rem)] @sm:h-[calc(100vh-5rem)]":
                       numQueriesInSection === 1,
-                    "@lg:h-[calc(100vh-4.7rem)]":
+                    "@lg:h-[calc(100vh-5rem)]":
                       numContentSections === 1 && numQueriesInSection === 2,
                   },
                 )}
