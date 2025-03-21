@@ -99,7 +99,7 @@ export function MenuProvider({
             {translate("Home")}
           </Link>
           <Link
-            to="/dashboard/new"
+            to="/new"
             disabled={isNewPage}
             className={cx("block px-4 py-4", {
               "hover:underline": !isNewPage,

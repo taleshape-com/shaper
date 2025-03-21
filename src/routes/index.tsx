@@ -153,7 +153,7 @@ function Index() {
               No dashboards yet
             </p>
             <Link
-              to="/dashboard/new"
+              to="/new"
             >
               <Button>
                 <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />

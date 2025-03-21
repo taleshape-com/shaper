@@ -12,12 +12,12 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as SignupImport } from './routes/signup'
+import { Route as NewImport } from './routes/new'
 import { Route as LoginImport } from './routes/login'
 import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
 import { Route as AdminIndexImport } from './routes/admin.index'
 import { Route as DashboardsDashboardIdImport } from './routes/dashboards.$dashboardId'
-import { Route as DashboardNewImport } from './routes/dashboard.new'
 import { Route as AdminSecurityImport } from './routes/admin.security'
 import { Route as AdminKeysImport } from './routes/admin.keys'
 import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$dashboardId.edit'
@@ -27,6 +27,12 @@ import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$
 const SignupRoute = SignupImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const NewRoute = NewImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -57,12 +63,6 @@ const AdminIndexRoute = AdminIndexImport.update({
 const DashboardsDashboardIdRoute = DashboardsDashboardIdImport.update({
   id: '/dashboards/$dashboardId',
   path: '/dashboards/$dashboardId',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const DashboardNewRoute = DashboardNewImport.update({
-  id: '/dashboard/new',
-  path: '/dashboard/new',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -109,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
+    '/new': {
+      id: '/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof NewImport
+      parentRoute: typeof rootRoute
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -129,13 +136,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/security'
       preLoaderRoute: typeof AdminSecurityImport
       parentRoute: typeof AdminImport
-    }
-    '/dashboard/new': {
-      id: '/dashboard/new'
-      path: '/dashboard/new'
-      fullPath: '/dashboard/new'
-      preLoaderRoute: typeof DashboardNewImport
-      parentRoute: typeof rootRoute
     }
     '/dashboards/$dashboardId': {
       id: '/dashboards/$dashboardId'
@@ -181,10 +181,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/new': typeof NewRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
-  '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
@@ -193,10 +193,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/new': typeof NewRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
-  '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
   '/admin': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
@@ -207,10 +207,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/new': typeof NewRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
-  '/dashboard/new': typeof DashboardNewRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboards_/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
@@ -222,10 +222,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/new'
     | '/signup'
     | '/admin/keys'
     | '/admin/security'
-    | '/dashboard/new'
     | '/dashboards/$dashboardId'
     | '/admin/'
     | '/dashboards/$dashboardId/edit'
@@ -233,10 +233,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/new'
     | '/signup'
     | '/admin/keys'
     | '/admin/security'
-    | '/dashboard/new'
     | '/dashboards/$dashboardId'
     | '/admin'
     | '/dashboards/$dashboardId/edit'
@@ -245,10 +245,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/new'
     | '/signup'
     | '/admin/keys'
     | '/admin/security'
-    | '/dashboard/new'
     | '/dashboards/$dashboardId'
     | '/admin/'
     | '/dashboards_/$dashboardId/edit'
@@ -259,8 +259,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  NewRoute: typeof NewRoute
   SignupRoute: typeof SignupRoute
-  DashboardNewRoute: typeof DashboardNewRoute
   DashboardsDashboardIdRoute: typeof DashboardsDashboardIdRoute
   DashboardsDashboardIdEditRoute: typeof DashboardsDashboardIdEditRoute
 }
@@ -269,8 +269,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  NewRoute: NewRoute,
   SignupRoute: SignupRoute,
-  DashboardNewRoute: DashboardNewRoute,
   DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
   DashboardsDashboardIdEditRoute: DashboardsDashboardIdEditRoute,
 }
@@ -288,8 +288,8 @@ export const routeTree = rootRoute
         "/",
         "/admin",
         "/login",
+        "/new",
         "/signup",
-        "/dashboard/new",
         "/dashboards/$dashboardId",
         "/dashboards_/$dashboardId/edit"
       ]
@@ -308,6 +308,9 @@ export const routeTree = rootRoute
     "/login": {
       "filePath": "login.tsx"
     },
+    "/new": {
+      "filePath": "new.tsx"
+    },
     "/signup": {
       "filePath": "signup.tsx"
     },
@@ -318,9 +321,6 @@ export const routeTree = rootRoute
     "/admin/security": {
       "filePath": "admin.security.tsx",
       "parent": "/admin"
-    },
-    "/dashboard/new": {
-      "filePath": "dashboard.new.tsx"
     },
     "/dashboards/$dashboardId": {
       "filePath": "dashboards.$dashboardId.tsx"

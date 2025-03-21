@@ -1,16 +1,16 @@
-import { Editor } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-import { z } from "zod";
+import { Editor } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
+import { z } from 'zod'
 import {
   createFileRoute,
   isRedirect,
   useNavigate,
-} from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useAuth } from "../lib/auth";
-import { Dashboard } from "../components/dashboard";
-import { useDebouncedCallback } from "use-debounce";
+} from '@tanstack/react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet'
+import { useAuth } from '../lib/auth'
+import { Dashboard } from '../components/dashboard'
+import { useDebouncedCallback } from 'use-debounce'
 import {
   cx,
   focusRing,
@@ -18,165 +18,165 @@ import {
   hasErrorInput,
   isMac,
   varsParamSchema,
-} from "../lib/utils";
-import { translate } from "../lib/translate";
-import { editorStorage } from "../lib/editorStorage";
-import { Button } from "../components/tremor/Button";
-import { useQueryApi } from "../hooks/useQueryApi";
-import { MenuProvider } from "../components/MenuProvider";
-import { MenuTrigger } from "../components/MenuTrigger";
-import { Result } from "../lib/dashboard";
-import { useToast } from "../hooks/useToast";
-import { Tooltip } from "../components/tremor/Tooltip";
+} from '../lib/utils'
+import { translate } from '../lib/translate'
+import { editorStorage } from '../lib/editorStorage'
+import { Button } from '../components/tremor/Button'
+import { useQueryApi } from '../hooks/useQueryApi'
+import { MenuProvider } from '../components/MenuProvider'
+import { MenuTrigger } from '../components/MenuTrigger'
+import { Result } from '../lib/dashboard'
+import { useToast } from '../hooks/useToast'
+import { Tooltip } from '../components/tremor/Tooltip'
 
-const defaultQuery = "-- Enter your SQL query here";
+const defaultQuery = '-- Enter your SQL query here'
 
-export const Route = createFileRoute("/dashboard/new")({
+export const Route = createFileRoute('/new')({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
   component: NewDashboard,
-});
+})
 
 function NewDashboard() {
-  const { vars } = Route.useSearch();
-  const auth = useAuth();
-  const queryApi = useQueryApi();
-  const navigate = useNavigate({ from: "/dashboard/new" });
-  const [editorQuery, setEditorQuery] = useState(defaultQuery);
-  const [runningQuery, setRunningQuery] = useState(defaultQuery);
-  const [creating, setCreating] = useState(false);
-  const [hasVariableError, setHasVariableError] = useState(false);
-  const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const { vars } = Route.useSearch()
+  const auth = useAuth()
+  const queryApi = useQueryApi()
+  const navigate = useNavigate({ from: '/new' })
+  const [editorQuery, setEditorQuery] = useState(defaultQuery)
+  const [runningQuery, setRunningQuery] = useState(defaultQuery)
+  const [creating, setCreating] = useState(false)
+  const [hasVariableError, setHasVariableError] = useState(false)
+  const [previewData, setPreviewData] = useState<Result | undefined>(undefined)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia("(prefers-color-scheme: dark)").matches,
-  );
-  const { toast } = useToast();
+    window.matchMedia('(prefers-color-scheme: dark)').matches,
+  )
+  const { toast } = useToast()
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
+      setIsDarkMode(e.matches)
+    }
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
-    const unsavedContent = editorStorage.getChanges("new");
+    const unsavedContent = editorStorage.getChanges('new')
     if (unsavedContent) {
-      setEditorQuery(unsavedContent);
-      setRunningQuery(unsavedContent);
+      setEditorQuery(unsavedContent)
+      setRunningQuery(unsavedContent)
     }
-  }, []);
+  }, [])
 
   const previewDashboard = useCallback(async () => {
-    setPreviewError(null);
-    setIsPreviewLoading(true);
+    setPreviewError(null)
+    setIsPreviewLoading(true)
     try {
-      const searchParams = getSearchParamString(vars);
+      const searchParams = getSearchParamString(vars)
       const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
-        method: "POST",
+        method: 'POST',
         body: {
           content: runningQuery,
         },
-      });
-      setPreviewData(data);
+      })
+      setPreviewData(data)
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err)
       }
-      setPreviewError(err instanceof Error ? err.message : "Unknown error");
+      setPreviewError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
-      setIsPreviewLoading(false);
+      setIsPreviewLoading(false)
     }
-  }, [queryApi, vars, runningQuery, navigate]);
+  }, [queryApi, vars, runningQuery, navigate])
 
   useEffect(() => {
-    previewDashboard();
-  }, [previewDashboard]);
+    previewDashboard()
+  }, [previewDashboard])
 
   const handleRun = useCallback(() => {
     if (editorQuery !== runningQuery) {
-      setRunningQuery(editorQuery);
+      setRunningQuery(editorQuery)
     } else {
-      previewDashboard();
+      previewDashboard()
     }
-  }, [editorQuery, runningQuery, previewDashboard]);
+  }, [editorQuery, runningQuery, previewDashboard])
 
-  const handleRunRef = useRef(handleRun);
+  const handleRunRef = useRef(handleRun)
 
   useEffect(() => {
-    handleRunRef.current = handleRun;
-  }, [handleRun]);
+    handleRunRef.current = handleRun
+  }, [handleRun])
 
   // We handle this command in monac and outside
   // so even if the editor is not focused the shortcut works
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Ctrl+Enter or Cmd+Enter (Mac)
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        handleRun();
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        handleRun()
       }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleRun]);
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleRun])
 
   const handleQueryChange = (value: string | undefined) => {
-    const newQuery = value || "";
+    const newQuery = value || ''
     // Save to localStorage
-    if (newQuery !== defaultQuery && newQuery.trim() !== "") {
-      editorStorage.saveChanges("new", newQuery);
+    if (newQuery !== defaultQuery && newQuery.trim() !== '') {
+      editorStorage.saveChanges('new', newQuery)
     } else {
-      editorStorage.clearChanges("new");
+      editorStorage.clearChanges('new')
     }
-    setEditorQuery(newQuery);
-  };
+    setEditorQuery(newQuery)
+  }
 
   const handleCreate = useCallback(async () => {
     const name = window.prompt(
-      `${translate("Enter a name for the dashboard")}:`,
-    );
-    if (!name) return;
+      `${translate('Enter a name for the dashboard')}:`,
+    )
+    if (!name) return
 
-    setCreating(true);
+    setCreating(true)
     try {
-      const { id } = await queryApi("/api/dashboards", {
-        method: "POST",
+      const { id } = await queryApi('/api/dashboards', {
+        method: 'POST',
         body: {
           name,
           content: editorQuery,
         },
-      });
+      })
       // Clear localStorage after successful save
-      editorStorage.clearChanges("new");
+      editorStorage.clearChanges('new')
 
       // Navigate to the edit page of the new dashboard
       navigate({
         replace: true,
-        to: "/dashboards/$dashboardId/edit",
+        to: '/dashboards/$dashboardId/edit',
         params: { dashboardId: id },
         search: () => ({ vars }),
-      });
+      })
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err)
       }
       toast({
-        title: translate("Error"),
+        title: translate('Error'),
         description:
-          err instanceof Error ? err.message : translate("An error occurred"),
-        variant: "error",
-      });
-      setCreating(false);
+          err instanceof Error ? err.message : translate('An error occurred'),
+        variant: 'error',
+      })
+      setCreating(false)
     }
-  }, [queryApi, editorQuery, navigate, vars, toast]);
+  }, [queryApi, editorQuery, navigate, vars, toast])
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -185,25 +185,25 @@ function NewDashboard() {
           ...old,
           vars: newVars,
         }),
-      });
+      })
     },
     [navigate],
-  );
+  )
 
   const onVariablesEdit = useDebouncedCallback((value) => {
     auth.updateVariables(value).then(
       (ok) => {
-        setHasVariableError(!ok);
+        setHasVariableError(!ok)
         if (ok) {
           // Refresh preview when variables change
-          previewDashboard();
+          previewDashboard()
         }
       },
       () => {
-        setHasVariableError(true);
+        setHasVariableError(true)
       },
-    );
-  }, 500);
+    )
+  }, 500)
 
   return (
     <MenuProvider isNewPage>
@@ -218,16 +218,16 @@ function NewDashboard() {
               <div className="mt-6 px-4 w-full">
                 <label>
                   <span className="text-lg font-medium font-display ml-1 mb-2 block">
-                    {translate("Variables")}
+                    {translate('Variables')}
                   </span>
                   <textarea
                     className={cx(
-                      "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-28",
+                      'w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-28',
                       focusRing,
                       hasVariableError && hasErrorInput,
                     )}
                     onChange={(event) => {
-                      onVariablesEdit(event.target.value);
+                      onVariablesEdit(event.target.value)
                     }}
                     defaultValue={JSON.stringify(auth.variables, null, 2)}
                   ></textarea>
@@ -236,7 +236,7 @@ function NewDashboard() {
             </MenuTrigger>
 
             <h1 className="text-xl font-semibold font-display flex-grow">
-              {translate("New Dashboard")}
+              {translate('New Dashboard')}
             </h1>
 
             <div className="space-x-2">
@@ -247,20 +247,20 @@ function NewDashboard() {
                   isLoading={creating}
                   variant="secondary"
                 >
-                  {translate("Create")}
+                  {translate('Create')}
                 </Button>
               </Tooltip>
               <Tooltip
                 showArrow={false}
                 asChild
-                content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
+                content={`Press ${isMac() ? '⌘' : 'Ctrl'} + Enter to run`}
               >
                 <Button
                   onClick={handleRun}
                   disabled={isPreviewLoading}
                   isLoading={isPreviewLoading}
                 >
-                  {translate("Run")}
+                  {translate('Run')}
                 </Button>
               </Tooltip>
             </div>
@@ -272,13 +272,13 @@ function NewDashboard() {
               defaultLanguage="sql"
               value={editorQuery}
               onChange={handleQueryChange}
-              theme={isDarkMode ? "vs-dark" : "light"}
+              theme={isDarkMode ? 'vs-dark' : 'light'}
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,
-                lineNumbers: "on",
+                lineNumbers: 'on',
                 scrollBeyondLastLine: false,
-                wordWrap: "on",
+                wordWrap: 'on',
                 automaticLayout: true,
                 formatOnPaste: true,
                 formatOnType: true,
@@ -291,9 +291,9 @@ function NewDashboard() {
                 editor.addCommand(
                   monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
                   () => {
-                    handleRunRef.current();
+                    handleRunRef.current()
                   },
-                );
+                )
               }}
             />
           </div>
@@ -317,6 +317,6 @@ function NewDashboard() {
           />
         </div>
       </div>
-    </MenuProvider >
-  );
+    </MenuProvider>
+  )
 }
