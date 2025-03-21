@@ -124,16 +124,18 @@ function DashboardViewComponent() {
         <meta name="description" content={title} />
       </Helmet>
 
-      <Dashboard
-        id={params.dashboardId}
-        vars={vars}
-        hash={auth.hash}
-        getJwt={auth.getJwt}
-        menuButton={MenuButton}
-        onVarsChanged={handleVarsChanged}
-        onError={handleRedirectError}
-        onDataChange={onDataChange}
-      />
+      <div className="h-dvh">
+        <Dashboard
+          id={params.dashboardId}
+          vars={vars}
+          hash={auth.hash}
+          getJwt={auth.getJwt}
+          menuButton={MenuButton}
+          onVarsChanged={handleVarsChanged}
+          onError={handleRedirectError}
+          onDataChange={onDataChange}
+        />
+      </div>
     </MenuProvider>
   );
 }
