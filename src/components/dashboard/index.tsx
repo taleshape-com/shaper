@@ -72,7 +72,7 @@ export function Dashboard({
 
   if (error) {
     return (
-      <div>
+      <div className="antialiased text-ctext dark:text-dtext">
         {menuButton}
         <div>
           <div className="p-4 z-50 flex justify-center items-center">
@@ -86,7 +86,7 @@ export function Dashboard({
   }
 
   return (
-    <div className="@container relative">
+    <div className="@container flex flex-col h-full antialiased text-ctext dark:text-dtext min-h-[25dvh]">
       {data ? (
         <DataView
           data={data}
@@ -98,7 +98,7 @@ export function Dashboard({
           loading={loading || fetching}
         />
       ) : (
-        <div className="absolute w-full h-[calc(100vh)] flex justify-center items-center">
+        <div className="w-full flex justify-center items-center flex-grow">
           <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
         </div>
       )}

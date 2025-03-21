@@ -350,18 +350,20 @@ function DashboardEditor() {
                 />
               </form>
             ) : (
-              <Tooltip
-                showArrow={false}
-                asChild
-                content={translate("Click to edit dashboard name")}
-              >
-                <h1
-                  className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded hidden sm:block flex-grow"
-                  onClick={() => setEditingName(true)}
+              <div className="hidden sm:block flex-grow">
+                <Tooltip
+                  showArrow={false}
+                  asChild
+                  content={translate("Click to edit dashboard name")}
                 >
-                  {name}
-                </h1>
-              </Tooltip>
+                  <h1
+                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded inline-block"
+                    onClick={() => setEditingName(true)}
+                  >
+                    {name}
+                  </h1>
+                </Tooltip>
+              </div>
             )}
 
             <Link
@@ -438,7 +440,7 @@ function DashboardEditor() {
           </div>
         </div>
 
-        <div className="flex-grow overflow-scroll relative pt-1">
+        <div className="flex-grow overflow-scroll relative">
           {previewError && (
             <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
               <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">

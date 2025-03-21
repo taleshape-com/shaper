@@ -29,14 +29,12 @@ export function EmbedComponent({
     return getJwt({ baseUrl })
   }, [baseUrl, getJwt]);
 
-  return <div className="antialiased text-ctext dark:text-dtext">
-    <Dashboard
-      id={dashboardId}
-      baseUrl={baseUrl}
-      vars={vars}
-      getJwt={handleGetJwt}
-      onVarsChanged={handleVarsChanged}
-    />
-  </div>
+  return <Dashboard
+    id={dashboardId}
+    baseUrl={baseUrl}
+    vars={vars}
+    getJwt={handleGetJwt}
+    onVarsChanged={handleVarsChanged}
+  />
 }
 
