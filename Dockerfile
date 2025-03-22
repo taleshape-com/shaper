@@ -26,5 +26,8 @@ FROM debian:12-slim
 ENV SHAPER_ADDR=:3000
 # Override default data directory with something easy to mount to
 ENV SHAPER_DIR=/data
+# Override default DuckDB extension directory to persist downloaded extensions together with data
+# Helps avoid downloading extensions every time the container starts
+ENV SHAPER_DUCKDB_EXT_DIR=/data/duckdb_extensions
 COPY --from=build /usr/local/bin/shaper /usr/local/bin/shaper
 ENTRYPOINT ["/usr/local/bin/shaper"]
