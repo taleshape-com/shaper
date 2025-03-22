@@ -17,6 +17,7 @@ var dbTypes = []struct {
 	{"BARCHART", "UNION(_shaper_barchart_double DOUBLE)", "number"},
 	{"BARCHART_STACKED", "UNION(_shaper_barchart_stacked_double DOUBLE)", "number"},
 	{"BARCHART_CATEGORY", "UNION(_shaper_barchart_category_varchar VARCHAR)", "string"},
+	{"CATEGORY", "UNION(_shaper_category_varchar VARCHAR)", "string"},
 	{"DROPDOWN", "UNION(_shaper_dropdown_varchar VARCHAR)", "string"},
 	{"DROPDOWN_MULTI", "UNION(_shaper_dropdown_multi_varchar VARCHAR)", "string"},
 	{"HINT", "UNION(_shaper_hint_varchar VARCHAR)", "string"},
@@ -37,13 +38,4 @@ func createType(db *sqlx.DB, name string, definition string) error {
 		return err
 	}
 	return nil
-}
-
-func getTypeByDefinition(definition string) string {
-	for _, t := range dbTypes {
-		if t.Definition == definition {
-			return t.Name
-		}
-	}
-	return ""
 }

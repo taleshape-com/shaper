@@ -571,6 +571,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 	linechart, linechartIndex := findColumnByTag(columns, "LINECHART")
 	if linechart != nil && xaxis != nil {
 		lineCat, lineCatIndex := findColumnByTag(columns, "LINECHART_CATEGORY")
+		if lineCat == nil {
+			lineCat, lineCatIndex = findColumnByTag(columns, "CATEGORY")
+		}
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "linechart",
@@ -585,6 +588,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 
 	barchart, barchartIndex := findColumnByTag(columns, "BARCHART")
 	barCat, barCatIndex := findColumnByTag(columns, "BARCHART_CATEGORY")
+	if barCat == nil {
+		barCat, barCatIndex = findColumnByTag(columns, "CATEGORY")
+	}
 	if barchart != nil && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
