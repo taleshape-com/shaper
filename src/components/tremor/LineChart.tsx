@@ -643,10 +643,9 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               }
             }}
             margin={{
-              bottom: xAxisLabel ? 30 : undefined,
-              left: yAxisLabel ? 20 : undefined,
-              right: yAxisLabel ? 5 : undefined,
-              top: 5,
+              bottom: xAxisLabel ? 25 : undefined,
+              left: yAxisLabel ? 25 : undefined,
+              top: 15,
             }}
           >
             {showGridLines ? (

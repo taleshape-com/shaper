@@ -1,5 +1,5 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
-import { formatValue, getIndexAxisDomain } from "../../lib/render";
+import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 import { BarChart } from "../tremor/BarChart";
 
@@ -48,7 +48,7 @@ const DashboardBarChart = ({
         if (i === indexAxisIndex || i === categoryIndex) {
           return;
         }
-        const c = formatValue(cell, headers[i].type)
+        const c = formatCellValue(cell)
         if (categoryIndex === -1) {
           acc[key][valueAxisName] = c;
           return;
@@ -79,13 +79,13 @@ const DashboardBarChart = ({
       indexType={indexType}
       categories={Array.from(categories)}
       valueFormatter={(n: number) => {
-        return n.toLocaleString();
+        return formatValue(n, valueAxisHeader.type, true).toString();
       }}
       indexFormatter={(n: number) => {
         return formatValue(n, indexType, true).toString();
       }}
-      xAxisLabel={vertical ? getNameIfSet(valueAxisName) : isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name)}
-      yAxisLabel={vertical ? isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name) : getNameIfSet(valueAxisName)}
+      xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
+      yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
       indexAxisDomain={indexAxisDomain}
     />

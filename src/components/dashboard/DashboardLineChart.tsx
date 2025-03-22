@@ -1,6 +1,6 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
-import { formatValue, getIndexAxisDomain } from "../../lib/render";
+import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 
 type LineProps = {
@@ -44,7 +44,7 @@ const DashboardLineChart = ({
         if (i === indexAxisIndex || i === categoryIndex) {
           return;
         }
-        const c = formatValue(cell, headers[i].type)
+        const c = formatCellValue(cell)
         if (categoryIndex === -1) {
           acc[key][valueAxisName] = c;
           return;
@@ -73,13 +73,13 @@ const DashboardLineChart = ({
       // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}
       categories={Array.from(categories)}
-      valueFormatter={(number: number) => {
-        return number.toLocaleString();
+      valueFormatter={(n: number) => {
+        return formatValue(n, valueAxisHeader.type, true).toString();
       }}
       indexFormatter={(n: number) => {
         return formatValue(n, indexType, true).toString();
       }}
-      xAxisLabel={isTimeType(indexType) ? undefined : getNameIfSet(indexAxisHeader.name)}
+      xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
       xAxisDomain={xAxisDomain}

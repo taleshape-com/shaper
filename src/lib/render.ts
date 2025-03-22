@@ -79,6 +79,16 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   return value;
 };
 
+export const formatCellValue = (value: string | number | boolean | null | undefined) => {
+  if (value === null || value === undefined) {
+    return ""
+  }
+  if (typeof value === "boolean") {
+    return value ? 0 : 1;
+  }
+  return value;
+}
+
 // Without adding some margins, some bars can end up directly on the edge of the chart
 export const getIndexAxisDomain = (minTimeValue: number, maxTimeValue: number) => {
   const margin = (maxTimeValue - minTimeValue) * 0.04

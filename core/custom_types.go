@@ -4,6 +4,7 @@ import "github.com/jmoiron/sqlx"
 
 // TODO: Consider making _shaper_ prefix configurable
 // TODO: Support DATE, TIME, INTERVAL and potential other types in axis
+// TODO: Support DATE, TIME, INTERVAL, DOUBLE in CATEGORY
 var dbTypes = []struct {
 	Name       string
 	Definition string
@@ -12,10 +13,10 @@ var dbTypes = []struct {
 	{"LABEL", "UNION(_shaper_label_varchar VARCHAR)", "string"},
 	{"XAXIS", "UNION(_shaper_xaxis_varchar VARCHAR, _shaper_xaxis_timestamp TIMESTAMP, _shaper_xaxis_double DOUBLE)", "axis"},
 	{"YAXIS", "UNION(_shaper_yaxis_varchar VARCHAR, _shaper_yaxis_timestamp TIMESTAMP, _shaper_yaxis_double DOUBLE)", "axis"},
-	{"LINECHART", "UNION(_shaper_linechart_double DOUBLE)", "number"},
+	{"LINECHART", "UNION(_shaper_linechart_interval INTERVAL, _shaper_linechart_double DOUBLE)", "chart"},
 	{"LINECHART_CATEGORY", "UNION(_shaper_linechart_category_varchar VARCHAR)", "string"},
-	{"BARCHART", "UNION(_shaper_barchart_double DOUBLE)", "number"},
-	{"BARCHART_STACKED", "UNION(_shaper_barchart_stacked_double DOUBLE)", "number"},
+	{"BARCHART", "UNION(_shaper_barchart_interval INTERVAL, _shaper_barchart_double DOUBLE)", "chart"},
+	{"BARCHART_STACKED", "UNION(_shaper_barchart_stacked_interval INTERVAL, _shaper_barchart_stacked_double DOUBLE)", "chart"},
 	{"BARCHART_CATEGORY", "UNION(_shaper_barchart_category_varchar VARCHAR)", "string"},
 	{"CATEGORY", "UNION(_shaper_category_varchar VARCHAR)", "string"},
 	{"DROPDOWN", "UNION(_shaper_dropdown_varchar VARCHAR)", "string"},
@@ -33,7 +34,12 @@ var dbTypes = []struct {
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
-	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
+	// drop types first
+	_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return err
 	}

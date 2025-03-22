@@ -22,7 +22,7 @@ type DashboardQuery struct {
 	Name    string
 }
 
-func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
+func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	result := GetResult{
 		Name:     dashboardQuery.Name,
 		Sections: []Section{},
@@ -218,7 +218,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					continue
 				}
 				if colType == "stringArray" {
-					if arr, ok := cell.([]interface{}); ok {
+					if arr, ok := cell.([]any); ok {
 						s := make([]string, len(arr))
 						for i, v := range arr {
 							s[i] = fmt.Sprintf("%v", v)
@@ -286,7 +286,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	return result, err
 }
 
-func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]interface{}) (GetResult, error) {
+func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
 	if err != nil {
 		return GetResult{}, err
@@ -403,6 +403,9 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
 	for _, dbType := range dbTypes {
 		if dbType.Definition == t {
+			if dbType.ResultType == "chart" {
+				return getChartType(rows, index)
+			}
 			if dbType.ResultType == "axis" {
 				return getAxisType(rows, index)
 			}
@@ -416,10 +419,10 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		// Check if it's a JSON object or array. Unfortunately the database doesn't tell us if it's JSON.
 		cell := getFirstNonEmtpyCell(rows, index)
 		if cell != nil {
-			if _, ok := cell.(map[string]interface{}); ok {
+			if _, ok := cell.(map[string]any); ok {
 				return "object", nil
 			}
-			if _, ok := cell.([]interface{}); ok {
+			if _, ok := cell.([]any); ok {
 				return "array", nil
 			}
 		}
@@ -473,7 +476,7 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
 
-func getFirstNonEmtpyCell(rows Rows, index int) interface{} {
+func getFirstNonEmtpyCell(rows Rows, index int) any {
 	for _, row := range rows {
 		if row[index] != nil {
 			return row[index]
@@ -770,6 +773,16 @@ func getTimestampType(rows Rows, index int) (string, error) {
 	return s, nil
 }
 
+func getChartType(rows Rows, index int) (string, error) {
+	if len(rows) == 0 {
+		return "number", nil
+	}
+	if _, ok := rows[0][index].(duckdb.Interval); ok {
+		return "duration", nil
+	}
+	return "number", nil
+}
+
 func getAxisType(rows Rows, index int) (string, error) {
 	if len(rows) == 0 {
 		return "string", nil
@@ -1036,14 +1049,14 @@ func isDateValue(stringDate string) bool {
 	return err == nil
 }
 
-func getTokenVars(variables map[string]interface{}) (map[string]string, map[string][]string, error) {
+func getTokenVars(variables map[string]any) (map[string]string, map[string][]string, error) {
 	singleVars := map[string]string{}
 	multiVars := map[string][]string{}
 	for k, v := range variables {
 		switch v := v.(type) {
 		case string:
 			singleVars[k] = "'" + escapeSQLString(v) + "'"
-		case []interface{}:
+		case []any:
 			strSlice := make([]string, 0, len(v))
 			for _, item := range v {
 				if str, ok := item.(string); ok {
@@ -1066,7 +1079,7 @@ func formatUUID(s []uint8) string {
 }
 
 // interval in milliseconds
-func formatInterval(v interface{}) int64 {
+func formatInterval(v any) int64 {
 	interval := v.(duckdb.Interval)
 	ms := interval.Micros / 1000
 	ms += int64(interval.Days) * 24 * 60 * 60 * 1000
