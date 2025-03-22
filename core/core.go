@@ -36,7 +36,6 @@ type App struct {
 	JetStream           jetstream.JetStream
 	ConfigKV            jetstream.KeyValue
 	NATSConn            *nats.Conn
-	persist             bool
 	IngestSubjectPrefix string
 }
 
@@ -48,7 +47,6 @@ func New(
 	jwtExp time.Duration,
 	sessionExp time.Duration,
 	inviteExp time.Duration,
-	persist bool,
 	ingestSubjectPrefix string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
@@ -72,7 +70,6 @@ func New(
 		JWTExp:              jwtExp,
 		SessionExp:          sessionExp,
 		InviteExp:           inviteExp,
-		persist:             persist,
 		IngestSubjectPrefix: ingestSubjectPrefix,
 	}
 	return app, nil
@@ -102,15 +99,10 @@ func (app *App) setupStreamAndConsumer() error {
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()
 
-	storageType := jetstream.MemoryStorage
-	if app.persist {
-		storageType = jetstream.FileStorage
-	}
-
 	stream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
 		Name:     "shaper-state",
 		Subjects: []string{NATS_SUBJECT_PREFIX + ">"},
-		Storage:  storageType,
+		Storage:  jetstream.FileStorage,
 	})
 	if err != nil {
 		return err
@@ -125,8 +117,7 @@ func (app *App) setupStreamAndConsumer() error {
 	}
 
 	configKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
-		Bucket:  NATS_KV_CONFIG_BUCKET,
-		Storage: storageType,
+		Bucket: NATS_KV_CONFIG_BUCKET,
 	})
 	if err != nil {
 		return err
@@ -212,7 +203,7 @@ func (app *App) HandleState(msg jetstream.Msg) {
 	}
 }
 
-func (app *App) SubmitState(ctx context.Context, action string, data interface{}) error {
+func (app *App) SubmitState(ctx context.Context, action string, data any) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return err

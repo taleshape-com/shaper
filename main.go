@@ -54,27 +54,32 @@ func main() {
 }
 
 func loadConfig() Config {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+
 	flags := ff.NewFlagSet("shaper")
 	help := flags.Bool('h', "help", "show help")
 	addr := flags.StringLong("addr", "localhost:3000", "server address")
-	dataDir := flags.String('d', "dir", "~/.shaper", "directory to store data (default as binary: ~/.shaper, default in docker container: /data)")
+	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
-	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration (default: 30 days)")
-	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration (default: 7 days)")
+	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
+	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
 	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
-	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes (0 for unlimited)")
+	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
 	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
-	flags.StringLong("config-file", "", "path to config file (optional)")
+	flags.StringLong("config-file", "", "path to config file")
 
-	err := ff.Parse(flags, os.Args[1:],
+	err = ff.Parse(flags, os.Args[1:],
 		ff.WithEnvVarPrefix("SHAPER"),
 		ff.WithConfigFileFlag("config-file"),
 		ff.WithConfigFileParser(ff.PlainParser),
@@ -157,8 +162,6 @@ func Run(cfg Config) func(context.Context) {
 	db := sqlx.NewDb(sqlDB, "duckdb")
 	logger.Info("connected to duckdb", slog.Any("file", dbFile))
 
-	persistNATS := cfg.NatsJSDir != ""
-
 	app, err := core.New(
 		APP_NAME,
 		db,
@@ -167,7 +170,6 @@ func Run(cfg Config) func(context.Context) {
 		cfg.JWTExp,
 		cfg.SessionExp,
 		cfg.InviteExp,
-		persistNATS,
 		cfg.IngestSubjectPrefix,
 	)
 	if err != nil {
@@ -190,7 +192,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, persistNATS)
+	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn)
 	if err != nil {
 		panic(err)
 	}

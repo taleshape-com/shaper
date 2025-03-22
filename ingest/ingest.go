@@ -40,38 +40,33 @@ type TableCache struct {
 	lastUpdate time.Time
 }
 
-func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn, persist bool) (Ingest, error) {
+func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn) (Ingest, error) {
 	js, err := jetstream.New(nc)
 	if err != nil {
 		return Ingest{}, err
 	}
 
-	consumer, err := setupStreamAndConsumer(js, subjectPrefix, persist)
+	consumer, err := setupStreamAndConsumer(js, subjectPrefix)
 	if err != nil {
 		return Ingest{}, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go processMessages(ctx, js, consumer, logger, dbConnector, db, persist, subjectPrefix)
+	go processMessages(ctx, js, consumer, logger, dbConnector, db, subjectPrefix)
 	return Ingest{
 		ingestCancelFunc: cancel,
 		subjectPrefix:    subjectPrefix,
 	}, nil
 }
 
-func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, persist bool) (jetstream.Consumer, error) {
+func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string) (jetstream.Consumer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	storageType := jetstream.MemoryStorage
-	if persist {
-		storageType = jetstream.FileStorage
-	}
 
 	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:     "shaper-ingest",
 		Subjects: []string{subjectPrefix + ">"},
-		Storage:  storageType,
+		Storage:  jetstream.FileStorage,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create/update stream: %w", err)
@@ -88,7 +83,7 @@ func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, persis
 	return consumer, nil
 }
 
-func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, persist bool, subjectPrefix string) {
+func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string) {
 	tableCache := make(map[string]TableCache)
 	for {
 		select {
@@ -101,7 +96,7 @@ func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetst
 				time.Sleep(SLEEP_ON_ERROR)
 
 				logger.Info("Attempting to recreate ingest consumer")
-				newConsumer, err := setupStreamAndConsumer(js, subjectPrefix, persist)
+				newConsumer, err := setupStreamAndConsumer(js, subjectPrefix)
 				if err != nil {
 					logger.Error("Failed to recreate ingest consumer", slog.Any("error", err))
 					os.Exit(1)
@@ -283,7 +278,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		// Process messages for this table
 		for _, msg := range messages {
 			// Parse message
-			var jsonData map[string]interface{}
+			var jsonData map[string]any
 			if err := json.Unmarshal(msg.Data(), &jsonData); err != nil {
 				return fmt.Errorf("failed to parse JSON message: %w", err)
 			}
