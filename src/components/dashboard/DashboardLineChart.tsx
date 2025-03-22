@@ -1,6 +1,6 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { LineChart } from "../tremor/LineChart";
-import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
+import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 
 type LineProps = {
