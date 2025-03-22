@@ -24,7 +24,12 @@ function DashboardTable({ headers, data }: TableProps) {
         <TableHead className="sticky top-0 bg-cbgl dark:bg-dbgl shadow-sm">
           <TableRow>
             {headers.map((header) => (
-              <TableHeaderCell className="text-center text-ctext dark:text-dtext" key={header.name}>{header.name}</TableHeaderCell>
+              <TableHeaderCell
+                className={cx("text-ctext dark:text-dtext", {
+                  "text-right": header.type === 'number',
+                })}
+                key={header.name}
+              >{header.name}</TableHeaderCell>
             ))}
           </TableRow>
         </TableHead>
@@ -37,7 +42,7 @@ function DashboardTable({ headers, data }: TableProps) {
                   const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
                   const formattedValue = percent !== undefined ? '' : formatValue(item, header.type, true).toString()
                   return (
-                    <TableCell key={index} className="text-center text-ctext dark:text-dtext">
+                    <TableCell key={index} className={cx("text-ctext dark:text-dtext", { "text-right": header.type === 'number' })}>
                       {percent !== undefined ? percent === 0 ? '-' : (
                         <div
                           className={cx(
@@ -53,7 +58,7 @@ function DashboardTable({ headers, data }: TableProps) {
                         </div>) :
                         <span className={cx({
                           "font-display": !isJSONType(header.type),
-                          "font-mono": isJSONType(header.type),
+                          "font-mono": isJSONType(header.type) || header.type === 'number' || header.type === 'boolean',
                           "text-xs": formattedValue.length > 30,
                         })}>
                           {formattedValue}
