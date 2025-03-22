@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"log/slog"
-	"os"
 	"shaper/core"
 	"time"
 
@@ -124,16 +123,7 @@ func New(config Config) (Comms, error) {
 		config.Logger.Info("nats: Not listening on any network interfaces")
 	}
 	// Configure JetStream directory if provided
-	if config.JSDir != "" {
-		opts.StoreDir = config.JSDir
-	} else {
-		config.Logger.Warn("nats: No JetStream directory provided, using temporary directory and creating streams in memory.")
-		tmpStoreDir, err := os.MkdirTemp("", "shaper-nats")
-		if err != nil {
-			return Comms{}, err
-		}
-		opts.StoreDir = tmpStoreDir
-	}
+	opts.StoreDir = config.JSDir
 	// Configure JetStream encryption if key is provided
 	if config.JSKey != "" {
 		opts.JetStreamKey = config.JSKey

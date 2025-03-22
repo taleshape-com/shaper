@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"shaper/comms"
 	"shaper/core"
 	"shaper/ingest"
@@ -31,7 +32,7 @@ type Config struct {
 	SessionExp          time.Duration
 	InviteExp           time.Duration
 	Address             string
-	DBFile              string
+	DataDir             string
 	Schema              string
 	ExecutableModTime   time.Time
 	CustomCSS           string
@@ -56,7 +57,7 @@ func loadConfig() Config {
 	flags := ff.NewFlagSet("shaper")
 	help := flags.Bool('h', "help", "show help")
 	addr := flags.StringLong("addr", "localhost:3000", "server address")
-	dbFile := flags.String('d', "duckdb", "", "path to duckdb file (default: use in-memory db)")
+	dataDir := flags.String('d', "dir", "~/.shaper", "directory to store data (default as binary: ~/.shaper, default in docker container: /data)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
@@ -66,7 +67,7 @@ func loadConfig() Config {
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
 	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
-	natsJSDir := flags.String('n', "nats-dir", "", "JetStream storage directory (default: in-memory)")
+	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes (0 for unlimited)")
 	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
@@ -100,9 +101,14 @@ func loadConfig() Config {
 		os.Exit(1)
 	}
 
+	natsDir := *dataDir + "/nats"
+	if *natsJSDir != "" {
+		natsDir = *natsJSDir
+	}
+
 	config := Config{
 		Address:             *addr,
-		DBFile:              *dbFile,
+		DataDir:             *dataDir,
 		Schema:              *schema,
 		ExecutableModTime:   executableModTime,
 		CustomCSS:           *customCSS,
@@ -113,7 +119,7 @@ func loadConfig() Config {
 		NatsHost:            *natsHost,
 		NatsPort:            *natsPort,
 		NatsToken:           *natsToken,
-		NatsJSDir:           *natsJSDir,
+		NatsJSDir:           natsDir,
 		NatsJSKey:           *natsJSKey,
 		NatsMaxStore:        maxStore,
 		NatsDontListen:      *natsDontListen,
@@ -132,18 +138,24 @@ func Run(cfg Config) func(context.Context) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
+	// Make sure data directory exists
+	if _, err := os.Stat(cfg.DataDir); os.IsNotExist(err) {
+		err := os.Mkdir(cfg.DataDir, 0755)
+		logger.Info("created data directory", slog.Any("path", cfg.DataDir))
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dbFile := path.Join(cfg.DataDir, "data.duckdb")
 	// connect to duckdb
-	dbConnector, err := duckdb.NewConnector(cfg.DBFile, nil)
+	dbConnector, err := duckdb.NewConnector(dbFile, nil)
 	if err != nil {
 		panic(err)
 	}
 	sqlDB := sql.OpenDB(dbConnector)
 	db := sqlx.NewDb(sqlDB, "duckdb")
-	if cfg.DBFile != "" {
-		logger.Info("connected to duckdb", slog.Any("file", cfg.DBFile))
-	} else {
-		logger.Warn("Connected to in-memory duckdb. All data will be lost on shutdown.")
-	}
+	logger.Info("connected to duckdb", slog.Any("file", dbFile))
 
 	persistNATS := cfg.NatsJSDir != ""
 
