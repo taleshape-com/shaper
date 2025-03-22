@@ -85,24 +85,22 @@ export function Dashboard({
     )
   }
 
-  return (
-    <div className="@container flex flex-col h-full antialiased text-ctext dark:text-dtext min-h-[25dvh]">
-      {data ? (
-        <DataView
-          data={data}
-          onVarsChanged={onVarsChanged}
-          menuButton={menuButton}
-          vars={vars}
-          baseUrl={baseUrl}
-          getJwt={getJwt}
-          loading={loading || fetching}
-        />
-      ) : (
-        <div className="w-full flex justify-center items-center flex-grow">
-          <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
-        </div>
-      )}
-    </div >
+  return data ? (
+    <DataView
+      data={data}
+      onVarsChanged={onVarsChanged}
+      menuButton={menuButton}
+      vars={vars}
+      baseUrl={baseUrl}
+      getJwt={getJwt}
+      loading={loading || fetching}
+    />
+  ) : (
+    <ChartHoverProvider>
+      <div className="w-full flex justify-center items-center flex-grow">
+        <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
+      </div>
+    </ChartHoverProvider>
   );
 }
 
@@ -243,7 +241,7 @@ const DataView = ({
       return (
         <section
           key={sectionIndex}
-          className={cx("grid grid-cols-1 ml-4", {
+          className={cx("grid grid-cols-1 ml-4 h-full", {
             "@sm:grid-cols-2": numQueriesInSection > 1,
             "@lg:grid-cols-2":
               numQueriesInSection === 2 ||
@@ -267,11 +265,11 @@ const DataView = ({
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 h-[calc(50vh-3.1rem)] min-h-[18rem] bg-cbgl dark:bg-dbgl border-none shadow-sm",
+                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-2.90rem)] bg-cbgl dark:bg-dbgl border-none shadow-sm",
                   {
-                    "h-[calc(65vh-5rem)] @sm:h-[calc(100vh-5rem)]":
+                    "@sm:h-[calc(100%-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)]":
                       numQueriesInSection === 1,
-                    "@lg:h-[calc(100vh-5rem)]":
+                    "h-[calc(100%-1.2rem)] @sm:h-[calc(50%-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)] @lg:h-[calc(100%-1.2rem)]":
                       numContentSections === 1 && numQueriesInSection === 2,
                   },
                 )}

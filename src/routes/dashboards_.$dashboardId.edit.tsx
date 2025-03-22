@@ -440,7 +440,7 @@ function DashboardEditor() {
           </div>
         </div>
 
-        <div className="flex-grow overflow-scroll relative">
+        <div className="flex-grow overflow-y-auto relative">
           {previewError && (
             <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
               <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">

@@ -26,6 +26,7 @@ export const ChartHoverProvider = ({
       value={{ hoveredIndex, hoveredChartId, setHoverState }}
     >
       <div
+        className="@container flex flex-col h-full antialiased text-ctext dark:text-dtext"
         onTouchEnd={() => {
           setHoverState(null, null);
         }}

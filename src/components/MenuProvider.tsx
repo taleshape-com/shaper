@@ -73,7 +73,7 @@ export function MenuProvider({
     }}>
       <div
         className={cx(
-          "fixed top-0 bottom-0 left-0 z-50 overflow-y-scroll shadow-sm dark:shadow-db bg-cbg dark:bg-dbg w-full sm:w-56 flex flex-col",
+          "fixed top-0 bottom-0 left-0 z-50 overflow-y-auto shadow-sm dark:shadow-db bg-cbg dark:bg-dbg w-full sm:w-56 flex flex-col",
           {
             "hidden": !actuallyOpen,
           },

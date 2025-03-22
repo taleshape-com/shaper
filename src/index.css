@@ -45,19 +45,19 @@
 :root {
   --shaper-font: DMSans;
   --shaper-display-font: SourceSansPro;
-  --shaper-reference-line-color: rgb(244 114 182 / 0.5);
+  --shaper-reference-line-color: rgb(244 114 182 / .5);
 
-  --shaper-primary-color: #3544ff;
+  --shaper-primary-color: #323fe3;
   --shaper-primary-color-alternate: #2732d1;
-  --shaper-color-two: #7ae4e9;
-  --shaper-color-three: #ec74f6;
+  --shaper-color-two: #a5cde6;
+  --shaper-color-three: #ff4da7;
   --shaper-color-four: #fef08a;
   --shaper-color-five: #7dd3fc;
   --shaper-text-color: #181919;
   --shaper-text-color-secondary: #757a80;
   --shaper-text-color-invert: #f8fafc;
   --shaper-background-color: #fff;
-  --shaper-background-color-light: #f0f4f9;
+  --shaper-background-color-light: #f7f7f7;
   --shaper-background-color-alternate: #e5e8f2;
   --shaper-background-color-invert: #131a25;
   --shaper-border-color: #dadaef;
@@ -68,11 +68,11 @@
   --shaper-dark-mode-text-color: rgb(239, 240, 244);
   --shaper-dark-mode-text-color-secondary: rgb(215, 216, 221);
   --shaper-dark-mode-text-color-invert: #080911;
-  --shaper-dark-mode-background-color: #181A27;
-  --shaper-dark-mode-background-color-light: #1C1F34;
-  --shaper-dark-mode-background-color-alternate: #2C304B;
+  --shaper-dark-mode-background-color: #2F313E;
+  --shaper-dark-mode-background-color-light: #3B3D4A;
+  --shaper-dark-mode-background-color-alternate: #464757;
   --shaper-dark-mode-background-color-invert: #ebecf2;
-  --shaper-dark-mode-border-color: #262B4E;
+  --shaper-dark-mode-border-color: #636679;
   --shaper-dark-mode-error-color: #ff4d4f;
 }
 
