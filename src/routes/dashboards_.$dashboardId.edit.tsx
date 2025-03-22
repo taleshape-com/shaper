@@ -2,7 +2,7 @@ import { Editor } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
 import { z } from "zod";
-import { createFileRoute, isRedirect, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../lib/auth";
@@ -48,6 +48,7 @@ function DashboardEditor() {
   const params = Route.useParams();
   const { vars } = Route.useSearch();
   const dashboard = Route.useLoaderData();
+  const router = useRouter();
   const auth = useAuth();
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
@@ -163,9 +164,9 @@ function DashboardEditor() {
           body: { content: editorQuery },
         },
       );
-      dashboard.content = editorQuery;
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.dashboardId);
+      router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err);
