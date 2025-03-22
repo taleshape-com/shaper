@@ -696,7 +696,8 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             }}
             margin={{
               bottom: xAxisLabel ? 25 : undefined,
-              left: yAxisLabel ? 25 : undefined,
+              left: yAxisLabel ? 25 : 5,
+              right: 5,
               top: 15,
             }}
             stackOffset={type === "percent" ? "expand" : undefined}

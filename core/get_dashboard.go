@@ -572,6 +572,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 	xaxis, xaxisIndex := findColumnByTag(columns, "XAXIS")
 
 	linechart, linechartIndex := findColumnByTag(columns, "LINECHART")
+	if linechart == nil {
+		linechart, linechartIndex = findColumnByTag(columns, "LINECHART_PERCENT")
+	}
 	if linechart != nil && xaxis != nil {
 		lineCat, lineCatIndex := findColumnByTag(columns, "LINECHART_CATEGORY")
 		if lineCat == nil {
@@ -590,6 +593,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 	}
 
 	barchart, barchartIndex := findColumnByTag(columns, "BARCHART")
+	if barchart == nil {
+		barchart, barchartIndex = findColumnByTag(columns, "BARCHART_PERCENT")
+	}
 	barCat, barCatIndex := findColumnByTag(columns, "BARCHART_CATEGORY")
 	if barCat == nil {
 		barCat, barCatIndex = findColumnByTag(columns, "CATEGORY")
@@ -607,6 +613,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 		return r
 	}
 	barchartStacked, barchartStackedIndex := findColumnByTag(columns, "BARCHART_STACKED")
+	if barchartStacked == nil {
+		barchartStacked, barchartStackedIndex = findColumnByTag(columns, "BARCHART_STACKED_PERCENT")
+	}
 	if barchartStacked != nil && xaxis != nil && barCat != nil {
 		r := renderInfo{
 			Label:          labelValue,

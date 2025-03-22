@@ -88,6 +88,7 @@ const DashboardBarChart = ({
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
       indexAxisDomain={indexAxisDomain}
+      maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
     />
   );
 };

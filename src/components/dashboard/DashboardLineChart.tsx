@@ -59,7 +59,7 @@ const DashboardLineChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const xAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
+  const xAxisDomain = isTimeType(indexType) ? [minTimeValue, maxTimeValue] : undefined
 
   return (
     <LineChart
@@ -83,6 +83,7 @@ const DashboardLineChart = ({
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
       xAxisDomain={xAxisDomain}
+      maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
     />
   );
 };

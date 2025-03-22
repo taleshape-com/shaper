@@ -76,7 +76,7 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       return ms > 0 ? `${timeString}.${String(ms).padStart(3, '0')}` : timeString;
     }
     if (columnType === "percent") {
-      return `${(value * 100).toFixed(2)}%`;
+      return `${Math.round(value * 10000) / 100}%`;
     }
   }
   return value;
