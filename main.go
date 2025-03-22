@@ -46,6 +46,7 @@ type Config struct {
 	NatsMaxStore        int64 // in bytes
 	NatsDontListen      bool
 	IngestSubjectPrefix string
+	DuckDB              string
 	DuckDBExtDir        string
 }
 
@@ -78,6 +79,7 @@ func loadConfig() Config {
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
 	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
+	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/data.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	flags.StringLong("config-file", "", "path to config file")
 
@@ -131,6 +133,7 @@ func loadConfig() Config {
 		NatsMaxStore:        maxStore,
 		NatsDontListen:      *natsDontListen,
 		IngestSubjectPrefix: *ingestSubjectPrefix,
+		DuckDB:              *duckdb,
 		DuckDBExtDir:        *duckdbExtDir,
 	}
 	return config
@@ -155,7 +158,11 @@ func Run(cfg Config) func(context.Context) {
 		}
 	}
 
-	dbFile := path.Join(cfg.DataDir, "data.duckdb")
+	dbFile := cfg.DuckDB
+	if cfg.DuckDB == "" {
+		dbFile = path.Join(cfg.DataDir, "data.duckdb")
+	}
+
 	// connect to duckdb
 	dbConnector, err := duckdb.NewConnector(dbFile, nil)
 	if err != nil {
