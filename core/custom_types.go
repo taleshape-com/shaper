@@ -31,6 +31,7 @@ var dbTypes = []struct {
 	{"COMPARE", "UNION(_shaper_compare_double DOUBLE)", "number"},
 	{"TREND", "UNION(_shaper_trend_double DOUBLE)", "number"},
 	{"PLACEHOLDER", "UNION(_shaper_placeholder_varchar VARCHAR)", "string"},
+	{"PERCENT", "UNION(_shaper_percent_double DOUBLE)", "percent"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
