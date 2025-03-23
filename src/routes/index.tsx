@@ -131,7 +131,7 @@ function Index() {
         <meta name="description" content="Show a list of all dashboards" />
       </Helmet>
 
-      <div className="bg-cbgl dark:bg-dbgl rounded-lg shadow px-4 pt-4 pb-6 m-4 min-h-[calc(100dvh-2rem)] flex flex-col">
+      <div className="bg-cbgs dark:bg-dbgs rounded-lg shadow px-4 pt-4 pb-6 m-4 min-h-[calc(100dvh-2rem)] flex flex-col">
         <div className="flex">
           <MenuTrigger className="-ml-1.5 -mt-2 pr-1.5" />
           <h1 className="text-2xl font-semibold font-display mb-2">

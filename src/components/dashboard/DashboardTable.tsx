@@ -21,7 +21,7 @@ function DashboardTable({ headers, data }: TableProps) {
   return (
     <TableRoot className="h-full">
       <Table>
-        <TableHead className="sticky top-0 bg-cbgl dark:bg-dbgl shadow-sm">
+        <TableHead className="sticky top-0 bg-cbgs dark:bg-dbgs shadow-sm">
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell

@@ -344,7 +344,7 @@ function DashboardEditor() {
                   }}
                   className={cx(
                     "text-xl font-semibold font-display px-1 py-0 border rounded",
-                    "bg-cbgl dark:bg-dbgl border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
+                    "bg-cbgs dark:bg-dbgs border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
                     focusRing,
                   )}
                   autoFocus

@@ -265,7 +265,7 @@ const DataView = ({
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-2.90rem)] bg-cbgl dark:bg-dbgl border-none shadow-sm",
+                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-2.90rem)] bg-cbgs dark:bg-dbgs border-none shadow-sm",
                   {
                     "@sm:h-[calc(100%-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)]":
                       numQueriesInSection === 1,

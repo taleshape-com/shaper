@@ -57,7 +57,7 @@
   --shaper-text-color-secondary: #757a80;
   --shaper-text-color-invert: #f8fafc;
   --shaper-background-color: #fff;
-  --shaper-background-color-light: #f7f7f7;
+  --shaper-background-color-secondary: #f7f7f7;
   --shaper-background-color-alternate: #e5e8f2;
   --shaper-background-color-invert: #131a25;
   --shaper-border-color: #dadaef;
@@ -69,7 +69,7 @@
   --shaper-dark-mode-text-color-secondary: rgb(215, 216, 221);
   --shaper-dark-mode-text-color-invert: #080911;
   --shaper-dark-mode-background-color: #2F313E;
-  --shaper-dark-mode-background-color-light: #3B3D4A;
+  --shaper-dark-mode-background-color-secondary: #3B3D4A;
   --shaper-dark-mode-background-color-alternate: #464757;
   --shaper-dark-mode-background-color-invert: #ebecf2;
   --shaper-dark-mode-border-color: #636679;
