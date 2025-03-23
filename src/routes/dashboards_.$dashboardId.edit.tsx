@@ -166,6 +166,7 @@ function DashboardEditor() {
       );
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.dashboardId);
+      dashboard.content = editorQuery;
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
