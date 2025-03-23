@@ -79,7 +79,7 @@ func loadConfig() Config {
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
 	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
-	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/data.duckdb)")
+	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	flags.StringLong("config-file", "", "path to config file")
 
@@ -160,7 +160,7 @@ func Run(cfg Config) func(context.Context) {
 
 	dbFile := cfg.DuckDB
 	if cfg.DuckDB == "" {
-		dbFile = path.Join(cfg.DataDir, "data.duckdb")
+		dbFile = path.Join(cfg.DataDir, "shaper.duckdb")
 	}
 
 	// connect to duckdb
