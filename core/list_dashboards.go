@@ -23,7 +23,7 @@ func ListDashboards(app *App, ctx context.Context, sort string, order string) (L
 	dashboards := []Dashboard{}
 	err := app.db.SelectContext(ctx, &dashboards,
 		fmt.Sprintf(`SELECT *
-		 FROM %s.dashboards
+		 FROM %s.apps
 		 ORDER BY %s %s`, app.Schema, orderBy, order))
 	if err != nil {
 		err = fmt.Errorf("error listing dashboards: %w", err)

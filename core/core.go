@@ -241,9 +241,9 @@ func initDB(db *sqlx.DB, schema string) error {
 		return fmt.Errorf("error creating schema: %w", err)
 	}
 
-	// Create dashboards table
+	// Create apps table
 	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.dashboards (
+		CREATE TABLE IF NOT EXISTS ` + schema + `.apps (
 			id VARCHAR PRIMARY KEY,
 			path VARCHAR NOT NULL,
 			name VARCHAR NOT NULL,
@@ -255,7 +255,7 @@ func initDB(db *sqlx.DB, schema string) error {
 		)
 	`)
 	if err != nil {
-		return fmt.Errorf("error creating dashboards table: %w", err)
+		return fmt.Errorf("error creating apps table: %w", err)
 	}
 
 	// Create api_keys table

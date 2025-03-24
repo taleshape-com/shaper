@@ -51,7 +51,7 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 	}
 	// Insert into DB
 	_, err = app.db.Exec(
-		`INSERT OR IGNORE INTO `+app.Schema+`.dashboards (
+		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
 			id, path, name, content, created_at, updated_at, created_by, updated_by
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
 		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
@@ -59,19 +59,6 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 	if err != nil {
 		app.Logger.Error("failed to insert dashboard into DB", slog.Any("error", err))
 		return false
-	}
-	return true
-}
-
-func isValidDashboardName(name string) bool {
-	// Only allow letters, numbers, dashes, and underscores
-	for _, r := range name {
-		if !((r >= 'a' && r <= 'z') ||
-			(r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') ||
-			r == '-' || r == '_') {
-			return false
-		}
 	}
 	return true
 }

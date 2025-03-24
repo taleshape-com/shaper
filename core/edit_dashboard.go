@@ -25,7 +25,7 @@ type UpdateDashboardNamePayload struct {
 func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
 	err := app.db.GetContext(ctx, &dashboard,
-		`SELECT * FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
+		`SELECT * FROM `+app.Schema+`.apps WHERE id = $1`, id)
 	if err != nil {
 		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
 	}
@@ -38,7 +38,7 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
+	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -60,7 +60,7 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.dashboards WHERE id = $1`, id)
+	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -84,7 +84,7 @@ func HandleUpdateDashboardContent(app *App, data []byte) bool {
 		return false
 	}
 	_, err = app.db.Exec(
-		`UPDATE `+app.Schema+`.dashboards
+		`UPDATE `+app.Schema+`.apps
 		 SET content = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4`,
 		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -103,7 +103,7 @@ func HandleUpdateDashboardName(app *App, data []byte) bool {
 		return false
 	}
 	_, err = app.db.Exec(
-		`UPDATE `+app.Schema+`.dashboards
+		`UPDATE `+app.Schema+`.apps
 		 SET name = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4`,
 		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
