@@ -44,7 +44,6 @@ type Config struct {
 	NatsJSDir           string
 	NatsJSKey           string
 	NatsMaxStore        int64 // in bytes
-	NatsDontListen      bool
 	IngestSubjectPrefix string
 	DuckDB              string
 	DuckDBExtDir        string
@@ -72,12 +71,11 @@ func loadConfig() Config {
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
-	natsPort := flags.IntLong("nats-port", 4222, "NATS server port")
+	natsPort := flags.IntLong("nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
 	natsToken := flags.StringLong("nats-token", "", "NATS authentication token")
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
-	natsDontListen := flags.BoolLong("nats-dont-listen", "Disable NATS from listening on any port")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
@@ -131,7 +129,6 @@ func loadConfig() Config {
 		NatsJSDir:           natsDir,
 		NatsJSKey:           *natsJSKey,
 		NatsMaxStore:        maxStore,
-		NatsDontListen:      *natsDontListen,
 		IngestSubjectPrefix: *ingestSubjectPrefix,
 		DuckDB:              *duckdb,
 		DuckDBExtDir:        *duckdbExtDir,
@@ -196,15 +193,14 @@ func Run(cfg Config) func(context.Context) {
 
 	// TODO: refactor - comms should be part of core
 	c, err := comms.New(comms.Config{
-		Logger:     logger.WithGroup("nats"),
-		Host:       cfg.NatsHost,
-		Port:       cfg.NatsPort,
-		Token:      cfg.NatsToken,
-		JSDir:      cfg.NatsJSDir,
-		JSKey:      cfg.NatsJSKey,
-		MaxStore:   cfg.NatsMaxStore,
-		DontListen: cfg.NatsDontListen,
-		App:        app,
+		Logger:   logger.WithGroup("nats"),
+		Host:     cfg.NatsHost,
+		Port:     cfg.NatsPort,
+		Token:    cfg.NatsToken,
+		JSDir:    cfg.NatsJSDir,
+		JSKey:    cfg.NatsJSKey,
+		MaxStore: cfg.NatsMaxStore,
+		App:      app,
 	})
 	if err != nil {
 		panic(err)

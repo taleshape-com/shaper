@@ -23,15 +23,14 @@ type Comms struct {
 }
 
 type Config struct {
-	Logger     *slog.Logger
-	Host       string
-	Port       int
-	Token      string
-	JSDir      string
-	JSKey      string
-	MaxStore   int64
-	DontListen bool
-	App        *core.App
+	Logger   *slog.Logger
+	Host     string
+	Port     int
+	Token    string
+	JSDir    string
+	JSKey    string
+	MaxStore int64
+	App      *core.App
 }
 
 type AuthCheckFunc func(context.Context, string) (bool, error)
@@ -103,7 +102,7 @@ func New(config Config) (Comms, error) {
 		DisableJetStreamBanner: true,
 		Host:                   config.Host,
 		Port:                   config.Port,
-		DontListen:             config.DontListen,
+		DontListen:             config.Port == 0,
 		// We handle signals separately
 		NoSigs: true,
 		CustomClientAuthentication: ClientAuth{
@@ -115,12 +114,12 @@ func New(config Config) (Comms, error) {
 	if config.Token != "" {
 		opts.Authorization = config.Token
 	} else {
-		if !config.DontListen {
+		if config.Port > 0 {
 			config.Logger.Warn(fmt.Sprintf("nats: No nats-token provided and NATS is listening. If running in production make sure %s:%d is not exposed, configure a nats-token or set nats-dont-listen", config.Host, config.Port))
 		}
 	}
-	if config.DontListen {
-		config.Logger.Info("nats: Not listening on any network interfaces")
+	if config.Port == 0 {
+		config.Logger.Info("nats: Not listening on any network interfaces. Specify a port to make NATS available on the network.")
 	}
 	// Configure JetStream directory if provided
 	opts.StoreDir = config.JSDir
