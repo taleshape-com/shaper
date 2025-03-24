@@ -63,7 +63,7 @@ func loadConfig() Config {
 
 	flags := ff.NewFlagSet("shaper")
 	help := flags.Bool('h', "help", "show help")
-	addr := flags.StringLong("addr", "localhost:3000", "server address")
+	addr := flags.StringLong("addr", "localhost:5454", "server address")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")

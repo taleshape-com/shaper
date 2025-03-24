@@ -60,7 +60,7 @@ func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, cust
 	if !strings.HasPrefix(addr, ":") {
 		logPrefix = "http://"
 	}
-	app.Logger.Info("web server listening on " + logPrefix + addr)
+	app.Logger.Info("web server listening on " + logPrefix + addr + " ")
 
 	return e
 }

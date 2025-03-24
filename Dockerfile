@@ -23,7 +23,7 @@ RUN go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper m
 
 FROM debian:12-slim
 # When running in a container, listen on all interfaces (including IPv6) by default
-ENV SHAPER_ADDR=:3000
+ENV SHAPER_ADDR=:5454
 # Override default data directory with something easy to mount to
 ENV SHAPER_DIR=/data
 # Override default DuckDB extension directory to persist downloaded extensions together with data

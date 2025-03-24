@@ -1,7 +1,7 @@
 import http from 'http'
 import fs from 'fs'
 
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = 'http://localhost:5454'
 const PORT = 3001
 const VARIABLES = process.env.VARIABLES || '{}'
 const API_KEY = process.env.API_KEY
