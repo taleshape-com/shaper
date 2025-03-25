@@ -34,6 +34,9 @@ const DashboardBarChart = ({
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
+  // TODO: It might more efficient to calculate these min/max values in the backend
+  let minT = Number.MAX_VALUE;
+  let maxT = 0;
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
       const key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
@@ -45,7 +48,18 @@ const DashboardBarChart = ({
         };
       }
       row.forEach((cell, i) => {
-        if (i === indexAxisIndex || i === categoryIndex) {
+        if (i === indexAxisIndex) {
+          if (indexAxisHeader.type === 'time' && typeof cell === 'number') {
+            if (cell < minT) {
+              minT = cell;
+            }
+            if (cell > maxT) {
+              maxT = cell;
+            }
+          }
+          return;
+        }
+        if (i === categoryIndex) {
           return;
         }
         const c = formatCellValue(cell)
@@ -63,7 +77,7 @@ const DashboardBarChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const indexAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : undefined
+  const indexAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : indexType === "time" ? [minT, maxT] : undefined
 
   return (
     <BarChart

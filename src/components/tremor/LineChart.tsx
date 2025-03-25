@@ -677,7 +677,13 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               )}
               tickLine={false}
               axisLine={false}
-              type={typeof data[0][index] === 'number' ? "number" : 'category'}
+              type={
+                Array.isArray(xAxisDomain) &&
+                  xAxisDomain[0] !== "auto" &&
+                  data.length > 7
+                  ? "number"
+                  : "category"
+              }
               domain={xAxisDomain}
               tickFormatter={indexFormatter}
               minTickGap={tickGap}

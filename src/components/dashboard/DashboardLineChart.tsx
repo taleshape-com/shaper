@@ -30,6 +30,9 @@ const DashboardLineChart = ({
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
+  // TODO: It might more efficient to calculate these min/max values in the backend
+  let minT = Number.MAX_VALUE;
+  let maxT = 0;
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
       const key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
@@ -41,7 +44,18 @@ const DashboardLineChart = ({
         };
       }
       row.forEach((cell, i) => {
-        if (i === indexAxisIndex || i === categoryIndex) {
+        if (i === indexAxisIndex) {
+          if (indexAxisHeader.type === 'time' && typeof cell === 'number') {
+            if (cell < minT) {
+              minT = cell;
+            }
+            if (cell > maxT) {
+              maxT = cell;
+            }
+          }
+          return;
+        }
+        if (i === categoryIndex) {
           return;
         }
         const c = formatCellValue(cell)
@@ -59,7 +73,7 @@ const DashboardLineChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const xAxisDomain = isTimeType(indexType) ? [minTimeValue, maxTimeValue] : undefined
+  const xAxisDomain = isTimeType(indexType) ? [minTimeValue, maxTimeValue] : indexType === "time" ? [minT, maxT] : undefined
 
   return (
     <LineChart
