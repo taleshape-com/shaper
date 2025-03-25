@@ -105,11 +105,9 @@ function Admin() {
         method: "POST",
         body: { name },
       });
-      console.log("hellp");
       setNewKey(data);
       router.invalidate();
     } catch (error) {
-      console.log("er", error);
       if (isRedirect(error)) {
         return navigate(error);
       }
