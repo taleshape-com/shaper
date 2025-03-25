@@ -3,7 +3,7 @@ package core
 import "github.com/jmoiron/sqlx"
 
 // TODO: Consider making _shaper_ prefix configurable
-// TODO: Support DATE, TIME, INTERVAL and potential other types in axis
+// TODO: Support DATE, INTERVAL and potential other types in axis
 // TODO: Support DATE, TIME, INTERVAL, DOUBLE in CATEGORY
 var dbTypes = []struct {
 	Name       string
@@ -11,8 +11,8 @@ var dbTypes = []struct {
 	ResultType string
 }{
 	{"LABEL", "UNION(_shaper_label_varchar VARCHAR)", "string"},
-	{"XAXIS", "UNION(_shaper_xaxis_varchar VARCHAR, _shaper_xaxis_timestamp TIMESTAMP, _shaper_xaxis_double DOUBLE)", "axis"},
-	{"YAXIS", "UNION(_shaper_yaxis_varchar VARCHAR, _shaper_yaxis_timestamp TIMESTAMP, _shaper_yaxis_double DOUBLE)", "axis"},
+	{"XAXIS", "UNION(_shaper_xaxis_varchar VARCHAR, _shaper_xaxis_timestamp TIMESTAMP, _shaper_xaxis_time TIME, _shaper_xaxis_double DOUBLE)", "axis"},
+	{"YAXIS", "UNION(_shaper_yaxis_varchar VARCHAR, _shaper_xaxis_timestamp TIMESTAMP, _shaper_yaxis_time TIME, _shaper_yaxis_double DOUBLE)", "axis"},
 	{"LINECHART", "UNION(_shaper_linechart_interval INTERVAL, _shaper_linechart_double DOUBLE)", "chart"},
 	{"LINECHART_PERCENT", "UNION(_shaper_linechart_percent_double DOUBLE)", "percent"},
 	{"LINECHART_CATEGORY", "UNION(_shaper_linechart_category_varchar VARCHAR)", "string"},
@@ -38,7 +38,12 @@ var dbTypes = []struct {
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
-	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
+	// drop types first
+	_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return err
 	}

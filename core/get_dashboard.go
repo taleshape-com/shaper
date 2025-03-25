@@ -398,7 +398,7 @@ func mapTag(index int, rInfo renderInfo) string {
 var matchDecimal = regexp.MustCompile(`DECIMAL\(\d+,\d+\)`)
 
 // TODO: BIT type is not supported yet by Go duckdb lib
-// TODO: Support ARRAY, STRUCT, more MAP types and generic UNION types
+// TODO: Support ARRAY, LIST, STRUCT, more MAP types and generic UNION types
 func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
 	for _, dbType := range dbTypes {
@@ -750,7 +750,14 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 }
 
 func getTimestampType(rows Rows, index int) (string, error) {
-	s := "timestamp"
+	hasYear := false
+	hasMonth := false
+	hasDay := false
+	hasHour := false
+	hasMSN := false
+	if len(rows) == 0 {
+		return "timestamp", nil
+	}
 	for _, row := range rows {
 		r := row[index]
 		if r == nil {
@@ -763,23 +770,43 @@ func getTimestampType(rows Rows, index int) (string, error) {
 		if len(rows) < 2 {
 			continue
 		}
-		if s == "timestamp" {
-			s = "year"
+		if t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+			hasMSN = true
 		}
-		if s != "date" && s != "hour" && s != "timestamp" && t.Month() != 1 {
-			s = "month"
+		if t.Hour() != 0 {
+			hasHour = true
 		}
-		if s != "hour" && s != "timestamp" && t.Day() != 1 {
-			s = "date"
+		if t.Year() != 1 {
+			hasYear = true
 		}
-		if s != "timestamp" && t.Hour() != 0 {
-			s = "hour"
+		if t.Month() != 1 {
+			hasMonth = true
 		}
-		if s == "hour" && t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+		if t.Day() != 1 {
+			hasDay = true
+		}
+		if hasMSN && (hasYear || hasMonth || hasDay) {
+			// timestamp is the only type that allows to stop checking values early
+			// for the rest we have to check all values to be sure
 			return "timestamp", nil
 		}
 	}
-	return s, nil
+	if !hasDay && !hasMonth && !hasYear && (hasHour || hasMSN) {
+		return "time", nil
+	}
+	if hasMSN {
+		return "timestamp", nil
+	}
+	if hasHour {
+		return "hour", nil
+	}
+	if hasDay {
+		return "date", nil
+	}
+	if hasMonth {
+		return "month", nil
+	}
+	return "year", nil
 }
 
 func getChartType(rows Rows, index int) (string, error) {
