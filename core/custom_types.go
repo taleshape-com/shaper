@@ -20,6 +20,8 @@ var dbTypes = []struct {
 	{"BARCHART_PERCENT", "UNION(_shaper_barchart_percent_double DOUBLE)", "percent"},
 	{"BARCHART_STACKED", "UNION(_shaper_barchart_stacked_interval INTERVAL, _shaper_barchart_stacked_double DOUBLE)", "chart"},
 	{"BARCHART_STACKED_PERCENT", "UNION(_shaper_barchart_stacked_percent DOUBLE)", "percent"},
+	// Alias for BARCHART_STACKED_PERCENT
+	{"BARCHART_PERCENT_STACKED", "UNION(_shaper_barchart_stacked_percent DOUBLE)", "percent"},
 	{"BARCHART_CATEGORY", "UNION(_shaper_barchart_category_varchar VARCHAR)", "string"},
 	{"CATEGORY", "UNION(_shaper_category_varchar VARCHAR)", "string"},
 	{"DROPDOWN", "UNION(_shaper_dropdown_varchar VARCHAR)", "string"},

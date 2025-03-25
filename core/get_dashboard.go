@@ -616,6 +616,10 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 	if barchartStacked == nil {
 		barchartStacked, barchartStackedIndex = findColumnByTag(columns, "BARCHART_STACKED_PERCENT")
 	}
+	if barchartStacked == nil {
+		// Alias for BARCHART_STACKED_PERCENT
+		barchartStacked, barchartStackedIndex = findColumnByTag(columns, "BARCHART_PERCENT_STACKED")
+	}
 	if barchartStacked != nil && xaxis != nil && barCat != nil {
 		r := renderInfo{
 			Label:          labelValue,
