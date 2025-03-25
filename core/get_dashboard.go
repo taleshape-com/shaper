@@ -851,21 +851,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		param := queryParams.Get(columnName)
 		var ok bool
-		if param == "" {
-			if len(data) == 0 {
-				// No vars for dropdown without options
-				return nil
-			}
-			// Set default value to first row
-			param, ok = data[0][columnIndex].(string)
-			if !ok {
-				if data[0][columnIndex] == nil {
-					param = ""
-				} else {
-					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
-				}
-			}
-		} else {
+		if param != "" {
 			// Check if param actually exists in the dropdown
 			isValidVar := false
 			for i, row := range data {
@@ -883,7 +869,23 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				}
 			}
 			if !isValidVar {
-				return fmt.Errorf("invalid value for query param '%s': %s", columnName, param)
+				// Ignore invalid param
+				param = ""
+			}
+		}
+		if param == "" {
+			if len(data) == 0 {
+				// No vars for dropdown without options
+				return nil
+			}
+			// Set default value to first row
+			param, ok = data[0][columnIndex].(string)
+			if !ok {
+				if data[0][columnIndex] == nil {
+					param = ""
+				} else {
+					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+				}
 			}
 		}
 		singleVars[columnName] = "'" + escapeSQLString(param) + "'"
@@ -904,22 +906,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
 		params := queryParams[columnName]
-		if len(params) == 0 {
-			// Set default value to all rows
-			for i, row := range data {
-				val, ok := row[columnIndex].(string)
-				if !ok {
-					if row[columnIndex] == nil {
-						val = ""
-					} else {
-						return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-					}
-				}
-				params = append(params, val)
-			}
-		} else {
-			// Check if all params actually exist in the dropdown
-			isValidVar := false
+		if len(params) > 0 {
 			paramsToCheck := map[string]bool{}
 			for _, param := range params {
 				paramsToCheck[param] = true
@@ -936,13 +923,34 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				if paramsToCheck[val] {
 					delete(paramsToCheck, val)
 					if len(paramsToCheck) == 0 {
-						isValidVar = true
 						break
 					}
 				}
 			}
-			if !isValidVar {
-				return fmt.Errorf("invalid value for query param '%s': %s", columnName, params)
+			if len(paramsToCheck) > 0 {
+				// Remove invalid params
+				cleanedParams := make([]string, 0, len(params)-len(paramsToCheck))
+				for _, param := range params {
+					if paramsToCheck[param] {
+						continue
+					}
+					cleanedParams = append(cleanedParams, param)
+				}
+				params = cleanedParams
+			}
+		}
+		if len(params) == 0 {
+			// Set default value to all rows
+			for i, row := range data {
+				val, ok := row[columnIndex].(string)
+				if !ok {
+					if row[columnIndex] == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				params = append(params, val)
 			}
 		}
 		multiVars[columnName] = params
