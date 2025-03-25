@@ -799,7 +799,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 }
               />
             ) : null}
-            {hoveredIndex != null && isTimeType(indexType) && hoveredChartId !== chartId && data.length > 1 &&
+            {hoveredIndex != null && (isTimeType(indexType) || indexType === "time") && hoveredChartId !== chartId && data.length > 1 &&
               <ReferenceLine
                 x={hoveredIndex}
                 stroke="var(--shaper-reference-line-color)"

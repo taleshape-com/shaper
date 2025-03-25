@@ -907,7 +907,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 }
               />
             ) : null}
-            {hoveredIndex != null && isTimeType(indexType) && hoveredChartId !== chartId && (
+            {hoveredIndex != null && (isTimeType(indexType) || indexType === "time") && hoveredChartId !== chartId && (
               <ReferenceLine
                 x={layout === "horizontal" ? hoveredIndex : undefined}
                 y={layout === "vertical" ? hoveredIndex : undefined}
