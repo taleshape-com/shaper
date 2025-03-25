@@ -36,7 +36,7 @@ function DashboardDropdown({
   return (
     <>
       {label && (
-        <Label htmlFor={label} className="ml-2 pr-2">
+        <Label htmlFor={label} className="ml-3 pr-1">
           {label}:
         </Label>
       )}

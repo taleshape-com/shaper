@@ -2,7 +2,9 @@ import * as SelectPrimitives from "@radix-ui/react-select";
 import { RiFileDownloadLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 import { Button } from "../tremor/Button";
+import { Label } from "../tremor/Label";
 import { useState } from "react";
+import { cx } from "../../lib/utils";
 
 type ButtonProps = {
   label?: string;
@@ -54,18 +56,26 @@ function DashboardButton({
   };
 
   return (
-    <Button
-      onClick={handleDownload}
-      disabled={isLoading}
-      variant="secondary"
-      className="flex items-center justify-between my-1 ml-2 select-none"
-    >
-      {label}
-      {headers[0].name}
-      <SelectPrimitives.Icon asChild>
-        <RiFileDownloadLine className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2" />
-      </SelectPrimitives.Icon>
-    </Button>
+    <>
+      {label && (
+        <Label className="ml-3 pr-1">
+          {label}:
+        </Label>
+      )}
+      <Button
+        onClick={handleDownload}
+        disabled={isLoading}
+        variant="secondary"
+        className={cx("flex items-center justify-between my-1 select-none", {
+          "ml-2": !label,
+        })}
+      >
+        {headers[0].name}
+        <SelectPrimitives.Icon asChild>
+          <RiFileDownloadLine className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2" />
+        </SelectPrimitives.Icon>
+      </Button >
+    </>
   );
 }
 
