@@ -118,12 +118,15 @@ function DashboardEditor() {
   }, [queryApi, params, vars, runningQuery, navigate]);
 
   const handleRun = useCallback(() => {
+    if (isPreviewLoading) {
+      return;
+    }
     if (editorQuery !== runningQuery) {
       setRunningQuery(editorQuery);
     } else {
       previewDashboard();
     }
-  }, [editorQuery, runningQuery, previewDashboard]);
+  }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading]);
 
   const handleRunRef = useRef(handleRun);
 
