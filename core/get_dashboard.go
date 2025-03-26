@@ -759,7 +759,7 @@ func getTimestampType(rows Rows, index int) (string, error) {
 	hasDay := false
 	hasHour := false
 	hasMSN := false
-	if len(rows) == 0 {
+	if len(rows) < 2 {
 		return "timestamp", nil
 	}
 	for _, row := range rows {
@@ -770,9 +770,6 @@ func getTimestampType(rows Rows, index int) (string, error) {
 		t, ok := r.(time.Time)
 		if !ok {
 			return "", fmt.Errorf("invalid timestamp value: %v", row[index])
-		}
-		if len(rows) < 2 {
-			continue
 		}
 		if t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
 			hasMSN = true
