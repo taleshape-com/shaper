@@ -154,7 +154,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
-			if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
+			if (rInfo.Download == "csv" || rInfo.Download == "xlsx") && len(query.Rows) > 0 {
 				filename := query.Rows[0][colIndex].(string)
 				queryString := ""
 				if len(queryParams) > 0 {
