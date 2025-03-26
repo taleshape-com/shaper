@@ -18,10 +18,11 @@ const DashboardLineChart = ({
   minTimeValue,
   maxTimeValue,
 }: LineProps) => {
-  const valueAxisHeader = headers.find((c) => c.tag === "value");
-  if (!valueAxisHeader) {
+  const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
+  if (valueAxisIndex === -1) {
     throw new Error("No  header with tag 'value'");
   }
+  const valueAxisHeader = headers[valueAxisIndex];
   const valueAxisName = valueAxisHeader.name;
   const categoryIndex = headers.findIndex((c) => c.tag === "category");
   const categories = new Set<string>();
@@ -33,6 +34,7 @@ const DashboardLineChart = ({
   // TODO: It might more efficient to calculate these min/max values in the backend
   let minT = Number.MAX_VALUE;
   let maxT = 0;
+  const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
       const key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
@@ -59,13 +61,23 @@ const DashboardLineChart = ({
           return;
         }
         const c = formatCellValue(cell)
-        if (categoryIndex === -1) {
-          acc[key][valueAxisName] = c;
+        if (i === valueAxisIndex) {
+          if (categoryIndex === -1) {
+            acc[key][valueAxisName] = c;
+            return;
+          }
+          const category = (row[categoryIndex] ?? '').toString();
+          categories.add(category);
+          acc[key][category] = c;
           return;
         }
-        const category = (row[categoryIndex] ?? '').toString();
-        categories.add(category);
-        acc[key][category] = c;
+        const extraData = extraDataByIndexAxis[key]
+        const header = headers[i]
+        if (extraData != null) {
+          extraData[header.name] = [c, header.type];
+        } else {
+          extraDataByIndexAxis[key] = { [header.name]: [c, header.type] };
+        }
       });
       return acc;
     },
@@ -83,6 +95,7 @@ const DashboardLineChart = ({
       startEndOnly={isTimeType(indexType)}
       connectNulls
       data={chartdata}
+      extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
       // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}

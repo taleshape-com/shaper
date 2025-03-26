@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { AxisDomain } from "recharts/types/util/types";
+import { formatValue } from "../../lib/render";
 
 import {
   AvailableChartColors,
@@ -377,6 +378,7 @@ interface ChartTooltipProps {
   payload: PayloadItem[];
   label: string;
   valueFormatter: (value: number) => string;
+  extraData?: Record<string, [any, Column["type"]]>;
 }
 
 const ChartTooltip = ({
@@ -384,6 +386,7 @@ const ChartTooltip = ({
   payload,
   label,
   valueFormatter,
+  extraData,
 }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     const legendPayload = payload.filter((item: any) => item.type !== "none");
@@ -410,6 +413,18 @@ const ChartTooltip = ({
             {label}
           </p>
         </div>
+        {extraData && (
+          <div className={cx("border-b border-inherit px-4 py-2")}>
+            {Object.entries(extraData).map(([key, [value, columnType]]) => {
+              return (
+                <p className="flex justify-between space-x-2">
+                  <span className="font-medium">{key}</span>
+                  <span>{formatValue(value, columnType, true)}</span>
+                </p>
+              )
+            })}
+          </div>
+        )}
         <div className={cx("space-y-1 px-4 py-2")}>
           {legendPayload.map(({ value, category, color }, index) => {
             const cat = getNameIfSet(category)
@@ -480,6 +495,7 @@ type LineChartEventProps = BaseEventProps | null | undefined;
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string,
   data: Record<string, any>[];
+  extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
   indexType: Column['type'];
   categories: string[];
@@ -514,6 +530,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
   (props, ref) => {
     const {
       data = [],
+      extraDataByIndexAxis,
       categories = [],
       index,
       indexType,
@@ -778,6 +795,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                       payload={cleanPayload}
                       label={indexFormatter(label)}
                       valueFormatter={valueFormatter}
+                      extraData={extraDataByIndexAxis[label]}
                     />
                   )
                 ) : null;

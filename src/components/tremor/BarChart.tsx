@@ -25,6 +25,7 @@ import { useOnWindowResize } from "../../hooks/useOnWindowResize";
 import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { Column, isTimeType } from "../../lib/dashboard";
+import { formatValue } from "../../lib/render";
 
 //#region Shape
 
@@ -437,6 +438,7 @@ interface ChartTooltipProps {
   payload: PayloadItem[];
   label: string;
   valueFormatter: (value: number) => string;
+  extraData?: Record<string, [any, Column["type"]]>;
 }
 
 const ChartTooltip = ({
@@ -444,6 +446,7 @@ const ChartTooltip = ({
   payload,
   label,
   valueFormatter,
+  extraData,
 }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
@@ -469,6 +472,18 @@ const ChartTooltip = ({
             {label}
           </p>
         </div>
+        {extraData && (
+          <div className={cx("border-b border-inherit px-4 py-2")}>
+            {Object.entries(extraData).map(([key, [value, columnType]]) => {
+              return (
+                <p className="flex justify-between space-x-2">
+                  <span className="font-medium">{key}</span>
+                  <span>{formatValue(value, columnType, true)}</span>
+                </p>
+              )
+            })}
+          </div>
+        )}
         <div className={cx("space-y-1 px-4 py-2")}>
           {payload.map(({ value, category, color }, index) => {
             const cat = getNameIfSet(category)
@@ -534,6 +549,7 @@ type BarChartEventProps = BaseEventProps | null | undefined;
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   data: Record<string, any>[];
+  extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
   indexType: Column['type'];
   categories: string[];
@@ -570,6 +586,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
   (props, forwardedRef) => {
     const {
       data = [],
+      extraDataByIndexAxis,
       categories = [],
       index,
       indexType,
@@ -881,6 +898,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                       payload={cleanPayload}
                       label={indexFormatter(label)}
                       valueFormatter={valueFormatter}
+                      extraData={extraDataByIndexAxis[label]}
                     />
                   )
                 ) : null;
