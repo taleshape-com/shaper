@@ -2,7 +2,7 @@ import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 
 import { formatValue, isJSONType } from "../../lib/render";
-import { cx } from "../../lib/utils";
+import { cx, getNameIfSet } from "../../lib/utils";
 
 type ValueProps = {
   headers: Column[];
@@ -39,7 +39,7 @@ function DashboardValue({ headers, data }: ValueProps) {
       })}>
         {formattedValue}
       </div>
-      {hasLabel && (
+      {hasLabel && getNameIfSet(valueHeader.name) && (
         <div className={cx("mt-3 font-medium font-display", {
           "text-xs": valueHeader.name.length >= 40,
           "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 35,
