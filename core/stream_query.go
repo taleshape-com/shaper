@@ -28,7 +28,7 @@ func StreamQueryCSV(
 	dashboardId string,
 	params url.Values,
 	queryID string,
-	variables map[string]interface{},
+	variables map[string]any,
 	writer io.Writer,
 ) error {
 	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
@@ -87,8 +87,8 @@ func StreamQueryCSV(
 	}
 
 	// Prepare containers for row data
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
+	values := make([]any, len(columns))
+	valuePtrs := make([]any, len(columns))
 	for i := range values {
 		valuePtrs[i] = &values[i]
 	}
@@ -126,7 +126,7 @@ func StreamQueryCSV(
 
 // getDisplayWidth returns the approximate display width of a value.
 // This is a simple implementation that could be enhanced for better accuracy.
-func getDisplayWidth(value interface{}) float64 {
+func getDisplayWidth(value any) float64 {
 	if value == nil {
 		return 4 // Width of "null"
 	}
@@ -148,7 +148,7 @@ func StreamQueryXLSX(
 	dashboardId string,
 	params url.Values,
 	queryID string,
-	variables map[string]interface{},
+	variables map[string]any,
 	writer io.Writer,
 ) error {
 	// Get dashboard content
@@ -258,8 +258,8 @@ func StreamQueryXLSX(
 	}
 
 	// Prepare containers for row data
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
+	values := make([]any, len(columns))
+	valuePtrs := make([]any, len(columns))
 	for i := range values {
 		valuePtrs[i] = &values[i]
 	}
@@ -357,7 +357,7 @@ func isUUID(s []byte) bool {
 
 // formatValue converts various types to their string representation
 // TODO: We are not handling TIME values. Currently they are treated as timestamps with epoc date.
-func formatValue(value interface{}) string {
+func formatValue(value any) string {
 	if value == nil {
 		return ""
 	}
@@ -372,6 +372,13 @@ func formatValue(value interface{}) string {
 		return intervalToString(v)
 	case time.Time:
 		return v.Format(time.RFC3339)
+	// handle list and array types
+	case []any:
+		var strValues []string
+		for _, item := range v {
+			strValues = append(strValues, formatValue(item))
+		}
+		return strings.Join(strValues, ", ")
 	default:
 		return fmt.Sprintf("%v", v)
 	}
@@ -421,7 +428,7 @@ func intervalToString(interval duckdb.Interval) string {
 	return strings.Join(parts, " ")
 }
 
-func isNumber(value interface{}) bool {
+func isNumber(value any) bool {
 	if value == nil {
 		return false
 	}
@@ -438,7 +445,7 @@ func isNumber(value interface{}) bool {
 	}
 }
 
-func isDateTime(value interface{}) bool {
+func isDateTime(value any) bool {
 	if value == nil {
 		return false
 	}
@@ -446,7 +453,7 @@ func isDateTime(value interface{}) bool {
 	return isTime
 }
 
-func isInterval(value interface{}) bool {
+func isInterval(value any) bool {
 	if value == nil {
 		return false
 	}
@@ -459,7 +466,7 @@ func createStyle(xlsx *excelize.File, style *excelize.Style) int {
 	return styleID
 }
 
-func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]interface{}) (string, string, error) {
+func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]any) (string, string, error) {
 	nextIsDownload := false
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
