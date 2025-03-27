@@ -179,7 +179,7 @@ const ScrollButton = ({ icon, onClick, disabled }: ScrollButtonProps) => {
         "group inline-flex size-5 items-center truncate rounded transition",
         disabled
           ? "cursor-not-allowed text-gray-400 dark:text-gray-600"
-          : "cursor-pointer text-ctext hover:bg-cbga dark:text-dtexta dark:hover:bg-dbga",
+          : "cursor-pointer text-ctext hover:bg-cbga dark:text-dtext dark:hover:bg-dbga",
       )}
       disabled={disabled}
       onClick={(e) => {

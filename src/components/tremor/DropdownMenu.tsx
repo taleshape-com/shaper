@@ -74,9 +74,9 @@ const DropdownMenuSubMenuContent = React.forwardRef<
         // background color
         "bg-white dark:bg-gray-950",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-ctext dark:text-dtext",
         // border color
-        "border-gray-200 dark:border-gray-800",
+        "border-cb dark:border-db",
         // transition
         "will-change-[transform,opacity]",
         // "data-[state=open]:animate-slideDownAndFade",
@@ -154,7 +154,7 @@ const DropdownMenuItem = React.forwardRef<
       // base
       "group/DropdownMenuItem relative flex cursor-pointer select-none items-center rounded py-1.5 pl-2 pr-1 outline-none transition-colors data-[state=checked]:font-semibold @sm:text-sm",
       // text color
-      "text-gray-900 dark:text-gray-50",
+      "text-ctext dark:text-dtext",
       // disabled
       "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
       // focus
@@ -319,7 +319,7 @@ const DropdownMenuLabel = React.forwardRef<
       // base
       "px-2 py-2 text-xs font-medium tracking-wide",
       // text color
-      "text-gray-500 dark:text-gray-500",
+      "text-ctext2 dark:text-dtext2",
       className,
     )}
     {...props}

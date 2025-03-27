@@ -73,7 +73,7 @@ export function MenuProvider({
     }}>
       <div
         className={cx(
-          "fixed top-0 bottom-0 left-0 z-50 overflow-y-auto shadow-sm dark:shadow-db bg-cbg dark:bg-dbg w-full sm:w-56 flex flex-col",
+          "fixed top-0 bottom-0 left-0 z-50 overflow-y-auto shadow-sm shadow-cb dark:shadow-db bg-cbg dark:bg-dbg w-full sm:w-56 flex flex-col",
           {
             "hidden": !actuallyOpen,
           },
@@ -114,14 +114,14 @@ export function MenuProvider({
 
         <div className="mt-auto pt-4 pb-4 space-y-3">
           <Link to="/admin" disabled={isAdmin} className={cx(
-            "block px-4 pt-2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext text-sm",
-            { "text-ctext2": !isAdmin }
+            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm",
+            { "text-ctext2 dark:text-dtext2": !isAdmin }
           )}>
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
             {translate("Admin")}
           </Link>
           {loginRequired && (
-            <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-dbga">
+            <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
               <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                 {userName}
               </span>

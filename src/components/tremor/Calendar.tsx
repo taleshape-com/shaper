@@ -47,13 +47,13 @@ const NavigationButton = React.forwardRef<
         className={cx(
           "flex size-8 shrink-0 select-none items-center justify-center rounded border p-1 outline-none transition @sm:size-[30px]",
           // text color
-          "text-gray-600 hover:text-gray-800",
-          "dark:text-gray-400 hover:dark:text-gray-200",
+          "text-ctext2 hover:text-ctext",
+          "dark:text-dtext2 hover:dark:text-dtext",
           // border color
-          "border-gray-300 dark:border-gray-800",
+          "border-cb dark:border-db",
           // background color
-          "hover:bg-gray-50 active:bg-gray-100",
-          "hover:dark:bg-gray-900 active:dark:bg-gray-800",
+          "hover:bg-cbga active:bg-cbgs",
+          "hover:dark:bg-dbga active:dark:bg-dbgs",
           // disabled
           "disabled:pointer-events-none",
           "disabled:border-gray-200 disabled:dark:border-gray-800",
@@ -125,13 +125,15 @@ const Calendar = ({
         day: cx(
           "size-9 rounded text-sm focus:z-10",
           "text-ctext dark:text-dtext",
-          "hover:bg-cbga hover:dark:bg-dbga",
+          "hover:bg-cprimary hover:dark:bg-dprimary",
+          "hover:text-ctexti hover:dark:text-dtexti",
           focusRing,
         ),
         day_today: "font-semibold",
         day_selected: cx(
           "rounded",
           "aria-selected:bg-cprimary aria-selected:text-ctexti",
+          "hover:bg-cprimarya dark:hover:bg-dprimarya",
           "dark:aria-selected:bg-dprimary dark:aria-selected:text-dtexti",
         ),
         day_disabled:
@@ -139,8 +141,10 @@ const Calendar = ({
         day_outside: "text-gray-400 dark:text-gray-600",
         day_range_middle: cx(
           "!rounded-none",
-          "aria-selected:!bg-cbga aria-selected:!text-ctext",
+          "aria-selected:bg-cbga aria-selected:!text-ctext",
+          "aria-selected:hover:bg-cprimary dark:aria-selected:hover:!bg-dprimary",
           "dark:aria-selected:!bg-dbga dark:aria-selected:!text-dtext",
+          "aria-selected:hover:!text-ctexti dark:aria-selected:hover:!text-dtexti",
         ),
         day_range_start: "rounded-r-none !rounded-l",
         day_range_end: "rounded-l-none !rounded-r",

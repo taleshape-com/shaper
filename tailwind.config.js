@@ -29,6 +29,7 @@ export default {
         "cbgi": "var(--shaper-background-color-invert)",
         "cb": "var(--shaper-border-color)",
         "cerr": "var(--shaper-error-color)",
+        "cerra": "var(--shaper-error-color-alternate)",
         "dprimary": "var(--shaper-dark-mode-primary-color)",
         "dprimarya": "var(--shaper-dark-mode-primary-color-alternate)",
         "dtext": "var(--shaper-dark-mode-text-color)",
@@ -40,6 +41,7 @@ export default {
         "dbgi": "var(--shaper-dark-mode-background-color-invert)",
         "db": "var(--shaper-dark-mode-border-color)",
         "derr": "var(--shaper-dark-mode-error-color)",
+        "derra": "var(--shaper-dark-mode-error-color-alternate)",
       },
       fontFamily: {
         sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],

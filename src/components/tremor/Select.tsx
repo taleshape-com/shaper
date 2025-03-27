@@ -33,7 +33,7 @@ const selectTriggerStyles = [
     // background color
     "bg-cbg dark:bg-dbg",
     // hover
-    "hover:bg-cbg hover:dark:bg-dbg",
+    "hover:bg-cbgs hover:dark:bg-dbgs",
     // disabled
     "data-[disabled]:bg-gray-100 data-[disabled]:text-gray-400",
     "data-[disabled]:dark:border-gray-700 data-[disabled]:dark:bg-gray-800 data-[disabled]:dark:text-gray-500",

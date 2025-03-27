@@ -63,9 +63,9 @@ const TimeSegment = ({ segment, state }: TimeSegmentProps) => {
         // base
         "relative block w-full appearance-none rounded-md border px-2.5 py-1.5 text-left uppercase tabular-nums shadow-sm outline-none transition sm:text-sm",
         // border color
-        "border-gray-300 dark:border-gray-800",
+        "border-cb dark:border-db",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-ctext dark:text-ctext",
         // background color
         "bg-cbgs dark:bg-dbgs",
         // focus
@@ -164,7 +164,7 @@ const triggerStyles = tv({
     // placeholder color
     "placeholder-gray-400 dark:placeholder-gray-500",
     // hover
-    "hover:bg-cbg hover:dark:bg-dbg",
+    "hover:bg-cbgs hover:dark:bg-dbgs",
     // disabled
     "disabled:pointer-events-none",
     "disabled:bg-gray-100 disabled:text-gray-400",
@@ -207,7 +207,7 @@ const Trigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
             {children ? (
               children
             ) : placeholder ? (
-              <span className="text-gray-400 dark:text-gray-600">
+              <span className="text-ctext2 dark:text-ctext2">
                 {placeholder}
               </span>
             ) : null}
@@ -947,7 +947,7 @@ const RangeDatePicker = ({
                 initialFocus
                 classNames={{
                   months:
-                    "flex flex-row divide-x divide-gray-200 dark:divide-gray-800 overflow-x-auto",
+                    "flex flex-row divide-x divide-cb dark:divide-db overflow-x-auto",
                 }}
                 {...props}
               />
@@ -980,7 +980,7 @@ const RangeDatePicker = ({
                   </div>
                 </div>
               )}
-              <div className="border-t border-gray-200 p-3 sm:flex sm:items-center sm:justify-between dark:border-gray-800">
+              <div className="border-t border-cb p-3 sm:flex sm:items-center sm:justify-between dark:border-db">
                 <div></div>
                 <div className="mt-2 flex items-center gap-x-2 sm:mt-0">
                   <Button

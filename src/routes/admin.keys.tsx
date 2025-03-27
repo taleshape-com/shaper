@@ -219,7 +219,7 @@ function Admin() {
               <div>
                 <Label>{translate("Your new API key:")}</Label>
                 <div className="flex items-center gap-2 mt-2">
-                  <code className="bg-cbga dark:bg-db p-2 rounded flex-grow overflow-hidden text-ellipsis">
+                  <code className="bg-cbga dark:bg-dbga p-2 rounded flex-grow overflow-hidden text-ellipsis">
                     {newKey.key}
                   </code>
                   <Button

@@ -398,7 +398,7 @@ function UsersManagement() {
             {inviteCode ? (
               <div>
                 <div className="flex items-center gap-2 my-4">
-                  <code className="bg-cbga dark:bg-db p-2 rounded flex-grow overflow-hidden text-ellipsis">
+                  <code className="bg-cbga dark:bg-dbga p-2 rounded flex-grow overflow-hidden text-ellipsis">
                     {getInviteLink(inviteCode.code)}
                   </code>
                   <Button
@@ -515,7 +515,7 @@ function UsersManagement() {
                               return (
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
-                                    <code className="bg-cbga dark:bg-db p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
+                                    <code className="bg-cbga dark:bg-dbga p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
                                       {getInviteLink(invite.code)}
                                     </code>
                                     <Button
@@ -601,19 +601,19 @@ function UsersManagement() {
                 <TableRow>
                   <TableHeaderCell
                     onClick={() => handleSort("name")}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbg"
                   >
                     {translate("Name")} <SortIcon field="name" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("email")}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbg"
                   >
                     {translate("Email")} <SortIcon field="email" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("created")}
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbg dark:hover:bg-dbga"
+                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbg dark:hover:bg-dbg"
                   >
                     {translate("Created")} <SortIcon field="created" />
                   </TableHeaderCell>

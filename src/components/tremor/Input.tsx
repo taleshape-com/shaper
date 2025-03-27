@@ -10,14 +10,16 @@ const inputStyles = tv({
   base: [
     // base
     "relative block w-full appearance-none rounded-md border px-2.5 py-2 shadow-sm outline-none transition sm:text-sm",
+    // cursor
+    "caret-ctext dark:caret-dtext",
     // border color
-    "border-gray-300 dark:border-gray-800",
+    "border-cb dark:border-db",
     // text color
-    "text-gray-900 dark:text-gray-50",
+    "text-ctext dark:text-dtext",
     // placeholder color
-    "placeholder-gray-400 dark:placeholder-gray-500",
+    "placeholder-ctext2 dark:placeholder-dtext2",
     // background color
-    "bg-white dark:bg-dbg",
+    "bg-cbg dark:bg-dbg",
     // disabled
     "disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400",
     "disabled:dark:border-gray-700 disabled:dark:bg-gray-800 disabled:dark:text-gray-500",

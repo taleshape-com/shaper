@@ -62,6 +62,7 @@
   --shaper-background-color-invert: #131a25;
   --shaper-border-color: #dadaef;
   --shaper-error-color: #ff4d4f;
+  --shaper-error-color-alternate: #d23537;
 
   --shaper-dark-mode-primary-color: #3544ff;
   --shaper-dark-mode-primary-color-alternate: #2732d1;
@@ -74,6 +75,7 @@
   --shaper-dark-mode-background-color-invert: #ebecf2;
   --shaper-dark-mode-border-color: #636679;
   --shaper-dark-mode-error-color: #ff4d4f;
+  --shaper-dark-mode-error-color-alternate: #d23537;
 }
 
 .shaper-scope body {
