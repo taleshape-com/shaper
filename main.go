@@ -28,6 +28,20 @@ var frontendFS embed.FS
 
 const APP_NAME = "shaper"
 
+// TODO: Add a short description of what shaper does once I know how to explain it
+const USAGE = `All options are optional.
+
+All configuration options can be set via command line flags, environment variables or config file.
+
+Environment variables must be prefixed with SHAPER_ and use uppercase letters and underscores.
+For example, --nats-token turns into SHAPER_NATS_TOKEN.
+
+The config file format is plain text, with one flag per line. The flag name and value are separated by whitespace.
+
+For more see: https://taleshape.com/shaper/docs
+
+`
+
 type Config struct {
 	SessionExp          time.Duration
 	InviteExp           time.Duration
@@ -60,7 +74,7 @@ func loadConfig() Config {
 		panic(err)
 	}
 
-	flags := ff.NewFlagSet("shaper")
+	flags := ff.NewFlagSet(APP_NAME)
 	help := flags.Bool('h', "help", "show help")
 	addr := flags.StringLong("addr", "localhost:5454", "server address")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
@@ -87,12 +101,11 @@ func loadConfig() Config {
 		ff.WithConfigFileParser(ff.PlainParser),
 	)
 	if err != nil {
-		fmt.Printf("%s\n", ffhelp.Flags(flags))
-		fmt.Printf("err=%v\n", err)
+		fmt.Printf("Error parsing config: %v\n\nSee --help for config options\n\n", err)
 		os.Exit(1)
 	}
 	if *help {
-		fmt.Printf("%s\n", ffhelp.Flags(flags))
+		fmt.Printf("%s\n", ffhelp.Flags(flags, USAGE))
 		os.Exit(0)
 	}
 
@@ -137,19 +150,22 @@ func loadConfig() Config {
 }
 
 func Run(cfg Config) func(context.Context) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	logger.Info("Starting Shaper")
+	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")
+
 	if cfg.Favicon != "" {
-		fmt.Println("⇨ custom favicon:", cfg.Favicon)
+		logger.Info("Custom favicon: " + cfg.Favicon)
 	}
 	if cfg.CustomCSS != "" {
-		fmt.Println("⇨ custom CSS injected into frontend")
+		logger.Info("Custom CSS injected into frontend")
 	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Make sure data directory exists
 	if _, err := os.Stat(cfg.DataDir); os.IsNotExist(err) {
 		err := os.Mkdir(cfg.DataDir, 0755)
-		logger.Info("created data directory", slog.Any("path", cfg.DataDir))
+		logger.Info("Created data directory", slog.Any("path", cfg.DataDir))
 		if err != nil {
 			panic(err)
 		}
@@ -167,7 +183,7 @@ func Run(cfg Config) func(context.Context) {
 	}
 	sqlDB := sql.OpenDB(dbConnector)
 	db := sqlx.NewDb(sqlDB, "duckdb")
-	logger.Info("connected to duckdb", slog.Any("file", dbFile))
+	logger.Info("DuckDB opened", slog.Any("file", dbFile))
 
 	if cfg.DuckDBExtDir != "" {
 		_, err := db.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
@@ -219,17 +235,17 @@ func Run(cfg Config) func(context.Context) {
 	e := web.Start(cfg.Address, app, frontendFS, cfg.ExecutableModTime, cfg.CustomCSS, cfg.Favicon)
 
 	return func(ctx context.Context) {
-		logger.Info("initiating shutdown...")
-		logger.Info("stopping web server...")
+		logger.Info("Initiating shutdown...")
+		logger.Info("Stopping web server...")
 		if err := e.Shutdown(ctx); err != nil {
-			logger.ErrorContext(ctx, "error stopping server", slog.Any("error", err))
+			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
 		}
-		logger.Info("stopping NATS...")
+		logger.Info("Stopping NATS...")
 		ingestConsumer.Close()
 		c.Close()
-		logger.Info("closing DB connections...")
+		logger.Info("Closing DB connections...")
 		if err := db.Close(); err != nil {
-			logger.ErrorContext(ctx, "error closing database connection", slog.Any("error", err))
+			logger.ErrorContext(ctx, "Error closing database connection", slog.Any("error", err))
 		}
 	}
 }
