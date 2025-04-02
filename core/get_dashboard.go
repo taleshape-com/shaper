@@ -79,6 +79,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		for rows.Next() {
 			row, err := rows.SliceScan()
 			if err != nil {
+				if closeErr := rows.Close(); closeErr != nil {
+					return result, fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
+				}
 				return result, err
 			}
 			query.Rows = append(query.Rows, row)

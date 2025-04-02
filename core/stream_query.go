@@ -97,6 +97,9 @@ func StreamQueryCSV(
 	for rows.Next() {
 		// Scan the row into our value containers
 		if err := rows.Scan(valuePtrs...); err != nil {
+			if closeErr := rows.Close(); closeErr != nil {
+				return fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
+			}
 			return fmt.Errorf("error scanning row: %w", err)
 		}
 
@@ -108,12 +111,18 @@ func StreamQueryCSV(
 
 		// Write the record
 		if err := csvWriter.Write(record); err != nil {
+			if closeErr := rows.Close(); closeErr != nil {
+				return fmt.Errorf("Error closing rows after csv write error. CSV Err: %v. Close Err: %v", err, closeErr)
+			}
 			return fmt.Errorf("error writing record: %w", err)
 		}
 
 		// Flush periodically to ensure streaming
 		csvWriter.Flush()
 		if err := csvWriter.Error(); err != nil {
+			if closeErr := rows.Close(); closeErr != nil {
+				return fmt.Errorf("Error closing rows after csv flush error. CSV Err: %v. Close Err: %v", err, closeErr)
+			}
 			return fmt.Errorf("error flushing CSV writer: %w", err)
 		}
 	}
@@ -269,6 +278,9 @@ func StreamQueryXLSX(
 	for rows.Next() {
 		// Scan the row into our value containers
 		if err := rows.Scan(valuePtrs...); err != nil {
+			if closeErr := rows.Close(); closeErr != nil {
+				return fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
+			}
 			return fmt.Errorf("error scanning row: %w", err)
 		}
 
@@ -276,6 +288,9 @@ func StreamQueryXLSX(
 		for colIdx, value := range values {
 			cell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
 			if err != nil {
+				if closeErr := rows.Close(); closeErr != nil {
+					return fmt.Errorf("Error closing rows after excel error. Excel Err: %w. Close Err: %v", err, closeErr)
+				}
 				return fmt.Errorf("error converting coordinates: %w", err)
 			}
 			// Apply appropriate formatting based on data type
@@ -502,6 +517,9 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 		for rows.Next() {
 			row, err := rows.SliceScan()
 			if err != nil {
+				if closeErr := rows.Close(); closeErr != nil {
+					return "", "", fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
+				}
 				return "", "", err
 			}
 			data = append(data, row)
