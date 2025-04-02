@@ -25,6 +25,16 @@ import { MenuProvider } from "../components/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { Button } from "../components/tremor/Button";
 import { Tooltip } from "../components/tremor/Tooltip";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/tremor/Dialog";
+import { useToast } from "../hooks/useToast";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -63,6 +73,8 @@ function Index() {
   const navigate = useNavigate({ from: "/" });
   const queryApi = useQueryApi();
   const router = useRouter();
+  const { toast } = useToast();
+  const [deleteDashboardDialog, setDeleteDashboardDialog] = useState<IDashboard | null>(null);
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -93,30 +105,25 @@ function Index() {
   };
 
   const handleDelete = async (dashboard: IDashboard) => {
-    if (
-      !window.confirm(
-        translate(
-          'Are you sure you want to delete the dashboard "%%"?',
-        ).replace("%%", dashboard.name),
-      )
-    ) {
-      return;
-    }
-
     try {
       await queryApi(`/api/dashboards/${dashboard.id}`, {
         method: "DELETE",
       });
       // Reload the page to refresh the list
       router.invalidate();
+      toast({
+        title: translate("Success"),
+        description: translate("Dashboard deleted successfully"),
+      });
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err);
       }
-      alert(
-        "Error deleting dashboard: " +
-        (err instanceof Error ? err.message : "Unknown error"),
-      );
+      toast({
+        title: translate("Error"),
+        description: err instanceof Error ? err.message : translate("Unknown error"),
+        variant: "error",
+      });
     }
   };
 
@@ -243,7 +250,7 @@ function Index() {
                         </Link>
                         <button
                           onClick={() => {
-                            handleDelete(dashboard);
+                            setDeleteDashboardDialog(dashboard);
                           }}
                           className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                         >
@@ -257,6 +264,36 @@ function Index() {
             </Table>
           </TableRoot>
         )}
+
+        <Dialog open={deleteDashboardDialog !== null} onOpenChange={(open) => !open && setDeleteDashboardDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+              <DialogDescription>
+                {deleteDashboardDialog && translate('Are you sure you want to delete the dashboard "%%"?').replace(
+                  "%%",
+                  deleteDashboardDialog.name,
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setDeleteDashboardDialog(null)}>
+                {translate("Cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (deleteDashboardDialog) {
+                    handleDelete(deleteDashboardDialog);
+                    setDeleteDashboardDialog(null);
+                  }
+                }}
+              >
+                {translate("Delete")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </MenuProvider>
   );

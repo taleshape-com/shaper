@@ -28,6 +28,16 @@ import { MenuTrigger } from '../components/MenuTrigger'
 import { Result } from '../lib/dashboard'
 import { useToast } from '../hooks/useToast'
 import { Tooltip } from '../components/tremor/Tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/tremor/Dialog'
+import { Input } from '../components/tremor/Input'
+import { Label } from '../components/tremor/Label'
 
 const defaultQuery = '-- Enter your SQL query here'
 
@@ -53,6 +63,8 @@ function NewDashboard() {
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia('(prefers-color-scheme: dark)').matches,
   )
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [dashboardName, setDashboardName] = useState('')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -143,17 +155,16 @@ function NewDashboard() {
   }
 
   const handleCreate = useCallback(async () => {
-    const name = window.prompt(
-      `${translate('Enter a name for the dashboard')}:`,
-    )
-    if (!name) return
-
+    if (!dashboardName.trim()) {
+      return
+    }
+    
     setCreating(true)
     try {
       const { id } = await queryApi('/api/dashboards', {
         method: 'POST',
         body: {
-          name,
+          name: dashboardName,
           content: editorQuery,
         },
       })
@@ -178,8 +189,9 @@ function NewDashboard() {
         variant: 'error',
       })
       setCreating(false)
+      setShowCreateDialog(false)
     }
-  }, [queryApi, editorQuery, navigate, vars, toast])
+  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName])
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -245,9 +257,8 @@ function NewDashboard() {
             <div className="space-x-2">
               <Tooltip showArrow={false} asChild content="Create Dashboard">
                 <Button
-                  onClick={handleCreate}
+                  onClick={() => setShowCreateDialog(true)}
                   disabled={creating}
-                  isLoading={creating}
                   variant="secondary"
                 >
                   {translate('Create')}
@@ -320,6 +331,48 @@ function NewDashboard() {
           />
         </div>
       </div>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate('Create Dashboard')}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreate();
+            }}
+            className="space-y-4 mt-4"
+          >
+            <div>
+              <Input
+                id="dashboardName"
+                value={dashboardName}
+                onChange={(e) => setDashboardName(e.target.value)}
+                placeholder={translate('Enter a name for the dashboard')}
+                autoFocus
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                onClick={() => setShowCreateDialog(false)}
+                variant="secondary"
+              >
+                {translate('Cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={creating || !dashboardName.trim()}
+                isLoading={creating}
+              >
+                {translate('Create')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </MenuProvider>
   )
 }

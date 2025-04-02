@@ -309,6 +309,24 @@ const translations: Record<string, Record<string, string>> = {
   "Are you sure you want to delete the invite for %%?": {
     de: "Sind Sie sicher, dass Sie die Einladung für %% löschen möchten?",
   },
+  "Confirm Deletion": {
+    de: "Löschen bestätigen",
+  },
+  "User deleted successfully": {
+    de: "Benutzer erfolgreich gelöscht",
+  },
+  "Unknown error": {
+    de: "Unbekannter Fehler",
+  },
+  "Dashboard deleted successfully": {
+    de: "Dashboard erfolgreich gelöscht",
+  },
+  "Discard": {
+    de: "Verwerfen",
+  },
+  "Unsaved Changes": {
+    de: "Ungespeicherte Änderungen",
+  },
 };
 
 export function translate(s: string) {

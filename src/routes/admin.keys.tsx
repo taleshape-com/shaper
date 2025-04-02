@@ -58,23 +58,13 @@ function Admin() {
   const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
+  const [deleteKeyDialog, setDeleteKeyDialog] = useState<APIKey | null>(null);
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/admin" });
   const router = useRouter();
   const { toast } = useToast();
 
   const handleDelete = async (key: APIKey) => {
-    if (
-      !confirm(
-        translate('Are you sure you want to delete this API key "%%"?').replace(
-          "%%",
-          key.name,
-        ),
-      )
-    ) {
-      return;
-    }
-
     try {
       await queryApi(`/api/keys/${key.id}`, {
         method: "DELETE",
@@ -181,7 +171,7 @@ function Admin() {
                   <TableCell>
                     <Button
                       variant="destructive"
-                      onClick={() => handleDelete(key)}
+                      onClick={() => setDeleteKeyDialog(key)}
                     >
                       {translate("Delete")}
                     </Button>
@@ -192,6 +182,36 @@ function Admin() {
           </Table>
         </TableRoot>
       )}
+
+      <Dialog open={deleteKeyDialog !== null} onOpenChange={(open) => !open && setDeleteKeyDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogDescription>
+              {deleteKeyDialog && translate('Are you sure you want to delete this API key "%%"?').replace(
+                "%%",
+                deleteKeyDialog.name,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setDeleteKeyDialog(null)}>
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteKeyDialog) {
+                  handleDelete(deleteKeyDialog);
+                  setDeleteKeyDialog(null);
+                }
+              }}
+            >
+              {translate("Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={showNewKeyDialog}

@@ -24,6 +24,14 @@ import { MenuProvider } from "../components/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/tremor/Dialog";
 
 export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
   validateSearch: z.object({
@@ -65,6 +73,9 @@ function DashboardEditor() {
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,18 +90,10 @@ function DashboardEditor() {
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
-    const unsavedContent = editorStorage.getChanges(params.dashboardId);
-    if (unsavedContent && unsavedContent !== dashboard.content) {
-      if (
-        window.confirm(
-          "There are unsaved previous edits. Do you want to restore them?",
-        )
-      ) {
-        setEditorQuery(unsavedContent);
-        setRunningQuery(unsavedContent);
-      } else {
-        editorStorage.clearChanges(params.dashboardId);
-      }
+    const savedContent = editorStorage.getChanges(params.dashboardId);
+    if (savedContent && savedContent !== dashboard.content) {
+      setUnsavedContent(savedContent);
+      setShowRestoreDialog(true);
     }
   }, [params.dashboardId, dashboard.content]);
 
@@ -252,20 +255,15 @@ function DashboardEditor() {
   };
 
   const handleDelete = async () => {
-    if (
-      !window.confirm(
-        translate(
-          'Are you sure you want to delete the dashboard "%%"?',
-        ).replace("%%", dashboard.name),
-      )
-    ) {
-      return;
-    }
     try {
       await queryApi(`/api/dashboards/${params.dashboardId}`, {
         method: "DELETE",
       });
       // Navigate back to dashboard list
+      toast({
+        title: translate("Success"),
+        description: translate("Dashboard deleted successfully"),
+      });
       navigate({ to: "/" });
     } catch (err) {
       if (isRedirect(err)) {
@@ -280,6 +278,19 @@ function DashboardEditor() {
         variant: "error",
       });
     }
+  };
+
+  const handleRestoreUnsavedChanges = () => {
+    if (unsavedContent) {
+      setEditorQuery(unsavedContent);
+      setRunningQuery(unsavedContent);
+    }
+    setShowRestoreDialog(false);
+  };
+
+  const handleDiscardUnsavedChanges = () => {
+    editorStorage.clearChanges(params.dashboardId);
+    setShowRestoreDialog(false);
   };
 
   // Load initial preview
@@ -316,7 +327,7 @@ function DashboardEditor() {
                   ></textarea>
                 </label>
                 <Button
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteDialog(true)}
                   variant="destructive"
                   className="mt-4"
                 >
@@ -463,6 +474,58 @@ function DashboardEditor() {
           />
         </div>
       </div>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogDescription>
+              {translate('Are you sure you want to delete the dashboard "%%"?').replace(
+                "%%",
+                dashboard.name,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowDeleteDialog(false)}>
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                handleDelete();
+                setShowDeleteDialog(false);
+              }}
+            >
+              {translate("Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate("Unsaved Changes")}</DialogTitle>
+            <DialogDescription>
+              {translate("There are unsaved previous edits. Do you want to restore them?")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="secondary"
+              onClick={handleDiscardUnsavedChanges}
+            >
+              {translate("Discard")}
+            </Button>
+            <Button
+              onClick={handleRestoreUnsavedChanges}
+            >
+              {translate("Restore")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MenuProvider>
   );
 }

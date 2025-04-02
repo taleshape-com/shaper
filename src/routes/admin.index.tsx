@@ -122,6 +122,8 @@ function UsersManagement() {
     code: string;
     email: string;
   } | null>(null);
+  const [deleteUserDialog, setDeleteUserDialog] = useState<IUser | null>(null);
+  const [deleteInviteDialog, setDeleteInviteDialog] = useState<IInvite | null>(null);
   const { toast } = useToast();
   const queryApi = useQueryApi();
 
@@ -155,31 +157,25 @@ function UsersManagement() {
   };
 
   const handleDelete = async (user: IUser) => {
-    if (
-      !window.confirm(
-        translate("Are you sure you want to delete the user %%?").replace(
-          "%%",
-          user.email,
-        ),
-      )
-    ) {
-      return;
-    }
-
     try {
       await queryApi(`/api/users/${user.id}`, {
         method: "DELETE",
       });
       // Reload the page to refresh the list
       router.invalidate();
+      toast({
+        title: translate("Success"),
+        description: translate("User deleted successfully"),
+      });
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err);
       }
-      alert(
-        "Error deleting user: " +
-        (err instanceof Error ? err.message : "Unknown error"),
-      );
+      toast({
+        title: translate("Error"),
+        description: err instanceof Error ? err.message : translate("Unknown error"),
+        variant: "error",
+      });
     }
   };
 
@@ -460,6 +456,86 @@ function UsersManagement() {
         </Dialog>
       )}
 
+      <Dialog open={deleteUserDialog !== null} onOpenChange={(open) => !open && setDeleteUserDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogDescription>
+              {deleteUserDialog && translate("Are you sure you want to delete the user %%?").replace(
+                "%%",
+                deleteUserDialog.email,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setDeleteUserDialog(null)}>
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="destructive" 
+              onClick={() => {
+                if (deleteUserDialog) {
+                  handleDelete(deleteUserDialog);
+                  setDeleteUserDialog(null);
+                }
+              }}
+            >
+              {translate("Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteInviteDialog !== null} onOpenChange={(open) => !open && setDeleteInviteDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogDescription>
+              {deleteInviteDialog && translate("Are you sure you want to delete the invite for %%?").replace(
+                "%%",
+                deleteInviteDialog.email,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setDeleteInviteDialog(null)}>
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (deleteInviteDialog) {
+                  try {
+                    await queryApi(`/api/invites/${deleteInviteDialog.code}`, {
+                      method: "DELETE",
+                    });
+                    toast({
+                      title: translate("Success"),
+                      description: translate("Invite deleted successfully"),
+                    });
+                    router.invalidate();
+                  } catch (error) {
+                    if (isRedirect(error)) {
+                      return navigate(error);
+                    }
+                    toast({
+                      title: translate("Error"),
+                      description: error instanceof Error
+                        ? error.message
+                        : translate("An error occurred"),
+                      variant: "error",
+                    });
+                  }
+                  setDeleteInviteDialog(null);
+                }
+              }}
+            >
+              {translate("Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {auth.loginRequired && (
         <>
           {data.invites?.length > 0 && (
@@ -540,44 +616,7 @@ function UsersManagement() {
                           </TableCell>
                           <TableCell>
                             <button
-                              onClick={async () => {
-                                if (
-                                  !window.confirm(
-                                    translate(
-                                      "Are you sure you want to delete the invite for %%?",
-                                    ).replace("%%", invite.email),
-                                  )
-                                ) {
-                                  return;
-                                }
-                                try {
-                                  await queryApi(
-                                    `/api/invites/${invite.code}`,
-                                    {
-                                      method: "DELETE",
-                                    },
-                                  );
-                                  toast({
-                                    title: translate("Success"),
-                                    description: translate(
-                                      "Invite deleted successfully",
-                                    ),
-                                  });
-                                  router.invalidate();
-                                } catch (error) {
-                                  if (isRedirect(error)) {
-                                    return navigate(error);
-                                  }
-                                  toast({
-                                    title: translate("Error"),
-                                    description:
-                                      error instanceof Error
-                                        ? error.message
-                                        : translate("An error occurred"),
-                                    variant: "error",
-                                  });
-                                }
-                              }}
+                              onClick={() => setDeleteInviteDialog(invite)}
                               className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                             >
                               {translate("Delete")}
@@ -641,7 +680,7 @@ function UsersManagement() {
                     </TableCell>
                     <TableCell>
                       <button
-                        onClick={() => handleDelete(user)}
+                        onClick={() => setDeleteUserDialog(user)}
                         className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                       >
                         {translate("Delete")}
