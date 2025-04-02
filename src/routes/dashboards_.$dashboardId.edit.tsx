@@ -189,7 +189,7 @@ function DashboardEditor() {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.dashboardId, editorQuery, dashboard, navigate, toast]);
+  }, [queryApi, params.dashboardId, editorQuery, dashboard, navigate, toast, router]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -512,7 +512,7 @@ function DashboardEditor() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
+            <Button
               variant="secondary"
               onClick={handleDiscardUnsavedChanges}
             >
