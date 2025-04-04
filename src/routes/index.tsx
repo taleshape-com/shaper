@@ -35,7 +35,6 @@ import {
   DialogTitle,
 } from "../components/tremor/Dialog";
 import { useToast } from "../hooks/useToast";
-import { cx } from "../lib/utils";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
