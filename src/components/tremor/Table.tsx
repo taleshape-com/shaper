@@ -35,9 +35,7 @@ const Table = React.forwardRef<
     tremor-id="tremor-raw"
     className={cx(
       // base
-      "w-full caption-bottom border-b",
-      // border color
-      "border-cb dark:border-db",
+      "w-full caption-bottom",
       className,
     )}
     {...props}
@@ -63,11 +61,9 @@ const TableHeaderCell = React.forwardRef<
     ref={forwardedRef}
     className={cx(
       // base
-      "border-b px-4 py-3.5 text-left text-sm font-semibold font-display",
+      "px-4 py-3.5 text-left text-sm font-semibold font-display",
       // text color
       "text-gray-900 dark:text-gray-50",
-      // border color
-      "border-cb dark:border-db",
       className,
     )}
     {...props}
@@ -104,6 +100,7 @@ const TableRow = React.forwardRef<
     className={cx(
       "[&_td:last-child]:pr-4 [&_th:last-child]:pr-4",
       "[&_td:first-child]:pl-4 [&_th:first-child]:pl-4",
+      "border-none",
       className,
     )}
     {...props}
@@ -140,11 +137,10 @@ const TableFoot = React.forwardRef<
       ref={forwardedRef}
       className={cx(
         // base
-        "border-t text-left font-medium",
+        "text-left font-medium",
         // text color
         "text-gray-900 dark:text-gray-50",
         // border color
-        "border-cb dark:border-db",
         className,
       )}
       {...props}

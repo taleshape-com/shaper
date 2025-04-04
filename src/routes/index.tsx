@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "../components/tremor/Dialog";
 import { useToast } from "../hooks/useToast";
+import { cx } from "../lib/utils";
 
 type DashboardListResponse = {
   dashboards: IDashboard[];
@@ -138,132 +139,136 @@ function Index() {
         <meta name="description" content="Show a list of all dashboards" />
       </Helmet>
 
-      <div className="bg-cbgs dark:bg-dbgs rounded-lg shadow px-4 pt-4 pb-6 m-4 min-h-[calc(100dvh-2rem)] flex flex-col">
+      <div className="px-4 pb-4 min-h-dvh flex flex-col">
         <div className="flex">
-          <MenuTrigger className="-ml-1.5 -mt-2 pr-1.5" />
-          <h1 className="text-2xl font-semibold font-display mb-2">
+          <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
+          <h1 className="text-2xl font-semibold font-display flex-grow pb-2 pt-2.5">
             <RiLayoutFill
-              className="mx-auto -mt-1 mr-1 size-6 text-ctext dark:text-dtext inline"
+              className="size-5 inline mr-1 -mt-1"
               aria-hidden={true}
             />
             {translate("Dashboards")}
           </h1>
         </div>
 
-        {data.dashboards.length === 0 ? (
-          <div className="my-4 flex flex-col items-center justify-center flex-grow">
-            <RiLayoutFill
-              className="mx-auto size-9 text-ctext dark:text-dtext"
-              aria-hidden={true}
-            />
-            <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-              No dashboards yet
-            </p>
-            <Link
-              to="/new"
-            >
-              <Button>
-                <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />
-                {translate("New Dashboard")}
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <TableRoot className="">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell
-                    onClick={() => handleSort("name" as const)}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
-                  >
-                    {translate("Name")} <SortIcon field="name" />
-                  </TableHeaderCell>
-                  <TableHeaderCell
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
-                    onClick={() => handleSort("created" as const)}
-                  >
-                    {translate("Created")} <SortIcon field="created" />
-                  </TableHeaderCell>
-                  <TableHeaderCell
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
-                    onClick={() => handleSort("updated" as const)}
-                  >
-                    {translate("Updated")} <SortIcon field="updated" />
-                  </TableHeaderCell>
-                  <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
-                    {translate("Actions")}
-                  </TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.dashboards.map((dashboard) => (
-                  <TableRow
-                    key={dashboard.id}
-                    className="group hover:bg-cbga dark:hover:bg-dbga transition-colors duration-200"
-                  >
-                    <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
-                      <Link
-                        to="/dashboards/$dashboardId"
-                        params={{ dashboardId: dashboard.id }}
-                        className="block p-4"
-                      >
-                        {dashboard.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
-                      <Link
-                        to="/dashboards/$dashboardId"
-                        params={{ dashboardId: dashboard.id }}
-                        className="block p-4"
-                      >
-                        <Tooltip
-                          showArrow={false}
-                          content={new Date(dashboard.createdAt).toLocaleString()}
-                        >
-                          {new Date(dashboard.createdAt).toLocaleDateString()}
-                        </Tooltip>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
-                      <Link
-                        to="/dashboards/$dashboardId"
-                        params={{ dashboardId: dashboard.id }}
-                        className="block p-4"
-                      >
-                        <Tooltip
-                          showArrow={false}
-                          content={new Date(dashboard.updatedAt).toLocaleString()}
-                        >
-                          {new Date(dashboard.updatedAt).toLocaleDateString()}
-                        </Tooltip>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex gap-4">
-                        <Link
-                          to="/dashboards/$dashboardId/edit"
-                          params={{ dashboardId: dashboard.id }}
-                          className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
-                        >
-                          {translate("Edit")}
-                        </Link>
-                        <button
-                          onClick={() => {
-                            setDeleteDashboardDialog(dashboard);
-                          }}
-                          className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
-                        >
-                          {translate("Delete")}
-                        </button>
-                      </div>
-                    </TableCell>
+        <div className="bg-cbgs dark:bg-dbgs rounded-lg shadow flex-grow px-6 pt-6">
+          {data.dashboards.length === 0 ? (
+            <div className="my-4 flex flex-col items-center justify-center flex-grow">
+              <RiLayoutFill
+                className="mx-auto size-9 text-ctext dark:text-dtext"
+                aria-hidden={true}
+              />
+              <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
+                No dashboards yet
+              </p>
+              <Link
+                to="/new"
+              >
+                <Button>
+                  <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />
+                  {translate("New Dashboard")}
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <TableRoot className="">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell
+                      onClick={() => handleSort("name" as const)}
+                      className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
+                    >
+                      {translate("Name")} <SortIcon field="name" />
+                    </TableHeaderCell>
+                    <TableHeaderCell
+                      className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
+                      onClick={() => handleSort("created" as const)}
+                    >
+                      {translate("Created")} <SortIcon field="created" />
+                    </TableHeaderCell>
+                    <TableHeaderCell
+                      className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
+                      onClick={() => handleSort("updated" as const)}
+                    >
+                      {translate("Updated")} <SortIcon field="updated" />
+                    </TableHeaderCell>
+                    <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
+                      {translate("Actions")}
+                    </TableHeaderCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableRoot>
-        )}
+                </TableHead>
+                <TableBody>
+                  {data.dashboards.map((dashboard, i) => (
+                    <TableRow
+                      key={dashboard.id}
+                      className={cx("group transition-colors duration-200", {
+                        "bg-cbga dark:bg-dbga": i % 2 === 0,
+                      })}
+                    >
+                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                        <Link
+                          to="/dashboards/$dashboardId"
+                          params={{ dashboardId: dashboard.id }}
+                          className="block p-4"
+                        >
+                          {dashboard.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
+                        <Link
+                          to="/dashboards/$dashboardId"
+                          params={{ dashboardId: dashboard.id }}
+                          className="block p-4"
+                        >
+                          <Tooltip
+                            showArrow={false}
+                            content={new Date(dashboard.createdAt).toLocaleString()}
+                          >
+                            {new Date(dashboard.createdAt).toLocaleDateString()}
+                          </Tooltip>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
+                        <Link
+                          to="/dashboards/$dashboardId"
+                          params={{ dashboardId: dashboard.id }}
+                          className="block p-4"
+                        >
+                          <Tooltip
+                            showArrow={false}
+                            content={new Date(dashboard.updatedAt).toLocaleString()}
+                          >
+                            {new Date(dashboard.updatedAt).toLocaleDateString()}
+                          </Tooltip>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex gap-4">
+                          <Link
+                            to="/dashboards/$dashboardId/edit"
+                            params={{ dashboardId: dashboard.id }}
+                            className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+                          >
+                            {translate("Edit")}
+                          </Link>
+                          <button
+                            onClick={() => {
+                              setDeleteDashboardDialog(dashboard);
+                            }}
+                            className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
+                          >
+                            {translate("Delete")}
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableRoot>
+          )}
+        </div>
 
         <Dialog open={deleteDashboardDialog !== null} onOpenChange={(open) => !open && setDeleteDashboardDialog(null)}>
           <DialogContent>

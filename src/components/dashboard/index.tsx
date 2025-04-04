@@ -161,13 +161,13 @@ const DataView = ({
                 <>
                   {menuButton}
                   {section.title ? (
-                    <h1 className="text-2xl text-left ml-1 mt-0.5">
+                    <h1 className="text-2xl text-left ml-1 mt-0.5 font-semibold">
                       {section.title}
                     </h1>
                   ) : null}
                 </>
               ) : section.title ? (
-                <h2 className="text-xl text-left ml-1 mt-0.5">
+                <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
                   {section.title}
                 </h2>
               ) : null}

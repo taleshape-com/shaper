@@ -35,6 +35,36 @@ export const chartColors = {
     fill: "fill-cfive",
     text: "text-cfive",
   },
+  color6: {
+    bg: "bg-csix",
+    stroke: "stroke-csix",
+    fill: "fill-csix",
+    text: "text-csix",
+  },
+  color7: {
+    bg: "bg-cseven",
+    stroke: "stroke-cseven",
+    fill: "fill-cseven",
+    text: "text-cseven",
+  },
+  color8: {
+    bg: "bg-ceight",
+    stroke: "stroke-ceight",
+    fill: "fill-ceight",
+    text: "text-ceight",
+  },
+  color9: {
+    bg: "bg-cnine",
+    stroke: "stroke-cnine",
+    fill: "fill-cnine",
+    text: "text-cnine",
+  },
+  color10: {
+    bg: "bg-cten",
+    stroke: "stroke-cten",
+    fill: "fill-cten",
+    text: "text-cten",
+  },
   // indigo: {
   //   bg: "bg-indigo-500",
   //   stroke: "stroke-indigo-500",

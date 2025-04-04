@@ -23,7 +23,7 @@ const buttonVariants = tv({
         // border
         "border-transparent",
         // text color
-        "text-ctexti dark:text-dtexti",
+        "text-ctextb dark:text-dtextb",
         // background color
         "bg-cprimary dark:bg-dprimary",
         // hover color
