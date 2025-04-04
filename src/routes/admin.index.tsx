@@ -472,7 +472,7 @@ function UsersManagement() {
               {translate("Cancel")}
             </Button>
             <Button
-              variant="destructive" 
+              variant="destructive"
               onClick={() => {
                 if (deleteUserDialog) {
                   handleDelete(deleteUserDialog);

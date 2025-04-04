@@ -101,6 +101,7 @@ const TableRow = React.forwardRef<
       "[&_td:last-child]:pr-4 [&_th:last-child]:pr-4",
       "[&_td:first-child]:pl-4 [&_th:first-child]:pl-4",
       "border-none",
+      "[tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga",
       className,
     )}
     {...props}

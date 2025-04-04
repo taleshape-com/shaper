@@ -171,7 +171,7 @@ function Index() {
               </Link>
             </div>
           ) : (
-            <TableRoot className="">
+            <TableRoot>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -199,12 +199,10 @@ function Index() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.dashboards.map((dashboard, i) => (
+                  {data.dashboards.map((dashboard) => (
                     <TableRow
                       key={dashboard.id}
-                      className={cx("group transition-colors duration-200", {
-                        "bg-cbga dark:bg-dbga": i % 2 === 0,
-                      })}
+                      className="group transition-colors duration-200"
                     >
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
                         <Link

@@ -36,7 +36,7 @@ function DashboardTable({ headers, data }: TableProps) {
         <TableBody>
           {
             data.map((items, index) => (
-              <TableRow key={index} className={index % 2 === 0 ? "bg-cbga dark:bg-dbga" : undefined}>
+              <TableRow key={index}>
                 {items.map((item, index) => {
                   const header = headers[index]
                   const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
