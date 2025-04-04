@@ -246,7 +246,7 @@ function Index() {
                           <Link
                             to="/dashboards/$dashboardId/edit"
                             params={{ dashboardId: dashboard.id }}
-                            className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+                            className=" text-ctext2 font-semibold dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
                           >
                             {translate("Edit")}
                           </Link>
@@ -254,7 +254,7 @@ function Index() {
                             onClick={() => {
                               setDeleteDashboardDialog(dashboard);
                             }}
-                            className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
+                            className="text-cerr font-semibold dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                           >
                             {translate("Delete")}
                           </button>
