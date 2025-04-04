@@ -345,7 +345,7 @@ function UsersManagement() {
 
                   <DialogFooter className="mt-6">
                     <DialogClose asChild>
-                      <Button type="button" variant="destructive">
+                      <Button type="button" variant="secondary">
                         {translate("Cancel")}
                       </Button>
                     </DialogClose>
@@ -444,7 +444,7 @@ function UsersManagement() {
 
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button type="button" variant="destructive">
+                    <Button type="button" variant="secondary">
                       {translate("Cancel")}
                     </Button>
                   </DialogClose>
@@ -468,7 +468,7 @@ function UsersManagement() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setDeleteUserDialog(null)}>
+            <Button onClick={() => setDeleteUserDialog(null)} variant="secondary">
               {translate("Cancel")}
             </Button>
             <Button
@@ -498,7 +498,7 @@ function UsersManagement() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setDeleteInviteDialog(null)}>
+            <Button onClick={() => setDeleteInviteDialog(null)} variant="secondary">
               {translate("Cancel")}
             </Button>
             <Button
@@ -591,7 +591,7 @@ function UsersManagement() {
                               return (
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
-                                    <code className="bg-cbga dark:bg-dbga p-1 rounded text-sm flex-grow overflow-hidden text-ellipsis">
+                                    <code className="bg-cbg dark:bg-dbg p-1 rounded text-sm overflow-hidden text-ellipsis">
                                       {getInviteLink(invite.code)}
                                     </code>
                                     <Button
@@ -640,19 +640,19 @@ function UsersManagement() {
                 <TableRow>
                   <TableHeaderCell
                     onClick={() => handleSort("name")}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbg"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                   >
                     {translate("Name")} <SortIcon field="name" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("email")}
-                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:bg-cbg dark:hover:bg-dbg"
+                    className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                   >
                     {translate("Email")} <SortIcon field="email" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("created")}
-                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:bg-cbg dark:hover:bg-dbg"
+                    className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                   >
                     {translate("Created")} <SortIcon field="created" />
                   </TableHeaderCell>

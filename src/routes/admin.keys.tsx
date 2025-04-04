@@ -169,12 +169,12 @@ function Admin() {
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="destructive"
+                    <button
+                      className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                       onClick={() => setDeleteKeyDialog(key)}
                     >
                       {translate("Delete")}
-                    </Button>
+                    </button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -195,7 +195,7 @@ function Admin() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setDeleteKeyDialog(null)}>
+            <Button onClick={() => setDeleteKeyDialog(null)} variant="secondary">
               {translate("Cancel")}
             </Button>
             <Button
@@ -294,7 +294,7 @@ function Admin() {
 
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="destructive">
+                  <Button type="button" variant="secondary">
                     {translate("Cancel")}
                   </Button>
                 </DialogClose>

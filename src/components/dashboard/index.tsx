@@ -98,7 +98,7 @@ export function Dashboard({
   ) : (
     <ChartHoverProvider>
       <div className="w-full flex justify-center items-center flex-grow">
-        <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
+        <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
       </div>
     </ChartHoverProvider>
   );
