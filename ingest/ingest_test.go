@@ -1218,5 +1218,123 @@ func TestColumnOrderPreservation(t *testing.T) {
 	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
 	require.NoError(t, err, "Failed to process second batch")
 
-	// Rest of test remains the same...
+	// Get the updated column order
+	updatedColumns, err := getTableColumns(ctx, db, "ordered")
+	require.NoError(t, err, "Failed to get updated columns")
+
+	// Extract just our known columns
+	updatedColumnOrder := make([]string, 0, len(updatedColumns))
+	knownColumns := map[string]bool{
+		"id": true, "first": true, "second": true, "third": true,
+		"fourth": true, "fifth": true, "sixth": true,
+	}
+	for _, col := range updatedColumns {
+		if knownColumns[col.ColumnName] {
+			updatedColumnOrder = append(updatedColumnOrder, col.ColumnName)
+		}
+	}
+
+	// Ensure all our expected columns exist
+	assert.Contains(t, updatedColumnOrder, "id")
+	assert.Contains(t, updatedColumnOrder, "first")
+	assert.Contains(t, updatedColumnOrder, "second")
+	assert.Contains(t, updatedColumnOrder, "third")
+	assert.Contains(t, updatedColumnOrder, "fourth")
+	assert.Contains(t, updatedColumnOrder, "fifth")
+	assert.Contains(t, updatedColumnOrder, "sixth")
+
+	// Verify data integrity
+	rows, err := db.QueryxContext(ctx, "SELECT * FROM ordered ORDER BY id")
+	require.NoError(t, err, "Failed to query ordered table data")
+	defer rows.Close()
+
+	// Check each row
+	rowCount := 0
+	for rows.Next() {
+		rowCount++
+		rowData := make(map[string]interface{})
+		err := rows.MapScan(rowData)
+		require.NoError(t, err, "Failed to scan row")
+
+		id, ok := rowData["id"]
+		require.True(t, ok, "Row missing id field")
+
+		switch int(id.(float64)) {
+		case 1:
+			// First row should have first, second, third values
+			assert.NotNil(t, rowData["first"], "Row 1 missing 'first' value")
+			assert.NotNil(t, rowData["second"], "Row 1 missing 'second' value")
+			assert.NotNil(t, rowData["third"], "Row 1 missing 'third' value")
+			// Should be NULL for later columns
+			_, hasFourth := rowData["fourth"]
+			if hasFourth {
+				assert.Nil(t, rowData["fourth"], "Row 1 should have NULL for 'fourth'")
+			}
+		case 3:
+			// Third row should have fourth and fifth values
+			assert.NotNil(t, rowData["fourth"], "Row 3 missing 'fourth' value")
+			assert.NotNil(t, rowData["fifth"], "Row 3 missing 'fifth' value")
+			// But NULL for earlier columns (except id)
+			_, hasFirst := rowData["first"]
+			if hasFirst {
+				assert.Nil(t, rowData["first"], "Row 3 should have NULL for 'first'")
+			}
+		case 4:
+			// Fourth row should have fourth and sixth values
+			assert.NotNil(t, rowData["fourth"], "Row 4 missing 'fourth' value")
+			assert.NotNil(t, rowData["sixth"], "Row 4 missing 'sixth' value")
+			_, hasFifth := rowData["fifth"]
+			if hasFifth {
+				assert.Nil(t, rowData["fifth"], "Row 4 should have NULL for 'fifth'")
+			}
+		}
+	}
+	assert.Equal(t, 4, rowCount, "Expected 4 rows in the ordered table")
+}
+
+func TestTableExistenceImplicitCheck(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Try to get columns for a non-existent table directly
+	tableName := "nonexistent_table"
+	_, err := getTableColumns(ctx, db, tableName)
+	assert.Error(t, err, "Getting columns for non-existent table should return error")
+	assert.Contains(t, err.Error(), "failed to get table columns",
+		"Error message should indicate table columns issue")
+
+	// Now process a batch that would create this table
+	batch := []jetstream.Msg{
+		createMockMsg("test."+tableName, map[string]any{
+			"id":   1,
+			"name": "Test Record",
+		}),
+	}
+
+	// This should succeed and create the table
+	err = processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch for new table")
+
+	// Verify the table was created
+	var count int
+	err = db.GetContext(ctx, &count, fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName))
+	require.NoError(t, err, "Failed to query the newly created table")
+	assert.Equal(t, 1, count, "Expected 1 record in the new table")
+
+	// Now we should be able to get columns without error
+	columns, err := getTableColumns(ctx, db, tableName)
+	require.NoError(t, err, "Should be able to get columns after table creation")
+	assert.GreaterOrEqual(t, len(columns), 2, "Expected at least 2 columns in the table")
+
+	// Verify column names
+	columnNames := make([]string, 0, len(columns))
+	for _, col := range columns {
+		columnNames = append(columnNames, col.ColumnName)
+	}
+	assert.Contains(t, columnNames, "id", "Table should have 'id' column")
+	assert.Contains(t, columnNames, "name", "Table should have 'name' column")
 }

@@ -270,110 +270,110 @@ func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColI
 }
 
 type OrderedJSON struct {
-    Data  map[string]any
-    Order []string
+	Data  map[string]any
+	Order []string
 }
 
 // And this custom unmarshaler
 func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
-    // Reset the order
-    o.Order = make([]string, 0)
+	// Reset the order
+	o.Order = make([]string, 0)
 
-    // Initialize the map if needed
-    if o.Data == nil {
-        o.Data = make(map[string]any)
-    }
+	// Initialize the map if needed
+	if o.Data == nil {
+		o.Data = make(map[string]any)
+	}
 
-    // Create a decoder to read the JSON tokens
-    dec := json.NewDecoder(bytes.NewReader(data))
+	// Create a decoder to read the JSON tokens
+	dec := json.NewDecoder(bytes.NewReader(data))
 
-    // Ensure we're at the beginning of an object
-    t, err := dec.Token()
-    if err != nil {
-        return err
-    }
-    if t != json.Delim('{') {
-        return fmt.Errorf("expected start of object, got %v", t)
-    }
+	// Ensure we're at the beginning of an object
+	t, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	if t != json.Delim('{') {
+		return fmt.Errorf("expected start of object, got %v", t)
+	}
 
-    // Read key-value pairs
-    for dec.More() {
-        // Read the key
-        key, err := dec.Token()
-        if err != nil {
-            return err
-        }
+	// Read key-value pairs
+	for dec.More() {
+		// Read the key
+		key, err := dec.Token()
+		if err != nil {
+			return err
+		}
 
-        // Keys must be strings
-        keyStr, ok := key.(string)
-        if !ok {
-            return fmt.Errorf("expected string key, got %v", key)
-        }
+		// Keys must be strings
+		keyStr, ok := key.(string)
+		if !ok {
+			return fmt.Errorf("expected string key, got %v", key)
+		}
 
-        // Record the order
-        o.Order = append(o.Order, keyStr)
+		// Record the order
+		o.Order = append(o.Order, keyStr)
 
-        // Read the value
-        var value any
-        if err := dec.Decode(&value); err != nil {
-            return err
-        }
+		// Read the value
+		var value any
+		if err := dec.Decode(&value); err != nil {
+			return err
+		}
 
-        // Store in the map
-        o.Data[keyStr] = value
-    }
+		// Store in the map
+		o.Data[keyStr] = value
+	}
 
-    // Ensure we're at the end of an object
-    if _, err := dec.Token(); err != nil {
-        return err
-    }
+	// Ensure we're at the end of an object
+	if _, err := dec.Token(); err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, []string, error) {
-    if len(messages) == 0 {
-        return nil, nil, fmt.Errorf("cannot detect schema from empty batch")
-    }
+	if len(messages) == 0 {
+		return nil, nil, fmt.Errorf("cannot detect schema from empty batch")
+	}
 
-    // First pass: collect all field names and sample values
-    columnSamples := make(map[string][]any)
+	// First pass: collect all field names and sample values
+	columnSamples := make(map[string][]any)
 
-    // Keep track of column order
-    orderedColumns := []string{}
-    seenColumns := make(map[string]bool)
+	// Keep track of column order
+	orderedColumns := []string{}
+	seenColumns := make(map[string]bool)
 
-    for _, msg := range messages {
-        var jsonObj OrderedJSON
-        if err := json.Unmarshal(msg.Data(), &jsonObj); err != nil {
-            return nil, nil, fmt.Errorf("failed to parse JSON message: %w", err)
-        }
+	for _, msg := range messages {
+		var jsonObj OrderedJSON
+		if err := json.Unmarshal(msg.Data(), &jsonObj); err != nil {
+			return nil, nil, fmt.Errorf("failed to parse JSON message: %w", err)
+		}
 
-        // Process fields in the order they appeared in the JSON
-        for _, field := range jsonObj.Order {
-            value := jsonObj.Data[field]
+		// Process fields in the order they appeared in the JSON
+		for _, field := range jsonObj.Order {
+			value := jsonObj.Data[field]
 
-            if _, exists := columnSamples[field]; !exists {
-                columnSamples[field] = make([]any, 0, len(messages))
-            }
+			if _, exists := columnSamples[field]; !exists {
+				columnSamples[field] = make([]any, 0, len(messages))
+			}
 
-            // Record column order only on first appearance
-            if !seenColumns[field] {
-                orderedColumns = append(orderedColumns, field)
-                seenColumns[field] = true
-            }
+			// Record column order only on first appearance
+			if !seenColumns[field] {
+				orderedColumns = append(orderedColumns, field)
+				seenColumns[field] = true
+			}
 
-            columnSamples[field] = append(columnSamples[field], value)
-        }
-    }
+			columnSamples[field] = append(columnSamples[field], value)
+		}
+	}
 
-    // Second pass: determine the best type for each column
-    columnTypes := make(map[string]string)
-    for field, samples := range columnSamples {
-        columnTypes[field] = determineColumnType(samples)
-    }
+	// Second pass: determine the best type for each column
+	columnTypes := make(map[string]string)
+	for field, samples := range columnSamples {
+		columnTypes[field] = determineColumnType(samples)
+	}
 
-    return columnTypes, orderedColumns, nil
+	return columnTypes, orderedColumns, nil
 }
 
 // Function to determine the best SQL type for a column based on samples
@@ -490,31 +490,22 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 	// Process each table's messages
 	for tableName, messages := range tableMessages {
-		// Check if table exists
-		exists, err := tableExists(ctx, db, tableName)
-		if err != nil {
-			return fmt.Errorf("failed to check if table exists: %w", err)
-		}
-
 		// Detect schema from batch
 		columnTypes, columnOrder, err := detectSchemaFromBatch(messages)
 		if err != nil {
 			return fmt.Errorf("failed to detect schema for table %s: %w", tableName, err)
 		}
 
-		if !exists {
-			// Create the table if it doesn't exist
+		// Try to get table columns - will fail if table doesn't exist
+		columns, err := getTableColumns(ctx, db, tableName)
+		if err != nil {
+			// Table likely doesn't exist, so create it
 			err = createTable(ctx, db, tableName, columnTypes, columnOrder)
 			if err != nil {
 				return fmt.Errorf("failed to create table %s: %w", tableName, err)
 			}
 		} else {
 			// Table exists - check for new columns
-			columns, err := getTableColumns(ctx, db, tableName)
-			if err != nil {
-				return fmt.Errorf("failed to get table columns: %w", err)
-			}
-
 			// Build a map of existing columns
 			existingColumns := make(map[string]bool)
 			for _, col := range columns {
@@ -547,7 +538,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		}
 
 		// Now get the updated columns
-		columns, err := getTableColumns(ctx, db, tableName)
+		columns, err = getTableColumns(ctx, db, tableName)
 		if err != nil {
 			return fmt.Errorf("failed to get table columns: %w", err)
 		}
