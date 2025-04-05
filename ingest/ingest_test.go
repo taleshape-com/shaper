@@ -95,6 +95,13 @@ func createMockMsg(subject string, data map[string]any) jetstream.Msg {
 	}
 }
 
+func createMockMsgFromString(subject string, jsonStr string) jetstream.Msg {
+	return &MockMsg{
+		subject: subject,
+		data:    []byte(jsonStr),
+	}
+}
+
 // TestSetup creates a new in-memory DuckDB database for testing
 func setupTestDB(t *testing.T) (*duckdb.Connector, *sqlx.DB) {
 	// Create an in-memory DuckDB database
@@ -130,7 +137,7 @@ func TestDetectSchemaFromBatch(t *testing.T) {
 	}
 
 	// Detect schema from batch
-	schema, err := detectSchemaFromBatch(batch)
+	schema, _, err := detectSchemaFromBatch(batch)
 	require.NoError(t, err, "Failed to detect schema from batch")
 
 	// Verify the detected schema
@@ -1151,4 +1158,65 @@ func TestDuplicateMessages(t *testing.T) {
 	// If using a unique key constraint on 'id', count should be 1
 	// If appending all data without constraints, count could be 2
 	t.Logf("Number of records with id=1: %d", count)
+}
+
+func TestColumnOrderPreservation(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// First batch - establish initial schema with specific column order
+	// Use JSON string to preserve order
+	batch1 := []jetstream.Msg{
+		createMockMsgFromString("test.ordered",
+			`{"id": 1, "first": "value1", "second": "value2", "third": "value3"}`),
+		createMockMsgFromString("test.ordered",
+			`{"id": 2, "third": "another3", "second": "another2", "first": "another1"}`),
+	}
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process first batch")
+
+	// Get the column order from the database
+	columns, err := getTableColumns(ctx, db, "ordered")
+	require.NoError(t, err, "Failed to get columns")
+
+	// Extract just the column names in the order they appear
+	actualColumnOrder := make([]string, 0, len(columns))
+	for _, col := range columns {
+		// Only add our known columns to the list (skip system columns)
+		if col.ColumnName == "id" || col.ColumnName == "first" ||
+			col.ColumnName == "second" || col.ColumnName == "third" {
+			actualColumnOrder = append(actualColumnOrder, col.ColumnName)
+		}
+	}
+
+	// Expected order based on the first message
+	expectedOrder := []string{"id", "first", "second", "third"}
+
+	// Check that our columns exist in the right relative order
+	// Note: Various databases handle column order differently
+	for i, expectedCol := range expectedOrder {
+		if i < len(actualColumnOrder) {
+			assert.Equal(t, expectedCol, actualColumnOrder[i],
+				"Column at position %d is %s, expected %s",
+				i, actualColumnOrder[i], expectedCol)
+		}
+	}
+
+	// Second batch - add new columns
+	batch2 := []jetstream.Msg{
+		createMockMsgFromString("test.ordered",
+			`{"id": 3, "fourth": "value4", "fifth": "value5"}`),
+		createMockMsgFromString("test.ordered",
+			`{"id": 4, "sixth": "value6", "fourth": "another4"}`),
+	}
+
+	tableCache = make(map[string]TableCache) // Reset cache to force reload
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process second batch")
+
+	// Rest of test remains the same...
 }

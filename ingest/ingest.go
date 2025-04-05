@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"bytes"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
@@ -268,35 +269,111 @@ func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColI
 	return columns, nil
 }
 
-func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, error) {
-	if len(messages) == 0 {
-		return nil, fmt.Errorf("cannot detect schema from empty batch")
-	}
+type OrderedJSON struct {
+    Data  map[string]any
+    Order []string
+}
 
-	// First pass: collect all field names and sample values
-	columnSamples := make(map[string][]any)
-	for _, msg := range messages {
-		var jsonData map[string]any
-		if err := json.Unmarshal(msg.Data(), &jsonData); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON message: %w", err)
-		}
+// And this custom unmarshaler
+func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
+    // Reset the order
+    o.Order = make([]string, 0)
 
-		// Collect all field names and sample values
-		for field, value := range jsonData {
-			if _, exists := columnSamples[field]; !exists {
-				columnSamples[field] = make([]any, 0, len(messages))
-			}
-			columnSamples[field] = append(columnSamples[field], value)
-		}
-	}
+    // Initialize the map if needed
+    if o.Data == nil {
+        o.Data = make(map[string]any)
+    }
 
-	// Second pass: determine the best type for each column
-	columnTypes := make(map[string]string)
-	for field, samples := range columnSamples {
-		columnTypes[field] = determineColumnType(samples)
-	}
+    // Create a decoder to read the JSON tokens
+    dec := json.NewDecoder(bytes.NewReader(data))
 
-	return columnTypes, nil
+    // Ensure we're at the beginning of an object
+    t, err := dec.Token()
+    if err != nil {
+        return err
+    }
+    if t != json.Delim('{') {
+        return fmt.Errorf("expected start of object, got %v", t)
+    }
+
+    // Read key-value pairs
+    for dec.More() {
+        // Read the key
+        key, err := dec.Token()
+        if err != nil {
+            return err
+        }
+
+        // Keys must be strings
+        keyStr, ok := key.(string)
+        if !ok {
+            return fmt.Errorf("expected string key, got %v", key)
+        }
+
+        // Record the order
+        o.Order = append(o.Order, keyStr)
+
+        // Read the value
+        var value any
+        if err := dec.Decode(&value); err != nil {
+            return err
+        }
+
+        // Store in the map
+        o.Data[keyStr] = value
+    }
+
+    // Ensure we're at the end of an object
+    if _, err := dec.Token(); err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, []string, error) {
+    if len(messages) == 0 {
+        return nil, nil, fmt.Errorf("cannot detect schema from empty batch")
+    }
+
+    // First pass: collect all field names and sample values
+    columnSamples := make(map[string][]any)
+
+    // Keep track of column order
+    orderedColumns := []string{}
+    seenColumns := make(map[string]bool)
+
+    for _, msg := range messages {
+        var jsonObj OrderedJSON
+        if err := json.Unmarshal(msg.Data(), &jsonObj); err != nil {
+            return nil, nil, fmt.Errorf("failed to parse JSON message: %w", err)
+        }
+
+        // Process fields in the order they appeared in the JSON
+        for _, field := range jsonObj.Order {
+            value := jsonObj.Data[field]
+
+            if _, exists := columnSamples[field]; !exists {
+                columnSamples[field] = make([]any, 0, len(messages))
+            }
+
+            // Record column order only on first appearance
+            if !seenColumns[field] {
+                orderedColumns = append(orderedColumns, field)
+                seenColumns[field] = true
+            }
+
+            columnSamples[field] = append(columnSamples[field], value)
+        }
+    }
+
+    // Second pass: determine the best type for each column
+    columnTypes := make(map[string]string)
+    for field, samples := range columnSamples {
+        columnTypes[field] = determineColumnType(samples)
+    }
+
+    return columnTypes, orderedColumns, nil
 }
 
 // Function to determine the best SQL type for a column based on samples
@@ -366,7 +443,7 @@ func determineColumnType(samples []any) string {
 	return SQL_TYPE_JSON
 }
 
-func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes map[string]string) error {
+func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes map[string]string, columnOrder []string) error {
 	if len(columnTypes) == 0 {
 		return fmt.Errorf("cannot create table with no columns")
 	}
@@ -378,15 +455,19 @@ func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", escapedTableName))
 
-	i := 0
-	for column, dataType := range columnTypes {
+	// Use the ordered column list instead of random map iteration
+	for i, column := range columnOrder {
+		dataType, exists := columnTypes[column]
+		if !exists {
+			continue // Skip if column somehow doesn't exist in types map
+		}
+
 		if i > 0 {
 			sb.WriteString(",\n")
 		}
 		// Escape and quote the column name
 		escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
 		sb.WriteString(fmt.Sprintf("  %s %s", escapedColumnName, dataType))
-		i++
 	}
 	sb.WriteString("\n)")
 
@@ -416,14 +497,14 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		}
 
 		// Detect schema from batch
-		columnTypes, err := detectSchemaFromBatch(messages)
+		columnTypes, columnOrder, err := detectSchemaFromBatch(messages)
 		if err != nil {
 			return fmt.Errorf("failed to detect schema for table %s: %w", tableName, err)
 		}
 
 		if !exists {
 			// Create the table if it doesn't exist
-			err = createTable(ctx, db, tableName, columnTypes)
+			err = createTable(ctx, db, tableName, columnTypes, columnOrder)
 			if err != nil {
 				return fmt.Errorf("failed to create table %s: %w", tableName, err)
 			}
@@ -440,8 +521,13 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 				existingColumns[col.ColumnName] = true
 			}
 
-			// Check for new columns in the detected schema
-			for column, dataType := range columnTypes {
+			// Check for new columns in the detected schema, preserving order
+			for _, column := range columnOrder {
+				dataType, exists := columnTypes[column]
+				if !exists {
+					continue
+				}
+
 				if !existingColumns[column] {
 					// New column found - add it to the table
 					escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
