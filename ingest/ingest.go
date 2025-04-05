@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -19,10 +20,29 @@ import (
 
 // TODO: Move consts to config
 const (
-	BATCH_SIZE     = 10000
+	BATCH_SIZE     = 3000
 	BATCH_TIMEOUT  = 2000 * time.Millisecond
 	SLEEP_ON_ERROR = 10 * time.Second
+
+	SQL_TYPE_BOOLEAN   = "BOOLEAN"
+	SQL_TYPE_DOUBLE    = "DOUBLE"
+	SQL_TYPE_TIMESTAMP = "TIMESTAMP"
+	SQL_TYPE_DATE      = "DATE"
+	SQL_TYPE_VARCHAR   = "VARCHAR"
+	SQL_TYPE_JSON      = "JSON"
 )
+
+// Add timestamp formats to try
+var timestampFormats = []string{
+	time.RFC3339,
+	time.RFC3339Nano,
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04:05.000Z07:00",
+	"2006-01-02", // Simple date format
+	"01/02/2006", // MM/DD/YYYY
+	"02/01/2006", // DD/MM/YYYY
+}
 
 type Ingest struct {
 	ingestCancelFunc context.CancelFunc
@@ -223,6 +243,16 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 	}
 }
 
+func tableExists(ctx context.Context, db *sqlx.DB, tableName string) (bool, error) {
+	query := "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?"
+	var count int
+	err := db.GetContext(ctx, &count, query, tableName)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if table exists: %w", err)
+	}
+	return count > 0, nil
+}
+
 const tableColumnsQuery = "SELECT column_name, \"null\", column_type FROM (DESCRIBE (FROM query_table($1)))"
 
 func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
@@ -237,6 +267,132 @@ func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColI
 	return columns, nil
 }
 
+func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, error) {
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("cannot detect schema from empty batch")
+	}
+
+	// First pass: collect all field names and sample values
+	columnSamples := make(map[string][]any)
+	for _, msg := range messages {
+		var jsonData map[string]any
+		if err := json.Unmarshal(msg.Data(), &jsonData); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON message: %w", err)
+		}
+
+		// Collect all field names and sample values
+		for field, value := range jsonData {
+			if _, exists := columnSamples[field]; !exists {
+				columnSamples[field] = make([]any, 0, len(messages))
+			}
+			columnSamples[field] = append(columnSamples[field], value)
+		}
+	}
+
+	// Second pass: determine the best type for each column
+	columnTypes := make(map[string]string)
+	for field, samples := range columnSamples {
+		columnTypes[field] = determineColumnType(samples)
+	}
+
+	return columnTypes, nil
+}
+
+// Function to determine the best SQL type for a column based on samples
+func determineColumnType(samples []any) string {
+	if len(samples) == 0 {
+		return SQL_TYPE_JSON // Default to JSON for empty samples
+	}
+
+	// Track what types of values we've seen
+	var hasTimestamp bool
+	var hasDate bool
+	var hasString bool
+	var hasNumber bool
+	var hasBoolean bool
+	var hasComplexType bool
+
+	for _, sample := range samples {
+		if sample == nil {
+			continue
+		}
+
+		val := reflect.ValueOf(sample)
+		kind := val.Kind()
+
+		switch kind {
+		case reflect.Bool:
+			hasBoolean = true
+		case reflect.Float64:
+			hasNumber = true
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			hasNumber = true
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			hasNumber = true
+		case reflect.String:
+			hasString = true
+			// Try to parse as timestamp or date
+			strVal := sample.(string)
+			if isTimestamp(strVal) {
+				hasTimestamp = true
+			} else if isDate(strVal) {
+				hasDate = true
+			}
+		case reflect.Map, reflect.Slice:
+			hasComplexType = true
+		}
+	}
+
+	if hasBoolean && !hasString && !hasNumber && !hasComplexType {
+		return SQL_TYPE_BOOLEAN
+	}
+
+	if hasNumber && !hasString && !hasBoolean && !hasComplexType {
+		return SQL_TYPE_DOUBLE
+	}
+
+	if hasString && !hasNumber && !hasBoolean && !hasComplexType {
+		if hasTimestamp && !hasDate {
+			return SQL_TYPE_TIMESTAMP
+		}
+		if hasDate && !hasTimestamp {
+			return SQL_TYPE_DATE
+		}
+		return SQL_TYPE_VARCHAR
+	}
+
+	// Default to JSON for anything else
+	return SQL_TYPE_JSON
+}
+
+func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes map[string]string) error {
+	if len(columnTypes) == 0 {
+		return fmt.Errorf("cannot create table with no columns")
+	}
+
+	// Build CREATE TABLE statement
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", tableName))
+
+	i := 0
+	for column, dataType := range columnTypes {
+		if i > 0 {
+			sb.WriteString(",\n")
+		}
+		sb.WriteString(fmt.Sprintf("  %s %s", column, dataType))
+		i++
+	}
+	sb.WriteString("\n)")
+
+	// Execute the CREATE TABLE statement
+	_, err := db.ExecContext(ctx, sb.String())
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+
+	return nil
+}
+
 func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string) error {
 	// Group messages by table
 	tableMessages := make(map[string][]jetstream.Msg)
@@ -247,9 +403,29 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 	// Process each table's messages
 	for tableName, messages := range tableMessages {
+		// Check if table exists
+		exists, err := tableExists(ctx, db, tableName)
+		if err != nil {
+			return fmt.Errorf("failed to check if table exists: %w", err)
+		}
+
+		// If table doesn't exist, create it
+		if !exists {
+			// Detect schema from batch
+			columnTypes, err := detectSchemaFromBatch(messages)
+			if err != nil {
+				return fmt.Errorf("failed to detect schema for table %s: %w", tableName, err)
+			}
+
+			// Create the table
+			err = createTable(ctx, db, tableName, columnTypes)
+			if err != nil {
+				return fmt.Errorf("failed to create table %s: %w", tableName, err)
+			}
+		}
+
 		// Get or update table schema from cache
 		tableInfo, exists := tableCache[tableName]
-		// TODO: Rethink how to cache table schemas
 		if !exists || time.Since(tableInfo.lastUpdate) > time.Hour {
 			columns, err := getTableColumns(ctx, db, tableName)
 			if err != nil {
@@ -313,6 +489,25 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 						default:
 							return fmt.Errorf("unsupported timestamp format for column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
 						}
+					} else if strings.Contains(strings.ToUpper(col.Type), "DATE") {
+						switch v := value.(type) {
+						case string:
+							// Try parsing the date string
+							date, err := parseDate(v)
+							if err != nil {
+								return fmt.Errorf("failed to parse date for column %s: %w (SEQ %d)", col.ColumnName, err, metadata.Sequence.Stream)
+							}
+							values[j] = date
+						default:
+							return fmt.Errorf("unsupported date format for column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
+						}
+					} else if strings.Contains(strings.ToUpper(col.Type), "JSON") && (value != nil) {
+						// For JSON columns, convert the value to a JSON string
+						jsonBytes, err := json.Marshal(value)
+						if err != nil {
+							return fmt.Errorf("failed to marshal JSON for column %s: %w (SEQ %d)", col.ColumnName, err, metadata.Sequence.Stream)
+						}
+						values[j] = string(jsonBytes)
 					} else {
 						values[j] = value
 					}
@@ -340,7 +535,39 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 	return nil
 }
 
-// Helper function to parse timestamp strings
+func isTimestamp(value string) bool {
+	for _, format := range timestampFormats {
+		if _, err := time.Parse(format, value); err == nil {
+			// Only consider it a timestamp if it has time component
+			return strings.Contains(format, "15:04:05")
+		}
+	}
+	return false
+}
+
+func isDate(value string) bool {
+	for _, format := range timestampFormats {
+		if _, err := time.Parse(format, value); err == nil {
+			// Consider it a date if it doesn't have time component
+			return !strings.Contains(format, "15:04:05")
+		}
+	}
+	return false
+}
+
+func parseDate(value string) (time.Time, error) {
+	// Try date formats
+	for _, format := range timestampFormats {
+		if !strings.Contains(format, "15:04:05") { // Date formats don't have time component
+			if t, err := time.Parse(format, value); err == nil {
+				return t, nil
+			}
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse date: %s", value)
+}
+
 func parseTimestamp(value string) (time.Time, error) {
 	// Try common timestamp formats
 	formats := []string{
