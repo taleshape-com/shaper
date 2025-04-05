@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"reflect"
+	"shaper/util"
 	"strings"
 	"sync"
 	"time"
@@ -370,16 +371,21 @@ func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes
 		return fmt.Errorf("cannot create table with no columns")
 	}
 
+	// Escape and quote the table name
+	escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
+
 	// Build CREATE TABLE statement
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", tableName))
+	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", escapedTableName))
 
 	i := 0
 	for column, dataType := range columnTypes {
 		if i > 0 {
 			sb.WriteString(",\n")
 		}
-		sb.WriteString(fmt.Sprintf("  %s %s", column, dataType))
+		// Escape and quote the column name
+		escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
+		sb.WriteString(fmt.Sprintf("  %s %s", escapedColumnName, dataType))
 		i++
 	}
 	sb.WriteString("\n)")
@@ -438,7 +444,9 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 			for column, dataType := range columnTypes {
 				if !existingColumns[column] {
 					// New column found - add it to the table
-					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", tableName, column, dataType)
+					escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
+					escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
+					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", escapedTableName, escapedColumnName, dataType)
 					if _, err := db.ExecContext(ctx, alterSQL); err != nil {
 						return fmt.Errorf("failed to add new column %s: %w", column, err)
 					}

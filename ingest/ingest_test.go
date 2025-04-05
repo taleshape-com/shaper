@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"shaper/util"
 	"strings"
 	"testing"
 	"time"
@@ -732,147 +733,147 @@ func TestMixedDataTypesInBatch(t *testing.T) {
 }
 
 func TestTimestampHandling(t *testing.T) {
-    dbConnector, db := setupTestDB(t)
-    defer db.Close()
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
 
-    ctx := context.Background()
-    tableCache := make(map[string]TableCache)
-    subjectPrefix := "test."
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
 
-    // Unix timestamp to use in our test (June 15, 2023 14:30:45 UTC)
-    const unixTimestamp int64 = 1686838245
+	// Unix timestamp to use in our test (June 15, 2023 14:30:45 UTC)
+	const unixTimestamp int64 = 1686838245
 
-    // Test various timestamp formats
-    batch := []jetstream.Msg{
-        createMockMsg("test.timestamps", map[string]any{
-            "id": 1,
-            "ts1": time.Unix(unixTimestamp, 0).UTC().Format(time.RFC3339),  // RFC3339
-            "ts2": time.Unix(unixTimestamp, 0).UTC().Format("2006-01-02 15:04:05"),  // SQL format
-            "ts3": unixTimestamp,                                     // Unix timestamp (seconds)
-            "ts4": unixTimestamp * 1000,                              // Unix timestamp (milliseconds)
-            "ts5": time.Unix(unixTimestamp, 123456000).UTC().Format(time.RFC3339Nano),  // With fractional seconds
-        }),
-    }
+	// Test various timestamp formats
+	batch := []jetstream.Msg{
+		createMockMsg("test.timestamps", map[string]any{
+			"id":  1,
+			"ts1": time.Unix(unixTimestamp, 0).UTC().Format(time.RFC3339),             // RFC3339
+			"ts2": time.Unix(unixTimestamp, 0).UTC().Format("2006-01-02 15:04:05"),    // SQL format
+			"ts3": unixTimestamp,                                                      // Unix timestamp (seconds)
+			"ts4": unixTimestamp * 1000,                                               // Unix timestamp (milliseconds)
+			"ts5": time.Unix(unixTimestamp, 123456000).UTC().Format(time.RFC3339Nano), // With fractional seconds
+		}),
+	}
 
-    err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
-    require.NoError(t, err, "Failed to process timestamp batch")
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process timestamp batch")
 
-    // Query the raw data
-    rows, err := db.QueryxContext(ctx, "SELECT * FROM timestamps WHERE id = 1")
-    require.NoError(t, err, "Failed to query timestamp table")
-    defer rows.Close()
+	// Query the raw data
+	rows, err := db.QueryxContext(ctx, "SELECT * FROM timestamps WHERE id = 1")
+	require.NoError(t, err, "Failed to query timestamp table")
+	defer rows.Close()
 
-    if !rows.Next() {
-        t.Fatal("No rows returned")
-    }
+	if !rows.Next() {
+		t.Fatal("No rows returned")
+	}
 
-    // Use MapScan to get raw values
-    rowData := make(map[string]interface{})
-    err = rows.MapScan(rowData)
-    require.NoError(t, err, "Failed to scan row")
+	// Use MapScan to get raw values
+	rowData := make(map[string]interface{})
+	err = rows.MapScan(rowData)
+	require.NoError(t, err, "Failed to scan row")
 
-    // Log all values for debugging
-    for k, v := range rowData {
-        t.Logf("Column %s: %T = %v", k, v, v)
-    }
+	// Log all values for debugging
+	for k, v := range rowData {
+		t.Logf("Column %s: %T = %v", k, v, v)
+	}
 
-    // Test ts3 (Unix timestamp in seconds)
-    ts3Value, ok := rowData["ts3"].(float64)
-    if !ok {
-        t.Fatalf("Expected ts3 to be float64, got %T", rowData["ts3"])
-    }
-    assert.InDelta(t, float64(unixTimestamp), ts3Value, 1.0, "Unix timestamp ts3 mismatch")
+	// Test ts3 (Unix timestamp in seconds)
+	ts3Value, ok := rowData["ts3"].(float64)
+	if !ok {
+		t.Fatalf("Expected ts3 to be float64, got %T", rowData["ts3"])
+	}
+	assert.InDelta(t, float64(unixTimestamp), ts3Value, 1.0, "Unix timestamp ts3 mismatch")
 
-    // Test ts4 (Unix timestamp in milliseconds)
-    ts4Value, ok := rowData["ts4"].(float64)
-    if !ok {
-        t.Fatalf("Expected ts4 to be float64, got %T", rowData["ts4"])
-    }
-    // If ts4 is stored as milliseconds
-    if ts4Value > 1e11 {
-        assert.InDelta(t, float64(unixTimestamp*1000), ts4Value, 1000.0, "Unix timestamp ts4 (milliseconds) mismatch")
-    } else {
-        // If it's been converted to seconds during storage
-        assert.InDelta(t, float64(unixTimestamp), ts4Value, 1.0, "Unix timestamp ts4 (seconds) mismatch")
-    }
+	// Test ts4 (Unix timestamp in milliseconds)
+	ts4Value, ok := rowData["ts4"].(float64)
+	if !ok {
+		t.Fatalf("Expected ts4 to be float64, got %T", rowData["ts4"])
+	}
+	// If ts4 is stored as milliseconds
+	if ts4Value > 1e11 {
+		assert.InDelta(t, float64(unixTimestamp*1000), ts4Value, 1000.0, "Unix timestamp ts4 (milliseconds) mismatch")
+	} else {
+		// If it's been converted to seconds during storage
+		assert.InDelta(t, float64(unixTimestamp), ts4Value, 1.0, "Unix timestamp ts4 (seconds) mismatch")
+	}
 
-    // For string timestamps, we'll use a more flexible approach
-    // Instead of comparing exact string values, we'll extract components
+	// For string timestamps, we'll use a more flexible approach
+	// Instead of comparing exact string values, we'll extract components
 
-    // Function to extract date components from any value type
-    extractDateComponents := func(val interface{}) (year int, month time.Month, day int, hour int, min int, sec int, err error) {
-        var t time.Time
+	// Function to extract date components from any value type
+	extractDateComponents := func(val interface{}) (year int, month time.Month, day int, hour int, min int, sec int, err error) {
+		var t time.Time
 
-        switch v := val.(type) {
-        case time.Time:
-            t = v
-        case string:
-            for _, format := range []string{time.RFC3339, "2006-01-02 15:04:05"} {
-                if parsed, err := time.Parse(format, v); err == nil {
-                    t = parsed
-                    break
-                }
-            }
-            if t.IsZero() {
-                return 0, 0, 0, 0, 0, 0, fmt.Errorf("could not parse time string: %s", v)
-            }
-        case float64:
-            if v > 1e11 { // milliseconds
-                t = time.Unix(0, int64(v)*int64(time.Millisecond))
-            } else {
-                t = time.Unix(int64(v), 0)
-            }
-        default:
-            return 0, 0, 0, 0, 0, 0, fmt.Errorf("unsupported type: %T", val)
-        }
+		switch v := val.(type) {
+		case time.Time:
+			t = v
+		case string:
+			for _, format := range []string{time.RFC3339, "2006-01-02 15:04:05"} {
+				if parsed, err := time.Parse(format, v); err == nil {
+					t = parsed
+					break
+				}
+			}
+			if t.IsZero() {
+				return 0, 0, 0, 0, 0, 0, fmt.Errorf("could not parse time string: %s", v)
+			}
+		case float64:
+			if v > 1e11 { // milliseconds
+				t = time.Unix(0, int64(v)*int64(time.Millisecond))
+			} else {
+				t = time.Unix(int64(v), 0)
+			}
+		default:
+			return 0, 0, 0, 0, 0, 0, fmt.Errorf("unsupported type: %T", val)
+		}
 
-        return t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nil
-    }
+		return t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nil
+	}
 
-    // Verify date components for each field
-    for _, field := range []string{"ts1", "ts2", "ts5"} {
-        if val, exists := rowData[field]; exists && val != nil {
-            // Get the components from the stored value
-            year, month, day, hour, min, sec, err := extractDateComponents(val)
-            if err != nil {
-                t.Logf("Error extracting components from %s: %v", field, err)
-                continue
-            }
+	// Verify date components for each field
+	for _, field := range []string{"ts1", "ts2", "ts5"} {
+		if val, exists := rowData[field]; exists && val != nil {
+			// Get the components from the stored value
+			year, month, day, hour, min, sec, err := extractDateComponents(val)
+			if err != nil {
+				t.Logf("Error extracting components from %s: %v", field, err)
+				continue
+			}
 
-            // Get expected components from our reference timestamp
-            expectedTime := time.Unix(unixTimestamp, 0).UTC()
+			// Get expected components from our reference timestamp
+			expectedTime := time.Unix(unixTimestamp, 0).UTC()
 
-            // Verify the date portion (should be the same regardless of timezone)
-            assert.Equal(t, expectedTime.Year(), year, "Year mismatch for %s", field)
-            assert.Equal(t, expectedTime.Month(), month, "Month mismatch for %s", field)
-            assert.Equal(t, expectedTime.Day(), day, "Day mismatch for %s", field)
+			// Verify the date portion (should be the same regardless of timezone)
+			assert.Equal(t, expectedTime.Year(), year, "Year mismatch for %s", field)
+			assert.Equal(t, expectedTime.Month(), month, "Month mismatch for %s", field)
+			assert.Equal(t, expectedTime.Day(), day, "Day mismatch for %s", field)
 
-            // For the time portion, we should verify it's within 24 hours
-            // since timezone conversion might shift the hour but preserve the same time
+			// For the time portion, we should verify it's within 24 hours
+			// since timezone conversion might shift the hour but preserve the same time
 
-            // Calculate the total minutes difference
-            actualMinutes := hour*60 + min
-            expectedMinutes := expectedTime.Hour()*60 + expectedTime.Minute()
+			// Calculate the total minutes difference
+			actualMinutes := hour*60 + min
+			expectedMinutes := expectedTime.Hour()*60 + expectedTime.Minute()
 
-            // If the difference is around 24 hours, it's likely just a timezone offset
-            // We'll allow a small buffer (5 minutes) for rounding
-            minutesDiff := math.Abs(float64(actualMinutes - expectedMinutes))
-            t.Logf("%s time components: expected %02d:%02d, got %02d:%02d (diff: %.0f min)",
-                field, expectedTime.Hour(), expectedTime.Minute(), hour, min, minutesDiff)
+			// If the difference is around 24 hours, it's likely just a timezone offset
+			// We'll allow a small buffer (5 minutes) for rounding
+			minutesDiff := math.Abs(float64(actualMinutes - expectedMinutes))
+			t.Logf("%s time components: expected %02d:%02d, got %02d:%02d (diff: %.0f min)",
+				field, expectedTime.Hour(), expectedTime.Minute(), hour, min, minutesDiff)
 
-            // The difference should either be small (same timezone)
-            // or close to a multiple of 60 (different timezone)
-            if minutesDiff < 5 || math.Mod(minutesDiff, 60) < 5 || math.Mod(minutesDiff, 60) > 55 {
-                // Close enough - likely just timezone differences
-            } else {
-                t.Errorf("Unexpected time difference for %s: %.0f minutes", field, minutesDiff)
-            }
+			// The difference should either be small (same timezone)
+			// or close to a multiple of 60 (different timezone)
+			if minutesDiff < 5 || math.Mod(minutesDiff, 60) < 5 || math.Mod(minutesDiff, 60) > 55 {
+				// Close enough - likely just timezone differences
+			} else {
+				t.Errorf("Unexpected time difference for %s: %.0f minutes", field, minutesDiff)
+			}
 
-            // Seconds should be within 1 due to potential rounding
-            assert.InDelta(t, float64(expectedTime.Second()), float64(sec), 1.0,
-                "Seconds mismatch for %s", field)
-        }
-    }
+			// Seconds should be within 1 due to potential rounding
+			assert.InDelta(t, float64(expectedTime.Second()), float64(sec), 1.0,
+				"Seconds mismatch for %s", field)
+		}
+	}
 }
 
 func TestInvalidJSON(t *testing.T) {
@@ -913,30 +914,89 @@ func TestSpecialCharactersInColumnNames(t *testing.T) {
 			"field.with.dots":        "value2",
 			"field with spaces":      "value3",
 			"field_with_underscores": "value4",
+			"field\"with\"quotes":    "value5",
 		}),
 	}
 
-	// Process batch - this might fail depending on how SQL identifiers are handled
+	// Process batch - should now work with proper escaping
 	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with special characters")
 
-	// If the implementation correctly handles special characters by quoting or escaping
-	if err == nil {
-		var columns []ColInfo
-		err = db.SelectContext(ctx, &columns, tableColumnsQuery, "special")
-		require.NoError(t, err, "Failed to get special table columns")
+	// Get the columns
+	var columns []ColInfo
+	err = db.SelectContext(ctx, &columns, tableColumnsQuery, "special")
+	require.NoError(t, err, "Failed to get special table columns")
 
-		// Check if our columns exist in some form
-		columnNames := make([]string, len(columns))
-		for i, col := range columns {
-			columnNames[i] = col.ColumnName
-		}
-
-		// Check for the presence of our fields (may be renamed/normalized)
-		assert.Contains(t, strings.Join(columnNames, ","), "field")
-	} else {
-		// If it fails, just log that special characters aren't supported
-		t.Logf("Special characters in column names not supported: %v", err)
+	// Create map of column names for easy checking
+	columnMap := make(map[string]bool)
+	for _, col := range columns {
+		columnMap[col.ColumnName] = true
 	}
+
+	// Check that all our special column names exist
+	assert.True(t, columnMap["field-with-hyphens"], "Missing column with hyphens")
+	assert.True(t, columnMap["field.with.dots"], "Missing column with dots")
+	assert.True(t, columnMap["field with spaces"], "Missing column with spaces")
+	assert.True(t, columnMap["field_with_underscores"], "Missing column with underscores")
+	assert.True(t, columnMap["field\"with\"quotes"], "Missing column with quotes")
+
+	// Now try to query the data to make sure we can actually access it
+	var result struct {
+		ID                   float64 `db:"id"`
+		FieldWithHyphens     string  `db:"field-with-hyphens"`
+		FieldWithDots        string  `db:"field.with.dots"`
+		FieldWithSpaces      string  `db:"field with spaces"`
+		FieldWithUnderscores string  `db:"field_with_underscores"`
+		FieldWithQuotes      string  `db:"field\"with\"quotes"`
+	}
+	query := `SELECT "id", "field-with-hyphens", "field.with.dots", "field with spaces",
+	          "field_with_underscores", "field""with""quotes" FROM special WHERE id = 1`
+	err = db.GetContext(ctx, &result, query)
+	require.NoError(t, err, "Failed to query data with special column names")
+
+	// Verify the values
+	assert.Equal(t, float64(1), result.ID)
+	assert.Equal(t, "value1", result.FieldWithHyphens)
+	assert.Equal(t, "value2", result.FieldWithDots)
+	assert.Equal(t, "value3", result.FieldWithSpaces)
+	assert.Equal(t, "value4", result.FieldWithUnderscores)
+	assert.Equal(t, "value5", result.FieldWithQuotes)
+}
+
+func TestSpecialCharactersInTableName(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Create messages with special characters in table name
+	specialTableName := "table-with.special characters\"and'quotes"
+	batch := []jetstream.Msg{
+		createMockMsg("test."+specialTableName, map[string]any{
+			"id":    1,
+			"value": "test",
+		}),
+	}
+
+	// Process batch - should work with proper escaping
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with special table name")
+
+	// Verify the table exists by querying information schema
+	var count int
+	query := "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?"
+	err = db.GetContext(ctx, &count, query, specialTableName)
+	require.NoError(t, err, "Failed to check if special table exists")
+	assert.Equal(t, 1, count, "Special character table was not created")
+
+	// Query the data from the table
+	var value string
+	quotedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(specialTableName))
+	err = db.GetContext(ctx, &value, "SELECT value FROM "+quotedTableName+" WHERE id = 1")
+	require.NoError(t, err, "Failed to query data from special table")
+	assert.Equal(t, "test", value, "Wrong value retrieved from special table")
 }
 
 func TestEmptyBatch(t *testing.T) {

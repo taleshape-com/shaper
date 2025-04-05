@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/url"
 	"regexp"
+	"shaper/util"
 	"strconv"
 	"strings"
 	"time"
@@ -318,32 +319,6 @@ func stripSQLComments(sql string) string {
 	}
 
 	return result.String()
-}
-
-func escapeSQLString(str string) string {
-	// Replace single quotes with doubled single quotes
-	escaped := strings.Replace(str, "'", "''", -1)
-
-	// Optional: Replace other potentially dangerous characters
-	escaped = strings.Replace(escaped, "\x00", "", -1) // Remove null bytes
-	escaped = strings.Replace(escaped, "\n", " ", -1)  // Replace newlines
-	escaped = strings.Replace(escaped, "\r", " ", -1)  // Replace carriage returns
-	escaped = strings.Replace(escaped, "\x1a", "", -1) // Remove ctrl+Z
-
-	return escaped
-}
-
-func escapeSQLIdentifier(str string) string {
-	// Replace single quotes with doubled single quotes
-	escaped := strings.Replace(str, "\"", "\"\"", -1)
-
-	// Optional: Replace other potentially dangerous characters
-	escaped = strings.Replace(escaped, "\x00", "", -1) // Remove null bytes
-	escaped = strings.Replace(escaped, "\n", " ", -1)  // Replace newlines
-	escaped = strings.Replace(escaped, "\r", " ", -1)  // Replace carriage returns
-	escaped = strings.Replace(escaped, "\x1a", "", -1) // Remove ctrl+Z
-
-	return escaped
 }
 
 func mapTag(index int, rInfo renderInfo) string {
@@ -847,8 +822,8 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 	varPrefix := strings.Builder{}
 	varCleanup := strings.Builder{}
 	for k, v := range singleVars {
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", escapeSQLIdentifier(k), v))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", escapeSQLIdentifier(k)))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
 	}
 	for k, v := range multiVars {
 		l := ""
@@ -857,10 +832,10 @@ func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string)
 			if i == 0 {
 				prefix = ""
 			}
-			l += fmt.Sprintf("%s'%s'", prefix, escapeSQLString(p))
+			l += fmt.Sprintf("%s'%s'", prefix, util.EscapeSQLString(p))
 		}
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", escapeSQLIdentifier(k), l))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", escapeSQLIdentifier(k)))
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", util.EscapeSQLIdentifier(k), l))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
 	}
 	return varPrefix.String(), varCleanup.String()
 }
@@ -919,7 +894,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				}
 			}
 		}
-		singleVars[columnName] = "'" + escapeSQLString(param) + "'"
+		singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
 	}
 
 	// Fetch vars from dropdownMulti
@@ -1021,7 +996,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		if param != "" {
-			singleVars[columnName] = "DATE '" + escapeSQLString(param) + "'"
+			singleVars[columnName] = "DATE '" + util.EscapeSQLString(param) + "'"
 		}
 	}
 
@@ -1067,7 +1042,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		if fromParam != "" {
-			singleVars[fromColumnName] = "TIMESTAMP '" + escapeSQLString(fromParam) + "'"
+			singleVars[fromColumnName] = "TIMESTAMP '" + util.EscapeSQLString(fromParam) + "'"
 		}
 		toParam := queryParams.Get(toColumnName)
 		if toParam == "" {
@@ -1086,7 +1061,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		}
 		if toParam != "" {
-			singleVars[toColumnName] = "TIMESTAMP '" + escapeSQLString(toParam) + " 23:59:59.999999'"
+			singleVars[toColumnName] = "TIMESTAMP '" + util.EscapeSQLString(toParam) + " 23:59:59.999999'"
 		}
 	}
 	return nil
@@ -1103,7 +1078,7 @@ func getTokenVars(variables map[string]any) (map[string]string, map[string][]str
 	for k, v := range variables {
 		switch v := v.(type) {
 		case string:
-			singleVars[k] = "'" + escapeSQLString(v) + "'"
+			singleVars[k] = "'" + util.EscapeSQLString(v) + "'"
 		case []any:
 			strSlice := make([]string, 0, len(v))
 			for _, item := range v {
