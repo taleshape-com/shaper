@@ -409,34 +409,59 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 			return fmt.Errorf("failed to check if table exists: %w", err)
 		}
 
-		// If table doesn't exist, create it
-		if !exists {
-			// Detect schema from batch
-			columnTypes, err := detectSchemaFromBatch(messages)
-			if err != nil {
-				return fmt.Errorf("failed to detect schema for table %s: %w", tableName, err)
-			}
+		// Detect schema from batch
+		columnTypes, err := detectSchemaFromBatch(messages)
+		if err != nil {
+			return fmt.Errorf("failed to detect schema for table %s: %w", tableName, err)
+		}
 
-			// Create the table
+		if !exists {
+			// Create the table if it doesn't exist
 			err = createTable(ctx, db, tableName, columnTypes)
 			if err != nil {
 				return fmt.Errorf("failed to create table %s: %w", tableName, err)
 			}
-		}
-
-		// Get or update table schema from cache
-		tableInfo, exists := tableCache[tableName]
-		if !exists || time.Since(tableInfo.lastUpdate) > time.Hour {
+		} else {
+			// Table exists - check for new columns
 			columns, err := getTableColumns(ctx, db, tableName)
 			if err != nil {
 				return fmt.Errorf("failed to get table columns: %w", err)
 			}
-			tableCache[tableName] = TableCache{
-				columns:    columns,
-				lastUpdate: time.Now(),
+
+			// Build a map of existing columns
+			existingColumns := make(map[string]bool)
+			for _, col := range columns {
+				existingColumns[col.ColumnName] = true
 			}
-			tableInfo = tableCache[tableName]
+
+			// Check for new columns in the detected schema
+			for column, dataType := range columnTypes {
+				if !existingColumns[column] {
+					// New column found - add it to the table
+					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", tableName, column, dataType)
+					if _, err := db.ExecContext(ctx, alterSQL); err != nil {
+						return fmt.Errorf("failed to add new column %s: %w", column, err)
+					}
+				}
+			}
 		}
+
+		// Get or update table schema from cache
+		tableCache[tableName] = TableCache{
+			columns:    nil, // Force refresh
+			lastUpdate: time.Time{},
+		}
+
+		// Now get the updated columns
+		columns, err := getTableColumns(ctx, db, tableName)
+		if err != nil {
+			return fmt.Errorf("failed to get table columns: %w", err)
+		}
+		tableCache[tableName] = TableCache{
+			columns:    columns,
+			lastUpdate: time.Now(),
+		}
+		tableInfo := tableCache[tableName]
 
 		// Get DB connection
 		conn, err := dbConnector.Connect(ctx)
