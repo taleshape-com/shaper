@@ -251,6 +251,7 @@ func TestTimestampAndDateDetection(t *testing.T) {
 		"2023-01-01 12:30:45":  false,
 		"2023-01-01":           true,
 		"01/02/2023":           true,
+		"15.03.2023":           true, // DD.MM.YYYY format
 		"not a date":           false,
 	}
 
@@ -258,6 +259,26 @@ func TestTimestampAndDateDetection(t *testing.T) {
 		t.Run("isDate_"+input, func(t *testing.T) {
 			result := isDate(input)
 			assert.Equal(t, expected, result)
+		})
+	}
+
+	// Test date parsing with various formats
+	dateParsing := map[string]time.Time{
+		"2023-01-15": time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC),
+		"01/15/2023": time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC),
+		"15/01/2023": time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC),
+		"15.01.2023": time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC),
+	}
+
+	for input, expected := range dateParsing {
+		t.Run("parseDate_"+input, func(t *testing.T) {
+			result, err := parseDate(input)
+			if assert.NoError(t, err, "Failed to parse date: %s", input) {
+				// Compare only year, month, day since time components might differ
+				assert.Equal(t, expected.Year(), result.Year(), "Year mismatch")
+				assert.Equal(t, expected.Month(), result.Month(), "Month mismatch")
+				assert.Equal(t, expected.Day(), result.Day(), "Day mismatch")
+			}
 		})
 	}
 }

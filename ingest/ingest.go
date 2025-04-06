@@ -48,6 +48,7 @@ var timestampFormats = []string{
 	"2006-01-02", // Simple date format
 	"01/02/2006", // MM/DD/YYYY
 	"02/01/2006", // DD/MM/YYYY
+	"02.01.2006", // DD.MM.YYYY
 }
 
 type Ingest struct {
