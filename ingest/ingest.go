@@ -1,12 +1,15 @@
 package ingest
 
 import (
+	"bytes"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
+	"shaper/util"
 	"strings"
 	"sync"
 	"time"
@@ -15,14 +18,38 @@ import (
 	"github.com/marcboeker/go-duckdb"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/nrednav/cuid2"
 )
 
 // TODO: Move consts to config
 const (
-	BATCH_SIZE     = 10000
+	BATCH_SIZE     = 3000
 	BATCH_TIMEOUT  = 2000 * time.Millisecond
 	SLEEP_ON_ERROR = 10 * time.Second
+
+	ID_COLUMN        = "_id"
+	TIMESTAMP_COLUMN = "_ts"
+
+	SQL_TYPE_BOOLEAN   = "BOOLEAN"
+	SQL_TYPE_DOUBLE    = "DOUBLE"
+	SQL_TYPE_TIMESTAMP = "TIMESTAMP"
+	SQL_TYPE_DATE      = "DATE"
+	SQL_TYPE_VARCHAR   = "VARCHAR"
+	SQL_TYPE_JSON      = "JSON"
 )
+
+// Add timestamp formats to try
+var timestampFormats = []string{
+	time.RFC3339,
+	time.RFC3339Nano,
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04:05.000Z07:00",
+	"2006-01-02", // Simple date format
+	"01/02/2006", // MM/DD/YYYY
+	"02/01/2006", // DD/MM/YYYY
+	"02.01.2006", // DD.MM.YYYY
+}
 
 type Ingest struct {
 	ingestCancelFunc context.CancelFunc
@@ -166,7 +193,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 				// Channel closed, process remaining messages and return
 				if len(batch) > 0 {
 					processStartTime := time.Now()
-					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 						return fmt.Errorf("failed to process final batch: %w", err)
 					}
 					logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -186,7 +213,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process if batch is full
 			if len(batch) >= BATCH_SIZE {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
 					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -202,7 +229,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process non-empty batch
 			if len(batch) > 0 {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
 					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -213,7 +240,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 		case <-ctx.Done():
 			// Process remaining messages before shutting down
 			if len(batch) > 0 {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process final batch", slog.Any("error", err))
 				}
 			}
@@ -237,7 +264,259 @@ func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColI
 	return columns, nil
 }
 
-func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string) error {
+// Custom JSON unmarshaller to preserve order of keys
+type OrderedJSON struct {
+	Data  map[string]any
+	Order []string
+}
+
+func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
+	// Reset the order
+	o.Order = make([]string, 0)
+
+	// Initialize the map if needed
+	if o.Data == nil {
+		o.Data = make(map[string]any)
+	}
+
+	// Create a decoder to read the JSON tokens
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	// Ensure we're at the beginning of an object
+	t, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	if t != json.Delim('{') {
+		return fmt.Errorf("expected start of object, got %v", t)
+	}
+
+	// Read key-value pairs
+	for dec.More() {
+		// Read the key
+		key, err := dec.Token()
+		if err != nil {
+			return err
+		}
+
+		// Keys must be strings
+		keyStr, ok := key.(string)
+		if !ok {
+			return fmt.Errorf("expected string key, got %v", key)
+		}
+
+		// Record the order
+		o.Order = append(o.Order, keyStr)
+
+		// Read the value
+		var value any
+		if err := dec.Decode(&value); err != nil {
+			return err
+		}
+
+		// Store in the map
+		o.Data[keyStr] = value
+	}
+
+	// Ensure we're at the end of an object
+	if _, err := dec.Token(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, []string, error) {
+	if len(messages) == 0 {
+		return nil, nil, fmt.Errorf("cannot detect schema from empty batch")
+	}
+
+	// First pass: collect all field names and sample values
+	columnSamples := make(map[string][]any)
+
+	// Initialize special columns
+	columnSamples[ID_COLUMN] = make([]any, 0, len(messages))
+	columnSamples[TIMESTAMP_COLUMN] = make([]any, 0, len(messages))
+
+	// Keep track of column order with _id and _ts at the beginning
+	orderedColumns := []string{ID_COLUMN, TIMESTAMP_COLUMN}
+	seenColumns := map[string]bool{
+		ID_COLUMN:        true,
+		TIMESTAMP_COLUMN: true,
+	}
+
+	for _, msg := range messages {
+		var jsonObj OrderedJSON
+		if err := json.Unmarshal(msg.Data(), &jsonObj); err != nil {
+			return nil, nil, fmt.Errorf("failed to parse JSON message: %w", err)
+		}
+
+		// Add samples for special columns
+		// For _id: use from message if available, otherwise use header or generate
+		idValue, idExists := jsonObj.Data[ID_COLUMN]
+		if !idExists {
+			idValue = msg.Headers().Get("Nats-Msg-Id")
+			if idValue == "" {
+				idValue = "placeholder_for_cuid"
+			}
+		}
+		columnSamples[ID_COLUMN] = append(columnSamples[ID_COLUMN], idValue)
+
+		// For _ts: use from message if available, otherwise use metadata.Timestamp
+		tsValue, tsExists := jsonObj.Data[TIMESTAMP_COLUMN]
+		if !tsExists {
+			// We'll use metadata.Timestamp during actual insertion
+			// For schema detection, add a timestamp to ensure correct type detection
+			tsValue = time.Now()
+		}
+		columnSamples[TIMESTAMP_COLUMN] = append(columnSamples[TIMESTAMP_COLUMN], tsValue)
+
+		// Process fields in the order they appeared in the JSON
+		for _, field := range jsonObj.Order {
+			// Skip _id and _ts as we've already handled them
+			if field == ID_COLUMN || field == TIMESTAMP_COLUMN {
+				continue
+			}
+
+			value := jsonObj.Data[field]
+
+			if _, exists := columnSamples[field]; !exists {
+				columnSamples[field] = make([]any, 0, len(messages))
+			}
+
+			// Record column order only on first appearance
+			if !seenColumns[field] {
+				orderedColumns = append(orderedColumns, field)
+				seenColumns[field] = true
+			}
+
+			columnSamples[field] = append(columnSamples[field], value)
+		}
+	}
+
+	// Second pass: determine the best type for each column
+	columnTypes := make(map[string]string)
+
+	// Set types for special columns
+	columnTypes[ID_COLUMN] = SQL_TYPE_VARCHAR
+	columnTypes[TIMESTAMP_COLUMN] = SQL_TYPE_TIMESTAMP
+
+	for field, samples := range columnSamples {
+		// Skip _id and _ts as we've already set their types
+		if field == ID_COLUMN || field == TIMESTAMP_COLUMN {
+			continue
+		}
+		columnTypes[field] = determineColumnType(samples)
+	}
+
+	return columnTypes, orderedColumns, nil
+}
+
+// Function to determine the best SQL type for a column based on samples
+func determineColumnType(samples []any) string {
+	if len(samples) == 0 {
+		return SQL_TYPE_JSON // Default to JSON for empty samples
+	}
+
+	// Track what types of values we've seen
+	var hasTimestamp bool
+	var hasDate bool
+	var hasString bool
+	var hasNumber bool
+	var hasBoolean bool
+	var hasComplexType bool
+
+	for _, sample := range samples {
+		if sample == nil {
+			continue
+		}
+
+		val := reflect.ValueOf(sample)
+		kind := val.Kind()
+
+		switch kind {
+		case reflect.Bool:
+			hasBoolean = true
+		case reflect.Float64:
+			hasNumber = true
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			hasNumber = true
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			hasNumber = true
+		case reflect.String:
+			hasString = true
+			// Try to parse as timestamp or date
+			strVal := sample.(string)
+			if isTimestamp(strVal) {
+				hasTimestamp = true
+			} else if isDate(strVal) {
+				hasDate = true
+			}
+		case reflect.Map, reflect.Slice:
+			hasComplexType = true
+		}
+	}
+
+	if hasBoolean && !hasString && !hasNumber && !hasComplexType {
+		return SQL_TYPE_BOOLEAN
+	}
+
+	if hasNumber && !hasString && !hasBoolean && !hasComplexType {
+		return SQL_TYPE_DOUBLE
+	}
+
+	if hasString && !hasNumber && !hasBoolean && !hasComplexType {
+		if hasTimestamp && !hasDate {
+			return SQL_TYPE_TIMESTAMP
+		}
+		if hasDate && !hasTimestamp {
+			return SQL_TYPE_DATE
+		}
+		return SQL_TYPE_VARCHAR
+	}
+
+	// Default to JSON for anything else
+	return SQL_TYPE_JSON
+}
+
+func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes map[string]string, columnOrder []string) error {
+	if len(columnTypes) == 0 {
+		return fmt.Errorf("cannot create table with no columns")
+	}
+
+	// Escape and quote the table name
+	escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
+
+	// Build CREATE TABLE statement
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", escapedTableName))
+
+	// Use the ordered column list instead of random map iteration
+	for i, column := range columnOrder {
+		dataType, exists := columnTypes[column]
+		if !exists {
+			continue // Skip if column somehow doesn't exist in types map
+		}
+
+		if i > 0 {
+			sb.WriteString(",\n")
+		}
+		// Escape and quote the column name
+		escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
+		sb.WriteString(fmt.Sprintf("  %s %s", escapedColumnName, dataType))
+	}
+	sb.WriteString("\n)")
+
+	// Execute the CREATE TABLE statement
+	_, err := db.ExecContext(ctx, sb.String())
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+
+	return nil
+}
+
+func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, subjectPrefix string) error {
 	// Group messages by table
 	tableMessages := make(map[string][]jetstream.Msg)
 	for _, msg := range batch {
@@ -247,20 +526,65 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 	// Process each table's messages
 	for tableName, messages := range tableMessages {
-		// Get or update table schema from cache
-		tableInfo, exists := tableCache[tableName]
-		// TODO: Rethink how to cache table schemas
-		if !exists || time.Since(tableInfo.lastUpdate) > time.Hour {
-			columns, err := getTableColumns(ctx, db, tableName)
-			if err != nil {
-				return fmt.Errorf("failed to get table columns: %w", err)
-			}
-			tableCache[tableName] = TableCache{
-				columns:    columns,
-				lastUpdate: time.Now(),
-			}
-			tableInfo = tableCache[tableName]
+		// Detect schema from batch
+		columnTypes, columnOrder, err := detectSchemaFromBatch(messages)
+		if err != nil {
+			return fmt.Errorf("failed to detect schema for table %s: %w", tableName, err)
 		}
+
+		// Try to get table columns - will fail if table doesn't exist
+		columns, err := getTableColumns(ctx, db, tableName)
+		if err != nil {
+			// Table likely doesn't exist, so create it
+			logger.Info("Creating table", slog.String("table", tableName), slog.Any("order", columnOrder), slog.Any("types", columnTypes))
+			err = createTable(ctx, db, tableName, columnTypes, columnOrder)
+			if err != nil {
+				return fmt.Errorf("failed to create table %s: %w", tableName, err)
+			}
+		} else {
+			// Table exists - check for new columns
+			// Build a map of existing columns
+			existingColumns := make(map[string]bool)
+			for _, col := range columns {
+				existingColumns[col.ColumnName] = true
+			}
+
+			// Check for new columns in the detected schema, preserving order
+			for _, column := range columnOrder {
+				dataType, exists := columnTypes[column]
+				if !exists {
+					continue
+				}
+
+				if !existingColumns[column] {
+					// New column found - add it to the table
+					escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
+					escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
+					logger.Info("Adding new column", slog.String("table", tableName), slog.String("column", column), slog.String("type", dataType))
+					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", escapedTableName, escapedColumnName, dataType)
+					if _, err := db.ExecContext(ctx, alterSQL); err != nil {
+						return fmt.Errorf("failed to add new column %s: %w", column, err)
+					}
+				}
+			}
+		}
+
+		// Get or update table schema from cache
+		tableCache[tableName] = TableCache{
+			columns:    nil, // Force refresh
+			lastUpdate: time.Time{},
+		}
+
+		// Now get the updated columns
+		columns, err = getTableColumns(ctx, db, tableName)
+		if err != nil {
+			return fmt.Errorf("failed to get table columns: %w", err)
+		}
+		tableCache[tableName] = TableCache{
+			columns:    columns,
+			lastUpdate: time.Now(),
+		}
+		tableInfo := tableCache[tableName]
 
 		// Get DB connection
 		conn, err := dbConnector.Connect(ctx)
@@ -290,6 +614,51 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 			values := make([]driver.Value, len(tableInfo.columns))
 			for j, col := range tableInfo.columns {
+				// Special handling for ID_COLUMN column
+				if col.ColumnName == ID_COLUMN {
+					// Use ID_COLUMN from message, if present
+					if id, exists := jsonData[ID_COLUMN]; exists && id != nil {
+						values[j] = id
+					} else {
+						// Try to get from headers
+						id := msg.Headers().Get("Nats-Msg-Id")
+						if id != "" {
+							values[j] = id
+						} else {
+							values[j] = cuid2.Generate()
+						}
+					}
+					continue
+				}
+
+				// Special handling for _ts column
+				if col.ColumnName == TIMESTAMP_COLUMN {
+					// Use TIMESTAMP_COLUMN from message, if present
+					if ts, exists := jsonData[TIMESTAMP_COLUMN]; exists && ts != nil {
+						// Parse the timestamp depending on its type
+						switch v := ts.(type) {
+						case string:
+							timestamp, err := parseTimestamp(v)
+							if err != nil {
+								return fmt.Errorf("failed to parse _ts value: %w", err)
+							}
+							values[j] = timestamp
+						case float64:
+							values[j] = parseUnixTimestamp(v)
+						case time.Time:
+							values[j] = v
+						default:
+							// Fall back to metadata timestamp
+							values[j] = metadata.Timestamp
+						}
+					} else {
+						// Use metadata timestamp
+						values[j] = metadata.Timestamp
+					}
+					continue
+				}
+
+				// Regular column handling
 				value, exists := jsonData[col.ColumnName]
 				if !exists {
 					if col.Null == "YES" {
@@ -313,6 +682,25 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 						default:
 							return fmt.Errorf("unsupported timestamp format for column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
 						}
+					} else if strings.Contains(strings.ToUpper(col.Type), "DATE") {
+						switch v := value.(type) {
+						case string:
+							// Try parsing the date string
+							date, err := parseDate(v)
+							if err != nil {
+								return fmt.Errorf("failed to parse date for column %s: %w (SEQ %d)", col.ColumnName, err, metadata.Sequence.Stream)
+							}
+							values[j] = date
+						default:
+							return fmt.Errorf("unsupported date format for column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
+						}
+					} else if strings.Contains(strings.ToUpper(col.Type), "JSON") && (value != nil) {
+						// For JSON columns, convert the value to a JSON string
+						jsonBytes, err := json.Marshal(value)
+						if err != nil {
+							return fmt.Errorf("failed to marshal JSON for column %s: %w (SEQ %d)", col.ColumnName, err, metadata.Sequence.Stream)
+						}
+						values[j] = string(jsonBytes)
 					} else {
 						values[j] = value
 					}
@@ -340,7 +728,39 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 	return nil
 }
 
-// Helper function to parse timestamp strings
+func isTimestamp(value string) bool {
+	for _, format := range timestampFormats {
+		if _, err := time.Parse(format, value); err == nil {
+			// Only consider it a timestamp if it has time component
+			return strings.Contains(format, "15:04:05")
+		}
+	}
+	return false
+}
+
+func isDate(value string) bool {
+	for _, format := range timestampFormats {
+		if _, err := time.Parse(format, value); err == nil {
+			// Consider it a date if it doesn't have time component
+			return !strings.Contains(format, "15:04:05")
+		}
+	}
+	return false
+}
+
+func parseDate(value string) (time.Time, error) {
+	// Try date formats
+	for _, format := range timestampFormats {
+		if !strings.Contains(format, "15:04:05") { // Date formats don't have time component
+			if t, err := time.Parse(format, value); err == nil {
+				return t, nil
+			}
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse date: %s", value)
+}
+
 func parseTimestamp(value string) (time.Time, error) {
 	// Try common timestamp formats
 	formats := []string{
