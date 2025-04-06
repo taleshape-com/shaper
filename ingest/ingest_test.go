@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
+	"os"
 	"shaper/util"
 	"strings"
 	"testing"
@@ -18,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 // MockMsg implements the jetstream.Msg interface for testing
 type MockMsg struct {
@@ -286,7 +290,7 @@ func TestProcessBatch(t *testing.T) {
 	}
 
 	// Process the batch
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch")
 
 	// Verify the table was created and data was inserted
@@ -367,7 +371,7 @@ func TestProcessBatchWithMultipleTables(t *testing.T) {
 	}
 
 	// Process the batch
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch")
 
 	// Verify users table
@@ -439,7 +443,7 @@ func TestProcessBatchWithNestedJsonData(t *testing.T) {
 	}
 
 	// Process the batch
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch")
 
 	// Verify the table was created and data was inserted
@@ -490,7 +494,7 @@ func TestSchemaTypeEvolution(t *testing.T) {
 			"value": "string value",
 		}),
 	}
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process first batch")
 
 	// For the second batch, we should EXPECT failure or conversion to JSON
@@ -522,11 +526,11 @@ func TestSchemaTypeEvolution(t *testing.T) {
 
 	if strings.Contains(strings.ToUpper(valueColType), "VARCHAR") {
 		// If varchar, expect error
-		err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+		err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 		assert.Error(t, err, "Expected error when inserting number into VARCHAR column")
 	} else {
 		// If JSON or other type, expect success
-		err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+		err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 		assert.NoError(t, err, "Failed to process second batch")
 
 		// Verify with a struct
@@ -558,7 +562,7 @@ func TestNullableFieldsInSchemaEvolution(t *testing.T) {
 			"field2": "value2",
 		}),
 	}
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process first batch")
 
 	// Second batch - some fields omitted
@@ -570,7 +574,7 @@ func TestNullableFieldsInSchemaEvolution(t *testing.T) {
 		}),
 	}
 	tableCache = make(map[string]TableCache)
-	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process second batch")
 
 	// Third batch - different fields omitted
@@ -582,7 +586,7 @@ func TestNullableFieldsInSchemaEvolution(t *testing.T) {
 		}),
 	}
 	tableCache = make(map[string]TableCache)
-	err = processBatch(ctx, batch3, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch3, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process third batch")
 
 	// Use a struct for scanning
@@ -629,7 +633,7 @@ func TestLargeSchemaEvolution(t *testing.T) {
 			"name": "Initial Record",
 		}),
 	}
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process first batch")
 
 	// Second batch - add many columns at once
@@ -647,7 +651,7 @@ func TestLargeSchemaEvolution(t *testing.T) {
 		createMockMsg("test.large", largeObject),
 	}
 	tableCache = make(map[string]TableCache)
-	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process second batch with many columns")
 
 	// Verify schema was updated correctly
@@ -692,7 +696,7 @@ func TestMixedDataTypesInBatch(t *testing.T) {
 	}
 
 	// Process the batch with mixed types
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with mixed types")
 
 	// Check the type used for the column
@@ -777,7 +781,7 @@ func TestTimestampHandling(t *testing.T) {
 		}),
 	}
 
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process timestamp batch")
 
 	// Query the raw data
@@ -915,7 +919,7 @@ func TestInvalidJSON(t *testing.T) {
 	batch := []jetstream.Msg{invalidMsg}
 
 	// This should return an error
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	assert.Error(t, err, "Expected error with invalid JSON")
 	assert.Contains(t, err.Error(), "failed to parse JSON")
 }
@@ -941,7 +945,7 @@ func TestSpecialCharactersInColumnNames(t *testing.T) {
 	}
 
 	// Process batch - should now work with proper escaping
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with special characters")
 
 	// Get the columns
@@ -1003,7 +1007,7 @@ func TestSpecialCharactersInTableName(t *testing.T) {
 	}
 
 	// Process batch - should work with proper escaping
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with special table name")
 
 	// Verify the table exists by querying information schema
@@ -1033,7 +1037,7 @@ func TestEmptyBatch(t *testing.T) {
 	batch := []jetstream.Msg{}
 
 	// This should not cause errors
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	assert.NoError(t, err, "Expected no error with empty batch")
 }
 
@@ -1057,7 +1061,7 @@ func TestLargeMessage(t *testing.T) {
 	}
 
 	// Process the batch
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with large payload")
 
 	// Verify the data was stored correctly
@@ -1094,7 +1098,7 @@ func TestSchemaEvolutionWithRemovedColumns(t *testing.T) {
 			"field3": "value3",
 		}),
 	}
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process first batch")
 
 	// Second batch - completely different fields
@@ -1107,7 +1111,7 @@ func TestSchemaEvolutionWithRemovedColumns(t *testing.T) {
 		}),
 	}
 	tableCache = make(map[string]TableCache) // Reset cache to force reload
-	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process second batch")
 
 	// Verify both records with all fields
@@ -1153,7 +1157,7 @@ func TestDuplicateMessages(t *testing.T) {
 	}
 
 	// First insertion
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process first batch")
 
 	// Create duplicate batch
@@ -1163,7 +1167,7 @@ func TestDuplicateMessages(t *testing.T) {
 
 	// Second insertion of the same data
 	tableCache = make(map[string]TableCache) // Reset cache
-	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process duplicate batch")
 
 	// Check number of records - depends on whether system prevents duplicates
@@ -1193,7 +1197,7 @@ func TestColumnOrderPreservation(t *testing.T) {
 		createMockMsgFromString("test.ordered",
 			`{"id": 2, "third": "another3", "second": "another2", "first": "another1"}`),
 	}
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process first batch")
 
 	// Get the column order from the database
@@ -1232,7 +1236,7 @@ func TestColumnOrderPreservation(t *testing.T) {
 	}
 
 	tableCache = make(map[string]TableCache) // Reset cache to force reload
-	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process second batch")
 
 	// Get the updated column order
@@ -1333,7 +1337,7 @@ func TestTableExistenceImplicitCheck(t *testing.T) {
 	}
 
 	// This should succeed and create the table
-	err = processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch for new table")
 
 	// Verify the table was created
@@ -1371,7 +1375,7 @@ func TestIdAndTimestampColumns(t *testing.T) {
 		}),
 	}
 
-	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with no _id or _ts")
 
 	// Test 2: Message with explicit _id and _ts values
@@ -1385,7 +1389,7 @@ func TestIdAndTimestampColumns(t *testing.T) {
 	}
 
 	tableCache = make(map[string]TableCache) // Reset cache
-	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with explicit _id and _ts")
 
 	// Test 3: Message with NATS-Msg-Id header but no _id field
@@ -1399,7 +1403,7 @@ func TestIdAndTimestampColumns(t *testing.T) {
 	}
 
 	tableCache = make(map[string]TableCache) // Reset cache
-	err = processBatch(ctx, batch3, tableCache, dbConnector, db, subjectPrefix)
+	err = processBatch(ctx, batch3, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with header ID")
 
 	// Verify results
@@ -1457,7 +1461,7 @@ func TestColumnOrder(t *testing.T) {
 			`{"a": 1, "b": 2, "c": 3, "_id": "custom-id", "_ts": "2023-06-15T10:30:00Z"}`),
 	}
 
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with ordered columns")
 
 	// Get the actual column order from the database
@@ -1496,7 +1500,7 @@ func TestIdGeneration(t *testing.T) {
 		createMockMsg("test.id_gen", map[string]any{"value": "third"}),
 	}
 
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch for ID generation test")
 
 	// Query the generated IDs
@@ -1562,7 +1566,7 @@ func TestTimestampFormats(t *testing.T) {
 		}),
 	}
 
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process batch with different timestamp formats")
 
 	// Query the timestamps
@@ -1620,7 +1624,7 @@ func TestBackwardsCompatibility(t *testing.T) {
 		}),
 	}
 
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
 	require.NoError(t, err, "Failed to process compatibility test batch")
 
 	// Verify all columns exist, including the new _id and _ts
