@@ -10,6 +10,8 @@ import (
 	"github.com/nrednav/cuid2"
 )
 
+const ID_COLUMN = "_id"
+
 var tableNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]{0,127}$`)
 
 func PublishEvent(ctx context.Context, app *App, tableName string, payload interface{}) (string, error) {
@@ -50,7 +52,17 @@ func PublishEvents(ctx context.Context, app *App, tableName string, payloads []m
 			return ids, fmt.Errorf("invalid JSON structure: %w", err)
 		}
 
-		id := cuid2.Generate()
+		id := ""
+		idCol, ok := payload[ID_COLUMN]
+		if ok {
+			if idColStr, ok := idCol.(string); ok && idColStr != "" {
+				id = idColStr
+			} else {
+				id = cuid2.Generate()
+			}
+		} else {
+			id = cuid2.Generate()
+		}
 		msg := nats.NewMsg(app.IngestSubjectPrefix + tableName)
 		msg.Data = jsonBytes
 		msg.Header.Set("Nats-Msg-Id", id)
