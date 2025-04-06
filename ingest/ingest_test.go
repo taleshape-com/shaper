@@ -24,6 +24,7 @@ type MockMsg struct {
 	subject string
 	data    []byte
 	acked   bool
+	headers nats.Header
 }
 
 func (m *MockMsg) Subject() string {
@@ -79,7 +80,7 @@ func (m *MockMsg) Metadata() (*jetstream.MsgMetadata, error) {
 }
 
 func (m *MockMsg) Headers() nats.Header {
-	return nil
+	return m.headers
 }
 
 func (m *MockMsg) isAcked() bool {
@@ -92,6 +93,7 @@ func createMockMsg(subject string, data map[string]any) jetstream.Msg {
 	return &MockMsg{
 		subject: subject,
 		data:    jsonData,
+		headers: make(nats.Header),
 	}
 }
 
@@ -99,6 +101,15 @@ func createMockMsgFromString(subject string, jsonStr string) jetstream.Msg {
 	return &MockMsg{
 		subject: subject,
 		data:    []byte(jsonStr),
+	}
+}
+
+func createMockMsgWithHeaders(subject string, data map[string]any, headers nats.Header) jetstream.Msg {
+	jsonData, _ := json.Marshal(data)
+	return &MockMsg{
+		subject: subject,
+		data:    jsonData,
+		headers: headers,
 	}
 }
 
@@ -576,9 +587,11 @@ func TestNullableFieldsInSchemaEvolution(t *testing.T) {
 
 	// Use a struct for scanning
 	type Record struct {
-		ID     int     `db:"id"`
-		Field1 *string `db:"field1"` // Use pointer to handle NULL
-		Field2 *string `db:"field2"` // Use pointer to handle NULL
+		ShaperID string    `db:"_id"`
+		ShaperTS time.Time `db:"_ts"`
+		ID       int       `db:"id"`
+		Field1   *string   `db:"field1"` // Use pointer to handle NULL
+		Field2   *string   `db:"field2"` // Use pointer to handle NULL
 	}
 
 	// Verify all records were inserted with NULL values where appropriate
@@ -701,8 +714,10 @@ func TestMixedDataTypesInBatch(t *testing.T) {
 
 	// Use a struct for scanning
 	type MixedRecord struct {
-		ID   int    `db:"id"`
-		Data string `db:"data"`
+		ShaperID string    `db:"_id"`
+		ShaperTS time.Time `db:"_ts"`
+		ID       int       `db:"id"`
+		Data     string    `db:"data"`
 	}
 
 	// Verify records
@@ -1047,9 +1062,11 @@ func TestLargeMessage(t *testing.T) {
 
 	// Verify the data was stored correctly
 	var result struct {
-		ID          int    `db:"id"`
-		Name        string `db:"name"`
-		Description string `db:"description"`
+		ShaperID    string    `db:"_id"`
+		ShaperTS    time.Time `db:"_ts"`
+		ID          int       `db:"id"`
+		Name        string    `db:"name"`
+		Description string    `db:"description"`
 	}
 
 	err = db.GetContext(ctx, &result, "SELECT * FROM large_payload WHERE id = 1")
@@ -1337,4 +1354,299 @@ func TestTableExistenceImplicitCheck(t *testing.T) {
 	}
 	assert.Contains(t, columnNames, "id", "Table should have 'id' column")
 	assert.Contains(t, columnNames, "name", "Table should have 'name' column")
+}
+
+func TestIdAndTimestampColumns(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Test 1: Basic message with no _id or _ts fields
+	batch1 := []jetstream.Msg{
+		createMockMsg("test.with_special_cols", map[string]any{
+			"regular_field": "value1",
+		}),
+	}
+
+	err := processBatch(ctx, batch1, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with no _id or _ts")
+
+	// Test 2: Message with explicit _id and _ts values
+	explicitTime := time.Date(2023, 5, 15, 10, 30, 0, 0, time.UTC)
+	batch2 := []jetstream.Msg{
+		createMockMsg("test.with_special_cols", map[string]any{
+			"_id":           "explicit-id-123",
+			"_ts":           explicitTime.Format(time.RFC3339),
+			"regular_field": "value2",
+		}),
+	}
+
+	tableCache = make(map[string]TableCache) // Reset cache
+	err = processBatch(ctx, batch2, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with explicit _id and _ts")
+
+	// Test 3: Message with NATS-Msg-Id header but no _id field
+	headers := make(nats.Header)
+	headers.Set("Nats-Msg-Id", "header-id-456")
+
+	batch3 := []jetstream.Msg{
+		createMockMsgWithHeaders("test.with_special_cols", map[string]any{
+			"regular_field": "value3",
+		}, headers),
+	}
+
+	tableCache = make(map[string]TableCache) // Reset cache
+	err = processBatch(ctx, batch3, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with header ID")
+
+	// Verify results
+	rows, err := db.QueryxContext(ctx, "SELECT _id, _ts, regular_field FROM with_special_cols ORDER BY regular_field")
+	require.NoError(t, err, "Failed to query special columns table")
+	defer rows.Close()
+
+	var results []struct {
+		ID    string    `db:"_id"`
+		TS    time.Time `db:"_ts"`
+		Field string    `db:"regular_field"`
+	}
+
+	for rows.Next() {
+		var result struct {
+			ID    string    `db:"_id"`
+			TS    time.Time `db:"_ts"`
+			Field string    `db:"regular_field"`
+		}
+		err := rows.StructScan(&result)
+		require.NoError(t, err, "Failed to scan result row")
+		results = append(results, result)
+	}
+
+	require.Len(t, results, 3, "Expected 3 rows with special columns")
+
+	// Check first row (auto-generated ID and timestamp)
+	assert.Equal(t, "value1", results[0].Field)
+	assert.NotEmpty(t, results[0].ID, "First row should have auto-generated ID")
+	assert.False(t, results[0].TS.IsZero(), "First row should have timestamp")
+
+	// Check second row (explicit ID and timestamp)
+	assert.Equal(t, "value2", results[1].Field)
+	assert.Equal(t, "explicit-id-123", results[1].ID, "Second row should have explicit ID")
+	assert.True(t, explicitTime.Equal(results[1].TS),
+		"Second row should have explicit timestamp: expected %v, got %v",
+		explicitTime, results[1].TS)
+
+	// Check third row (header ID and auto timestamp)
+	assert.Equal(t, "value3", results[2].Field)
+	assert.Equal(t, "header-id-456", results[2].ID, "Third row should have header ID")
+	assert.False(t, results[2].TS.IsZero(), "Third row should have timestamp")
+}
+func TestColumnOrder(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Create a message with fields in specific order
+	batch := []jetstream.Msg{
+		createMockMsgFromString("test.col_order",
+			`{"a": 1, "b": 2, "c": 3, "_id": "custom-id", "_ts": "2023-06-15T10:30:00Z"}`),
+	}
+
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with ordered columns")
+
+	// Get the actual column order from the database
+	columns, err := getTableColumns(ctx, db, "col_order")
+	require.NoError(t, err, "Failed to get table columns")
+
+	// Extract column names in order
+	var columnNames []string
+	for _, col := range columns {
+		columnNames = append(columnNames, col.ColumnName)
+	}
+
+	// Verify _id and _ts are the first two columns
+	require.GreaterOrEqual(t, len(columnNames), 2, "Should have at least 2 columns")
+	assert.Equal(t, "_id", columnNames[0], "First column should be _id")
+	assert.Equal(t, "_ts", columnNames[1], "Second column should be _ts")
+
+	// Check that the other columns exist in the list
+	assert.Contains(t, columnNames, "a")
+	assert.Contains(t, columnNames, "b")
+	assert.Contains(t, columnNames, "c")
+}
+
+func TestIdGeneration(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Create multiple messages without _id to test ID generation
+	batch := []jetstream.Msg{
+		createMockMsg("test.id_gen", map[string]any{"value": "first"}),
+		createMockMsg("test.id_gen", map[string]any{"value": "second"}),
+		createMockMsg("test.id_gen", map[string]any{"value": "third"}),
+	}
+
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch for ID generation test")
+
+	// Query the generated IDs
+	rows, err := db.QueryxContext(ctx, "SELECT _id FROM id_gen ORDER BY value")
+	require.NoError(t, err, "Failed to query generated IDs")
+	defer rows.Close()
+
+	// Collect the generated IDs
+	var ids []string
+	for rows.Next() {
+		var id string
+		err := rows.Scan(&id)
+		require.NoError(t, err, "Failed to scan ID")
+		ids = append(ids, id)
+	}
+
+	require.Len(t, ids, 3, "Expected 3 generated IDs")
+
+	// Each ID should be unique
+	assert.NotEqual(t, ids[0], ids[1], "Generated IDs should be unique")
+	assert.NotEqual(t, ids[1], ids[2], "Generated IDs should be unique")
+	assert.NotEqual(t, ids[0], ids[2], "Generated IDs should be unique")
+
+	// Each ID should not be empty
+	for i, id := range ids {
+		assert.NotEmpty(t, id, "Generated ID %d should not be empty", i)
+	}
+}
+
+func TestTimestampFormats(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Create messages with different timestamp formats
+	nowTime := time.Now().UTC()
+	unixTime := float64(nowTime.Unix())
+	isoTime := nowTime.Format(time.RFC3339)
+
+	batch := []jetstream.Msg{
+		createMockMsg("test.ts_formats", map[string]any{
+			"_id": "ts-test-1",
+			"_ts": isoTime, // String ISO format
+			"val": "iso",
+		}),
+		createMockMsg("test.ts_formats", map[string]any{
+			"_id": "ts-test-2",
+			"_ts": unixTime, // Unix timestamp as number
+			"val": "unix",
+		}),
+		createMockMsg("test.ts_formats", map[string]any{
+			"_id": "ts-test-3",
+			"_ts": nowTime, // time.Time object (will be serialized to string in JSON)
+			"val": "time",
+		}),
+		createMockMsg("test.ts_formats", map[string]any{
+			"_id": "ts-test-4",
+			// No _ts field - should use metadata timestamp
+			"val": "metadata",
+		}),
+	}
+
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch with different timestamp formats")
+
+	// Query the timestamps
+	rows, err := db.QueryxContext(ctx, "SELECT _id, _ts, val FROM ts_formats ORDER BY val")
+	require.NoError(t, err, "Failed to query timestamps")
+	defer rows.Close()
+
+	// Check each timestamp
+	for rows.Next() {
+		var id string
+		var ts time.Time
+		var val string
+		err := rows.Scan(&id, &ts, &val)
+		require.NoError(t, err, "Failed to scan timestamp row")
+
+		// Each timestamp should be a valid non-zero time
+		assert.False(t, ts.IsZero(), "Timestamp for %s should not be zero", id)
+
+		switch val {
+		case "iso":
+			// For ISO string input, parsed time should be close to nowTime
+			assert.WithinDuration(t, nowTime, ts, 1*time.Second,
+				"ISO timestamp should be close to reference time")
+		case "unix":
+			// For Unix timestamp input, parsed time should match nowTime closely
+			assert.WithinDuration(t, nowTime, ts, 1*time.Second,
+				"Unix timestamp should be close to reference time")
+		case "time":
+			// For time.Time input, should be very close to nowTime
+			assert.WithinDuration(t, nowTime, ts, 1*time.Second,
+				"time.Time timestamp should be close to reference time")
+		case "metadata":
+			// For metadata timestamp, should be close to test execution time
+			assert.WithinDuration(t, time.Now(), ts, 5*time.Second,
+				"Metadata timestamp should be close to current time")
+		}
+	}
+}
+
+// Additional test to verify that existing tests still work with _id and _ts columns
+func TestBackwardsCompatibility(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Run an existing test scenario to make sure it still works with _id and _ts
+	batch := []jetstream.Msg{
+		createMockMsg("test.compat", map[string]any{
+			"id":        1,
+			"name":      "Test User",
+			"is_active": true,
+		}),
+	}
+
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, subjectPrefix)
+	require.NoError(t, err, "Failed to process compatibility test batch")
+
+	// Verify all columns exist, including the new _id and _ts
+	columns, err := getTableColumns(ctx, db, "compat")
+	require.NoError(t, err, "Failed to get compatibility table columns")
+
+	columnMap := make(map[string]bool)
+	for _, col := range columns {
+		columnMap[col.ColumnName] = true
+	}
+
+	// Should have both special columns and original columns
+	assert.True(t, columnMap["_id"], "Table should have _id column")
+	assert.True(t, columnMap["_ts"], "Table should have _ts column")
+	assert.True(t, columnMap["id"], "Table should have id column")
+	assert.True(t, columnMap["name"], "Table should have name column")
+	assert.True(t, columnMap["is_active"], "Table should have is_active column")
+
+	// Verify we can query by any column
+	var count int
+	err = db.GetContext(ctx, &count, "SELECT COUNT(*) FROM compat WHERE id = 1")
+	require.NoError(t, err, "Failed to query by id column")
+	assert.Equal(t, 1, count, "Expected 1 record with id = 1")
+
+	// Query by name
+	err = db.GetContext(ctx, &count, "SELECT COUNT(*) FROM compat WHERE name = 'Test User'")
+	require.NoError(t, err, "Failed to query by name column")
+	assert.Equal(t, 1, count, "Expected 1 record with name = 'Test User'")
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/marcboeker/go-duckdb"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/nrednav/cuid2"
 )
 
 // TODO: Move consts to config
@@ -25,6 +26,9 @@ const (
 	BATCH_SIZE     = 3000
 	BATCH_TIMEOUT  = 2000 * time.Millisecond
 	SLEEP_ON_ERROR = 10 * time.Second
+
+	ID_COLUMN        = "_id"
+	TIMESTAMP_COLUMN = "_ts"
 
 	SQL_TYPE_BOOLEAN   = "BOOLEAN"
 	SQL_TYPE_DOUBLE    = "DOUBLE"
@@ -339,9 +343,16 @@ func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, []strin
 	// First pass: collect all field names and sample values
 	columnSamples := make(map[string][]any)
 
-	// Keep track of column order
-	orderedColumns := []string{}
-	seenColumns := make(map[string]bool)
+	// Initialize special columns
+	columnSamples[ID_COLUMN] = make([]any, 0, len(messages))
+	columnSamples[TIMESTAMP_COLUMN] = make([]any, 0, len(messages))
+
+	// Keep track of column order with _id and _ts at the beginning
+	orderedColumns := []string{ID_COLUMN, TIMESTAMP_COLUMN}
+	seenColumns := map[string]bool{
+		ID_COLUMN:        true,
+		TIMESTAMP_COLUMN: true,
+	}
 
 	for _, msg := range messages {
 		var jsonObj OrderedJSON
@@ -349,8 +360,33 @@ func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, []strin
 			return nil, nil, fmt.Errorf("failed to parse JSON message: %w", err)
 		}
 
+		// Add samples for special columns
+		// For _id: use from message if available, otherwise use header or generate
+		idValue, idExists := jsonObj.Data[ID_COLUMN]
+		if !idExists {
+			idValue = msg.Headers().Get("Nats-Msg-Id")
+			if idValue == "" {
+				idValue = "placeholder_for_cuid"
+			}
+		}
+		columnSamples[ID_COLUMN] = append(columnSamples[ID_COLUMN], idValue)
+
+		// For _ts: use from message if available, otherwise use metadata.Timestamp
+		tsValue, tsExists := jsonObj.Data[TIMESTAMP_COLUMN]
+		if !tsExists {
+			// We'll use metadata.Timestamp during actual insertion
+			// For schema detection, add a timestamp to ensure correct type detection
+			tsValue = time.Now()
+		}
+		columnSamples[TIMESTAMP_COLUMN] = append(columnSamples[TIMESTAMP_COLUMN], tsValue)
+
 		// Process fields in the order they appeared in the JSON
 		for _, field := range jsonObj.Order {
+			// Skip _id and _ts as we've already handled them
+			if field == ID_COLUMN || field == TIMESTAMP_COLUMN {
+				continue
+			}
+
 			value := jsonObj.Data[field]
 
 			if _, exists := columnSamples[field]; !exists {
@@ -369,7 +405,16 @@ func detectSchemaFromBatch(messages []jetstream.Msg) (map[string]string, []strin
 
 	// Second pass: determine the best type for each column
 	columnTypes := make(map[string]string)
+
+	// Set types for special columns
+	columnTypes[ID_COLUMN] = SQL_TYPE_VARCHAR
+	columnTypes[TIMESTAMP_COLUMN] = SQL_TYPE_TIMESTAMP
+
 	for field, samples := range columnSamples {
+		// Skip _id and _ts as we've already set their types
+		if field == ID_COLUMN || field == TIMESTAMP_COLUMN {
+			continue
+		}
 		columnTypes[field] = determineColumnType(samples)
 	}
 
@@ -576,6 +621,51 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 			values := make([]driver.Value, len(tableInfo.columns))
 			for j, col := range tableInfo.columns {
+				// Special handling for ID_COLUMN column
+				if col.ColumnName == ID_COLUMN {
+					// Use ID_COLUMN from message, if present
+					if id, exists := jsonData[ID_COLUMN]; exists && id != nil {
+						values[j] = id
+					} else {
+						// Try to get from headers
+						id := msg.Headers().Get("Nats-Msg-Id")
+						if id != "" {
+							values[j] = id
+						} else {
+							values[j] = cuid2.Generate()
+						}
+					}
+					continue
+				}
+
+				// Special handling for _ts column
+				if col.ColumnName == TIMESTAMP_COLUMN {
+					// Use TIMESTAMP_COLUMN from message, if present
+					if ts, exists := jsonData[TIMESTAMP_COLUMN]; exists && ts != nil {
+						// Parse the timestamp depending on its type
+						switch v := ts.(type) {
+						case string:
+							timestamp, err := parseTimestamp(v)
+							if err != nil {
+								return fmt.Errorf("failed to parse _ts value: %w", err)
+							}
+							values[j] = timestamp
+						case float64:
+							values[j] = parseUnixTimestamp(v)
+						case time.Time:
+							values[j] = v
+						default:
+							// Fall back to metadata timestamp
+							values[j] = metadata.Timestamp
+						}
+					} else {
+						// Use metadata timestamp
+						values[j] = metadata.Timestamp
+					}
+					continue
+				}
+
+				// Regular column handling
 				value, exists := jsonData[col.ColumnName]
 				if !exists {
 					if col.Null == "YES" {
