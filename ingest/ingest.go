@@ -192,7 +192,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 				// Channel closed, process remaining messages and return
 				if len(batch) > 0 {
 					processStartTime := time.Now()
-					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 						return fmt.Errorf("failed to process final batch: %w", err)
 					}
 					logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -212,7 +212,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process if batch is full
 			if len(batch) >= BATCH_SIZE {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
 					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -228,7 +228,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process non-empty batch
 			if len(batch) > 0 {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
 					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
@@ -239,7 +239,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 		case <-ctx.Done():
 			// Process remaining messages before shutting down
 			if len(batch) > 0 {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process final batch", slog.Any("error", err))
 				}
 			}
@@ -525,7 +525,7 @@ func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes
 	return nil
 }
 
-func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string) error {
+func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, subjectPrefix string) error {
 	// Group messages by table
 	tableMessages := make(map[string][]jetstream.Msg)
 	for _, msg := range batch {
@@ -545,6 +545,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		columns, err := getTableColumns(ctx, db, tableName)
 		if err != nil {
 			// Table likely doesn't exist, so create it
+			logger.Info("Creating table", slog.String("table", tableName), slog.Any("order", columnOrder), slog.Any("types", columnTypes))
 			err = createTable(ctx, db, tableName, columnTypes, columnOrder)
 			if err != nil {
 				return fmt.Errorf("failed to create table %s: %w", tableName, err)
@@ -568,6 +569,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 					// New column found - add it to the table
 					escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
 					escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
+					logger.Info("Adding new column", slog.String("table", tableName), slog.String("column", column), slog.String("type", dataType))
 					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", escapedTableName, escapedColumnName, dataType)
 					if _, err := db.ExecContext(ctx, alterSQL); err != nil {
 						return fmt.Errorf("failed to add new column %s: %w", column, err)
