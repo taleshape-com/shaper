@@ -19,6 +19,7 @@ ENV GOARCH=amd64
 COPY . .
 COPY --from=frontend /app/dist dist
 RUN go vet ./...
+RUN go test ./...
 RUN go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
 
 FROM debian:12-slim

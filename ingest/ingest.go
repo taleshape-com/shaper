@@ -264,12 +264,12 @@ func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColI
 	return columns, nil
 }
 
+// Custom JSON unmarshaller to preserve order of keys
 type OrderedJSON struct {
 	Data  map[string]any
 	Order []string
 }
 
-// And this custom unmarshaler
 func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 	// Reset the order
 	o.Order = make([]string, 0)
