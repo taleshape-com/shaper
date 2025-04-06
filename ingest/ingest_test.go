@@ -343,7 +343,7 @@ func TestProcessBatch(t *testing.T) {
 		Name      string    `db:"name"`
 		IsActive  bool      `db:"is_active"`
 		CreatedAt time.Time `db:"created"`
-		Metadata  string    `db:"metadata"`
+		Metadata  any       `db:"metadata"`
 	}
 	err = db.SelectContext(ctx, &users, "SELECT id, name, is_active, created, metadata FROM users ORDER BY id")
 	require.NoError(t, err, "Failed to query users")
@@ -475,10 +475,10 @@ func TestProcessBatchWithNestedJsonData(t *testing.T) {
 
 	// Query and verify the JSON data
 	type CustomerRow struct {
-		ID      int    `db:"id"`
-		Name    string `db:"name"`
-		Address string `db:"address"`
-		Orders  string `db:"orders"`
+		ID      int            `db:"id"`
+		Name    string         `db:"name"`
+		Address map[string]any `db:"address"`
+		Orders  []any          `db:"orders"`
 	}
 
 	var customers []CustomerRow
@@ -486,18 +486,11 @@ func TestProcessBatchWithNestedJsonData(t *testing.T) {
 	require.NoError(t, err, "Failed to query customers")
 	assert.Len(t, customers, 2, "Expected 2 customers")
 
-	// Parse and verify JSON data for first customer
-	var address1 map[string]any
-	err = json.Unmarshal([]byte(customers[0].Address), &address1)
-	require.NoError(t, err, "Failed to parse address JSON")
-	assert.Equal(t, "123 Main St", address1["street"])
-	assert.Equal(t, "Anytown", address1["city"])
+	assert.Equal(t, "123 Main St", customers[0].Address["street"])
+	assert.Equal(t, "Anytown", customers[0].Address["city"])
 
-	var orders1 []map[string]any
-	err = json.Unmarshal([]byte(customers[0].Orders), &orders1)
-	require.NoError(t, err, "Failed to parse orders JSON")
-	assert.Len(t, orders1, 2, "Expected 2 orders for first customer")
-	assert.Equal(t, "A001", orders1[0]["order_id"])
+	assert.Len(t, customers[0].Orders, 2, "Expected 2 orders for first customer")
+	assert.Equal(t, "A001", customers[0].Orders[0].(map[string]any)["order_id"])
 }
 
 func TestSchemaTypeEvolution(t *testing.T) {
@@ -742,7 +735,7 @@ func TestMixedDataTypesInBatch(t *testing.T) {
 		ShaperID string    `db:"_id"`
 		ShaperTS time.Time `db:"_ts"`
 		ID       int       `db:"id"`
-		Data     string    `db:"data"`
+		Data     any       `db:"data"`
 	}
 
 	// Verify records
@@ -755,27 +748,19 @@ func TestMixedDataTypesInBatch(t *testing.T) {
 	// Let's unmarshal each value to check it correctly
 
 	// String value - unmarshal to verify
-	var stringValue string
-	err = json.Unmarshal([]byte(records[0].Data), &stringValue)
-	require.NoError(t, err, "Failed to unmarshal string value")
+	stringValue := records[0].Data.(string)
 	assert.Equal(t, "string value", stringValue)
 
 	// Number value
-	var numValue float64
-	err = json.Unmarshal([]byte(records[1].Data), &numValue)
-	require.NoError(t, err, "Failed to unmarshal number value")
+	numValue := records[1].Data.(float64)
 	assert.Equal(t, 42.0, numValue)
 
 	// Boolean value
-	var boolValue bool
-	err = json.Unmarshal([]byte(records[2].Data), &boolValue)
-	require.NoError(t, err, "Failed to unmarshal boolean value")
+	boolValue := records[2].Data.(bool)
 	assert.True(t, boolValue)
 
 	// Object value
-	var objectValue map[string]any
-	err = json.Unmarshal([]byte(records[3].Data), &objectValue)
-	require.NoError(t, err, "Failed to unmarshal object value")
+	objectValue := records[3].Data.(map[string]any)
 	assert.Equal(t, "value", objectValue["nested"])
 }
 
@@ -815,7 +800,7 @@ func TestTimestampHandling(t *testing.T) {
 	}
 
 	// Use MapScan to get raw values
-	rowData := make(map[string]interface{})
+	rowData := make(map[string]any)
 	err = rows.MapScan(rowData)
 	require.NoError(t, err, "Failed to scan row")
 
@@ -848,7 +833,7 @@ func TestTimestampHandling(t *testing.T) {
 	// Instead of comparing exact string values, we'll extract components
 
 	// Function to extract date components from any value type
-	extractDateComponents := func(val interface{}) (year int, month time.Month, day int, hour int, min int, sec int, err error) {
+	extractDateComponents := func(val any) (year int, month time.Month, day int, hour int, min int, sec int, err error) {
 		var t time.Time
 
 		switch v := val.(type) {
@@ -1140,9 +1125,9 @@ func TestSchemaEvolutionWithRemovedColumns(t *testing.T) {
 	require.NoError(t, err, "Failed to query evolving records")
 	defer rows.Close()
 
-	records := make([]map[string]interface{}, 0)
+	records := make([]map[string]any, 0)
 	for rows.Next() {
-		record := make(map[string]interface{})
+		record := make(map[string]any)
 		err := rows.MapScan(record)
 		require.NoError(t, err, "Failed to scan row")
 		records = append(records, record)
@@ -1294,7 +1279,7 @@ func TestColumnOrderPreservation(t *testing.T) {
 	rowCount := 0
 	for rows.Next() {
 		rowCount++
-		rowData := make(map[string]interface{})
+		rowData := make(map[string]any)
 		err := rows.MapScan(rowData)
 		require.NoError(t, err, "Failed to scan row")
 

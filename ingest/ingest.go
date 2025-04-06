@@ -694,13 +694,6 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 						default:
 							return fmt.Errorf("unsupported date format for column %s (SEQ %d)", col.ColumnName, metadata.Sequence.Stream)
 						}
-					} else if strings.Contains(strings.ToUpper(col.Type), "JSON") && (value != nil) {
-						// For JSON columns, convert the value to a JSON string
-						jsonBytes, err := json.Marshal(value)
-						if err != nil {
-							return fmt.Errorf("failed to marshal JSON for column %s: %w (SEQ %d)", col.ColumnName, err, metadata.Sequence.Stream)
-						}
-						values[j] = string(jsonBytes)
 					} else {
 						values[j] = value
 					}
