@@ -250,16 +250,6 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 	}
 }
 
-func tableExists(ctx context.Context, db *sqlx.DB, tableName string) (bool, error) {
-	query := "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?"
-	var count int
-	err := db.GetContext(ctx, &count, query, tableName)
-	if err != nil {
-		return false, fmt.Errorf("failed to check if table exists: %w", err)
-	}
-	return count > 0, nil
-}
-
 const tableColumnsQuery = "SELECT column_name, \"null\", column_type FROM (DESCRIBE (FROM query_table($1)))"
 
 func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
