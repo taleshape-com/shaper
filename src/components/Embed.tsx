@@ -1,40 +1,89 @@
 import { Dashboard } from './dashboard'
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { VarsParamSchema } from "../lib/utils";
+import { RemoveScroll } from "react-remove-scroll/UI";
 
-export interface EmbedProps {
+// Add type definition for the global shaper object
+declare global {
+  interface Window {
+    shaper: {
+      defaultBaseUrl: string;
+      customCSS?: string;
+    };
+  }
+}
+
+(RemoveScroll.defaultProps ?? {}).enabled = false;
+
+// Function to inject custom CSS
+function injectCustomCSS() {
+  if (window.shaper?.customCSS) {
+    const existingStyles = document.head.getElementsByTagName("style");
+    for (const style of existingStyles) {
+      if (style.textContent === window.shaper.customCSS) {
+        // Custom CSS already injected
+        return;
+      }
+    }
+    const styleElement = document.createElement("style");
+    styleElement.textContent = window.shaper.customCSS;
+    document.head.appendChild(styleElement);
+  }
+}
+
+export type EmbedProps = {
   baseUrl?: string;
   dashboardId: string;
-  initialVars?: VarsParamSchema,
   getJwt: (args: { baseUrl?: string }) => Promise<string>;
-  onVarsChanged?: (newVars: VarsParamSchema) => void;
-}
+} & (
+    | {
+      vars: VarsParamSchema;
+      onVarsChanged: (newVars: VarsParamSchema) => void;
+      defaultVars?: undefined;
+    }
+    | {
+      vars?: undefined;
+      onVarsChanged?: (newVars: VarsParamSchema) => void;
+      defaultVars?: VarsParamSchema;
+    }
+  )
 
 
 export function EmbedComponent({
   dashboardId,
-  baseUrl,
-  initialVars,
+  baseUrl = window.shaper.defaultBaseUrl,
   getJwt,
+  vars,
+  defaultVars,
   onVarsChanged,
 }: EmbedProps) {
-  const [vars, setVars] = useState(initialVars)
+  const [manageStateInternally] = useState(!vars);
+  const [internalVars, setInternalVars] = useState(defaultVars);
+
   const handleVarsChanged = useCallback((newVars: VarsParamSchema) => {
-    setVars(newVars)
-    if (onVarsChanged) {
-      onVarsChanged(newVars)
+    if (manageStateInternally) {
+      setInternalVars(newVars);
     }
-  }, [onVarsChanged]);
+    if (onVarsChanged) {
+      onVarsChanged(newVars);
+    }
+  }, [onVarsChanged, manageStateInternally]);
+
   const handleGetJwt = useCallback(() => {
-    return getJwt({ baseUrl })
+    return getJwt({ baseUrl });
   }, [baseUrl, getJwt]);
+
+  // Inject custom CSS
+  useEffect(() => {
+    injectCustomCSS();
+  });
 
   return <Dashboard
     id={dashboardId}
     baseUrl={baseUrl}
-    vars={vars}
+    vars={vars ?? internalVars}
     getJwt={handleGetJwt}
     onVarsChanged={handleVarsChanged}
-  />
+  />;
 }
 
