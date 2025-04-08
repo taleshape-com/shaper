@@ -14,8 +14,6 @@ COPY go.sum .
 RUN go mod download
 RUN go mod verify
 ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=amd64
 COPY . .
 COPY --from=frontend /app/dist dist
 RUN go vet ./...
