@@ -8,20 +8,18 @@ ENV NODE_ENV=production
 RUN npm run build
 
 FROM golang:1 AS build
-ARG TARGETOS
-ARG TARGETARCH
 WORKDIR $GOPATH/src/shaper
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 RUN go mod verify
-ENV CGO_ENABLED=1
+ARG TARGETOS
+ARG TARGETARCH
 ENV GOOS=${TARGETOS}
 ENV GOARCH=${TARGETARCH}
+ENV CGO_ENABLED=1
 COPY . .
 COPY --from=frontend /app/dist dist
-RUN go vet ./...
-RUN go test ./...
 RUN go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
 
 FROM debian:12-slim

@@ -10,9 +10,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  go-vet:
+    name: Go Vet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: stable
+
+      - name: Run go vet
+        run: go vet ./...
+
+  go-test:
+    name: Go Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: stable
+
+      - name: Run go test
+        run: go test ./...
+
   docker:
     name: Docker
     runs-on: ubuntu-latest
+    needs: [go-vet, go-test]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
