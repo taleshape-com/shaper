@@ -1,12 +1,3 @@
-FROM node:22-alpine AS frontend
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-COPY . .
-RUN npm run lint
-ENV NODE_ENV=production
-RUN npm run build
-
 FROM golang:1 AS build
 WORKDIR $GOPATH/src/shaper
 COPY go.mod .
@@ -19,7 +10,7 @@ ENV GOOS=${TARGETOS}
 ENV GOARCH=${TARGETARCH}
 ENV CGO_ENABLED=1
 COPY . .
-COPY --from=frontend /app/dist dist
+# The dist directory with frontend assets is already in the build context
 RUN go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o /usr/local/bin/shaper main.go
 
 FROM debian:12-slim

@@ -10,6 +10,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: |
+          NODE_ENV=production npm run build
+
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 1
+
   go-vet:
     name: Go Vet
     runs-on: ubuntu-latest
@@ -24,7 +71,7 @@ jobs:
 
       - name: Create placeholder dist directory
         run: |
-          mkdir dist
+          mkdir -p dist
           touch dist/placeholder
 
       - name: Run go vet
@@ -44,7 +91,7 @@ jobs:
 
       - name: Create placeholder dist directory
         run: |
-          mkdir dist
+          mkdir -p dist
           touch dist/placeholder
 
       - name: Run go test
@@ -53,10 +100,16 @@ jobs:
   docker:
     name: Docker
     runs-on: ubuntu-latest
-    needs: [go-vet, go-test]
+    needs: [go-vet, go-test, frontend-build]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Download frontend build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
