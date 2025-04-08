@@ -22,8 +22,10 @@ jobs:
         with:
           go-version: stable
 
-      - name: Create empty dist directory
-        run: mkdir -p dist
+      - name: Create placeholder dist directory
+        run: |
+          mkdir -p dist
+          touch dist/.placeholder
 
       - name: Run go vet
         run: go vet ./...
@@ -40,8 +42,10 @@ jobs:
         with:
           go-version: stable
 
-      - name: Create empty dist directory
-        run: mkdir -p dist
+      - name: Create placeholder dist directory
+        run: |
+          mkdir -p dist
+          touch dist/.placeholder
 
       - name: Run go test
         run: go test ./...
