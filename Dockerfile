@@ -8,12 +8,16 @@ ENV NODE_ENV=production
 RUN npm run build
 
 FROM golang:1 AS build
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR $GOPATH/src/shaper
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 RUN go mod verify
 ENV CGO_ENABLED=1
+ENV GOOS=${TARGETOS}
+ENV GOARCH=${TARGETARCH}
 COPY . .
 COPY --from=frontend /app/dist dist
 RUN go vet ./...
