@@ -195,6 +195,6 @@ jobs:
           context: .
           push: ${{ github.ref == 'refs/heads/main' }}
           platforms: linux/amd64,linux/arm64
-          tags: taleshape/shaper:latest
+          tags: taleshape/shaper:xcompile
           cache-from: type=gha
           cache-to: type=gha,mode=max
