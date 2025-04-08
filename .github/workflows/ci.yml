@@ -22,6 +22,9 @@ jobs:
         with:
           go-version: stable
 
+      - name: Create empty dist directory
+        run: mkdir -p dist
+
       - name: Run go vet
         run: go vet ./...
 
@@ -36,6 +39,9 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: stable
+
+      - name: Create empty dist directory
+        run: mkdir -p dist
 
       - name: Run go test
         run: go test ./...
