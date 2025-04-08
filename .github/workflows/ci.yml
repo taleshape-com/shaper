@@ -67,6 +67,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: stable
+          cache: true
 
       - name: Create placeholder dist directory
         run: |
@@ -87,6 +88,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: stable
+          cache: true
 
       - name: Create placeholder dist directory
         run: |
@@ -129,3 +131,6 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           platforms: linux/amd64,linux/arm64
           tags: taleshape/shaper:latest
+          # Add caching for Docker layers
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
