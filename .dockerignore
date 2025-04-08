@@ -1,8 +1,10 @@
 .git
+.github
 Dockerfile
 node_modules
 README.md
 vite
+public
 examples
 src
 index.html
