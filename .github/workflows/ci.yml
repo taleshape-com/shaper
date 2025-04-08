@@ -103,6 +103,8 @@ jobs:
     name: Build Go Binary (${{ matrix.arch }})
     runs-on: ubuntu-latest
     needs: [go-vet, go-test, frontend-build]
+    # Must match the container image because of C dependencies
+    container: debian:12-slim
     strategy:
       matrix:
         include:
@@ -114,17 +116,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install required packages
+        run: |
+          apt-get update
+          apt-get install -y wget git build-essential
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+          fi
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
           cache: true
-
-      - name: Set up ARM64 toolchain
-        if: matrix.arch == 'arm64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross libstdc++-13-dev-arm64-cross
 
       - name: Download frontend build artifacts
         uses: actions/download-artifact@v4
@@ -166,6 +170,9 @@ jobs:
         with:
           name: shaper-arm64
           path: bin/
+
+      - name: Make binaries executable
+        run: chmod +x bin/shaper-*
 
       - name: Download frontend build artifacts
         uses: actions/download-artifact@v4
