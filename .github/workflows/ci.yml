@@ -32,7 +32,6 @@ jobs:
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
-    needs: [frontend-lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
