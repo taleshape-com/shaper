@@ -24,8 +24,8 @@ jobs:
 
       - name: Create placeholder dist directory
         run: |
-          mkdir -p dist
-          touch dist/.placeholder
+          mkdir dist
+          touch dist/placeholder
 
       - name: Run go vet
         run: go vet ./...
@@ -44,8 +44,8 @@ jobs:
 
       - name: Create placeholder dist directory
         run: |
-          mkdir -p dist
-          touch dist/.placeholder
+          mkdir dist
+          touch dist/placeholder
 
       - name: Run go test
         run: go test ./...
