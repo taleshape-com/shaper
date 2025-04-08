@@ -1,5 +1,7 @@
 FROM debian:12-slim
 
+ARG TARGETARCH
+
 # When running in a container, listen on all interfaces (including IPv6) by default
 ENV SHAPER_ADDR=:5454
 # Override default data directory with something easy to mount to
