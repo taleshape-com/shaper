@@ -81,6 +81,7 @@ jobs:
   go-test:
     name: Go Test
     runs-on: ubuntu-latest
+    needs: [go-vet]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -102,7 +103,7 @@ jobs:
   build-binaries:
     name: Build Go Binary (${{ matrix.arch }})
     runs-on: ubuntu-latest
-    needs: [go-vet, go-test, frontend-build]
+    needs: [go-test, frontend-build]
     # Must match the container image because of C dependencies
     container: debian:12-slim
     strategy:
