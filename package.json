@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && npm run build:embed",
-    "build:embed": "vite build -c vite.embed.ts",
+    "build:embed": "npm run build:embed:react && npm run build:embed:standalone",
+    "build:embed:react": "vite build -c vite.embed-react.ts",
+    "build:embed:standalone": "vite build -c vite.embed-standalone.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },

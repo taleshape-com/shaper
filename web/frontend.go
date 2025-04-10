@@ -81,6 +81,42 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.Ha
 	}
 }
 
+func serveReactJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
+	fsys, err := fs.Sub(frontendFS, "dist")
+	if err != nil {
+		panic(err)
+	}
+	return func(c echo.Context) error {
+		filename := path.Base(c.Request().URL.Path)
+		if filename != "shaper.js" && filename != "shaper.js.map" {
+			return echo.NewHTTPError(http.StatusNotFound, "File not found")
+		}
+
+		file, err := fsys.Open(path.Join("react", filename))
+		if err != nil {
+			return echo.NewHTTPError(http.StatusNotFound, "File not found")
+		}
+		defer file.Close()
+
+		if filename == "shaper.js" {
+			content, err := io.ReadAll(file)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, "Error reading file")
+			}
+
+			defaultBaseUrl := strings.TrimSuffix(getRequestURL(c.Request()).String(), "/react/shaper.js")
+			// Inject default base URL and custom CSS
+			content = append(content, []byte(fmt.Sprintf("\nshaper.defaultBaseUrl = %q;\nshaper.customCSS = %q;\n", defaultBaseUrl, customCSS))...)
+
+			http.ServeContent(c.Response(), c.Request(), filename, modTime, bytes.NewReader(content))
+		} else {
+			http.ServeContent(c.Response(), c.Request(), filename, modTime, file.(io.ReadSeeker))
+		}
+
+		return nil
+	}
+}
+
 // getRequestURL reconstructs the full URL, handling reverse proxy scenarios
 func getRequestURL(r *http.Request) *url.URL {
 	// Start with the scheme (http/https)

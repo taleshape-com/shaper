@@ -22,7 +22,7 @@ type EmbedArgs = EmbedProps & {
   storeVarsInQueryParam?: string;
 };
 
-export function embed({
+export function dashboard({
   container,
   dashboardId,
   baseUrl,
@@ -57,4 +57,5 @@ export function embed({
   );
 }
 
-export const Dashboard = EmbedComponent;
+// This alias is only exported for backward compatibility
+export const embed = dashboard;
