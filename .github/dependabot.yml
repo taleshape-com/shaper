@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Keep npm dependencies up to date
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    # Assign pull requests to the repository owner
+    assignees:
+      - '${{github.repository_owner}}'
+    # Group all updates together
+    groups:
+      dependencies:
+        patterns:
+          - '*'
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    assignees:
+      - '${{github.repository_owner}}'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  # Keep Docker dependencies up to date
+  - package-ecosystem: 'docker'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    assignees:
+      - '${{github.repository_owner}}'
+
