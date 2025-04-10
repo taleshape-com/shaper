@@ -22,7 +22,7 @@ export default defineConfig({
       formats: ["umd"],
       fileName: () => "shaper.js",
     },
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       external: ["react", "react-dom"],
       output: {

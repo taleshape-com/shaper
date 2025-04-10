@@ -22,7 +22,7 @@ export default defineConfig({
       formats: ["umd"],
       fileName: () => "shaper.js",
     },
-    sourcemap: true,
+    sourcemap: false,
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
