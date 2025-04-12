@@ -14,15 +14,26 @@
     <script src="$BASE_URL/embed/shaper.js"></script>
 
     <script>
+      function storeVarsInQuery(param, vars) {
+        const url = new URL(window.location.toString());
+        url.searchParams.set(param, encodeURIComponent(JSON.stringify(vars)));
+        history.pushState(null, "", url);
+      }
+      function varsFromQuery(param) {
+        const params = new URL(window.location.toString()).searchParams;
+        const p = params.get(param);
+        if (!p) {
+          return undefined;
+        }
+        return JSON.parse(decodeURIComponent(p));
+      }
+
       const dashboardId = "$DASHBOARD_ID";
 
-      shaper.dashboard({
+      const dashboard = shaper.dashboard({
         container: document.getElementById("dashboard-container"),
-
         dashboardId,
-
-        storeVarsInQueryParam: "analytics",
-
+        vars: varsFromQuery("analytics"),
         async getJwt({ baseUrl }) {
           const res = await fetch("/api/jwt", {
             method: "POST",
@@ -30,6 +41,9 @@
           });
           return res.json();
         },
+        onVarsChanged(newVars) {
+          storeVarsInQuery("analytics", newVars);
+        }
       });
     </script>
   </body>

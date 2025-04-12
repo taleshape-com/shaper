@@ -9,29 +9,20 @@ export default defineConfig({
     react(),
     cssInjectedByJsPlugin(),
     visualizer({
-      filename: "vite/stats-embed-react.html",
+      filename: "vite/stats-embed.html",
       gzipSize: true,
     }) as PluginOption,
   ],
   build: {
-    outDir: "dist/react",
+    outDir: "dist/embed",
     copyPublicDir: false,
     lib: {
       name: "shaper",
-      entry: path.resolve(__dirname, "src/embed-react.tsx"),
+      entry: path.resolve(__dirname, "src/embed.tsx"),
       formats: ["umd"],
       fileName: () => "shaper.js",
     },
     sourcemap: false,
-    rollupOptions: {
-      external: ["react", "react-dom"],
-      output: {
-        globals: {
-          react: "React",
-          "react-dom": "ReactDOM",
-        },
-      },
-    },
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
