@@ -1,87 +1,60 @@
 import { Dashboard } from './dashboard'
-import { useCallback, useEffect, useState } from "react";
-import { VarsParamSchema } from "../lib/utils";
-import { RemoveScroll } from "react-remove-scroll/UI";
-
-// Add type definition for the global shaper object
-declare global {
-  interface Window {
-    shaper: {
-      defaultBaseUrl: string;
-      customCSS?: string;
-    };
-  }
-}
-
-(RemoveScroll.defaultProps ?? {}).enabled = false;
-
-// Function to inject custom CSS
-function injectCustomCSS() {
-  if (window.shaper?.customCSS) {
-    const existingStyles = document.head.getElementsByTagName("style");
-    for (const style of existingStyles) {
-      if (style.textContent === window.shaper.customCSS) {
-        // Custom CSS already injected
-        return;
-      }
-    }
-    const styleElement = document.createElement("style");
-    styleElement.textContent = window.shaper.customCSS;
-    document.head.appendChild(styleElement);
-  }
-}
+import { useCallback, useEffect, useState, useRef } from "react";
+import { parseJwt, VarsParamSchema } from "../lib/utils";
 
 export type EmbedProps = {
   baseUrl?: string;
   dashboardId: string;
   getJwt: (args: { baseUrl?: string }) => Promise<string>;
-} & (
-    | {
-      vars: VarsParamSchema;
-      onVarsChanged: (newVars: VarsParamSchema) => void;
-      defaultVars?: undefined;
-    }
-    | {
-      vars?: undefined;
-      onVarsChanged?: (newVars: VarsParamSchema) => void;
-      defaultVars?: VarsParamSchema;
-    }
-  )
-
+  vars?: VarsParamSchema;
+  onVarsChanged?: (newVars: VarsParamSchema) => void;
+}
 
 export function EmbedComponent({
-  dashboardId,
-  baseUrl = window.shaper.defaultBaseUrl,
-  getJwt,
-  vars,
-  defaultVars,
-  onVarsChanged,
-}: EmbedProps) {
-  const [manageStateInternally] = useState(!vars);
-  const [internalVars, setInternalVars] = useState(defaultVars);
+  initialProps,
+  updateSubscriber
+}: {
+  initialProps: EmbedProps;
+  updateSubscriber: (updateFn: (props: Partial<EmbedProps>) => void) => void;
+}) {
+  const [props, setProps] = useState<EmbedProps>(initialProps);
+  const jwtRef = useRef<string | null>(null);
 
-  const handleVarsChanged = useCallback((newVars: VarsParamSchema) => {
-    if (manageStateInternally) {
-      setInternalVars(newVars);
-    }
-    if (onVarsChanged) {
-      onVarsChanged(newVars);
-    }
-  }, [onVarsChanged, manageStateInternally]);
-
-  const handleGetJwt = useCallback(() => {
-    return getJwt({ baseUrl });
-  }, [baseUrl, getJwt]);
-
-  // Inject custom CSS
   useEffect(() => {
-    injectCustomCSS();
-  });
+    updateSubscriber((newProps: Partial<EmbedProps>) => {
+      setProps(prevProps => ({ ...prevProps, ...newProps }));
+    });
+  }, [updateSubscriber]);
+
+  const baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl
+
+  const handleVarsChanged = useCallback((vars: VarsParamSchema) => {
+    if (vars === props.vars) {
+      return;
+    }
+    setProps(prevProps => ({ ...prevProps, vars }));
+    if (props.onVarsChanged) {
+      props.onVarsChanged(vars);
+    }
+  }, [props.onVarsChanged]);
+
+  const handleGetJwt = useCallback(async () => {
+    if (jwtRef.current != null) {
+      const claims = parseJwt(jwtRef.current);
+      // Check if the JWT is still valid for at least 10 seconds
+      if ((Date.now() / 1000) + 10 < claims.exp) {
+        return jwtRef.current;
+      }
+    }
+    const newJwt = await props.getJwt({ baseUrl });
+    jwtRef.current = newJwt
+    return newJwt;
+  }, [baseUrl, props.getJwt]);
 
   return <Dashboard
-    id={dashboardId}
+    id={props.dashboardId}
     baseUrl={baseUrl}
-    vars={vars ?? internalVars}
+    vars={props.vars}
     getJwt={handleGetJwt}
     onVarsChanged={handleVarsChanged}
   />;

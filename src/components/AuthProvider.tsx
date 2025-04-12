@@ -1,7 +1,6 @@
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useState } from "react";
 import {
-  parseJwt,
   localStorageTokenKey,
   localStorageVariablesKey,
   AuthContext,
@@ -11,7 +10,7 @@ import {
   localStorageLoginRequiredKey,
   checkLoginRequiredWithoutCache,
 } from "../lib/auth";
-import { goToLoginPage } from "../lib/utils";
+import { goToLoginPage, parseJwt } from "../lib/utils";
 
 const getVariablesString = () => {
   return localStorage.getItem(localStorageVariablesKey) ?? "{}";

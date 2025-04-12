@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { cx } from "../lib/utils";
+import { cx, parseJwt } from "../lib/utils";
 import {
   RiMenuLine,
   RiHomeLine,
@@ -7,7 +7,7 @@ import {
   RiAdminLine,
   RiLogoutBoxRLine,
 } from "@remixicon/react";
-import { useAuth, logout, parseJwt } from "../lib/auth";
+import { useAuth, logout } from "../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { translate } from "../lib/translate";
 import { Button } from "../components/tremor/Button";
