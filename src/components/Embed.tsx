@@ -12,7 +12,7 @@ export type EmbedProps = {
 
 export function EmbedComponent({
   initialProps,
-  updateSubscriber
+  updateSubscriber,
 }: {
   initialProps: EmbedProps;
   updateSubscriber: (updateFn: (props: Partial<EmbedProps>) => void) => void;
@@ -26,12 +26,9 @@ export function EmbedComponent({
     });
   }, [updateSubscriber]);
 
-  const baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl
+  const baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
 
   const handleVarsChanged = useCallback((vars: VarsParamSchema) => {
-    if (vars === props.vars) {
-      return;
-    }
     setProps(prevProps => ({ ...prevProps, vars }));
     if (props.onVarsChanged) {
       props.onVarsChanged(vars);
