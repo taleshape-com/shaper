@@ -5,9 +5,6 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    # Assign pull requests to the repository owner
-    assignees:
-      - '${{github.repository_owner}}'
     # Group all updates together
     groups:
       dependencies:
@@ -19,8 +16,6 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    assignees:
-      - '${{github.repository_owner}}'
     groups:
       github-actions:
         patterns:
@@ -31,6 +26,4 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    assignees:
-      - '${{github.repository_owner}}'
 
