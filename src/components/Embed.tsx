@@ -20,20 +20,21 @@ export function EmbedComponent({
   const [props, setProps] = useState<EmbedProps>(initialProps);
   const jwtRef = useRef<string | null>(null);
 
+  const baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
+  const { onVarsChanged, getJwt } = props;
+
   useEffect(() => {
     updateSubscriber((newProps: Partial<EmbedProps>) => {
       setProps(prevProps => ({ ...prevProps, ...newProps }));
     });
   }, [updateSubscriber]);
 
-  const baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
-
   const handleVarsChanged = useCallback((vars: VarsParamSchema) => {
     setProps(prevProps => ({ ...prevProps, vars }));
-    if (props.onVarsChanged) {
-      props.onVarsChanged(vars);
+    if (onVarsChanged) {
+      onVarsChanged(vars);
     }
-  }, [props.onVarsChanged]);
+  }, [onVarsChanged]);
 
   const handleGetJwt = useCallback(async () => {
     if (jwtRef.current != null) {
@@ -43,10 +44,10 @@ export function EmbedComponent({
         return jwtRef.current;
       }
     }
-    const newJwt = await props.getJwt({ baseUrl });
+    const newJwt = await getJwt({ baseUrl });
     jwtRef.current = newJwt
     return newJwt;
-  }, [baseUrl, props.getJwt]);
+  }, [baseUrl, getJwt]);
 
   return <Dashboard
     id={props.dashboardId}
