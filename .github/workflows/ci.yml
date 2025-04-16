@@ -140,7 +140,7 @@ jobs:
       - name: Build for ${{ matrix.arch }}
         run: |
           mkdir -p bin
-          CC=${{ matrix.cc }} GOOS=linux GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -a -ldflags "-w" -tags="no_duckdb_arrow" -o bin/shaper-${{ matrix.arch }} main.go
+          CC=${{ matrix.cc }} GOOS=linux GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -a -ldflags "-w" -o bin/shaper-${{ matrix.arch }} main.go
 
       - name: Upload binary
         uses: actions/upload-artifact@v4

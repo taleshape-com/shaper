@@ -12,9 +12,10 @@ import (
 
 const ID_COLUMN = "_id"
 
+// TODO: Support schema prefix in the table name
 var tableNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]{0,127}$`)
 
-func PublishEvent(ctx context.Context, app *App, tableName string, payload interface{}) (string, error) {
+func PublishEvent(ctx context.Context, app *App, tableName string, payload any) (string, error) {
 	if !tableNameRegex.MatchString(tableName) {
 		return "", fmt.Errorf("invalid table name. Must be alphanumeric with underscores, max 64 characters")
 	}
@@ -38,7 +39,7 @@ func PublishEvent(ctx context.Context, app *App, tableName string, payload inter
 	return id, nil
 }
 
-func PublishEvents(ctx context.Context, app *App, tableName string, payloads []map[string]interface{}) ([]string, error) {
+func PublishEvents(ctx context.Context, app *App, tableName string, payloads []map[string]any) ([]string, error) {
 	if !tableNameRegex.MatchString(tableName) {
 		return nil, fmt.Errorf("invalid table name. Must be alphanumeric with underscores, max 64 characters")
 	}

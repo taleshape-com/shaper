@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/marcboeker/go-duckdb"
+	"github.com/marcboeker/go-duckdb/v2"
 )
 
 const QUERY_MAX_ROWS = 2000
@@ -101,7 +101,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isLabel(colTypes, query.Rows) {
-			l, ok := query.Rows[0][0].(string)
+			u, ok := query.Rows[0][0].(duckdb.Union)
+			if !ok {
+				nextLabel = ""
+				continue
+			}
+			l, ok := u.Value.(string)
 			if !ok {
 				l = ""
 			}
@@ -120,7 +125,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				hideNextContentSection = true
 				continue
 			}
-			sectionTitle, ok := query.Rows[0][0].(string)
+			u, ok := query.Rows[0][0].(duckdb.Union)
+			if !ok {
+				lastSection.Title = nil
+				continue
+			}
+			sectionTitle, ok := u.Value.(string)
 			if !ok || sectionTitle == "" {
 				lastSection.Title = nil
 			} else {
@@ -159,7 +169,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 			query.Columns = append(query.Columns, col)
 			if (rInfo.Download == "csv" || rInfo.Download == "xlsx") && len(query.Rows) > 0 {
-				filename := query.Rows[0][colIndex].(string)
+				filename := query.Rows[0][colIndex].(duckdb.Union).Value.(string)
 				queryString := ""
 				if len(queryParams) > 0 {
 					queryString = "?" + queryParams.Encode()
@@ -176,6 +186,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		for _, row := range query.Rows {
 			for i, cell := range row {
 				colType := query.Columns[i].Type
+				if u, ok := cell.(duckdb.Union); ok {
+					cell = u.Value
+					row[i] = u.Value
+				}
 				if t, ok := cell.(time.Time); ok {
 					if colType == "time" {
 						// Convert time to ms since midnight
@@ -737,9 +751,6 @@ func getTimestampType(rows Rows, index int) (string, error) {
 	hasDay := false
 	hasHour := false
 	hasMSN := false
-	if len(rows) < 2 {
-		return "timestamp", nil
-	}
 	for _, row := range rows {
 		r := row[index]
 		if r == nil {
@@ -770,6 +781,71 @@ func getTimestampType(rows Rows, index int) (string, error) {
 			return "timestamp", nil
 		}
 	}
+	if len(rows) < 2 {
+		return "timestamp", nil
+	}
+	if !hasDay && !hasMonth && !hasYear && (hasHour || hasMSN) {
+		return "time", nil
+	}
+	if hasMSN {
+		return "timestamp", nil
+	}
+	if hasHour {
+		return "hour", nil
+	}
+	if hasDay {
+		return "date", nil
+	}
+	if hasMonth {
+		return "month", nil
+	}
+	return "year", nil
+}
+
+// TODO: We can make this more performant for TIME values since we can know if it's time by checking union.Tag
+func getUnionTimestampType(rows Rows, index int) (string, error) {
+	hasYear := false
+	hasMonth := false
+	hasDay := false
+	hasHour := false
+	hasMSN := false
+	for _, row := range rows {
+		r := row[index]
+		if r == nil {
+			continue
+		}
+		u, ok := r.(duckdb.Union)
+		if !ok {
+			return "", fmt.Errorf("invalid timestamp union value: %v", row[index])
+		}
+		t, ok := u.Value.(time.Time)
+		if !ok {
+			return "", fmt.Errorf("invalid timestamp value: %v", row[index])
+		}
+		if t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
+			hasMSN = true
+		}
+		if t.Hour() != 0 {
+			hasHour = true
+		}
+		if t.Year() != 1 {
+			hasYear = true
+		}
+		if t.Month() != 1 {
+			hasMonth = true
+		}
+		if t.Day() != 1 {
+			hasDay = true
+		}
+		if hasMSN && (hasYear || hasMonth || hasDay) {
+			// timestamp is the only type that allows to stop checking values early
+			// for the rest we have to check all values to be sure
+			return "timestamp", nil
+		}
+	}
+	if len(rows) < 2 {
+		return "timestamp", nil
+	}
 	if !hasDay && !hasMonth && !hasYear && (hasHour || hasMSN) {
 		return "time", nil
 	}
@@ -792,8 +868,10 @@ func getChartType(rows Rows, index int) (string, error) {
 	if len(rows) == 0 {
 		return "number", nil
 	}
-	if _, ok := rows[0][index].(duckdb.Interval); ok {
-		return "duration", nil
+	if union, ok := rows[0][index].(duckdb.Union); ok {
+		if _, ok := union.Value.(duckdb.Interval); ok {
+			return "duration", nil
+		}
 	}
 	return "number", nil
 }
@@ -803,12 +881,16 @@ func getAxisType(rows Rows, index int) (string, error) {
 		return "string", nil
 	}
 	// Try timestamp first
-	if s, err := getTimestampType(rows, index); err == nil {
+	if s, err := getUnionTimestampType(rows, index); err == nil {
 		return s, nil
 	}
 	// Then try number and fallback to string
 	for _, row := range rows {
-		if _, ok := row[index].(float64); !ok {
+		union, ok := row[index].(duckdb.Union)
+		if !ok {
+			return "", fmt.Errorf("invalid union value for axis value, got: %v (type %T, column %v)", row[index], row[index], index)
+		}
+		if _, ok := union.Value.(float64); !ok {
 			return "string", nil
 		}
 	}
@@ -856,14 +938,17 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdown")
 		}
 		param := queryParams.Get(columnName)
-		var ok bool
 		if param != "" {
 			// Check if param actually exists in the dropdown
 			isValidVar := false
 			for i, row := range data {
-				val, ok := row[columnIndex].(string)
+				union, ok := row[columnIndex].(duckdb.Union)
 				if !ok {
-					if row[columnIndex] == nil {
+					return fmt.Errorf("invalid union value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				}
+				val, ok := union.Value.(string)
+				if !ok {
+					if union.Value == nil {
 						val = ""
 					} else {
 						return fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
@@ -885,9 +970,13 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				return nil
 			}
 			// Set default value to first row
-			param, ok = data[0][columnIndex].(string)
+			union, ok := data[0][columnIndex].(duckdb.Union)
 			if !ok {
-				if data[0][columnIndex] == nil {
+				return fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+			}
+			param, ok = union.Value.(string)
+			if !ok {
+				if union.Value == nil {
 					param = ""
 				} else {
 					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
@@ -918,9 +1007,14 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				paramsToCheck[param] = true
 			}
 			for i, row := range data {
-				val, ok := row[columnIndex].(string)
+				union, ok := row[columnIndex].(duckdb.Union)
+				var val string
 				if !ok {
-					if row[columnIndex] == nil {
+					return fmt.Errorf("invalid union value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				}
+				val, ok = union.Value.(string)
+				if !ok {
+					if union.Value == nil {
 						val = ""
 					} else {
 						return fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
@@ -948,15 +1042,20 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if len(params) == 0 {
 			// Set default value to all rows
 			for i, row := range data {
-				val, ok := row[columnIndex].(string)
+				union, ok := row[columnIndex].(duckdb.Union)
 				if !ok {
-					if row[columnIndex] == nil {
-						val = ""
-					} else {
-						return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					return fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				} else {
+					val, ok := union.Value.(string)
+					if !ok {
+						if union.Value == nil {
+							val = ""
+						} else {
+							return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+						}
 					}
+					params = append(params, val)
 				}
-				params = append(params, val)
 			}
 		}
 		multiVars[columnName] = params
@@ -983,7 +1082,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if param == "" {
 			// Set default value
 			if defaultValueIndex != -1 {
-				val := data[0][defaultValueIndex]
+				val := data[0][defaultValueIndex].(duckdb.Union).Value
 				if val != nil {
 					date := val.(time.Time)
 					param = date.Format(time.DateOnly)
@@ -991,7 +1090,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		} else {
 			// Check if param is a valid date
-			if !isDateValue(param) {
+			if !isDateString(param) {
 				return fmt.Errorf("invalid date for datepicker query param '%s': %s", columnName, param)
 			}
 		}
@@ -1029,7 +1128,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if fromParam == "" {
 			// Set default value
 			if fromDefaultValueIndex != -1 {
-				val := data[0][fromDefaultValueIndex]
+				val := data[0][fromDefaultValueIndex].(duckdb.Union).Value
 				if val != nil {
 					date := val.(time.Time)
 					fromParam = date.Format(time.DateOnly)
@@ -1037,7 +1136,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		} else {
 			// Check if fromParam is a valid date
-			if !isDateValue(fromParam) {
+			if !isDateString(fromParam) {
 				return fmt.Errorf("invalid date for datepicker query fromParam '%s': %s", fromColumnName, fromParam)
 			}
 		}
@@ -1048,7 +1147,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if toParam == "" {
 			// Set default value
 			if toDefaultValueIndex != -1 {
-				val := data[0][toDefaultValueIndex]
+				val := data[0][toDefaultValueIndex].(duckdb.Union).Value
 				if val != nil {
 					date := val.(time.Time)
 					toParam = date.Format(time.DateOnly)
@@ -1056,7 +1155,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			}
 		} else {
 			// Check if toParam is a valid date
-			if !isDateValue(toParam) {
+			if !isDateString(toParam) {
 				return fmt.Errorf("invalid date for datepicker query toParam '%s': %s", toColumnName, toParam)
 			}
 		}
@@ -1067,7 +1166,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 	return nil
 }
 
-func isDateValue(stringDate string) bool {
+func isDateString(stringDate string) bool {
 	_, err := time.Parse(time.DateOnly, stringDate)
 	return err == nil
 }

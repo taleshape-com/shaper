@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb"
-	_ "github.com/marcboeker/go-duckdb"
+	"github.com/marcboeker/go-duckdb/v2"
+	_ "github.com/marcboeker/go-duckdb/v2"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 )

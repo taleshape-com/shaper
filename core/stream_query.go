@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb"
+	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -145,6 +145,8 @@ func getDisplayWidth(value any) float64 {
 		return 20 // Approximate width for RFC3339 format
 	case duckdb.Interval:
 		return float64(len(intervalToString(v)))
+	case duckdb.Union:
+		return getDisplayWidth(v.Value)
 	default:
 		str := fmt.Sprintf("%v", value)
 		return float64(len(str))
@@ -294,31 +296,7 @@ func StreamQueryXLSX(
 				return fmt.Errorf("error converting coordinates: %w", err)
 			}
 			// Apply appropriate formatting based on data type
-			switch {
-			case value == nil:
-				xlsx.SetCellValue(sheetName, cell, "")
-				xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
-
-			case isNumber(value):
-				xlsx.SetCellValue(sheetName, cell, value)
-				xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
-
-			case isDateTime(value):
-				if timeVal, ok := value.(time.Time); ok {
-					xlsx.SetCellValue(sheetName, cell, timeVal)
-					xlsx.SetCellStyle(sheetName, cell, cell, styles["datetime"])
-				}
-
-			case isInterval(value):
-				if interval, ok := value.(duckdb.Interval); ok {
-					xlsx.SetCellFloat(sheetName, cell, intervalToDays(interval), 6, 64) // 6 decimal places precision
-					xlsx.SetCellStyle(sheetName, cell, cell, styles["interval"])
-				}
-
-			default:
-				xlsx.SetCellValue(sheetName, cell, formatValue(value))
-				xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
-			}
+			handleCellValue(value, xlsx, sheetName, cell, styles)
 
 			// Update maximum width for this column
 			width := getDisplayWidth(value) + 2 // +2 for padding
@@ -366,6 +344,30 @@ func StreamQueryXLSX(
 	return xlsx.Write(writer)
 }
 
+func handleCellValue(value any, xlsx *excelize.File, sheetName string, cell string, styles map[string]int) {
+	if value == nil {
+		xlsx.SetCellValue(sheetName, cell, "")
+		xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+		return
+	}
+	switch v := value.(type) {
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		xlsx.SetCellValue(sheetName, cell, v)
+		xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
+	case time.Time:
+		xlsx.SetCellValue(sheetName, cell, v)
+		xlsx.SetCellStyle(sheetName, cell, cell, styles["datetime"])
+	case duckdb.Interval:
+		xlsx.SetCellFloat(sheetName, cell, intervalToDays(v), 6, 64) // 6 decimal places precision
+		xlsx.SetCellStyle(sheetName, cell, cell, styles["interval"])
+	default:
+		xlsx.SetCellValue(sheetName, cell, formatValue(v))
+		xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+	}
+}
+
 func isUUID(s []byte) bool {
 	return len(s) == 16
 }
@@ -394,6 +396,8 @@ func formatValue(value any) string {
 			strValues = append(strValues, formatValue(item))
 		}
 		return strings.Join(strValues, ", ")
+	case duckdb.Union:
+		return formatValue(v.Value)
 	default:
 		return fmt.Sprintf("%v", v)
 	}
@@ -441,39 +445,6 @@ func intervalToString(interval duckdb.Interval) string {
 		parts = append(parts, fmt.Sprintf("%.3fs", seconds))
 	}
 	return strings.Join(parts, " ")
-}
-
-func isNumber(value any) bool {
-	if value == nil {
-		return false
-	}
-	switch value.(type) {
-	case int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64,
-		float32, float64:
-		return true
-	case string:
-		// Optionally check if string is numeric
-		return false
-	default:
-		return false
-	}
-}
-
-func isDateTime(value any) bool {
-	if value == nil {
-		return false
-	}
-	_, isTime := value.(time.Time)
-	return isTime
-}
-
-func isInterval(value any) bool {
-	if value == nil {
-		return false
-	}
-	_, isInterval := value.(duckdb.Interval)
-	return isInterval
 }
 
 func createStyle(xlsx *excelize.File, style *excelize.Style) int {

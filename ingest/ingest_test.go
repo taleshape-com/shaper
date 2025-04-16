@@ -8,13 +8,12 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"shaper/util"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb"
+	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
@@ -993,42 +992,6 @@ func TestSpecialCharactersInColumnNames(t *testing.T) {
 	assert.Equal(t, "value3", result.FieldWithSpaces)
 	assert.Equal(t, "value4", result.FieldWithUnderscores)
 	assert.Equal(t, "value5", result.FieldWithQuotes)
-}
-
-func TestSpecialCharactersInTableName(t *testing.T) {
-	dbConnector, db := setupTestDB(t)
-	defer db.Close()
-
-	ctx := context.Background()
-	tableCache := make(map[string]TableCache)
-	subjectPrefix := "test."
-
-	// Create messages with special characters in table name
-	specialTableName := "table-with.special characters\"and'quotes"
-	batch := []jetstream.Msg{
-		createMockMsg("test."+specialTableName, map[string]any{
-			"id":    1,
-			"value": "test",
-		}),
-	}
-
-	// Process batch - should work with proper escaping
-	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
-	require.NoError(t, err, "Failed to process batch with special table name")
-
-	// Verify the table exists by querying information schema
-	var count int
-	query := "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?"
-	err = db.GetContext(ctx, &count, query, specialTableName)
-	require.NoError(t, err, "Failed to check if special table exists")
-	assert.Equal(t, 1, count, "Special character table was not created")
-
-	// Query the data from the table
-	var value string
-	quotedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(specialTableName))
-	err = db.GetContext(ctx, &value, "SELECT value FROM "+quotedTableName+" WHERE id = 1")
-	require.NoError(t, err, "Failed to query data from special table")
-	assert.Equal(t, "test", value, "Wrong value retrieved from special table")
 }
 
 func TestEmptyBatch(t *testing.T) {

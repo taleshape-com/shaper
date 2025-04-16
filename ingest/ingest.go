@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb"
+	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/nrednav/cuid2"
@@ -516,6 +516,7 @@ func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes
 	return nil
 }
 
+// TODO: Make sure we handle all special characters that are allowed in NATS subjects as table names
 func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, subjectPrefix string) error {
 	// Group messages by table
 	tableMessages := make(map[string][]jetstream.Msg)
