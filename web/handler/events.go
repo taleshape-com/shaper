@@ -33,7 +33,7 @@ func PostEvent(app *core.App) echo.HandlerFunc {
 		}
 
 		// Try to unmarshal as array first
-		var arrayPayload []map[string]interface{}
+		var arrayPayload []map[string]any
 		if err := json.Unmarshal(rawJSON, &arrayPayload); err == nil {
 			// Handle array of events
 			ids, err := core.PublishEvents(c.Request().Context(), app, c.Param("table_name"), arrayPayload)
@@ -52,7 +52,7 @@ func PostEvent(app *core.App) echo.HandlerFunc {
 		}
 
 		// Try as single object
-		var singlePayload map[string]interface{}
+		var singlePayload map[string]any
 		if err := json.Unmarshal(rawJSON, &singlePayload); err != nil {
 			return c.JSON(http.StatusBadRequest, SingleEventResponse{
 				Status: "error",

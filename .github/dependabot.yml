@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # Keep npm dependencies up to date
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
@@ -11,7 +10,6 @@ updates:
         patterns:
           - '*'
 
-  # Keep GitHub Actions up to date
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
@@ -21,9 +19,16 @@ updates:
         patterns:
           - '*'
 
-  # Keep Docker dependencies up to date
   - package-ecosystem: 'docker'
     directory: '/'
     schedule:
       interval: 'weekly'
 
+  - package-ecosystem: 'gomod'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      gomod:
+        patterns:
+          - '*'
