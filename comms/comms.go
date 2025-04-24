@@ -115,7 +115,7 @@ func New(config Config) (Comms, error) {
 		opts.Authorization = config.Token
 	} else {
 		if config.Port > 0 {
-			config.Logger.Warn(fmt.Sprintf("nats: No nats-token provided and NATS is listening. If running in production make sure %s:%d is not exposed, configure a nats-token or set nats-dont-listen", config.Host, config.Port))
+			config.Logger.Warn(fmt.Sprintf("nats: No nats-token provided and NATS is listening. If running in production make sure %s:%d is not exposed, configure a nats-token or remove nats-port", config.Host, config.Port))
 		}
 	}
 	if config.Port == 0 {
