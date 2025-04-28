@@ -23,6 +23,7 @@ if (!supportsContainerQueries) {
 // Create a new router instance
 const router = createRouter({
   routeTree,
+  basepath: window.shaper.defaultBaseUrl || "/",
   defaultPreload: false,
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   defaultStaleTime: 5000,

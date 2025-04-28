@@ -180,9 +180,9 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
-		variables := map[string]interface{}{}
+		variables := map[string]any{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
-			variables = vars.(map[string]interface{})
+			variables = vars.(map[string]any)
 		}
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
@@ -227,9 +227,9 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
-		variables := map[string]interface{}{}
+		variables := map[string]any{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
-			variables = vars.(map[string]interface{})
+			variables = vars.(map[string]any)
 		}
 		// Validate filename extension
 		filename := c.Param("filename")
@@ -345,9 +345,9 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
-		variables := map[string]interface{}{}
+		variables := map[string]any{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
-			variables = vars.(map[string]interface{})
+			variables = vars.(map[string]any)
 		}
 
 		result, err := core.QueryDashboard(app, c.Request().Context(), core.DashboardQuery{

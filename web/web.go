@@ -4,6 +4,7 @@ package web
 
 import (
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"shaper/core"
 	"strings"
@@ -61,7 +62,11 @@ func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, cust
 		logPrefix = "http://"
 	}
 	app.Logger.Info("Web server is listening at " + addr + "")
-	app.Logger.Info("Open " + logPrefix + addr + " in your browser")
+	if app.BasePath == "" {
+		app.Logger.Info("Open " + logPrefix + addr + " in your browser")
+	} else {
+		app.Logger.Info("Custom base path set. You probably plan to reverse proxy the app. Opening the app in your browser directly won't work as expected. Access it through your reverse proxy instead.", slog.Any("basepath", app.BasePath))
+	}
 
 	return e
 }

@@ -49,7 +49,7 @@ type APIKeysResponse = {
 
 export const Route = createFileRoute("/admin/keys")({
   loader: async ({ context: { queryApi } }) => {
-    return queryApi("/api/keys") as Promise<APIKeysResponse>;
+    return queryApi("keys") as Promise<APIKeysResponse>;
   },
   component: Admin,
 });
@@ -66,7 +66,7 @@ function Admin() {
 
   const handleDelete = async (key: APIKey) => {
     try {
-      await queryApi(`/api/keys/${key.id}`, {
+      await queryApi(`keys/${key.id}`, {
         method: "DELETE",
       });
       toast({
@@ -91,7 +91,7 @@ function Admin() {
 
   const handleCreateKey = async (name: string) => {
     try {
-      const data = await queryApi("/api/keys", {
+      const data = await queryApi("keys", {
         method: "POST",
         body: { name },
       });

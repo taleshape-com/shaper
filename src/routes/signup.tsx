@@ -24,7 +24,7 @@ export const Route = createFileRoute("/signup")({
       return null;
     }
     try {
-      const response = await fetch(`/api/invites/${code}`, {
+      const response = await fetch(`${window.shaper.defaultBaseUrl}/api/invites/${code}`, {
         headers: {
           "Content-Type": "application/json",
         },
@@ -65,7 +65,7 @@ function SignupComponent() {
     }
 
     try {
-      const response = await fetch(`/api/invites/${code}/claim`, {
+      const response = await fetch(`${window.shaper.defaultBaseUrl}/api/invites/${code}/claim`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -46,7 +46,7 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
       queryApi,
     },
   }) => {
-    const data = await queryApi(`/api/dashboards/${dashboardId}/query`);
+    const data = await queryApi(`dashboards/${dashboardId}/query`);
     return data as IDashboard;
   },
   component: DashboardEditor,
@@ -102,7 +102,7 @@ function DashboardEditor() {
     setIsPreviewLoading(true);
     try {
       const searchParams = getSearchParamString(vars);
-      const data = await queryApi(`/api/query/dashboard?${searchParams}`, {
+      const data = await queryApi(`query/dashboard?${searchParams}`, {
         method: "POST",
         body: {
           dashboardId: params.dashboardId,
@@ -164,7 +164,7 @@ function DashboardEditor() {
     setSaving(true);
     try {
       await queryApi(
-        `/api/dashboards/${params.dashboardId}/query`,
+        `dashboards/${params.dashboardId}/query`,
         {
           method: "POST",
           body: { content: editorQuery },
@@ -226,7 +226,7 @@ function DashboardEditor() {
     setSavingName(true);
     try {
       await queryApi(
-        `/api/dashboards/${params.dashboardId}/name`,
+        `dashboards/${params.dashboardId}/name`,
         {
           method: "POST",
           body: { name: newName },
@@ -256,7 +256,7 @@ function DashboardEditor() {
 
   const handleDelete = async () => {
     try {
-      await queryApi(`/api/dashboards/${params.dashboardId}`, {
+      await queryApi(`dashboards/${params.dashboardId}`, {
         method: "DELETE",
       });
       // Navigate back to dashboard list

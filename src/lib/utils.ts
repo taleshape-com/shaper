@@ -85,3 +85,6 @@ export function parseJwt(token: string) {
   return JSON.parse(jsonPayload);
 }
 
+export function removeTrailingSlash(s: string) {
+  return s.replace(/\/+$/, "");
+}

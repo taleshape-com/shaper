@@ -1,6 +1,6 @@
 import { Result } from "../../lib/dashboard";
 import { ChartHoverProvider } from "../ChartHoverProvider";
-import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
+import { cx, getSearchParamString, removeTrailingSlash, VarsParamSchema } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
@@ -33,7 +33,7 @@ export function Dashboard({
   id,
   vars,
   getJwt,
-  baseUrl = "",
+  baseUrl = window.shaper.defaultBaseUrl,
   onVarsChanged,
   // We update this string when JWT variables change to trigger a re-fetch
   hash = "",
@@ -389,7 +389,7 @@ const fetchDashboard = async (
 ): Promise<Result> => {
   const jwt = await getJwt();
   const searchParams = getSearchParamString(vars);
-  const res = await fetch(`${baseUrl}/api/dashboards/${id}?${searchParams}`, {
+  const res = await fetch(`${removeTrailingSlash(baseUrl)}/api/dashboards/${id}?${searchParams}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: jwt,

@@ -23,6 +23,7 @@ func frontend(frontendFS fs.FS) echo.HandlerFunc {
 	assetHandler := http.FileServer(http.FS(fsys))
 	return echo.WrapHandler(http.HandlerFunc(assetHandler.ServeHTTP))
 }
+
 func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
@@ -114,7 +115,7 @@ func getRequestURL(r *http.Request) *url.URL {
 	return &fullURL
 }
 
-func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
+func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, basePath string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		panic(err)
@@ -136,7 +137,10 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string) e
 	}
 
 	// Inject custom CSS
-	html := strings.Replace(string(fileContent), "<style></style>", "<style>"+customCSS+"</style>", 1)
+	html := string(fileContent)
+	html = strings.Replace(html, "\"/assets/", "\""+basePath+"/assets/", -1)
+	html = strings.Replace(html, "<script></script>", fmt.Sprintf("<script>shaper = { defaultBaseUrl: %q };</script>", basePath), 1)
+	html = strings.Replace(html, "<style></style>", "<style>"+customCSS+"</style>", 1)
 
 	return func(c echo.Context) error {
 		// Add cache headers for index.html

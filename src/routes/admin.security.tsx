@@ -23,7 +23,7 @@ function Admin() {
   const handleReset = async () => {
     setIsResetting(true)
     try {
-      await queryApi('/api/admin/reset-jwt-secret', {
+      await queryApi('admin/reset-jwt-secret', {
         method: 'POST',
       })
       toast({

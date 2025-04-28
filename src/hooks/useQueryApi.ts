@@ -8,7 +8,7 @@ export const useQueryApi = (): QueryApiFunc => {
   const auth = useAuth();
   return useCallback((async (url, options = {}) => {
     const jwt = await auth.getJwt();
-    const response = await fetch(url, {
+    const response = await fetch(`${window.shaper.defaultBaseUrl}/api/${url}`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: jwt,

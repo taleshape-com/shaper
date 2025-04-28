@@ -27,6 +27,7 @@ type App struct {
 	db                  *sqlx.DB
 	Logger              *slog.Logger
 	LoginRequired       bool
+	BasePath            string
 	Schema              string
 	JWTSecret           []byte
 	JWTExp              time.Duration
@@ -43,6 +44,7 @@ func New(
 	name string,
 	db *sqlx.DB,
 	logger *slog.Logger,
+	baseURL string,
 	schema string,
 	jwtExp time.Duration,
 	sessionExp time.Duration,
@@ -66,6 +68,7 @@ func New(
 		db:                  db,
 		Logger:              logger,
 		LoginRequired:       loginRequired,
+		BasePath:            baseURL,
 		Schema:              schema,
 		JWTExp:              jwtExp,
 		SessionExp:          sessionExp,

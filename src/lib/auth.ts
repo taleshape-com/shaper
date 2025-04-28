@@ -41,7 +41,7 @@ export function useAuth() {
 export async function logout() {
   const jwt = localStorage.getItem(localStorageJwtKey);
   if (jwt) {
-    await fetch(`/api/logout`, {
+    await fetch(`${window.shaper.defaultBaseUrl}/api/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -54,7 +54,7 @@ export async function logout() {
 }
 
 export const checkLoginRequiredWithoutCache = async (): Promise<boolean> => {
-  const response = await fetch("/api/login/enabled");
+  const response = await fetch(`${window.shaper.defaultBaseUrl}/api/login/enabled`);
   if (!response.ok) {
     // Assume auth is required if we can't determine the status
     return true;

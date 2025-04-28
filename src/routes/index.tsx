@@ -53,7 +53,7 @@ export const Route = createFileRoute("/")({
     context: { queryApi },
     deps: { sort = "updated", order = "desc" },
   }) => {
-    return queryApi(`/api/dashboards?sort=${sort}&order=${order}`).then(
+    return queryApi(`dashboards?sort=${sort}&order=${order}`).then(
       (fetchedData: DashboardListResponse) => {
         return fetchedData;
       },
@@ -106,7 +106,7 @@ function Index() {
 
   const handleDelete = async (dashboard: IDashboard) => {
     try {
-      await queryApi(`/api/dashboards/${dashboard.id}`, {
+      await queryApi(`dashboards/${dashboard.id}`, {
         method: "DELETE",
       });
       // Reload the page to refresh the list

@@ -100,7 +100,7 @@ export const Route = createFileRoute("/admin/")({
     deps: { sort = "created", order = "desc" },
   }) => {
     return queryApi(
-      `/api/users?sort=${sort}&order=${order}`,
+      `users?sort=${sort}&order=${order}`,
     ) as Promise<UserListResponse>;
   },
   component: UsersManagement,
@@ -158,7 +158,7 @@ function UsersManagement() {
 
   const handleDelete = async (user: IUser) => {
     try {
-      await queryApi(`/api/users/${user.id}`, {
+      await queryApi(`users/${user.id}`, {
         method: "DELETE",
       });
       // Reload the page to refresh the list
@@ -185,7 +185,7 @@ function UsersManagement() {
 
   const handleCreateInvite = async (email: string) => {
     try {
-      const data = await queryApi("/api/invites", {
+      const data = await queryApi("invites", {
         method: "POST",
         body: { email },
       });
@@ -267,7 +267,7 @@ function UsersManagement() {
                     }
 
                     try {
-                      await queryApi("/api/auth/setup", {
+                      await queryApi("auth/setup", {
                         method: "POST",
                         body: {
                           email: data.email,
@@ -506,7 +506,7 @@ function UsersManagement() {
               onClick={async () => {
                 if (deleteInviteDialog) {
                   try {
-                    await queryApi(`/api/invites/${deleteInviteDialog.code}`, {
+                    await queryApi(`invites/${deleteInviteDialog.code}`, {
                       method: "DELETE",
                     });
                     toast({

@@ -14,6 +14,7 @@ import (
 	"shaper/util/signals"
 	"shaper/web"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -49,6 +50,7 @@ type Config struct {
 	DataDir             string
 	Schema              string
 	ExecutableModTime   time.Time
+	BasePath            string
 	CustomCSS           string
 	Favicon             string
 	JWTExp              time.Duration
@@ -79,6 +81,7 @@ func loadConfig() Config {
 	addr := flags.StringLong("addr", "localhost:5454", "server address")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
+	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
@@ -131,6 +134,7 @@ func loadConfig() Config {
 		DataDir:             *dataDir,
 		Schema:              *schema,
 		ExecutableModTime:   executableModTime,
+		BasePath:            strings.TrimSuffix(*basePath, "/"),
 		CustomCSS:           *customCSS,
 		Favicon:             *favicon,
 		JWTExp:              *jwtExp,
@@ -197,6 +201,7 @@ func Run(cfg Config) func(context.Context) {
 		APP_NAME,
 		db,
 		logger,
+		cfg.BasePath,
 		cfg.Schema,
 		cfg.JWTExp,
 		cfg.SessionExp,
