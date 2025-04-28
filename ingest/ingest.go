@@ -67,26 +67,26 @@ type TableCache struct {
 	lastUpdate time.Time
 }
 
-func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn) (Ingest, error) {
+func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn, consumerName string) (Ingest, error) {
 	js, err := jetstream.New(nc)
 	if err != nil {
 		return Ingest{}, err
 	}
 
-	consumer, err := setupStreamAndConsumer(js, subjectPrefix)
+	consumer, err := setupStreamAndConsumer(js, subjectPrefix, consumerName)
 	if err != nil {
 		return Ingest{}, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go processMessages(ctx, js, consumer, logger, dbConnector, db, subjectPrefix)
+	go processMessages(ctx, js, consumer, logger, dbConnector, db, subjectPrefix, consumerName)
 	return Ingest{
 		ingestCancelFunc: cancel,
 		subjectPrefix:    subjectPrefix,
 	}, nil
 }
 
-func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string) (jetstream.Consumer, error) {
+func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, consumerName string) (jetstream.Consumer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -100,7 +100,7 @@ func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string) (jetst
 	}
 
 	consumer, err := stream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
-		Durable:       "shaper-ingest",
+		Durable:       consumerName,
 		MaxAckPending: BATCH_SIZE,
 	})
 	if err != nil {
@@ -110,7 +110,7 @@ func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string) (jetst
 	return consumer, nil
 }
 
-func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string) {
+func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string, consumerName string) {
 	tableCache := make(map[string]TableCache)
 	for {
 		select {
@@ -123,7 +123,7 @@ func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetst
 				time.Sleep(SLEEP_ON_ERROR)
 
 				logger.Info("Attempting to recreate ingest consumer")
-				newConsumer, err := setupStreamAndConsumer(js, subjectPrefix)
+				newConsumer, err := setupStreamAndConsumer(js, subjectPrefix, consumerName)
 				if err != nil {
 					logger.Error("Failed to recreate ingest consumer", slog.Any("error", err))
 					os.Exit(1)

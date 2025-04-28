@@ -24,6 +24,7 @@ type Comms struct {
 
 type Config struct {
 	Logger   *slog.Logger
+	Servers  string
 	Host     string
 	Port     int
 	Token    string
@@ -94,6 +95,22 @@ func (c ClientAuth) createUser(name string, root bool) *server.User {
 }
 
 func New(config Config) (Comms, error) {
+	fmt.Println(config.JSDir, config.JSKey, config.MaxStore)
+	// If external servers are specified, connect to them instead of starting an internal server
+	if config.Servers != "" {
+		clientOpts := []nats.Option{}
+		if config.Token != "" {
+			clientOpts = append(clientOpts, nats.Token(config.Token))
+		}
+
+		nc, err := nats.Connect(config.Servers, clientOpts...)
+		if err != nil {
+			return Comms{}, err
+		}
+		config.Logger.Info("nats: Connected to external NATS", slog.String("servers", config.Servers))
+		return Comms{Conn: nc}, nil
+	}
+
 	// TODO: support TLS
 	// TODO: NATS prometheus metrics
 	// TODO: allow setting jetstream domain
@@ -160,6 +177,11 @@ func New(config Config) (Comms, error) {
 }
 
 func (c Comms) Close() {
-	c.Server.Shutdown()
-	c.Server.WaitForShutdown()
+	if c.Server != nil {
+		c.Server.Shutdown()
+		c.Server.WaitForShutdown()
+	}
+	if c.Conn != nil {
+		c.Conn.Close()
+	}
 }

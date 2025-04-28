@@ -20,6 +20,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/marcboeker/go-duckdb/v2"
 	_ "github.com/marcboeker/go-duckdb/v2"
+	"github.com/nrednav/cuid2"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 )
@@ -44,25 +45,28 @@ For more see: https://taleshape.com/shaper/docs
 `
 
 type Config struct {
-	SessionExp          time.Duration
-	InviteExp           time.Duration
-	Address             string
-	DataDir             string
-	Schema              string
-	ExecutableModTime   time.Time
-	BasePath            string
-	CustomCSS           string
-	Favicon             string
-	JWTExp              time.Duration
-	NatsHost            string
-	NatsPort            int
-	NatsToken           string
-	NatsJSDir           string
-	NatsJSKey           string
-	NatsMaxStore        int64 // in bytes
-	IngestSubjectPrefix string
-	DuckDB              string
-	DuckDBExtDir        string
+	SessionExp             time.Duration
+	InviteExp              time.Duration
+	Address                string
+	DataDir                string
+	Schema                 string
+	ExecutableModTime      time.Time
+	BasePath               string
+	CustomCSS              string
+	Favicon                string
+	JWTExp                 time.Duration
+	NatsServers            string
+	NatsHost               string
+	NatsPort               int
+	NatsToken              string
+	NatsJSDir              string
+	NatsJSKey              string
+	NatsMaxStore           int64 // in bytes
+	IngestConsumerNameFile string
+	StateConsumerNameFile  string
+	IngestSubjectPrefix    string
+	DuckDB                 string
+	DuckDBExtDir           string
 }
 
 func main() {
@@ -87,12 +91,15 @@ func loadConfig() Config {
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
+	natsServers := flags.StringLong("nats-servers", "", "Use external NATS servers, specify as comma separated list")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
 	natsToken := flags.String('t', "nats-token", "", "NATS authentication token")
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
+	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
+	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
@@ -124,31 +131,41 @@ func loadConfig() Config {
 		os.Exit(1)
 	}
 
-	natsDir := *dataDir + "/nats"
+	if *natsServers != "" {
+		if *natsJSDir != "" || *natsJSKey != "" || maxStore > 0 {
+			fmt.Println("when connecting to external NATS servers (nats-servers specified), nats-js-key, nats-dir and nats-max-store must not be specified")
+			os.Exit(1)
+		}
+	}
+
+	natsDir := path.Join(*dataDir, "nats")
 	if *natsJSDir != "" {
 		natsDir = *natsJSDir
 	}
 
 	config := Config{
-		Address:             *addr,
-		DataDir:             *dataDir,
-		Schema:              *schema,
-		ExecutableModTime:   executableModTime,
-		BasePath:            strings.TrimSuffix(*basePath, "/"),
-		CustomCSS:           *customCSS,
-		Favicon:             *favicon,
-		JWTExp:              *jwtExp,
-		SessionExp:          *sessionExp,
-		InviteExp:           *inviteExp,
-		NatsHost:            *natsHost,
-		NatsPort:            *natsPort,
-		NatsToken:           *natsToken,
-		NatsJSDir:           natsDir,
-		NatsJSKey:           *natsJSKey,
-		NatsMaxStore:        maxStore,
-		IngestSubjectPrefix: *ingestSubjectPrefix,
-		DuckDB:              *duckdb,
-		DuckDBExtDir:        *duckdbExtDir,
+		Address:                *addr,
+		DataDir:                *dataDir,
+		Schema:                 *schema,
+		ExecutableModTime:      executableModTime,
+		BasePath:               strings.TrimSuffix(*basePath, "/"),
+		CustomCSS:              *customCSS,
+		Favicon:                *favicon,
+		JWTExp:                 *jwtExp,
+		SessionExp:             *sessionExp,
+		InviteExp:              *inviteExp,
+		NatsServers:            *natsServers,
+		NatsHost:               *natsHost,
+		NatsPort:               *natsPort,
+		NatsToken:              *natsToken,
+		NatsJSDir:              natsDir,
+		NatsJSKey:              *natsJSKey,
+		NatsMaxStore:           maxStore,
+		IngestConsumerNameFile: *ingestConsumerNameFile,
+		StateConsumerNameFile:  *stateConsumerNameFile,
+		IngestSubjectPrefix:    *ingestSubjectPrefix,
+		DuckDB:                 *duckdb,
+		DuckDBExtDir:           *duckdbExtDir,
 	}
 	return config
 }
@@ -197,6 +214,10 @@ func Run(cfg Config) func(context.Context) {
 		logger.Info("set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
 
+	// Get or generate consumer names
+	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-")
+	stateConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.StateConsumerNameFile, "state-consumer-name.txt", "shaper-state-consumer-")
+
 	app, err := core.New(
 		APP_NAME,
 		db,
@@ -207,6 +228,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.SessionExp,
 		cfg.InviteExp,
 		cfg.IngestSubjectPrefix,
+		stateConsumerName,
 	)
 	if err != nil {
 		panic(err)
@@ -215,6 +237,7 @@ func Run(cfg Config) func(context.Context) {
 	// TODO: refactor - comms should be part of core
 	c, err := comms.New(comms.Config{
 		Logger:   logger.WithGroup("nats"),
+		Servers:  cfg.NatsServers,
 		Host:     cfg.NatsHost,
 		Port:     cfg.NatsPort,
 		Token:    cfg.NatsToken,
@@ -227,7 +250,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn)
+	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, ingestConsumerName)
 	if err != nil {
 		panic(err)
 	}
@@ -263,4 +286,28 @@ func getExecutableModTime() (time.Time, error) {
 	}
 	stat, err := os.Stat(ex)
 	return stat.ModTime(), err
+}
+
+// Helper function to get or generate consumer name
+func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName string, prefix string) string {
+	fileName := nameFile
+	if fileName == "" {
+		fileName = path.Join(dataDir, defaultFileName)
+	}
+
+	name := ""
+	if _, err := os.Stat(fileName); err == nil {
+		content, err := os.ReadFile(fileName)
+		if err != nil {
+			panic(err)
+		}
+		name = string(content)
+	} else {
+		name = prefix + cuid2.Generate()
+		err := os.WriteFile(fileName, []byte(name), 0644)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return name
 }

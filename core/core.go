@@ -38,6 +38,7 @@ type App struct {
 	ConfigKV            jetstream.KeyValue
 	NATSConn            *nats.Conn
 	IngestSubjectPrefix string
+	StateConsumerName   string
 }
 
 func New(
@@ -50,6 +51,7 @@ func New(
 	sessionExp time.Duration,
 	inviteExp time.Duration,
 	ingestSubjectPrefix string,
+	stateConsumerName string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -74,6 +76,7 @@ func New(
 		SessionExp:          sessionExp,
 		InviteExp:           inviteExp,
 		IngestSubjectPrefix: ingestSubjectPrefix,
+		StateConsumerName:   stateConsumerName,
 	}
 	return app, nil
 }
@@ -112,7 +115,7 @@ func (app *App) setupStreamAndConsumer() error {
 	}
 
 	stateConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
-		Durable:       "shaper-state",
+		Durable:       app.StateConsumerName,
 		MaxAckPending: 1,
 	})
 	if err != nil {
@@ -213,7 +216,7 @@ func (app *App) SubmitState(ctx context.Context, action string, data any) error 
 	}
 	// We listen on the ACK subject for the consumer to know when the message has been processed
 	// We need to subscribe before publishing the message to avoid missing the ACK
-	sub, err := app.NATSConn.SubscribeSync("$JS.ACK.shaper-state.shaper-state.>")
+	sub, err := app.NATSConn.SubscribeSync("$JS.ACK.shaper-state." + app.StateConsumerName + ".>")
 	if err != nil {
 		return err
 	}
@@ -231,7 +234,7 @@ func (app *App) SubmitState(ctx context.Context, action string, data any) error 
 		}
 		// The sequence number is the part of the subject after the container of how many deliveries have been made
 		// We trust the shape of the subject to be correct and panic otherwise
-		seq := strings.Split(strings.TrimPrefix(msg.Subject, "$JS.ACK.shaper-state.shaper-state."), ".")[1]
+		seq := strings.Split(strings.TrimPrefix(msg.Subject, "$JS.ACK.shaper-state."+app.StateConsumerName+"."), ".")[1]
 		if seq == ackSeq {
 			return nil
 		}
