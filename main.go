@@ -301,7 +301,7 @@ func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName string, prefix
 		if err != nil {
 			panic(err)
 		}
-		name = string(content)
+		name = strings.TrimSpace(string(content))
 	} else {
 		name = prefix + cuid2.Generate()
 		err := os.WriteFile(fileName, []byte(name), 0644)
