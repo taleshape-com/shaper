@@ -62,9 +62,13 @@ type Config struct {
 	NatsJSDir              string
 	NatsJSKey              string
 	NatsMaxStore           int64 // in bytes
+	StateStreamName        string
+	IngestStreamName       string
+	ConfigKVBucketName     string
 	IngestConsumerNameFile string
 	StateConsumerNameFile  string
 	IngestSubjectPrefix    string
+	StateSubjectPrefix     string
 	DuckDB                 string
 	DuckDBExtDir           string
 }
@@ -98,9 +102,15 @@ func loadConfig() Config {
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
+	streamPrefix := flags.StringLong("stream-prefix", "", "Prefix for NATS stream and KV bucket names. Must be a valid NATS subject name")
+	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
+	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
+	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
 	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
 	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
-	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest subjects")
+	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
+	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
+	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	flags.StringLong("config-file", "", "path to config file")
@@ -161,9 +171,13 @@ func loadConfig() Config {
 		NatsJSDir:              natsDir,
 		NatsJSKey:              *natsJSKey,
 		NatsMaxStore:           maxStore,
+		StateStreamName:        *streamPrefix + *stateStream,
+		IngestStreamName:       *streamPrefix + *ingestStream,
+		ConfigKVBucketName:     *streamPrefix + *configKVBucket,
 		IngestConsumerNameFile: *ingestConsumerNameFile,
 		StateConsumerNameFile:  *stateConsumerNameFile,
-		IngestSubjectPrefix:    *ingestSubjectPrefix,
+		IngestSubjectPrefix:    *subjectPrefix + *ingestSubjectPrefix,
+		StateSubjectPrefix:     *subjectPrefix + *stateSubjectPrefix,
 		DuckDB:                 *duckdb,
 		DuckDBExtDir:           *duckdbExtDir,
 	}
@@ -228,7 +242,10 @@ func Run(cfg Config) func(context.Context) {
 		cfg.SessionExp,
 		cfg.InviteExp,
 		cfg.IngestSubjectPrefix,
+		cfg.StateSubjectPrefix,
+		cfg.StateStreamName,
 		stateConsumerName,
+		cfg.ConfigKVBucketName,
 	)
 	if err != nil {
 		panic(err)
@@ -250,7 +267,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, ingestConsumerName)
+	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, cfg.IngestStreamName, ingestConsumerName)
 	if err != nil {
 		panic(err)
 	}

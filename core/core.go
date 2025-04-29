@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	NATS_SUBJECT_PREFIX                = "shaper.state."
-	NATS_KV_CONFIG_BUCKET              = "shaper-config"
 	CONFIG_KEY_JWT_SECRET              = "jwt-secret"
 	RECREATE_STREAM_AND_CONSUMER_DELAY = 60 * time.Second
 )
@@ -37,8 +35,11 @@ type App struct {
 	JetStream           jetstream.JetStream
 	ConfigKV            jetstream.KeyValue
 	NATSConn            *nats.Conn
+	StateSubjectPrefix  string
 	IngestSubjectPrefix string
+	StateStreamName     string
 	StateConsumerName   string
+	ConfigKVBucketName  string
 }
 
 func New(
@@ -51,7 +52,10 @@ func New(
 	sessionExp time.Duration,
 	inviteExp time.Duration,
 	ingestSubjectPrefix string,
+	stateSubjectPrefix string,
+	stateStreamName string,
 	stateConsumerName string,
+	configKVBucketName string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -76,7 +80,10 @@ func New(
 		SessionExp:          sessionExp,
 		InviteExp:           inviteExp,
 		IngestSubjectPrefix: ingestSubjectPrefix,
+		StateSubjectPrefix:  stateSubjectPrefix,
+		StateStreamName:     stateStreamName,
 		StateConsumerName:   stateConsumerName,
+		ConfigKVBucketName:  configKVBucketName,
 	}
 	return app, nil
 }
@@ -101,13 +108,12 @@ func (app *App) Init(nc *nats.Conn) error {
 }
 
 func (app *App) setupStreamAndConsumer() error {
-
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()
 
 	stream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
-		Name:     "shaper-state",
-		Subjects: []string{NATS_SUBJECT_PREFIX + ">"},
+		Name:     app.StateStreamName,
+		Subjects: []string{app.StateSubjectPrefix + ">"},
 		Storage:  jetstream.FileStorage,
 	})
 	if err != nil {
@@ -123,7 +129,7 @@ func (app *App) setupStreamAndConsumer() error {
 	}
 
 	configKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
-		Bucket: NATS_KV_CONFIG_BUCKET,
+		Bucket: app.ConfigKVBucketName,
 	})
 	if err != nil {
 		return err
@@ -165,7 +171,7 @@ func (app *App) Close() {
 }
 
 func (app *App) HandleState(msg jetstream.Msg) {
-	event := strings.TrimPrefix(msg.Subject(), NATS_SUBJECT_PREFIX)
+	event := strings.TrimPrefix(msg.Subject(), app.StateSubjectPrefix)
 	data := msg.Data()
 	handler := func(app *App, data []byte) bool {
 		app.Logger.Error("Unknown state message subject", slog.String("event", event))
@@ -216,11 +222,11 @@ func (app *App) SubmitState(ctx context.Context, action string, data any) error 
 	}
 	// We listen on the ACK subject for the consumer to know when the message has been processed
 	// We need to subscribe before publishing the message to avoid missing the ACK
-	sub, err := app.NATSConn.SubscribeSync("$JS.ACK.shaper-state." + app.StateConsumerName + ".>")
+	sub, err := app.NATSConn.SubscribeSync("$JS.ACK." + app.StateStreamName + "." + app.StateConsumerName + ".>")
 	if err != nil {
 		return err
 	}
-	ack, err := app.JetStream.Publish(ctx, NATS_SUBJECT_PREFIX+action, payload)
+	ack, err := app.JetStream.Publish(ctx, app.StateSubjectPrefix+action, payload)
 	if err != nil {
 		return err
 	}
@@ -234,7 +240,7 @@ func (app *App) SubmitState(ctx context.Context, action string, data any) error 
 		}
 		// The sequence number is the part of the subject after the container of how many deliveries have been made
 		// We trust the shape of the subject to be correct and panic otherwise
-		seq := strings.Split(strings.TrimPrefix(msg.Subject, "$JS.ACK.shaper-state."+app.StateConsumerName+"."), ".")[1]
+		seq := strings.Split(strings.TrimPrefix(msg.Subject, "$JS.ACK."+app.StateStreamName+"."+app.StateConsumerName+"."), ".")[1]
 		if seq == ackSeq {
 			return nil
 		}

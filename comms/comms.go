@@ -81,7 +81,7 @@ func (c ClientAuth) createUser(name string, root bool) *server.User {
 		Username: name,
 		Permissions: &server.Permissions{
 			Publish: &server.SubjectPermission{
-				Allow: []string{"shaper.ingest.>"},
+				Allow: []string{c.App.IngestSubjectPrefix + ">"},
 			},
 			// TODO: jetstream publish is done via request/reply so we need inbox permissions to get the ACK,
 			//       but it's not the most secure that the client can listen to all replies.
@@ -95,7 +95,6 @@ func (c ClientAuth) createUser(name string, root bool) *server.User {
 }
 
 func New(config Config) (Comms, error) {
-	fmt.Println(config.JSDir, config.JSKey, config.MaxStore)
 	// If external servers are specified, connect to them instead of starting an internal server
 	if config.Servers != "" {
 		clientOpts := []nats.Option{}
