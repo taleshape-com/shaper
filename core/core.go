@@ -107,6 +107,7 @@ func (app *App) Init(nc *nats.Conn) error {
 	return LoadJWTSecret(app)
 }
 
+// TODO: allow setting MaxMsg, MaxBytes per stream
 func (app *App) setupStreamAndConsumer() error {
 	initCtx, initCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer initCancel()

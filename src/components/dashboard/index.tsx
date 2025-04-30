@@ -241,7 +241,7 @@ const DataView = ({
       return (
         <section
           key={sectionIndex}
-          className={cx("grid grid-cols-1 ml-4 h-full", {
+          className={cx("grid grid-cols-1 ml-4", {
             "@sm:grid-cols-2": numQueriesInSection > 1,
             "@lg:grid-cols-2":
               numQueriesInSection === 2 ||
@@ -267,9 +267,9 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-2.90rem)] bg-cbgs dark:bg-dbgs border-none shadow-sm",
                   {
-                    "@sm:h-[calc(100%-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)]":
+                    "@sm:h-[calc(100dvh-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)]":
                       numQueriesInSection === 1,
-                    "h-[calc(100%-1.2rem)] @sm:h-[calc(50%-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)] @lg:h-[calc(100%-1.2rem)]":
+                    "h-[calc(100dvh-1.2rem)] @sm:h-[calc(50dvh-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)] @lg:h-[calc(100%-1.2rem)]":
                       numContentSections === 1 && numQueriesInSection === 2,
                   },
                 )}
