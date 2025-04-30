@@ -65,7 +65,7 @@ func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, cust
 	if app.BasePath == "" {
 		app.Logger.Info("Open " + logPrefix + addr + " in your browser")
 	} else {
-		app.Logger.Info("Custom base path set. You probably plan to reverse proxy the app. Opening the app in your browser directly won't work as expected. Access it through your reverse proxy instead.", slog.Any("basepath", app.BasePath))
+		app.Logger.Info("Custom base path set. Opening the app in your browser directly won't work as expected. You are likely using a reverse proxy and need to access the app through it.", slog.Any("basepath", app.BasePath))
 	}
 
 	return e

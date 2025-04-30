@@ -158,7 +158,7 @@ func loadConfig() Config {
 		DataDir:                *dataDir,
 		Schema:                 *schema,
 		ExecutableModTime:      executableModTime,
-		BasePath:               strings.TrimSuffix(*basePath, "/"),
+		BasePath:               "/" + strings.TrimPrefix(strings.TrimSuffix(*basePath, "/"), "/"),
 		CustomCSS:              *customCSS,
 		Favicon:                *favicon,
 		JWTExp:                 *jwtExp,
