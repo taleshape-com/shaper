@@ -38,7 +38,7 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   }
   if (typeof value === "number") {
     if (shouldFormatNumbers && columnType === "number") {
-      return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+      return Number.isInteger(value) ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : value.toString()
     }
     // duration comes in ms
     if (columnType === "duration") {
