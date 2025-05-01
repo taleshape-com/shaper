@@ -26,6 +26,7 @@ import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { Column, isTimeType } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
+import { translate } from "../../lib/translate";
 
 //#region Shape
 
@@ -439,6 +440,7 @@ interface ChartTooltipProps {
   label: string;
   valueFormatter: (value: number) => string;
   extraData?: Record<string, [any, Column["type"]]>;
+  total?: number;
 }
 
 const ChartTooltip = ({
@@ -447,6 +449,7 @@ const ChartTooltip = ({
   label,
   valueFormatter,
   extraData,
+  total,
 }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
@@ -472,6 +475,14 @@ const ChartTooltip = ({
             {label}
           </p>
         </div>
+        {total && (
+          <div className={cx("border-b border-inherit px-4 py-2")}>
+            <p className="flex justify-between space-x-2">
+              <span className="font-medium">{translate('Total')}</span>
+              <span>{formatValue(total, 'number', true)}</span>
+            </p>
+          </div>
+        )}
         {extraData && (
           <div className={cx("border-b border-inherit px-4 py-2")}>
             {Object.entries(extraData).map(([key, [value, columnType]]) => {
@@ -871,6 +882,12 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     payload: item.payload,
                   }))
                   : [];
+                const total = type === 'stacked' && payload ? payload.reduce((sum, item) => {
+                  if (typeof item.value === 'number') {
+                    return sum + item.value
+                  }
+                  return sum
+                }, 0) : undefined
 
                 if (
                   tooltipCallback &&
@@ -899,6 +916,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                       label={indexFormatter(label)}
                       valueFormatter={valueFormatter}
                       extraData={extraDataByIndexAxis[label]}
+                      total={total}
                     />
                   )
                 ) : null;
