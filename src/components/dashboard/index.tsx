@@ -113,23 +113,16 @@ const DataView = ({
   getJwt,
   loading,
 }: (Pick<DashboardProps, 'onVarsChanged' | 'menuButton' | 'vars' | 'baseUrl' | 'getJwt'> & Required<Pick<DashboardProps, 'data'>>) & { loading: boolean }) => {
-  const sections: Result["sections"] =
-    data.sections.length === 0
-      ? [
-        {
-          type: "header",
-          queries: [],
-        },
-      ]
-      : data.sections[0].type !== "header"
-        ? [
-          {
-            type: "header",
-            queries: [],
-          },
-          ...data.sections,
-        ]
-        : data.sections;
+  const firstIsHeader = !(data.sections.length === 0 || data.sections[0].type !== "header");
+  const sections: Result["sections"] = firstIsHeader
+    ? data.sections
+    : [
+      {
+        type: "header",
+        queries: [],
+      },
+      ...data.sections,
+    ];
 
   const numContentSections = sections.filter(
     (section) => section.type === "content",
@@ -145,11 +138,9 @@ const DataView = ({
           <section
             key={sectionIndex}
             className={cx("flex flex-wrap items-center ml-2 mr-4", {
-              "mt-3 mb-3":
-                section.queries.length > 0 ||
-                section.title ||
-                sectionIndex === 0,
-              "pt-4": section.title && sectionIndex !== 0,
+              "mt-3 mb-3": section.queries.length > 0 || section.title,
+              "mt-4": section.title && sectionIndex !== 0,
+              "my-2": section.queries.length === 0 && !section.title && sectionIndex === 0,
             })}
           >
             <div
@@ -161,7 +152,7 @@ const DataView = ({
                 <>
                   {menuButton}
                   {section.title ? (
-                    <h1 className="text-2xl text-left ml-1 mt-0.5 font-semibold">
+                    <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
                       {section.title}
                     </h1>
                   ) : null}
@@ -237,12 +228,12 @@ const DataView = ({
           </section>
         );
       }
+
       const numQueriesInSection = section.queries.length;
       return (
         <section
           key={sectionIndex}
           className={cx("grid grid-cols-1 ml-4", {
-            "h-full": numContentSections === 1 && numQueriesInSection === 1,
             "@sm:grid-cols-2": numQueriesInSection > 1,
             "@lg:grid-cols-2":
               numQueriesInSection === 2 ||
@@ -266,13 +257,11 @@ const DataView = ({
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-2.90rem)] bg-cbgs dark:bg-dbgs border-none shadow-sm",
+                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-3.15rem)] bg-cbgs dark:bg-dbgs border-none shadow-sm",
                   {
-                    "min-h-[calc(100%-1.2rem)] h-[calc(100%-1.2rem)]": numContentSections === 1 && numQueriesInSection === 1,
-                    "@sm:h-[calc(100dvh-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)]":
-                      numContentSections > 1 && numQueriesInSection === 1,
-                    "h-[calc(100dvh-1.2rem)] @sm:h-[calc(50dvh-1.2rem)] @lg:min-h-[calc(50dvh-1.2rem)] @lg:h-[calc(100%-1.2rem)]":
-                      numContentSections === 1 && numQueriesInSection === 2,
+                    "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
+                    "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
+                    "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
                   },
                 )}
               >
@@ -282,7 +271,7 @@ const DataView = ({
                   </div>
                 )}
                 {query.render.label ? (
-                  <h2 className="text-md mb-4 mt-4 text-center font-semibold font-display">
+                  <h2 className="text-md py-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
                 ) : null}

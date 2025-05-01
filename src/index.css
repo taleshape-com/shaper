@@ -88,3 +88,7 @@
 .shaper-scope body {
   margin: 0;
 }
+
+.shaper-scope .\@container {
+  container-type: size;
+}

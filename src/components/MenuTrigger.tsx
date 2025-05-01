@@ -1,8 +1,5 @@
 import React, { useEffect, useContext } from "react";
-import { cx } from "../lib/utils";
-import {
-  RiMenuLine,
-} from "@remixicon/react";
+import { RiMenuLine } from "@remixicon/react";
 import { MenuContext } from "../contexts/MenuContext";
 
 export function MenuTrigger({
@@ -18,9 +15,13 @@ export function MenuTrigger({
     setExtraContent(children);
   }, [children, setExtraContent]);
 
+  if (isMenuOpen) {
+    return null;
+  }
+
   return (
     <button
-      className={cx(className, { hidden: isMenuOpen })}
+      className={className}
       onClick={() => {
         setIsMenuOpen(true);
       }}
