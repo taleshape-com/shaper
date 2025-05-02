@@ -89,7 +89,7 @@ func loadConfig() Config {
 	addr := flags.StringLong("addr", "localhost:5454", "server address")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
-	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
+	basePath := flags.StringLong("basepath", "", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
@@ -158,7 +158,7 @@ func loadConfig() Config {
 		DataDir:                *dataDir,
 		Schema:                 *schema,
 		ExecutableModTime:      executableModTime,
-		BasePath:               "/" + strings.TrimPrefix(strings.TrimSuffix(*basePath, "/"), "/"),
+		BasePath:               strings.TrimPrefix(strings.TrimSuffix(*basePath, "/"), "/"),
 		CustomCSS:              *customCSS,
 		Favicon:                *favicon,
 		JWTExp:                 *jwtExp,
