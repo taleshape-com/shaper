@@ -12,8 +12,8 @@ require (
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/labstack/gommon v0.4.2
 	github.com/marcboeker/go-duckdb/v2 v2.2.0
-	github.com/nats-io/nats-server/v2 v2.11.2
-	github.com/nats-io/nats.go v1.41.2
+	github.com/nats-io/nats-server/v2 v2.11.3
+	github.com/nats-io/nats.go v1.42.0
 	github.com/nrednav/cuid2 v1.0.1
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
 	github.com/samber/slog-echo v1.16.1
