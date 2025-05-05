@@ -20,7 +20,7 @@ const getVariables = (s: string): Variables => {
 };
 
 const getSessionToken = async (email: string, password: string) => {
-  const response = await fetch(`${window.shaper.defaultBaseUrl}/api/login`, {
+  const response = await fetch(`${window.shaper.defaultBaseUrl}api/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -33,7 +33,7 @@ const getSessionToken = async (email: string, password: string) => {
 };
 
 const refreshJwt = async (token: string, vars: Variables) => {
-  return fetch(`${window.shaper.defaultBaseUrl}/api/auth/token`, {
+  return fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -144,7 +144,7 @@ export function AuthProvider({ children, initialLoginRequired }: { children: Rea
     if (token == null || token === "") {
       return false;
     }
-    const response = await fetch(`${window.shaper.defaultBaseUrl}/api/auth/token`, {
+    const response = await fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),

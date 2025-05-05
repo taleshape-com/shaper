@@ -20,7 +20,13 @@ export function EmbedComponent({
   const [props, setProps] = useState<EmbedProps>(initialProps);
   const jwtRef = useRef<string | null>(null);
 
-  const baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
+  let baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
+  if (baseUrl[0] !== "/") {
+    baseUrl = "/" + baseUrl;
+  }
+  if (baseUrl[baseUrl.length - 1] !== "/") {
+    baseUrl = baseUrl + "/";
+  }
   const { onVarsChanged, getJwt } = props;
 
   useEffect(() => {

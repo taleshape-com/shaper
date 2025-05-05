@@ -109,7 +109,7 @@ export const Route = createFileRoute("/admin/")({
 const getInviteLink = (code: string) => {
   const baseUrl = window.location.origin;
   const basePath = window.shaper.defaultBaseUrl;
-  return `${baseUrl}${basePath}/signup?code=${code}`;
+  return `${baseUrl}${basePath}signup?code=${code}`;
 };
 
 function UsersManagement() {

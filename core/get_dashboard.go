@@ -174,7 +174,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				if len(queryParams) > 0 {
 					queryString = "?" + queryParams.Encode()
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("/api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
 			}
 		}
 

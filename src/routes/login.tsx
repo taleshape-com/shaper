@@ -55,7 +55,7 @@ function LoginComponent() {
     setError("");
     const ok = await auth.login(email, password);
     if (ok) {
-      router.history.push(search.redirect || window.shaper.defaultBaseUrl + "/");
+      router.history.push(search.redirect || window.shaper.defaultBaseUrl);
     } else {
       setError("Invalid email or password");
     }
