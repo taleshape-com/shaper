@@ -14,9 +14,9 @@ function Admin() {
   const location = useLocation()
 
   let selectedTab = "users";
-  if (location.pathname === "/admin/keys") {
+  if (location.pathname.endsWith("/admin/keys")) {
     selectedTab = "keys";
-  } else if (location.pathname === "/admin/security") {
+  } else if (location.pathname.endsWith("/admin/security")) {
     selectedTab = "security";
   }
 
