@@ -247,6 +247,9 @@ const DataView = ({
               numQueriesInSection === 7 ||
               numQueriesInSection === 8 ||
               numQueriesInSection > 9,
+            "@4xl:grid-cols-5":
+              (numQueriesInSection === 5 && numContentSections > 1) ||
+              numQueriesInSection >= 9,
           })}
         >
           {section.queries.map((query, queryIndex) => {
