@@ -11,6 +11,9 @@ const translations: Record<string, Record<string, string>> = {
   Admin: {
     de: "Admin",
   },
+  Docs: {
+    de: "Docs",
+  },
   loading: {
     de: "Einen Moment",
   },

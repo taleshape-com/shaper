@@ -6,6 +6,7 @@ import {
   RiFileAddLine,
   RiAdminLine,
   RiLogoutBoxRLine,
+  RiBook2Line,
 } from "@remixicon/react";
 import { useAuth, logout } from "../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
@@ -113,6 +114,14 @@ export function MenuProvider({
         </div>
 
         <div className="mt-auto pt-4 pb-4 space-y-3">
+          <a
+            href="https://taleshape.com/shaper/docs"
+            className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2"
+            target="shaper-docs"
+          >
+            <RiBook2Line className="size-4 inline mr-2 mb-1" />
+            {translate("Docs")}
+          </a>
           <Link to="/admin" disabled={isAdmin} className={cx(
             "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm",
             { "text-ctext2 dark:text-dtext2": !isAdmin }
