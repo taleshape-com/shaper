@@ -240,7 +240,7 @@ func Run(cfg Config) func(context.Context) {
 		if cfg.DuckDBExtDir != "" {
 			_, err := execer.ExecContext(context.Background(), "SET extension_directory = ?", []driver.NamedValue{{Ordinal: 0, Value: cfg.DuckDBExtDir}})
 			if err != nil {
-				panic(err)
+				return errors.New("failed to set extension directory: " + err.Error())
 			}
 			logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 		}
@@ -254,7 +254,7 @@ func Run(cfg Config) func(context.Context) {
 			} else {
 				_, err := execer.ExecContext(context.Background(), sql, nil)
 				if err != nil {
-					return err
+					return errors.New("failed to execute init-sql: " + err.Error())
 				}
 			}
 		}
@@ -265,7 +265,7 @@ func Run(cfg Config) func(context.Context) {
 				if errors.Is(err, os.ErrNotExist) {
 					logger.Info("init-sql-file does not exist, skipping", slog.Any("path", cfg.InitSQLFile))
 				} else {
-					return err
+					return errors.New("failed to read init-sql-file: " + err.Error())
 				}
 			} else {
 				sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
@@ -276,7 +276,7 @@ func Run(cfg Config) func(context.Context) {
 					// Substitute environment variables in the SQL file content
 					_, err = execer.ExecContext(context.Background(), sql, nil)
 					if err != nil {
-						return err
+						return errors.New("failed to execute init-sql-file: " + err.Error())
 					}
 				}
 			}
