@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -234,23 +235,36 @@ func Run(cfg Config) func(context.Context) {
 			logger.Info("Executing init-sql")
 			// Substitute environment variables in the SQL
 			sql := os.ExpandEnv(cfg.InitSQL)
-			_, err := execer.ExecContext(context.Background(), sql, nil)
-			if err != nil {
-				return err
+			if strings.TrimSpace(sql) == "" {
+				logger.Info("init-sql specified but empty, skipping")
+			} else {
+				_, err := execer.ExecContext(context.Background(), sql, nil)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if cfg.InitSQLFile != "" {
 			logger.Info("Loading init-sql-file", slog.Any("path", cfg.InitSQLFile))
 			data, err := os.ReadFile(cfg.InitSQLFile)
 			if err != nil {
-				return err
-			}
-			logger.Info("Executing init-sql-file")
-			// Substitute environment variables in the SQL file content
-			sql := os.ExpandEnv(string(data))
-			_, err = execer.ExecContext(context.Background(), sql, nil)
-			if err != nil {
-				return err
+				if errors.Is(err, os.ErrNotExist) {
+					logger.Info("init-sql-file does not exist, skipping", slog.Any("path", cfg.InitSQLFile))
+				} else {
+					return err
+				}
+			} else {
+				sql := strings.TrimSpace(os.ExpandEnv(string(data)))
+				if len(sql) == 0 {
+					logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
+				} else {
+					logger.Info("Executing init-sql-file")
+					// Substitute environment variables in the SQL file content
+					_, err = execer.ExecContext(context.Background(), sql, nil)
+					if err != nil {
+						return err
+					}
+				}
 			}
 		}
 		return nil
