@@ -69,6 +69,9 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
+	e.HEAD("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
 
 	// API routes - no caching
