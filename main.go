@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"fmt"
 	"log/slog"
@@ -71,6 +72,8 @@ type Config struct {
 	StateSubjectPrefix     string
 	DuckDB                 string
 	DuckDBExtDir           string
+	InitSQL                string
+	InitSQLFile            string
 }
 
 func main() {
@@ -113,6 +116,8 @@ func loadConfig() Config {
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
+	initSQL := flags.StringLong("init-sql", "", "SQL to execute on startup")
+	initSQLFile := flags.StringLong("init-sql-file", "", "SQL file to execute on startup")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -191,6 +196,8 @@ func loadConfig() Config {
 		StateSubjectPrefix:     *subjectPrefix + *stateSubjectPrefix,
 		DuckDB:                 *duckdb,
 		DuckDBExtDir:           *duckdbExtDir,
+		InitSQL:                *initSQL,
+		InitSQLFile:            *initSQLFile,
 	}
 	return config
 }
@@ -223,7 +230,28 @@ func Run(cfg Config) func(context.Context) {
 	}
 
 	// connect to duckdb
-	dbConnector, err := duckdb.NewConnector(dbFile, nil)
+	dbConnector, err := duckdb.NewConnector(dbFile, func(execer driver.ExecerContext) error {
+		if cfg.InitSQL != "" {
+			logger.Info("Executing init-sql")
+			_, err := execer.ExecContext(context.Background(), cfg.InitSQL, nil)
+			if err != nil {
+				return err
+			}
+		}
+		if cfg.InitSQLFile != "" {
+			logger.Info("Loading init-sql-file", slog.Any("path", cfg.InitSQLFile))
+			data, err := os.ReadFile(cfg.InitSQLFile)
+			if err != nil {
+				return err
+			}
+			logger.Info("Executing init-sql-file")
+			_, err = execer.ExecContext(context.Background(), string(data), nil)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		panic(err)
 	}
