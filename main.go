@@ -232,7 +232,7 @@ func Run(cfg Config) func(context.Context) {
 	// connect to duckdb
 	dbConnector, err := duckdb.NewConnector(dbFile, func(execer driver.ExecerContext) error {
 		if cfg.DuckDBExtDir != "" {
-			_, err := execer.ExecContext(context.Background(), "SET extension_directory = @extdir", []driver.NamedValue{{Name: "extdir", Value: cfg.DuckDBExtDir}})
+			_, err := execer.ExecContext(context.Background(), "SET extension_directory = ?", []driver.NamedValue{{Ordinal: 0, Value: cfg.DuckDBExtDir}})
 			if err != nil {
 				panic(err)
 			}
