@@ -31,7 +31,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	nextLabel := ""
 	hideNextContentSection := false
 	nextIsDownload := false
-	cleanContent := stripSQLComments(dashboardQuery.Content)
+	cleanContent := util.StripSQLComments(dashboardQuery.Content)
 	sqls, err := splitSQLQueries(cleanContent)
 	if err != nil {
 		return result, err
@@ -315,24 +315,6 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 		ID:      dashboardId,
 		Name:    dashboard.Name,
 	}, queryParams, variables)
-}
-
-func stripSQLComments(sql string) string {
-	var result strings.Builder
-	lines := strings.Split(sql, "\n")
-
-	for _, line := range lines {
-		if idx := strings.Index(line, "--"); idx >= 0 {
-			// Only take the part before the comment
-			line = line[:idx]
-		}
-		if strings.TrimSpace(line) != "" {
-			result.WriteString(line)
-			result.WriteString("\n")
-		}
-	}
-
-	return result.String()
 }
 
 func mapTag(index int, rInfo renderInfo) string {

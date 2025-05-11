@@ -39,3 +39,21 @@ func EscapeSQLIdentifier(str string) string {
 
 	return escaped
 }
+
+func StripSQLComments(sql string) string {
+	var result strings.Builder
+	lines := strings.Split(sql, "\n")
+
+	for _, line := range lines {
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			// Only take the part before the comment
+			line = line[:idx]
+		}
+		if strings.TrimSpace(line) != "" {
+			result.WriteString(line)
+			result.WriteString("\n")
+		}
+	}
+
+	return result.String()
+}

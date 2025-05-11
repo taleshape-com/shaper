@@ -13,6 +13,7 @@ import (
 	"shaper/comms"
 	"shaper/core"
 	"shaper/ingest"
+	"shaper/util"
 	"shaper/util/signals"
 	"shaper/web"
 	"strconv"
@@ -117,7 +118,7 @@ func loadConfig() Config {
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
-	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but load SQL from file")
+	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -169,6 +170,11 @@ func loadConfig() Config {
 		bpath += "/"
 	}
 
+	initSQLFilePath := path.Join(*dataDir, "init.sql")
+	if *initSQLFile != "" {
+		initSQLFilePath = *initSQLFile
+	}
+
 	config := Config{
 		Address:                *addr,
 		DataDir:                *dataDir,
@@ -197,7 +203,7 @@ func loadConfig() Config {
 		DuckDB:                 *duckdb,
 		DuckDBExtDir:           *duckdbExtDir,
 		InitSQL:                *initSQL,
-		InitSQLFile:            *initSQLFile,
+		InitSQLFile:            initSQLFilePath,
 	}
 	return config
 }
@@ -236,14 +242,14 @@ func Run(cfg Config) func(context.Context) {
 			if err != nil {
 				panic(err)
 			}
-			logger.Info("set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
+			logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 		}
 
 		if cfg.InitSQL != "" {
 			logger.Info("Executing init-sql")
 			// Substitute environment variables in the SQL
-			sql := os.ExpandEnv(cfg.InitSQL)
-			if strings.TrimSpace(sql) == "" {
+			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
+			if sql == "" {
 				logger.Info("init-sql specified but empty, skipping")
 			} else {
 				_, err := execer.ExecContext(context.Background(), sql, nil)
@@ -262,7 +268,7 @@ func Run(cfg Config) func(context.Context) {
 					return err
 				}
 			} else {
-				sql := strings.TrimSpace(os.ExpandEnv(string(data)))
+				sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
 				if len(sql) == 0 {
 					logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 				} else {

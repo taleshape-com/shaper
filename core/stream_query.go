@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/url"
+	"shaper/util"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func StreamQueryCSV(
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
-	cleanContent := stripSQLComments(dashboard.Content)
+	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := splitSQLQueries(cleanContent)
 	if err != nil {
 		return err
@@ -167,7 +168,7 @@ func StreamQueryXLSX(
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
-	cleanContent := stripSQLComments(dashboard.Content)
+	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := splitSQLQueries(cleanContent)
 	if err != nil {
 		return err
