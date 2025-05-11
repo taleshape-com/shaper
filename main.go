@@ -231,6 +231,14 @@ func Run(cfg Config) func(context.Context) {
 
 	// connect to duckdb
 	dbConnector, err := duckdb.NewConnector(dbFile, func(execer driver.ExecerContext) error {
+		if cfg.DuckDBExtDir != "" {
+			_, err := execer.ExecContext(context.Background(), "SET extension_directory = @extdir", []driver.NamedValue{{Name: "extdir", Value: cfg.DuckDBExtDir}})
+			if err != nil {
+				panic(err)
+			}
+			logger.Info("set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
+		}
+
 		if cfg.InitSQL != "" {
 			logger.Info("Executing init-sql")
 			// Substitute environment variables in the SQL
@@ -275,14 +283,6 @@ func Run(cfg Config) func(context.Context) {
 	sqlDB := sql.OpenDB(dbConnector)
 	db := sqlx.NewDb(sqlDB, "duckdb")
 	logger.Info("DuckDB opened", slog.Any("file", dbFile))
-
-	if cfg.DuckDBExtDir != "" {
-		_, err := db.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
-		if err != nil {
-			panic(err)
-		}
-		logger.Info("set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
-	}
 
 	// Get or generate consumer names
 	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-")
