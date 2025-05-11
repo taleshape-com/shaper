@@ -20,7 +20,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/marcboeker/go-duckdb/v2"
-	_ "github.com/marcboeker/go-duckdb/v2"
 	"github.com/nrednav/cuid2"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
@@ -116,8 +115,8 @@ func loadConfig() Config {
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
-	initSQL := flags.StringLong("init-sql", "", "SQL to execute on startup")
-	initSQLFile := flags.StringLong("init-sql-file", "", "SQL file to execute on startup")
+	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
+	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but load SQL from file")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -233,7 +232,9 @@ func Run(cfg Config) func(context.Context) {
 	dbConnector, err := duckdb.NewConnector(dbFile, func(execer driver.ExecerContext) error {
 		if cfg.InitSQL != "" {
 			logger.Info("Executing init-sql")
-			_, err := execer.ExecContext(context.Background(), cfg.InitSQL, nil)
+			// Substitute environment variables in the SQL
+			sql := os.ExpandEnv(cfg.InitSQL)
+			_, err := execer.ExecContext(context.Background(), sql, nil)
 			if err != nil {
 				return err
 			}
@@ -245,7 +246,9 @@ func Run(cfg Config) func(context.Context) {
 				return err
 			}
 			logger.Info("Executing init-sql-file")
-			_, err = execer.ExecContext(context.Background(), string(data), nil)
+			// Substitute environment variables in the SQL file content
+			sql := os.ExpandEnv(string(data))
+			_, err = execer.ExecContext(context.Background(), sql, nil)
 			if err != nil {
 				return err
 			}
