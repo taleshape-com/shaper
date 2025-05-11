@@ -27,7 +27,7 @@ import {
 import { useOnWindowResize } from "../../hooks/useOnWindowResize";
 import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
-import { Column, isTimeType } from "../../lib/dashboard";
+import { Column } from "../../lib/dashboard";
 
 //#region Legend
 
@@ -580,7 +580,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
     const prevActiveRef = React.useRef<boolean | undefined>(undefined);
     const prevLabelRef = React.useRef<string | undefined>(undefined);
 
-    const { hoveredIndex, hoveredChartId, setHoverState } = React.useContext(ChartHoverContext);
+    const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } = React.useContext(ChartHoverContext);
 
     function onDotClick(itemData: any, event: React.MouseEvent) {
       event.stopPropagation();
@@ -823,7 +823,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 }
               />
             ) : null}
-            {hoveredIndex != null && (isTimeType(indexType) || indexType === "time") && hoveredChartId !== chartId && data.length > 1 &&
+            {hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId !== chartId && data.length > 1 &&
               <ReferenceLine
                 x={hoveredIndex}
                 stroke="var(--shaper-reference-line-color)"

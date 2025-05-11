@@ -24,7 +24,7 @@ import {
 import { useOnWindowResize } from "../../hooks/useOnWindowResize";
 import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
-import { Column, isTimeType } from "../../lib/dashboard";
+import { Column } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 
@@ -226,7 +226,10 @@ const Legend = React.forwardRef<HTMLOListElement, LegendProps>((props, ref) => {
   } = props;
   const scrollableRef = React.useRef<HTMLInputElement>(null);
   const scrollButtonsRef = React.useRef<HTMLDivElement>(null);
-  const [hasScroll, setHasScroll] = React.useState<HasScrollProps | null>(null);
+  const [hasScroll, setHasScroll] = React.useState<HasScrollProps>({
+    left: false,
+    right: categories.length > 5,
+  });
   const [isKeyDowned, setIsKeyDowned] = React.useState<string | null>(null);
   const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -650,7 +653,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
     const prevActiveRef = React.useRef<boolean | undefined>(undefined);
     const prevLabelRef = React.useRef<string | undefined>(undefined);
 
-    const { hoveredIndex, hoveredChartId, setHoverState } =
+    const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
     function valueToPercent(value: number) {
@@ -943,7 +946,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 }
               />
             ) : null}
-            {hoveredIndex != null && (isTimeType(indexType) || indexType === "time") && hoveredChartId !== chartId && (
+            {hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId !== chartId && (
               <ReferenceLine
                 x={layout === "horizontal" ? hoveredIndex : undefined}
                 y={layout === "vertical" ? hoveredIndex : undefined}
