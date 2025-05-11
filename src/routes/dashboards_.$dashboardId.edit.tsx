@@ -307,7 +307,7 @@ function DashboardEditor() {
 
       <div className="h-dvh flex flex-col">
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
-          <div className="flex items-center p-1 border-b border-cb dark:border-none">
+          <div className="flex items-center p-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
               <div className="mt-6 px-4">
                 <label className="block">
@@ -394,7 +394,7 @@ function DashboardEditor() {
                     onClick={() => setEditingName(true)}
                   >
                     {name}
-                    <RiPencilLine className="size-4 inline ml-1 mb-1.5" />
+                    <RiPencilLine className="size-4 inline ml-1.5 mb-1" />
                   </h1>
                 </Tooltip>
               </div>
