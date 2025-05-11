@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
+import { RiPencilLine, RiCloseLine } from "@remixicon/react";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import { useDebouncedCallback } from "use-debounce";
@@ -306,7 +307,7 @@ function DashboardEditor() {
 
       <div className="h-dvh flex flex-col">
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
-          <div className="flex items-center p-2 border-b border-cb dark:border-none">
+          <div className="flex items-center p-1 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
               <div className="mt-6 px-4">
                 <label className="block">
@@ -341,29 +342,45 @@ function DashboardEditor() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   const input = e.currentTarget.querySelector("input");
-                  if (input) {
-                    input.blur();
+                  if (input && !savingName) {
+                    handleSaveName(name);
                   }
                 }}
-                className="inline-block flex-grow"
+                className="flex flex-grow"
               >
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  onBlur={() => {
-                    if (!savingName) {
-                      handleSaveName(name);
-                    }
-                  }}
                   className={cx(
-                    "text-xl font-semibold font-display px-1 py-0 border rounded",
-                    "bg-cbgs dark:bg-dbgs border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md",
+                    "text-lg font-semibold font-display px-2 py-0.5 border rounded",
+                    "bg-cbgs dark:bg-dbgs border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md w-96 max-w-[calc(100%-2rem)]",
                     focusRing,
                   )}
                   autoFocus
                   disabled={savingName}
                 />
+                <Button
+                  variant="destructive"
+                  type="reset"
+                  className="ml-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setEditingName(false);
+                    setName(dashboard.name);
+                  }}
+                >
+                  <RiCloseLine className="size-5" />
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="inline ml-2"
+                  disabled={savingName}
+                  isLoading={savingName}
+                >
+                  {translate("Save")}
+                </Button>
               </form>
             ) : (
               <div className="hidden sm:block flex-grow">
@@ -373,10 +390,11 @@ function DashboardEditor() {
                   content={translate("Click to edit dashboard name")}
                 >
                   <h1
-                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-1 rounded inline-block"
+                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
                     onClick={() => setEditingName(true)}
                   >
                     {name}
+                    <RiPencilLine className="size-4 inline ml-1 mb-1.5" />
                   </h1>
                 </Tooltip>
               </div>
