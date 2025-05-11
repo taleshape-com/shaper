@@ -83,7 +83,7 @@ function DashboardViewComponent() {
   }, 500);
 
   const MenuButton = (
-    <MenuTrigger className="-ml-1 mt-0.5 py-[6px]">
+    <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={title}>
       <Link
         to="/dashboards/$dashboardId/edit"
         params={{ dashboardId: params.dashboardId }}

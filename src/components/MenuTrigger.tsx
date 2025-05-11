@@ -5,15 +5,22 @@ import { MenuContext } from "../contexts/MenuContext";
 export function MenuTrigger({
   children,
   className,
+  title,
 }: {
   children?: React.ReactNode;
   className?: string;
+  title?: string;
 }) {
-  const { isMenuOpen, setIsMenuOpen, setExtraContent } = useContext(MenuContext);
+  const { isMenuOpen, setIsMenuOpen, setExtraContent, setTitle } = useContext(MenuContext);
 
   useEffect(() => {
     setExtraContent(children);
   }, [children, setExtraContent]);
+
+  useEffect(() => {
+    setTitle(title);
+  }, [title, setTitle]);
+
 
   if (isMenuOpen) {
     return null;

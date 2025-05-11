@@ -32,6 +32,7 @@ export function MenuProvider({
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(isLg())
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
+  const [title, setTitle] = useState<string | undefined>(undefined);
   const [userName, setUserName] = useState<string>("");
 
   const fetchUserName = useCallback(async () => {
@@ -71,6 +72,7 @@ export function MenuProvider({
       isMenuOpen: actuallyOpen,
       setIsMenuOpen,
       setExtraContent,
+      setTitle,
     }}>
       <div
         className={cx(
@@ -88,6 +90,11 @@ export function MenuProvider({
           >
             <RiMenuLine className="pl-1 py-1 ml-[0.4rem] mt-[0.675rem] mb-3 size-7 text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors" />
           </button>
+          {title && (
+            <span
+              className="block mx-4 font-display text-lg mb-4"
+            >{title}</span>
+          )}
           <Link
             to="/"
             disabled={isHome}
