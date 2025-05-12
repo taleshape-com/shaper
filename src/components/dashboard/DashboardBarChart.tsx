@@ -41,7 +41,10 @@ const DashboardBarChart = ({
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
-      const key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
+      let key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
+      if (key === null) {
+        key = '';
+      }
       if (!acc[key]) {
         acc[key] = {
           [indexAxisHeader.name]:
@@ -104,6 +107,7 @@ const DashboardBarChart = ({
       index={indexAxisHeader.name}
       // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}
+      valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
       valueFormatter={(n: number) => {
         return formatValue(n, valueAxisHeader.type, true).toString();

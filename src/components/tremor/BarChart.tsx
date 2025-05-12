@@ -466,18 +466,22 @@ const ChartTooltip = ({
           "bg-cbg dark:bg-dbg",
         )}
       >
-        <div className={cx("border-b border-inherit px-4 py-2")}>
-          <p
-            className={cx(
-              // base
-              "font-medium",
-              // text color
-              "text-ctext dark:text-dtext",
-            )}
-          >
-            {label}
-          </p>
-        </div>
+        {
+          label && (
+            <div className={cx("border-b border-inherit px-4 py-2")}>
+              <p
+                className={cx(
+                  // base
+                  "font-medium",
+                  // text color
+                  "text-ctext dark:text-dtext",
+                )}
+              >
+                {label}
+              </p>
+            </div>
+          )
+        }
         {total && (
           <div className={cx("border-b border-inherit px-4 py-2")}>
             <p className="flex justify-between space-x-2">
@@ -566,6 +570,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
   indexType: Column['type'];
+  valueType: Column['type'];
   categories: string[];
   colors?: AvailableChartColorsKeys[];
   valueFormatter?: (value: number) => string;
@@ -604,6 +609,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       categories = [],
       index,
       indexType,
+      valueType,
       colors = AvailableChartColors,
       valueFormatter = (value: number) => value.toString(),
       indexFormatter = (value: number) => value.toString(),
@@ -716,7 +722,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 : undefined
             }
             onMouseMove={(state) => {
-              if (state.activeLabel) {
+              if (state.activeLabel !== undefined) {
                 setHoverState(state.activeLabel, chartId, indexType);
               }
             }}
@@ -885,7 +891,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     payload: item.payload,
                   }))
                   : [];
-                const total = type === 'stacked' && payload ? payload.reduce((sum, item) => {
+                const total = type === 'stacked' && (valueType === 'number' || valueType === 'duration') && payload ? payload.reduce((sum, item) => {
                   if (typeof item.value === 'number') {
                     return sum + item.value
                   }
