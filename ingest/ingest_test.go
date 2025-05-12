@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"shaper/comms"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/marcboeker/go-duckdb/v2"
@@ -1416,6 +1419,7 @@ func TestIdAndTimestampColumns(t *testing.T) {
 	assert.Equal(t, "header-id-456", results[2].ID, "Third row should have header ID")
 	assert.False(t, results[2].TS.IsZero(), "Third row should have timestamp")
 }
+
 func TestColumnOrder(t *testing.T) {
 	dbConnector, db := setupTestDB(t)
 	defer db.Close()
@@ -1622,4 +1626,89 @@ func TestBackwardsCompatibility(t *testing.T) {
 	err = db.GetContext(ctx, &count, "SELECT COUNT(*) FROM compat WHERE name = 'Test User'")
 	require.NoError(t, err, "Failed to query by name column")
 	assert.Equal(t, 1, count, "Expected 1 record with name = 'Test User'")
+}
+
+// findRandomPort finds a random available port
+func findRandomPort(t *testing.T) int {
+	// Create a listener on port 0 to get a random available port
+	listener, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err, "Failed to create listener")
+	defer listener.Close()
+
+	// Get the actual port that was assigned
+	addr := listener.Addr().(*net.TCPAddr)
+	return addr.Port
+}
+
+func TestDirectPublishConnectionClosed(t *testing.T) {
+	// Set up test environment
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	// Create a temporary directory for JetStream storage
+	tmpDir, err := os.MkdirTemp("", "nats-js-*")
+	require.NoError(t, err, "Failed to create temporary directory")
+	defer os.RemoveAll(tmpDir) // Clean up after test
+
+	// Create a logger for the test
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	// Set up NATS server and ingest
+	subjectPrefix := "shaper.ingest." // Match the prefix used in the real subject
+	streamName := "test-stream"
+	consumerName := "test-consumer"
+
+	// Find a random available port
+	port := findRandomPort(t)
+
+	// Start NATS server
+	c, err := comms.New(comms.Config{
+		Logger:              logger.WithGroup("nats"),
+		Host:                "localhost",
+		Port:                port, // Use the random port we found
+		Token:               "test-token",
+		JSDir:               tmpDir, // Use the temporary directory
+		JSKey:               "",
+		MaxStore:            0,
+		DB:                  db,
+		Schema:              "_test",
+		IngestSubjectPrefix: subjectPrefix,
+	})
+	require.NoError(t, err, "Failed to start NATS server")
+	defer c.Close()
+
+	// Start ingest consumer
+	ingestConsumer, err := Start(subjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, streamName, consumerName)
+	require.NoError(t, err, "Failed to start ingest consumer")
+	defer ingestConsumer.Close()
+
+	// Create a client connection that will try to publish directly
+	clientOpts := []nats.Option{
+		nats.Token("test-token"),
+	}
+	clientNC, err := nats.Connect(c.Server.ClientURL(), clientOpts...)
+	require.NoError(t, err, "Failed to create client connection")
+	defer clientNC.Close()
+
+	// Create JetStream context for the client
+	clientJS, err := jetstream.New(clientNC)
+	require.NoError(t, err, "Failed to create JetStream context")
+
+	// Wait a bit to ensure stream is ready
+	time.Sleep(100 * time.Millisecond)
+
+	// Try to publish a message using the actual subject
+	msg := []byte(`{"id": 1, "name": "test"}`)
+	_, err = clientJS.Publish(context.Background(), subjectPrefix+"event", msg)
+	require.NoError(t, err, "Failed to publish message")
+
+	// Wait to ensure message is processed
+	time.Sleep(2100 * time.Millisecond)
+
+	// Verify the message was received and stored
+	// Note: The table name will be 'event' since that's the last part of the subject
+	var count int
+	err = db.GetContext(context.Background(), &count, "SELECT COUNT(*) FROM event")
+	require.NoError(t, err, "Failed to query event table")
+	assert.Equal(t, 1, count, "Expected 1 record in event table")
 }

@@ -8,6 +8,7 @@ import (
 	"shaper/core"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
@@ -23,22 +24,26 @@ type Comms struct {
 }
 
 type Config struct {
-	Logger   *slog.Logger
-	Servers  string
-	Host     string
-	Port     int
-	Token    string
-	JSDir    string
-	JSKey    string
-	MaxStore int64
-	App      *core.App
+	Logger              *slog.Logger
+	Servers             string
+	Host                string
+	Port                int
+	Token               string
+	JSDir               string
+	JSKey               string
+	MaxStore            int64
+	DB                  *sqlx.DB
+	Schema              string
+	IngestSubjectPrefix string
 }
 
 type AuthCheckFunc func(context.Context, string) (bool, error)
 
 type ClientAuth struct {
-	Token []byte
-	App   *core.App
+	Token               []byte
+	DB                  *sqlx.DB
+	Schema              string
+	IngestSubjectPrefix string
 }
 
 func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
@@ -50,7 +55,7 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 		return true
 	}
 
-	valid, err := core.ValidateAPIKey(c.App, context.Background(), opts.Token)
+	valid, err := core.ValidateAPIKey(c.DB, c.Schema, context.Background(), opts.Token)
 	if err != nil {
 		return false
 	}
@@ -81,7 +86,7 @@ func (c ClientAuth) createUser(name string, root bool) *server.User {
 		Username: name,
 		Permissions: &server.Permissions{
 			Publish: &server.SubjectPermission{
-				Allow: []string{c.App.IngestSubjectPrefix + ">"},
+				Allow: []string{c.IngestSubjectPrefix + ">"},
 			},
 			// TODO: jetstream publish is done via request/reply so we need inbox permissions to get the ACK,
 			//       but it's not the most secure that the client can listen to all replies.
@@ -122,8 +127,10 @@ func New(config Config) (Comms, error) {
 		// We handle signals separately
 		NoSigs: true,
 		CustomClientAuthentication: ClientAuth{
-			Token: []byte(config.Token),
-			App:   config.App,
+			Token:               []byte(config.Token),
+			DB:                  config.DB,
+			Schema:              config.Schema,
+			IngestSubjectPrefix: config.IngestSubjectPrefix,
 		},
 	}
 	// Configure authentication if token is provided

@@ -55,7 +55,7 @@ func StreamQueryCSV(
 	csvWriter := csv.NewWriter(writer)
 	defer csvWriter.Flush()
 
-	conn, err := app.db.Connx(ctx)
+	conn, err := app.DB.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -228,7 +228,7 @@ func StreamQueryXLSX(
 		}),
 	}
 
-	conn, err := app.db.Connx(ctx)
+	conn, err := app.DB.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}

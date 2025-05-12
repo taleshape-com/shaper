@@ -588,6 +588,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		tableInfo := tableCache[tableName]
 
 		// Get DB connection
+		// TODO: Do we need to connect every time or can we connect once and reuse the connection?
 		conn, err := dbConnector.Connect(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to connect to database: %w", err)

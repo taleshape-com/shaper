@@ -22,7 +22,7 @@ const (
 
 type App struct {
 	Name                string
-	db                  *sqlx.DB
+	DB                  *sqlx.DB
 	Logger              *slog.Logger
 	LoginRequired       bool
 	BasePath            string
@@ -71,7 +71,7 @@ func New(
 
 	app := &App{
 		Name:                name,
-		db:                  db,
+		DB:                  db,
 		Logger:              logger,
 		LoginRequired:       loginRequired,
 		BasePath:            baseURL,

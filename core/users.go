@@ -48,7 +48,7 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 
 	// Check if any users exist
 	var count int
-	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
 	if err != nil {
 		return "", fmt.Errorf("failed to check existing users: %w", err)
 	}
@@ -90,7 +90,7 @@ func HandleCreateUser(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.db.Exec(
+	_, err = app.DB.Exec(
 		`INSERT INTO "`+app.Schema+`".users (
 			id, email, name, password_hash, created_at, updated_at, created_by, updated_by
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
@@ -124,7 +124,7 @@ func DeleteInvite(app *App, ctx context.Context, code string) error {
 	}
 	// Check if invite exists
 	var exists bool
-	err := app.db.GetContext(ctx, &exists,
+	err := app.DB.GetContext(ctx, &exists,
 		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE code = $1)`,
 		code)
 	if err != nil {
@@ -151,7 +151,7 @@ func HandleDeleteInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.db.Exec(
+	_, err = app.DB.Exec(
 		`DELETE FROM "`+app.Schema+`".invites WHERE code = $1`,
 		payload.Code,
 	)
@@ -184,7 +184,7 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 	}
 
 	users := []User{}
-	err := app.db.SelectContext(ctx, &users,
+	err := app.DB.SelectContext(ctx, &users,
 		fmt.Sprintf(`SELECT *
 		 FROM %s.users
 		 WHERE deleted_at IS NULL
@@ -195,7 +195,7 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 
 	// Get invites ordered by creation date
 	invites := []Invite{}
-	err = app.db.SelectContext(ctx, &invites,
+	err = app.DB.SelectContext(ctx, &invites,
 		`SELECT code, email, created_at
 		 FROM "`+app.Schema+`".invites
 		 ORDER BY created_at DESC`)
@@ -222,7 +222,7 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE id = $1 AND deleted_at IS NULL`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query user: %w", err)
 	}
@@ -231,7 +231,7 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 	}
 
 	// Don't allow deleting the last active user
-	err = app.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
+	err = app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
 	if err != nil {
 		return fmt.Errorf("failed to check remaining users: %w", err)
 	}
@@ -255,7 +255,7 @@ func HandleDeleteUser(app *App, data []byte) bool {
 		return false
 	}
 
-	tx, err := app.db.Begin()
+	tx, err := app.DB.Begin()
 	if err != nil {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
@@ -305,7 +305,7 @@ func isInviteExpired(createdAt time.Time, expiration time.Duration) bool {
 
 func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 	var invite Invite
-	err := app.db.GetContext(ctx, &invite,
+	err := app.DB.GetContext(ctx, &invite,
 		`SELECT code, email, created_at FROM "`+app.Schema+`".invites WHERE code = $1`,
 		code)
 	if err != nil {
@@ -336,7 +336,7 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 
 	// Check if email is already registered
 	var existingUser bool
-	err := app.db.GetContext(ctx, &existingUser,
+	err := app.DB.GetContext(ctx, &existingUser,
 		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".users WHERE email = $1 AND deleted_at IS NULL)`,
 		email)
 	if err != nil {
@@ -348,7 +348,7 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 
 	// Check if there's already a pending invite
 	var existingInvite bool
-	err = app.db.GetContext(ctx, &existingInvite,
+	err = app.DB.GetContext(ctx, &existingInvite,
 		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE email = $1)`,
 		email)
 	if err != nil {
@@ -360,7 +360,7 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 
 	code := generateInviteCode()
 	var exists bool
-	err = app.db.GetContext(ctx, &exists,
+	err = app.DB.GetContext(ctx, &exists,
 		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE code = $1)`,
 		code)
 	if err != nil {
@@ -397,7 +397,7 @@ func HandleCreateInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.db.Exec(
+	_, err = app.DB.Exec(
 		`INSERT INTO "`+app.Schema+`".invites (
 			code, email, created_at, created_by
 		) VALUES ($1, $2, $3, $4)`,
@@ -440,7 +440,7 @@ type ClaimInvitePayload struct {
 func ClaimInvite(app *App, ctx context.Context, code string, name string, password string) error {
 	// Get invite details
 	var invite Invite
-	err := app.db.GetContext(ctx, &invite,
+	err := app.DB.GetContext(ctx, &invite,
 		`SELECT * FROM "`+app.Schema+`".invites WHERE code = $1`,
 		code)
 	if err != nil {
@@ -452,7 +452,7 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 
 	// Check if email is already registered
 	var existingUser bool
-	err = app.db.GetContext(ctx, &existingUser,
+	err = app.DB.GetContext(ctx, &existingUser,
 		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".users WHERE email = $1 AND deleted_at IS NULL)`,
 		invite.Email)
 	if err != nil {
@@ -490,7 +490,7 @@ func HandleClaimInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	tx, err := app.db.Begin()
+	tx, err := app.DB.Begin()
 	if err != nil {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
@@ -534,7 +534,7 @@ type InviteList struct {
 
 func ListInvites(app *App, ctx context.Context) (InviteList, error) {
 	var invites []Invite
-	err := app.db.SelectContext(ctx,
+	err := app.DB.SelectContext(ctx,
 		&invites,
 		`SELECT code, email, created_at
 			 FROM "`+app.Schema+`".invites

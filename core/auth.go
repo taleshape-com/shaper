@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/nrednav/cuid2"
 	"golang.org/x/crypto/bcrypt"
@@ -89,7 +90,7 @@ type AuthInfo struct {
 }
 
 func deleteExpiredSessions(app *App, userID string) (int64, error) {
-	result, err := app.db.Exec(
+	result, err := app.DB.Exec(
 		`DELETE FROM `+app.Schema+`.sessions
 		WHERE user_id = $1
 		AND created_at < $2`,
@@ -111,7 +112,7 @@ func HandleDeleteSession(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.db.Exec(
+	_, err = app.DB.Exec(
 		`DELETE FROM `+app.Schema+`.sessions WHERE id = $1`,
 		payload.ID,
 	)
@@ -141,7 +142,7 @@ func HandleCreateSession(app *App, data []byte) bool {
 			slog.Int64("count", deletedCount))
 	}
 
-	_, err = app.db.Exec(
+	_, err = app.DB.Exec(
 		`INSERT INTO `+app.Schema+`.sessions (
 			id, user_id, hash, salt, created_at
 		) VALUES ($1, $2, $3, $4, $5)`,
@@ -175,7 +176,7 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 		PasswordHash string `db:"password_hash"`
 	}
 
-	err := app.db.GetContext(ctx, &user,
+	err := app.DB.GetContext(ctx, &user,
 		`SELECT id, password_hash
          FROM `+app.Schema+`.users
          WHERE deleted_at IS NULL
@@ -214,7 +215,8 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 	return token, nil
 }
 
-func ValidateAPIKey(app *App, ctx context.Context, token string) (bool, error) {
+// ValidateAPIKey checks if an API key is valid by querying the database
+func ValidateAPIKey(db *sqlx.DB, schema string, ctx context.Context, token string) (bool, error) {
 	if !strings.HasPrefix(token, API_KEY_PREFIX) {
 		return false, nil
 	}
@@ -225,8 +227,8 @@ func ValidateAPIKey(app *App, ctx context.Context, token string) (bool, error) {
 	}
 
 	var storedKey APIKey
-	err := app.db.GetContext(ctx, &storedKey,
-		`SELECT hash, salt FROM `+app.Schema+`.api_keys WHERE id = $1`, id)
+	err := db.GetContext(ctx, &storedKey,
+		`SELECT hash, salt FROM `+schema+`.api_keys WHERE id = $1`, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -254,7 +256,7 @@ func validateSessionToken(app *App, ctx context.Context, token string) (bool, er
 	id := parts[0]
 
 	var storedSession Session
-	err := app.db.GetContext(ctx, &storedSession,
+	err := app.DB.GetContext(ctx, &storedSession,
 		`SELECT hash, salt, created_at FROM `+app.Schema+`.sessions WHERE id = $1`, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -296,7 +298,7 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 			Email string `db:"email"`
 			Name  string `db:"name"`
 		}
-		err := app.db.GetContext(ctx, &user,
+		err := app.DB.GetContext(ctx, &user,
 			`SELECT u.id, u.email, u.name
 			 FROM `+app.Schema+`.sessions s
 			 JOIN `+app.Schema+`.users u ON s.user_id = u.id
@@ -326,10 +328,10 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 			ID   string `db:"id"`
 			Name string `db:"name"`
 		}
-		err := app.db.GetContext(ctx, &key,
+		err := app.DB.GetContext(ctx, &key,
 			`SELECT id, name FROM `+app.Schema+`.api_keys WHERE id = $1`, id)
 		if err == nil {
-			ok, err := ValidateAPIKey(app, ctx, token)
+			ok, err := ValidateAPIKey(app.DB, app.Schema, ctx, token)
 			if err != nil {
 				return AuthInfo{}, err
 			}

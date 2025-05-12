@@ -50,7 +50,7 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 		return false
 	}
 	// Insert into DB
-	_, err = app.db.Exec(
+	_, err = app.DB.Exec(
 		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
 			id, path, name, content, created_at, updated_at, created_by, updated_by
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"embed"
 	"errors"
 	"fmt"
@@ -236,59 +235,58 @@ func Run(cfg Config) func(context.Context) {
 	}
 
 	// connect to duckdb
-	dbConnector, err := duckdb.NewConnector(dbFile, func(execer driver.ExecerContext) error {
-		if cfg.DuckDBExtDir != "" {
-			_, err := execer.ExecContext(context.Background(), "SET extension_directory = ?", []driver.NamedValue{{Ordinal: 0, Value: cfg.DuckDBExtDir}})
-			if err != nil {
-				return errors.New("failed to set extension directory: " + err.Error())
-			}
-			logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
-		}
-
-		if cfg.InitSQL != "" {
-			logger.Info("Executing init-sql")
-			// Substitute environment variables in the SQL
-			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
-			if sql == "" {
-				logger.Info("init-sql specified but empty, skipping")
-			} else {
-				_, err := execer.ExecContext(context.Background(), sql, nil)
-				if err != nil {
-					return errors.New("failed to execute init-sql: " + err.Error())
-				}
-			}
-		}
-		if cfg.InitSQLFile != "" {
-			logger.Info("Loading init-sql-file", slog.Any("path", cfg.InitSQLFile))
-			data, err := os.ReadFile(cfg.InitSQLFile)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					logger.Info("init-sql-file does not exist, skipping", slog.Any("path", cfg.InitSQLFile))
-				} else {
-					return errors.New("failed to read init-sql-file: " + err.Error())
-				}
-			} else {
-				sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
-				if len(sql) == 0 {
-					logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
-				} else {
-					logger.Info("Executing init-sql-file")
-					// Substitute environment variables in the SQL file content
-					_, err = execer.ExecContext(context.Background(), sql, nil)
-					if err != nil {
-						return errors.New("failed to execute init-sql-file: " + err.Error())
-					}
-				}
-			}
-		}
-		return nil
-	})
+	dbConnector, err := duckdb.NewConnector(dbFile, nil)
 	if err != nil {
 		panic(err)
 	}
 	sqlDB := sql.OpenDB(dbConnector)
 	db := sqlx.NewDb(sqlDB, "duckdb")
 	logger.Info("DuckDB opened", slog.Any("file", dbFile))
+
+	if cfg.DuckDBExtDir != "" {
+		_, err := db.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
+		if err != nil {
+			panic(errors.New("failed to set extension directory: " + err.Error()))
+		}
+		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
+	}
+
+	if cfg.InitSQL != "" {
+		logger.Info("Executing init-sql")
+		// Substitute environment variables in the SQL
+		sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
+		if sql == "" {
+			logger.Info("init-sql specified but empty, skipping")
+		} else {
+			_, err := db.Exec(sql)
+			if err != nil {
+				panic(errors.New("failed to execute init-sql: " + err.Error()))
+			}
+		}
+	}
+	if cfg.InitSQLFile != "" {
+		logger.Info("Loading init-sql-file", slog.Any("path", cfg.InitSQLFile))
+		data, err := os.ReadFile(cfg.InitSQLFile)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				logger.Info("init-sql-file does not exist, skipping", slog.Any("path", cfg.InitSQLFile))
+			} else {
+				panic(errors.New("failed to read init-sql-file: " + err.Error()))
+			}
+		} else {
+			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
+			if len(sql) == 0 {
+				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
+			} else {
+				logger.Info("Executing init-sql-file")
+				// Substitute environment variables in the SQL file content
+				_, err = db.Exec(sql)
+				if err != nil {
+					panic(errors.New("failed to execute init-sql-file: " + err.Error()))
+				}
+			}
+		}
+	}
 
 	// Get or generate consumer names
 	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-")
@@ -315,15 +313,17 @@ func Run(cfg Config) func(context.Context) {
 
 	// TODO: refactor - comms should be part of core
 	c, err := comms.New(comms.Config{
-		Logger:   logger.WithGroup("nats"),
-		Servers:  cfg.NatsServers,
-		Host:     cfg.NatsHost,
-		Port:     cfg.NatsPort,
-		Token:    cfg.NatsToken,
-		JSDir:    cfg.NatsJSDir,
-		JSKey:    cfg.NatsJSKey,
-		MaxStore: cfg.NatsMaxStore,
-		App:      app,
+		Logger:              logger.WithGroup("nats"),
+		Servers:             cfg.NatsServers,
+		Host:                cfg.NatsHost,
+		Port:                cfg.NatsPort,
+		Token:               cfg.NatsToken,
+		JSDir:               cfg.NatsJSDir,
+		JSKey:               cfg.NatsJSKey,
+		MaxStore:            cfg.NatsMaxStore,
+		DB:                  db,
+		Schema:              cfg.Schema,
+		IngestSubjectPrefix: cfg.IngestSubjectPrefix,
 	})
 	if err != nil {
 		panic(err)
