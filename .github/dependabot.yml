@@ -1,34 +1,35 @@
 version: 2
 updates:
-  - package-ecosystem: 'npm'
-    directory: '/'
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
     # Group all updates together
-    groups:
-      dependencies:
-        patterns:
-          - '*'
+    # TODO: Reenable grouping once all dependencies are up to date
+    #groups:
+    #dependencies:
+    #patterns:
+    #- '*'
 
-  - package-ecosystem: 'github-actions'
-    directory: '/'
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
     groups:
       github-actions:
         patterns:
-          - '*'
+          - "*"
 
-  - package-ecosystem: 'docker'
-    directory: '/'
+  - package-ecosystem: "docker"
+    directory: "/"
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
 
-  - package-ecosystem: 'gomod'
-    directory: '/'
+  - package-ecosystem: "gomod"
+    directory: "/"
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
     groups:
       gomod:
         patterns:
-          - '*'
+          - "*"
