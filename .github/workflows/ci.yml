@@ -244,6 +244,7 @@ jobs:
           files: |
             bin/shaper-linux-*
             bin/shaper-darwin-*
+            npm/bin/SHA256SUMS
           generate_release_notes: true
           token: ${{ secrets.PUBLIC_REPO_TOKEN }}
           fail_on_unmatched_files: true
