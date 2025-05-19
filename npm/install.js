@@ -1,29 +1,25 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const https = require('https');
-const { execSync } = require('child_process');
 const axios = require('axios');
-const tar = require('tar');
-const extract = require('extract-zip');
 
 const BIN_DIR = path.join(__dirname, 'bin');
 const VERSION = require('./package.json').version;
 
 // Map of platform names to GitHub release asset names
 const PLATFORM_MAP = {
-  'linux-x64': 'shaper_Linux_x86_64.tar.gz',
-  'linux-arm64': 'shaper_Linux_arm64.tar.gz',
-  'darwin-x64': 'shaper_Darwin_x86_64.tar.gz',
-  'darwin-arm64': 'shaper_Darwin_arm64.tar.gz',
+  'linux-x64': 'shaper-linux-amd64',
+  'linux-arm64': 'shaper-linux-arm64',
+  'darwin-x64': 'shaper-darwin-amd64',
+  'darwin-arm64': 'shaper-darwin-arm64',
   // 'win32-x64': 'shaper_Windows_x86_64.zip',
   // 'win32-arm64': 'shaper_Windows_arm64.zip'
 };
 
-async function getLatestRelease() {
+async function getRelease(version) {
   try {
     const response = await axios.get(
-      'https://api.github.com/repos/taleshape-com/shaper/releases/latest',
+      `https://api.github.com/repos/taleshape-com/shaper/releases/tags/v${version}`,
       {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
@@ -33,7 +29,11 @@ async function getLatestRelease() {
     );
     return response.data;
   } catch (error) {
-    console.error('Error fetching latest release:', error.message);
+    if (error.response?.status === 404) {
+      console.error(`Version v${version} not found. Please check if this version exists in the releases.`);
+    } else {
+      console.error('Error fetching release:', error.message);
+    }
     process.exit(1);
   }
 }
@@ -54,32 +54,6 @@ async function downloadFile(url, dest) {
   });
 }
 
-async function extractArchive(archivePath, isZip) {
-  const extractPath = path.join(BIN_DIR, 'temp');
-  fs.mkdirSync(extractPath, { recursive: true });
-
-  try {
-    if (isZip) {
-      await extract(archivePath, { dir: extractPath });
-    } else {
-      await tar.x({
-        file: archivePath,
-        cwd: extractPath
-      });
-    }
-
-    // Move the binary to the bin directory
-    const binaryPath = path.join(extractPath, 'shaper');
-    const targetPath = path.join(BIN_DIR, 'shaper');
-    fs.renameSync(binaryPath, targetPath);
-    fs.chmodSync(targetPath, '755');
-  } finally {
-    // Cleanup
-    fs.rmSync(extractPath, { recursive: true, force: true });
-    fs.unlinkSync(archivePath);
-  }
-}
-
 async function main() {
   // Create bin directory if it doesn't exist
   if (!fs.existsSync(BIN_DIR)) {
@@ -95,20 +69,18 @@ async function main() {
   }
 
   try {
-    const release = await getLatestRelease();
+    const release = await getRelease(VERSION);
     const asset = release.assets.find(a => a.name === assetName);
 
     if (!asset) {
-      console.error(`Asset not found for platform ${platform}`);
+      console.error(`Asset not found for platform ${platform} in version v${VERSION}`);
       process.exit(1);
     }
 
-    console.log(`Downloading shaper ${release.tag_name} for ${platform}...`);
-    const archivePath = path.join(os.tmpdir(), assetName);
-    await downloadFile(asset.browser_download_url, archivePath);
-
-    console.log('Extracting binary...');
-    await extractArchive(archivePath, assetName.endsWith('.zip'));
+    console.log(`Downloading shaper v${VERSION} for ${platform}...`);
+    const binaryPath = path.join(BIN_DIR, 'shaper');
+    await downloadFile(asset.browser_download_url, binaryPath);
+    fs.chmodSync(binaryPath, '755');
 
     console.log('Installation complete!');
   } catch (error) {
