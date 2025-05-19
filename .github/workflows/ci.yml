@@ -224,8 +224,8 @@ jobs:
             bin/shaper-darwin-*
           generate_release_notes: true
           token: ${{ secrets.PUBLIC_REPO_TOKEN }}
-        env:
-          GITHUB_REPOSITORY: taleshape-com/shaper
+          fail_on_unmatched_files: true
+          repository: taleshape-com/shaper
 
   docker:
     name: Docker
