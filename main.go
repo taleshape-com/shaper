@@ -31,8 +31,13 @@ var frontendFS embed.FS
 
 const APP_NAME = "shaper"
 
+// Version is set during build time via ldflags
+var Version = "dev"
+
 // TODO: Add a short description of what shaper does once I know how to explain it
 const USAGE = `All options are optional.
+
+Version: {{.Version}}
 
 All configuration options can be set via command line flags, environment variables or config file.
 
@@ -89,6 +94,7 @@ func loadConfig() Config {
 
 	flags := ff.NewFlagSet(APP_NAME)
 	help := flags.Bool('h', "help", "show help")
+	version := flags.Bool('v', "version", "show version")
 	addr := flags.StringLong("addr", "localhost:5454", "server address")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
@@ -130,7 +136,12 @@ func loadConfig() Config {
 		os.Exit(1)
 	}
 	if *help {
-		fmt.Printf("%s\n", ffhelp.Flags(flags, USAGE))
+		usage := strings.Replace(USAGE, "{{.Version}}", Version, 1)
+		fmt.Printf("%s\n", ffhelp.Flags(flags, usage))
+		os.Exit(0)
+	}
+	if *version {
+		fmt.Printf("%s version %s\n", APP_NAME, Version)
 		os.Exit(0)
 	}
 
@@ -210,7 +221,7 @@ func loadConfig() Config {
 func Run(cfg Config) func(context.Context) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	logger.Info("Starting Shaper")
+	logger.Info("Starting Shaper", slog.String("version", Version))
 	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")
 
 	if cfg.Favicon != "" {

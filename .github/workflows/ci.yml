@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   pull_request:
 
 concurrency:
@@ -70,6 +72,9 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Tidy Go modules
+        run: go mod tidy
+
       - name: Create placeholder dist directory
         run: |
           mkdir -p dist
@@ -100,30 +105,28 @@ jobs:
       - name: Run go test
         run: go test ./...
 
-  build-binaries:
-    name: Build Go Binary (${{ matrix.arch }})
-    runs-on: ubuntu-latest
+  release-linux:
+    name: Build Linux Binaries
     needs: [go-test, frontend-build]
-    # Must match the container image because of C dependencies
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      packages: write
+    # Use the same container as the old build-binaries job for CGO compatibility
     container: debian:12-slim
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            cc: gcc
-          - arch: arm64
-            cc: aarch64-linux-gnu-gcc
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install required packages
         run: |
           apt-get update
           apt-get install -y wget git build-essential
-          if [ "${{ matrix.arch }}" = "arm64" ]; then
-            apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
-          fi
+          # Install cross-compilation tools for arm64
+          apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -131,72 +134,215 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
       - name: Download frontend build artifacts
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: dist/
 
-      - name: Build for ${{ matrix.arch }}
-        run: |
-          mkdir -p bin
-          CC=${{ matrix.cc }} GOOS=linux GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -a -ldflags "-w" -o bin/shaper-${{ matrix.arch }} main.go
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Upload binary
+      - name: Build Linux binaries
+        run: |
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          mkdir -p bin
+          # Build amd64
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-linux-amd64 -ldflags="-X 'main.Version=$VERSION'"
+          # Build arm64
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -o bin/shaper-linux-arm64 -ldflags="-X 'main.Version=$VERSION'"
+          # Create archives
+          cd bin
+          tar czf ../dist/shaper_Linux_x86_64.tar.gz shaper-linux-amd64
+          tar czf ../dist/shaper_Linux_arm64.tar.gz shaper-linux-arm64
+
+      - name: Upload Linux binaries
         uses: actions/upload-artifact@v4
         with:
-          name: shaper-${{ matrix.arch }}
-          path: bin/shaper-${{ matrix.arch }}
+          name: linux-binaries
+          path: dist/*.tar.gz
           retention-days: 1
+
+  release-darwin:
+    name: Build macOS Binaries
+    needs: [go-test, frontend-build]
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Xcode Command Line Tools
+        run: |
+          xcode-select --install || true
+          # Wait for installation to complete
+          while ! xcode-select -p; do
+            sleep 5
+          done
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Download frontend build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS binaries
+        run: |
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          mkdir -p bin
+          # Build amd64
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-darwin-amd64 -ldflags="-X 'main.Version=$VERSION'"
+          # Build arm64
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -o bin/shaper-darwin-arm64 -ldflags="-X 'main.Version=$VERSION'"
+          # Create archives
+          cd bin
+          tar czf ../dist/shaper_Darwin_x86_64.tar.gz shaper-darwin-amd64
+          tar czf ../dist/shaper_Darwin_arm64.tar.gz shaper-darwin-arm64
+
+      - name: Upload macOS binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-binaries
+          path: dist/*.tar.gz
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: [release-linux, release-darwin]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Linux binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: dist/
+
+      - name: Download macOS binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-binaries
+          path: dist/
+
+      - name: Create Release
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          args: release --clean --parallelism 1 --timeout 30m --skip-build --skip-validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
   docker:
     name: Docker
     runs-on: ubuntu-latest
-    needs: [build-binaries]
+    needs: [release-linux]
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Create bin directory
-        run: mkdir -p bin
-
-      - name: Download AMD64 binary
-        uses: actions/download-artifact@v4
-        with:
-          name: shaper-amd64
-          path: bin/
-
-      - name: Download ARM64 binary
-        uses: actions/download-artifact@v4
-        with:
-          name: shaper-arm64
-          path: bin/
-
-      - name: Make binaries executable
-        run: chmod +x bin/shaper-*
 
       - name: Download frontend build artifacts
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: dist/
+
+      - name: Download Linux binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: bin/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
-        if: ${{ github.ref == 'refs/heads/main' }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          # Split version into components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "MAJOR=$MAJOR" >> $GITHUB_OUTPUT
+          echo "MINOR=$MAJOR.$MINOR" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true
           platforms: linux/amd64,linux/arm64
-          tags: taleshape/shaper:latest
+          tags: |
+            taleshape/shaper:latest
+            taleshape/shaper:${{ steps.version.outputs.VERSION }}
+            taleshape/shaper:${{ steps.version.outputs.MINOR }}
+            taleshape/shaper:${{ steps.version.outputs.MAJOR }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  npm-publish:
+    name: Publish to npm
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update npm package version
+        run: |
+          cd npm
+          npm version $(echo ${{ github.ref_name }} | sed 's/^v//') --no-git-tag-version
+
+      - name: Publish to npm
+        run: |
+          cd npm
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
