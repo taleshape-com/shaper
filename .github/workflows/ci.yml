@@ -95,7 +95,6 @@ jobs:
     name: Build Linux Binaries
     needs: [go-test, frontend-build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
       packages: write
@@ -152,7 +151,6 @@ jobs:
     name: Build macOS Binaries
     needs: [go-test, frontend-build]
     runs-on: macos-latest
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
       packages: write
@@ -233,13 +231,8 @@ jobs:
       - name: Combine checksums
         run: |
           cd bin
-          # Combine all checksum files into one
           cat checksums-*.txt | sort | uniq > SHA256SUMS
-          # Clean up individual files
           rm checksums-*.txt
-          # Copy SHA256SUMS to npm package bin directory
-          mkdir -p ../npm/bin
-          cp SHA256SUMS ../npm/bin/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -327,10 +320,7 @@ jobs:
 
       - name: Combine checksums
         run: |
-          cd bin
-          cat checksums-*.txt | sort | uniq > SHA256SUMS
-          rm checksums-*.txt
-          mv SHA256SUMS ../npm/bin/
+          cat bin/checksums-*.txt | sort | uniq > npm/bin/SHA256SUMS
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
