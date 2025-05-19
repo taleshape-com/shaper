@@ -18,6 +18,6 @@ HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localh
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
 # Copy the correct binary based on architecture
-COPY bin/shaper-${TARGETARCH} /usr/local/bin/shaper
+COPY bin/shaper-linux-${TARGETARCH} /usr/local/bin/shaper
 
 ENTRYPOINT ["/usr/local/bin/shaper"]
