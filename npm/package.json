@@ -4,7 +4,7 @@
   "description": "Minimal Embedded Analytics and Data Platform",
   "main": "index.js",
   "bin": {
-    "shaper": "./shaper.js"
+    "shaper": "./bin/shaper"
   },
   "scripts": {
     "postinstall": "node install.js",
