@@ -1,6 +1,6 @@
 {
   "name": "@taleshape/shaper",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Minimal Embedded Analytics and Data Platform",
   "main": "index.js",
   "bin": {
@@ -44,4 +44,4 @@
   "engines": {
     "node": ">=18"
   }
-} 
+}
