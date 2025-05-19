@@ -222,17 +222,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: linux-binaries
-          path: npm/bin
+          path: bin
 
       - name: Download macOS binaries and checksums
         uses: actions/download-artifact@v4
         with:
           name: darwin-binaries
-          path: npm/bin
+          path: bin
 
       - name: Combine checksums
         run: |
-          cd npm/bin
+          cd bin
           # Combine all checksum files into one
           cat checksums-*.txt | sort | uniq > SHA256SUMS
           # Clean up individual checksum files
@@ -244,7 +244,7 @@ jobs:
           files: |
             bin/shaper-linux-*
             bin/shaper-darwin-*
-            npm/bin/SHA256SUMS
+            bin/SHA256SUMS
           generate_release_notes: true
           token: ${{ secrets.PUBLIC_REPO_TOKEN }}
           fail_on_unmatched_files: true
@@ -314,17 +314,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: linux-binaries
-          path: npm/bin
+          path: bin
 
       - name: Download macOS binaries and checksums
         uses: actions/download-artifact@v4
         with:
           name: darwin-binaries
-          path: npm/bin
+          path: bin
 
       - name: Combine checksums
         run: |
-          cd npm/bin
+          cd bin
           # Combine all checksum files into one
           cat checksums-*.txt | sort | uniq > SHA256SUMS
           # Clean up individual files
