@@ -235,8 +235,11 @@ jobs:
           cd bin
           # Combine all checksum files into one
           cat checksums-*.txt | sort | uniq > SHA256SUMS
-          # Clean up individual checksum files
+          # Clean up individual files
           rm checksums-*.txt
+          # Copy SHA256SUMS to npm package bin directory
+          mkdir -p ../npm/bin
+          cp SHA256SUMS ../npm/bin/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -325,10 +328,9 @@ jobs:
       - name: Combine checksums
         run: |
           cd bin
-          # Combine all checksum files into one
           cat checksums-*.txt | sort | uniq > SHA256SUMS
-          # Clean up individual files
           rm checksums-*.txt
+          mv SHA256SUMS ../npm/bin/
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
