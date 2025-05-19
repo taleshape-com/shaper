@@ -12,6 +12,8 @@
   },
   "files": [
     "bin",
+    "bin/SHA256SUMS",
+    "shaper.js",
     "index.js",
     "install.js",
     "uninstall.js"

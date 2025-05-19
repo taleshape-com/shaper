@@ -134,11 +134,18 @@ jobs:
           # Build arm64
           GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -o bin/shaper-linux-arm64 -ldflags="-X 'main.Version=$VERSION'"
 
-      - name: Upload Linux binaries
+      - name: Generate checksums
+        run: |
+          cd bin
+          sha256sum shaper-linux-* > checksums-linux.txt
+
+      - name: Upload Linux binaries and checksums
         uses: actions/upload-artifact@v4
         with:
           name: linux-binaries
-          path: bin/shaper-linux-*
+          path: |
+            bin/shaper-linux-*
+            bin/checksums-linux.txt
           retention-days: 1
 
   build-darwin:
@@ -184,11 +191,18 @@ jobs:
           # Build arm64
           GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -o bin/shaper-darwin-arm64 -ldflags="-X 'main.Version=$VERSION'"
 
-      - name: Upload macOS binaries
+      - name: Generate checksums
+        run: |
+          cd bin
+          shasum -a 256 shaper-darwin-* > checksums-darwin.txt
+
+      - name: Upload macOS binaries and checksums
         uses: actions/upload-artifact@v4
         with:
           name: darwin-binaries
-          path: bin/shaper-darwin-*
+          path: |
+            bin/shaper-darwin-*
+            bin/checksums-darwin.txt
           retention-days: 1
 
   release:
@@ -204,17 +218,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download Linux binaries
+      - name: Download Linux binaries and checksums
         uses: actions/download-artifact@v4
         with:
           name: linux-binaries
-          path: bin/
+          path: npm/bin
 
-      - name: Download macOS binaries
+      - name: Download macOS binaries and checksums
         uses: actions/download-artifact@v4
         with:
           name: darwin-binaries
-          path: bin/
+          path: npm/bin
+
+      - name: Combine checksums
+        run: |
+          cd npm/bin
+          # Combine all checksum files into one
+          cat checksums-*.txt | sort | uniq > SHA256SUMS
+          # Clean up individual checksum files
+          rm checksums-*.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -280,22 +302,45 @@ jobs:
 
   npm-publish:
     name: Publish to npm
-    needs: [release]
+    needs: [release, build-linux, build-darwin]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Download Linux binaries and checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: npm/bin
+
+      - name: Download macOS binaries and checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-binaries
+          path: npm/bin
+
+      - name: Combine checksums
+        run: |
+          cd npm/bin
+          # Combine all checksum files into one
+          cat checksums-*.txt | sort | uniq > SHA256SUMS
+          # Clean up individual files
+          rm checksums-*.txt
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
           cache: "npm"
+
       - name: Update npm package version
         run: |
           cd npm
           npm version $(echo ${{ github.ref_name }} | sed 's/^v//') --no-git-tag-version
+
       - name: Publish to npm
         run: |
           cd npm
