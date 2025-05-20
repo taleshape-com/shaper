@@ -12,6 +12,7 @@
   },
   "files": [
     "bin",
+    "README.md",
     "index.js",
     "install.js",
     "uninstall.js"
