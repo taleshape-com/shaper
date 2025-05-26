@@ -11,6 +11,7 @@ type BarProps = {
   maxTimeValue: number;
   stacked?: boolean;
   vertical?: boolean;
+  label?: string;
 };
 
 const DashboardBarChart = ({
@@ -21,6 +22,7 @@ const DashboardBarChart = ({
   vertical,
   minTimeValue,
   maxTimeValue,
+  label,
 }: BarProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
@@ -120,6 +122,7 @@ const DashboardBarChart = ({
       showLegend={categoryIndex !== -1}
       indexAxisDomain={indexAxisDomain}
       maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
+      label={label}
     />
   );
 };

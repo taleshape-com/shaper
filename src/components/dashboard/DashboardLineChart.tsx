@@ -9,6 +9,7 @@ type LineProps = {
   data: Result['sections'][0]['queries'][0]['rows']
   minTimeValue: number;
   maxTimeValue: number;
+  label?: string;
 };
 
 const DashboardLineChart = ({
@@ -17,6 +18,7 @@ const DashboardLineChart = ({
   data,
   minTimeValue,
   maxTimeValue,
+  label,
 }: LineProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
@@ -111,6 +113,7 @@ const DashboardLineChart = ({
       showLegend={categoryIndex !== -1}
       xAxisDomain={xAxisDomain}
       maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
+      label={label}
     />
   );
 };

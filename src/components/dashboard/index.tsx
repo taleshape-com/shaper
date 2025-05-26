@@ -342,6 +342,7 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        label={query.render.label}
       />
     );
   }
@@ -366,6 +367,7 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        label={query.render.label}
       />
     );
   }

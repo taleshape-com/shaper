@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { AxisDomain } from "recharts/types/util/types";
 import { formatValue } from "../../lib/render";
+import { ChartDownloadButton } from "./ChartDownloadButton";
 
 import {
   AvailableChartColors,
@@ -45,11 +46,24 @@ const LegendItem = ({
   activeLegend,
 }: LegendItemProps) => {
   const hasOnValueChange = !!onClick;
+  const textWidth = React.useMemo(() => {
+    // Create a temporary SVG to measure text width
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("class", "text-xs");
+    text.textContent = name;
+    svg.appendChild(text);
+    document.body.appendChild(svg);
+    const width = text.getComputedTextLength();
+    document.body.removeChild(svg);
+    return width;
+  }, [name]);
+
   return (
     <li
       className={cx(
         // base
-        "group inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 transition",
+        "group inline-block rounded px-2 py-1.5 transition",
         hasOnValueChange
           ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
           : "cursor-default",
@@ -61,25 +75,33 @@ const LegendItem = ({
     >
       <span
         className={cx(
-          "h-[3px] w-3.5 shrink-0 rounded-full",
+          "inline-block h-[3px] w-3.5 rounded-full mr-1.5",
           getColorClassName(color, "bg"),
           activeLegend && activeLegend !== name ? "opacity-40" : "opacity-100",
         )}
         aria-hidden={true}
       />
-      <p
+      <svg
         className={cx(
-          // base
-          "truncate whitespace-nowrap text-xs",
-          // text color
-          "text-ctext dark:text-dtext",
-          hasOnValueChange &&
-          "group-hover:text-gray-900 dark:group-hover:text-gray-50",
+          "inline-block",
           activeLegend && activeLegend !== name ? "opacity-40" : "opacity-100",
         )}
+        height="16"
+        width={textWidth + 2}
+        style={{ verticalAlign: "middle" }}
       >
-        {name}
-      </p>
+        <text
+          x="0"
+          y="12"
+          className={cx(
+            "text-xs fill-ctext dark:fill-dtext",
+            hasOnValueChange &&
+            "group-hover:fill-gray-900 dark:group-hover:fill-gray-50",
+          )}
+        >
+          {name}
+        </text>
+      </svg>
     </li>
   );
 };
@@ -341,7 +363,7 @@ const ChartLegend = (
       ref={legendRef}
       style={{ paddingLeft: paddingLeft }}
       className={cx(
-        "flex items-center",
+        "flex items-center pb-2",
         { "justify-center": legendPosition === "center" },
         { "justify-start": legendPosition === "left" },
         { "justify-end": legendPosition === "right" },
@@ -524,6 +546,7 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   tooltipCallback?: (tooltipCallbackContent: TooltipProps) => void;
   customTooltip?: React.ComponentType<TooltipProps>;
   xAxisDomain?: AxisDomain;
+  label?: string;
 }
 
 const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
@@ -561,6 +584,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       customTooltip,
       xAxisDomain = ['auto', 'auto'],
       chartId,
+      label,
       ...other
     } = props;
     const CustomTooltip = customTooltip;
@@ -581,6 +605,19 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
     const prevLabelRef = React.useRef<string | undefined>(undefined);
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } = React.useContext(ChartHoverContext);
+
+    const [chartElement, setChartElement] = React.useState<HTMLDivElement | null>(null);
+    const [isChartHovered, setIsChartHovered] = React.useState(false);
+    const [isDownloading, setIsDownloading] = React.useState(false);
+
+    const setRefs = React.useCallback((node: HTMLDivElement | null) => {
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }
+      setChartElement(node);
+    }, [ref]);
 
     function onDotClick(itemData: any, event: React.MouseEvent) {
       event.stopPropagation();
@@ -630,13 +667,27 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       setActiveDot(undefined);
     }
 
+    const downloadButton = !isDownloading ? (
+      <ChartDownloadButton 
+        chartElement={chartElement} 
+        chartId={chartId} 
+        isVisible={isChartHovered}
+        onDownloadStart={() => setIsDownloading(true)}
+        onDownloadEnd={() => setIsDownloading(false)}
+        label={label}
+      />
+    ) : null;
+
     return (
       <div
-        ref={ref}
-        className={cx("h-80 w-full", className)}
+        ref={setRefs}
+        className={cx("h-80 w-full relative", className)}
         tremor-id="tremor-raw"
+        onMouseEnter={() => setIsChartHovered(true)}
+        onMouseLeave={() => setIsChartHovered(false)}
         {...other}
       >
+        {downloadButton}
         <ResponsiveContainer>
           <RechartsLineChart
             data={data}
