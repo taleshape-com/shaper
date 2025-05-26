@@ -22,6 +22,7 @@ type GetResult struct {
 	Sections     []Section `json:"sections"`
 	MinTimeValue int64     `json:"minTimeValue"`
 	MaxTimeValue int64     `json:"maxTimeValue"`
+	ReloadAt     int64     `json:"reloadAt"`
 }
 
 type Section struct {

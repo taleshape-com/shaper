@@ -24,6 +24,7 @@ export type Result = {
   name: string;
   minTimeValue: number;
   maxTimeValue: number;
+  reloadAt: number;
   sections: ({
     type: 'header';
     title?: string;

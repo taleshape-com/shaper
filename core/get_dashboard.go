@@ -139,6 +139,14 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
+		if isReload(colTypes, query.Rows) {
+			if result.ReloadAt != 0 {
+				return result, fmt.Errorf("Multiple RELOAD queries in dashboard %s", dashboardQuery.ID)
+			}
+			result.ReloadAt = getReloadValue(query.Rows)
+			continue
+		}
+
 		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel)
 		query.Render = Render{
 			Type:  rInfo.Type,
@@ -1260,4 +1268,40 @@ func splitSQLQueries(sql string) ([]string, error) {
 	}
 
 	return queries, nil
+}
+
+// Must be a single column and a single row.
+// Row value must be a timestamp or interval.
+// Column type must the be custom RELOAD type
+func isReload(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "RELOAD")
+	if col == nil {
+		return false
+	}
+	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
+}
+
+func getReloadValue(rows Rows) int64 {
+	if len(rows) == 0 {
+		return 0
+	}
+	row := rows[0]
+	if len(row) == 0 {
+		return 0
+	}
+	val := rows[0][0]
+	if len(row) == 0 || val == nil {
+		return 0
+	}
+	if union, ok := val.(duckdb.Union); ok {
+		if interval, ok := union.Value.(duckdb.Interval); ok {
+			return time.Now().Add(time.Millisecond * time.Duration(formatInterval(interval))).UnixMilli()
+		}
+		if t, ok := union.Value.(time.Time); ok {
+			// Convert to milliseconds since epoch
+			return t.UnixMilli()
+		}
+		return 0
+	}
+	return 0
 }

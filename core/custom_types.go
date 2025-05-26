@@ -37,6 +37,7 @@ var dbTypes = []struct {
 	{"TREND", "UNION(_shaper_trend_double DOUBLE)", "number"},
 	{"PLACEHOLDER", "UNION(_shaper_placeholder_varchar VARCHAR)", "string"},
 	{"PERCENT", "UNION(_shaper_percent_double DOUBLE)", "percent"},
+	{"RELOAD", "UNION(_shaper_reload_timestamp TIMESTAMP, _shaper_reload_timestamptz TIMESTAMPTZ, _shaper_reload_interval INTERVAL)", "timestamp"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

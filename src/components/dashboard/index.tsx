@@ -12,7 +12,7 @@ import DashboardLineChart from "./DashboardLineChart";
 import DashboardBarChart from "./DashboardBarChart";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 
 export interface DashboardProps {
@@ -45,30 +45,91 @@ export function Dashboard({
 }: DashboardProps) {
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
-  const [fetching, setFetching] = useState<boolean>(false);
+  const [showLoading, setShowLoading] = useState<boolean>(false);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
   data = data ?? fetchedData;
 
-  useEffect(() => {
-    if (!id) {
-      // When controlling the data from outside, we don't need to fetch
-      return;
-    }
+  // Add timeout ref to store the timeout ID
+  const reloadTimeoutRef = useRef<NodeJS.Timeout>();
+  const loadingTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Function to fetch dashboard data
+  const fetchData = useCallback(async () => {
+    if (!id) return;
     setError(null);
-    setFetching(true);
-    fetchDashboard(id, vars, baseUrl, getJwt)
-      .then((d) => {
-        setFetchedData(d);
-        setFetching(false);
-        if (onDataChange) {
-          onDataChange(d);
-        }
-      })
-      .catch((err) => {
-        setError(err);
-        setFetching(false);
-        onError?.(err);
-      });
-  }, [id, vars, baseUrl, hash, onError, getJwt, onDataChange]);
+    setIsFetching(true);
+
+    try {
+      const d = await fetchDashboard(id, vars, baseUrl, getJwt);
+      setFetchedData(d);
+      if (onDataChange) {
+        onDataChange(d);
+      }
+      // Clear any existing reload timeout
+      if (reloadTimeoutRef.current) {
+        clearTimeout(reloadTimeoutRef.current);
+      }
+      // Set up reload timeout if reloadAt is in the future
+      if (d.reloadAt > Date.now()) {
+        const timeout = Math.max(1000, d.reloadAt - Date.now());
+        reloadTimeoutRef.current = setTimeout(fetchData, timeout);
+      }
+    } catch (err) {
+      setError(err as Error);
+      onError?.(err as Error);
+    } finally {
+      setIsFetching(false);
+      setShowLoading(false);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    }
+  }, [id, vars, baseUrl, getJwt, onDataChange, onError]);
+
+  // Handle loading state based on fetch status
+  useEffect(() => {
+    if (!id) return;
+
+    if (isFetching) {
+      // Only show loading immediately if we have no data
+      if (!data) {
+        setShowLoading(true);
+      } else {
+        // Otherwise, wait 1 second before showing loading
+        loadingTimeoutRef.current = setTimeout(() => {
+          // Only show loading if we're still fetching
+          if (isFetching) {
+            setShowLoading(true);
+          }
+        }, 1000);
+      }
+    } else {
+      setShowLoading(false);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    }
+
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [id, data, isFetching]);
+
+  // Initial fetch and cleanup
+  useEffect(() => {
+    fetchData();
+    return () => {
+      // Clear timeouts on cleanup
+      if (reloadTimeoutRef.current) {
+        clearTimeout(reloadTimeoutRef.current);
+      }
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [fetchData, hash]);
 
   if (error) {
     return (
@@ -93,7 +154,7 @@ export function Dashboard({
       vars={vars}
       baseUrl={baseUrl}
       getJwt={getJwt}
-      loading={loading || fetching}
+      loading={loading || showLoading}
     />
   ) : (
     <ChartHoverProvider>
