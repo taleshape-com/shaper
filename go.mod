@@ -9,10 +9,10 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo-contrib v0.17.4
 	github.com/labstack/echo-jwt/v4 v4.3.1
-	github.com/labstack/echo/v4 v4.13.3
+	github.com/labstack/echo/v4 v4.13.4
 	github.com/labstack/gommon v0.4.2
 	github.com/marcboeker/go-duckdb/v2 v2.2.0
-	github.com/nats-io/nats-server/v2 v2.11.3
+	github.com/nats-io/nats-server/v2 v2.11.4
 	github.com/nats-io/nats.go v1.42.0
 	github.com/nrednav/cuid2 v1.0.1
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
@@ -36,7 +36,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/flatbuffers v25.1.24+incompatible // indirect
-	github.com/google/go-tpm v0.9.3 // indirect
+	github.com/google/go-tpm v0.9.5 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
