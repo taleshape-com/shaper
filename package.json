@@ -52,7 +52,7 @@
   "devDependencies": {
     "@eslint/js": "^9.13.0",
     "@tailwindcss/forms": "^0.5.9",
-    "@tanstack/router-devtools": "^1.78.2",
+    "@tanstack/router-devtools": "^1.120.10",
     "@tanstack/router-plugin": "^1.78.2",
     "@types/lodash": "^4.17.13",
     "@types/node": "^22.15.19",
