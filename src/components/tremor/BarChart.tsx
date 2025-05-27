@@ -404,8 +404,6 @@ const ChartLegend = (
   activeLegend: string | undefined,
   onClick?: (category: string, color: string) => void,
   enableLegendSlider?: boolean,
-  legendPosition?: "left" | "center" | "right",
-  yAxisWidth?: number,
 ) => {
   const legendRef = React.useRef<HTMLDivElement>(null);
 
@@ -417,20 +415,11 @@ const ChartLegend = (
 
   const filteredPayload = payload.filter((item: any) => item.type !== "none");
 
-  const paddingLeft =
-    legendPosition === "left" && yAxisWidth ? yAxisWidth - 8 : 0;
-
   return (
     <div
-      style={{ paddingLeft: paddingLeft }}
       ref={legendRef}
       className={cx(
-        "flex items-center",
-        { "justify-center": legendPosition === "center" },
-        {
-          "justify-start": legendPosition === "left",
-        },
-        { "justify-end": legendPosition === "right" },
+        "flex items-center justify-end"
       )}
     >
       <Legend
@@ -594,7 +583,6 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
-  colors?: AvailableChartColorsKeys[];
   valueFormatter?: (value: number) => string;
   indexFormatter?: (value: number) => string;
   startEndOnly?: boolean;
@@ -609,7 +597,6 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   minValue?: number;
   maxValue?: number;
   allowDecimals?: boolean;
-  onValueChange?: (value: BarChartEventProps) => void;
   enableLegendSlider?: boolean;
   tickGap?: number;
   barCategoryGap?: string | number;
@@ -617,9 +604,6 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   yAxisLabel?: string;
   layout?: "vertical" | "horizontal";
   type?: "default" | "stacked" | "percent";
-  legendPosition?: "left" | "center" | "right";
-  tooltipCallback?: (tooltipCallbackContent: TooltipProps) => void;
-  customTooltip?: React.ComponentType<TooltipProps>;
   indexAxisDomain?: AxisDomain;
   label?: string;
 }
@@ -633,7 +617,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       index,
       indexType,
       valueType,
-      colors = AvailableChartColors,
       valueFormatter = (value: number) => value.toString(),
       indexFormatter = (value: number) => value.toString(),
       startEndOnly = false,
@@ -649,7 +632,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       maxValue,
       allowDecimals = true,
       className,
-      onValueChange,
       enableLegendSlider = false,
       barCategoryGap,
       tickGap = 5,
@@ -657,31 +639,17 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       yAxisLabel,
       layout = "horizontal",
       type = "default",
-      legendPosition = "right",
-      tooltipCallback,
-      customTooltip,
       indexAxisDomain = ["auto", "auto"],
       chartId,
       label,
       ...other
     } = props;
-    const CustomTooltip = customTooltip;
     const paddingValue =
       (!showXAxis && !showYAxis) || (startEndOnly && !showYAxis) ? 0 : 20;
     const [legendHeight, setLegendHeight] = React.useState(60);
-    const [activeLegend, setActiveLegend] = React.useState<string | undefined>(
-      undefined,
-    );
-    const categoryColors = constructCategoryColors(categories, colors);
-    const [activeBar, setActiveBar] = React.useState<any | undefined>(
-      undefined,
-    );
+    const categoryColors = constructCategoryColors(categories, AvailableChartColors);
     const valueAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
-    const hasOnValueChange = !!onValueChange;
     const stacked = type === "stacked" || type === "percent";
-
-    const prevActiveRef = React.useRef<boolean | undefined>(undefined);
-    const prevLabelRef = React.useRef<string | undefined>(undefined);
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
@@ -704,42 +672,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
 
     function valueToPercent(value: number) {
       return `${(value * 100).toFixed(0)}%`;
-    }
-
-    function onBarClick(data: any, _: any, event: React.MouseEvent) {
-      event.stopPropagation();
-      if (!onValueChange) return;
-      if (deepEqual(activeBar, { ...data.payload, value: data.value })) {
-        setActiveLegend(undefined);
-        setActiveBar(undefined);
-        onValueChange?.(null);
-      } else {
-        setActiveLegend(data.tooltipPayload?.[0]?.dataKey);
-        setActiveBar({
-          ...data.payload,
-          value: data.value,
-        });
-        onValueChange?.({
-          eventType: "bar",
-          categoryClicked: data.tooltipPayload?.[0]?.dataKey,
-          ...data.payload,
-        });
-      }
-    }
-
-    function onCategoryClick(dataKey: string) {
-      if (!hasOnValueChange) return;
-      if (dataKey === activeLegend && !activeBar) {
-        setActiveLegend(undefined);
-        onValueChange?.(null);
-      } else {
-        setActiveLegend(dataKey);
-        onValueChange?.({
-          eventType: "category",
-          categoryClicked: dataKey,
-        });
-      }
-      setActiveBar(undefined);
     }
 
     const downloadButton = !isDownloading ? (
@@ -766,15 +698,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
         <ResponsiveContainer>
           <RechartsBarChart
             data={data}
-            onClick={
-              hasOnValueChange && (activeLegend || activeBar)
-                ? () => {
-                  setActiveBar(undefined);
-                  setActiveLegend(undefined);
-                  onValueChange?.(null);
-                }
-                : undefined
-            }
             onMouseMove={(state) => {
               if (state.activeLabel !== undefined) {
                 setHoverState(state.activeLabel, chartId, indexType);
@@ -952,36 +875,18 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   return sum
                 }, 0) : undefined
 
-                if (
-                  tooltipCallback &&
-                  (active !== prevActiveRef.current ||
-                    label !== prevLabelRef.current)
-                ) {
-                  tooltipCallback({ active, payload: cleanPayload, label });
-                  prevActiveRef.current = active;
-                  prevLabelRef.current = label;
-                }
-
                 return showTooltip &&
                   active &&
                   hoveredIndex != null &&
                   hoveredChartId === chartId ? (
-                  CustomTooltip ? (
-                    <CustomTooltip
-                      active={active}
-                      payload={cleanPayload}
-                      label={label}
-                    />
-                  ) : (
-                    <ChartTooltip
-                      active={active}
-                      payload={cleanPayload}
-                      label={indexFormatter(label)}
-                      valueFormatter={valueFormatter}
-                      extraData={extraDataByIndexAxis[label]}
-                      total={total}
-                    />
-                  )
+                  <ChartTooltip
+                    active={active}
+                    payload={cleanPayload}
+                    label={indexFormatter(label)}
+                    valueFormatter={valueFormatter}
+                    extraData={extraDataByIndexAxis[label]}
+                    total={total}
+                  />
                 ) : null;
               }}
             />
@@ -994,14 +899,9 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     { payload },
                     categoryColors,
                     setLegendHeight,
-                    activeLegend,
-                    hasOnValueChange
-                      ? (clickedLegendItem: string) =>
-                        onCategoryClick(clickedLegendItem)
-                      : undefined,
+                    undefined,
+                    undefined,
                     enableLegendSlider,
-                    legendPosition,
-                    yAxisWidth,
                   )
                 }
               />
@@ -1019,8 +919,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                   getColorClassName(
                     categoryColors.get(category) as AvailableChartColorsKeys,
                     "fill",
-                  ),
-                  onValueChange ? "cursor-pointer" : "",
+                  )
                 )}
                 key={category}
                 name={category}
@@ -1030,9 +929,8 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 isAnimationActive={false}
                 fill=""
                 shape={(props: any) =>
-                  renderShape(props, activeBar, activeLegend, layout)
+                  renderShape(props, undefined, undefined, layout)
                 }
-                onClick={onBarClick}
               />
             ))}
           </RechartsBarChart>
