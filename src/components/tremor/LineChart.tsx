@@ -501,11 +501,6 @@ const ChartTooltip = ({
 
 //#region LineChart
 
-interface ActiveDot {
-  index?: number;
-  dataKey?: string;
-}
-
 type BaseEventProps = {
   eventType: "dot" | "category";
   categoryClicked: string;
@@ -515,13 +510,12 @@ type BaseEventProps = {
 type LineChartEventProps = BaseEventProps | null | undefined;
 
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
-  chartId: string,
+  chartId: string;
   data: Record<string, any>[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
   indexType: Column['type'];
   categories: string[];
-  colors?: AvailableChartColorsKeys[];
   valueFormatter?: (value: number) => string;
   indexFormatter?: (value: number) => string;
   startEndOnly?: boolean;
@@ -536,15 +530,11 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   minValue?: number;
   maxValue?: number;
   allowDecimals?: boolean;
-  onValueChange?: (value: LineChartEventProps) => void;
   enableLegendSlider?: boolean;
   tickGap?: number;
   connectNulls?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  legendPosition?: "left" | "center" | "right";
-  tooltipCallback?: (tooltipCallbackContent: TooltipProps) => void;
-  customTooltip?: React.ComponentType<TooltipProps>;
   xAxisDomain?: AxisDomain;
   label?: string;
 }
@@ -557,8 +547,8 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       categories = [],
       index,
       indexType,
-      colors = AvailableChartColors,
       valueFormatter = (value: number) => value.toString(),
+      indexFormatter = (value: number) => value.toString(),
       startEndOnly = false,
       showXAxis = true,
       showYAxis = true,
@@ -573,36 +563,20 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       allowDecimals = true,
       connectNulls = false,
       className,
-      onValueChange,
       enableLegendSlider = false,
       tickGap = 5,
       xAxisLabel,
       yAxisLabel,
-      legendPosition = "right",
-      tooltipCallback,
-      indexFormatter = (value: number) => value.toString(),
-      customTooltip,
       xAxisDomain = ['auto', 'auto'],
       chartId,
       label,
       ...other
     } = props;
-    const CustomTooltip = customTooltip;
     const paddingValue =
       (!showXAxis && !showYAxis) || (startEndOnly && !showYAxis) ? 0 : 20;
     const [legendHeight, setLegendHeight] = React.useState(60);
-    const [activeDot, setActiveDot] = React.useState<ActiveDot | undefined>(
-      undefined,
-    );
-    const [activeLegend, setActiveLegend] = React.useState<string | undefined>(
-      undefined,
-    );
-    const categoryColors = constructCategoryColors(categories, colors);
-
+    const categoryColors = constructCategoryColors(categories, AvailableChartColors);
     const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue);
-    const hasOnValueChange = !!onValueChange;
-    const prevActiveRef = React.useRef<boolean | undefined>(undefined);
-    const prevLabelRef = React.useRef<string | undefined>(undefined);
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } = React.useContext(ChartHoverContext);
 
@@ -618,54 +592,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       }
       setChartElement(node);
     }, [ref]);
-
-    function onDotClick(itemData: any, event: React.MouseEvent) {
-      event.stopPropagation();
-
-      if (!hasOnValueChange) return;
-      if (
-        (itemData.index === activeDot?.index &&
-          itemData.dataKey === activeDot?.dataKey) ||
-        (hasOnlyOneValueForKey(data, itemData.dataKey) &&
-          activeLegend &&
-          activeLegend === itemData.dataKey)
-      ) {
-        setActiveLegend(undefined);
-        setActiveDot(undefined);
-        onValueChange?.(null);
-      } else {
-        setActiveLegend(itemData.dataKey);
-        setActiveDot({
-          index: itemData.index,
-          dataKey: itemData.dataKey,
-        });
-        onValueChange?.({
-          eventType: "dot",
-          categoryClicked: itemData.dataKey,
-          ...itemData.payload,
-        });
-      }
-    }
-
-    function onCategoryClick(dataKey: string) {
-      if (!hasOnValueChange) return;
-      if (
-        (dataKey === activeLegend && !activeDot) ||
-        (hasOnlyOneValueForKey(data, dataKey) &&
-          activeDot &&
-          activeDot.dataKey === dataKey)
-      ) {
-        setActiveLegend(undefined);
-        onValueChange?.(null);
-      } else {
-        setActiveLegend(dataKey);
-        onValueChange?.({
-          eventType: "category",
-          categoryClicked: dataKey,
-        });
-      }
-      setActiveDot(undefined);
-    }
 
     const downloadButton = !isDownloading ? (
       <ChartDownloadButton 
@@ -691,15 +617,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
         <ResponsiveContainer>
           <RechartsLineChart
             data={data}
-            onClick={
-              hasOnValueChange && (activeLegend || activeDot)
-                ? () => {
-                  setActiveDot(undefined);
-                  setActiveLegend(undefined);
-                  onValueChange?.(null);
-                }
-                : undefined
-            }
             onMouseMove={state => {
               if (state.activeLabel) {
                 setHoverState(state.activeLabel, chartId, indexType);
@@ -821,34 +738,16 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                   }))
                   : [];
 
-                if (
-                  tooltipCallback &&
-                  (active !== prevActiveRef.current ||
-                    label !== prevLabelRef.current)
-                ) {
-                  tooltipCallback({ active, payload: cleanPayload, label });
-                  prevActiveRef.current = active;
-                  prevLabelRef.current = label;
-                }
-
                 return showTooltip && active &&
                   hoveredIndex != null &&
                   hoveredChartId === chartId ? (
-                  CustomTooltip ? (
-                    <CustomTooltip
-                      active={active}
-                      payload={cleanPayload}
-                      label={label}
-                    />
-                  ) : (
-                    <ChartTooltip
-                      active={active}
-                      payload={cleanPayload}
-                      label={indexFormatter(label)}
-                      valueFormatter={valueFormatter}
-                      extraData={extraDataByIndexAxis[label]}
-                    />
-                  )
+                  <ChartTooltip
+                    active={active}
+                    payload={cleanPayload}
+                    label={indexFormatter(label)}
+                    valueFormatter={valueFormatter}
+                    extraData={extraDataByIndexAxis[label]}
+                  />
                 ) : null;
               }}
             />
@@ -862,14 +761,9 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                     { payload },
                     categoryColors,
                     setLegendHeight,
-                    activeLegend,
-                    hasOnValueChange
-                      ? (clickedLegendItem: string) =>
-                        onCategoryClick(clickedLegendItem)
-                      : undefined,
+                    undefined,
+                    undefined,
                     enableLegendSlider,
-                    legendPosition,
-                    yAxisWidth,
                   )
                 }
               />
@@ -888,45 +782,16 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                     "stroke",
                   ),
                 )}
-                strokeOpacity={
-                  activeDot || (activeLegend && activeLegend !== category)
-                    ? 0.3
-                    : 1
-                }
-                activeDot={(props: any) => {
-                  const {
-                    cx: cxCoord,
-                    cy: cyCoord,
-                    stroke,
-                    strokeLinecap,
-                    strokeLinejoin,
-                    strokeWidth,
-                    dataKey,
-                  } = props;
-                  return (
-                    <Dot
-                      className={cx(
-                        "stroke-cbg dark:stroke-dbg",
-                        onValueChange ? "cursor-pointer" : "",
-                        getColorClassName(
-                          categoryColors.get(
-                            dataKey,
-                          ) as AvailableChartColorsKeys,
-                          "fill",
-                        ),
-                      )}
-                      cx={cxCoord}
-                      cy={cyCoord}
-                      r={5}
-                      fill=""
-                      stroke={stroke}
-                      strokeLinecap={strokeLinecap}
-                      strokeLinejoin={strokeLinejoin}
-                      strokeWidth={strokeWidth}
-                      onClick={(_, event) => onDotClick(props, event)}
-                    />
-                  );
-                }}
+                key={category}
+                name={category}
+                type="linear"
+                dataKey={category}
+                stroke=""
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                isAnimationActive={false}
+                connectNulls={connectNulls}
                 dot={(props: any) => {
                   const {
                     stroke,
@@ -939,15 +804,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                     index,
                   } = props;
 
-                  if (
-                    (hasOnlyOneValueForKey(data, category) &&
-                      !(
-                        activeDot ||
-                        (activeLegend && activeLegend !== category)
-                      )) ||
-                    (activeDot?.index === index &&
-                      activeDot?.dataKey === category)
-                  ) {
+                  if (hasOnlyOneValueForKey(data, category)) {
                     return (
                       <Dot
                         key={index}
@@ -961,7 +818,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                         strokeWidth={strokeWidth}
                         className={cx(
                           "stroke-cbg dark:stroke-dbg",
-                          onValueChange ? "cursor-pointer" : "",
                           getColorClassName(
                             categoryColors.get(
                               dataKey,
@@ -974,42 +830,42 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                   }
                   return <React.Fragment key={index}></React.Fragment>;
                 }}
-                key={category}
-                name={category}
-                type="linear"
-                dataKey={category}
-                stroke=""
-                strokeWidth={2}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                isAnimationActive={false}
-                connectNulls={connectNulls}
+                activeDot={(props: any) => {
+                  const {
+                    stroke,
+                    strokeLinecap,
+                    strokeLinejoin,
+                    strokeWidth,
+                    cx: cxCoord,
+                    cy: cyCoord,
+                    dataKey,
+                  } = props;
+
+                  return (
+                    <Dot
+                      key={props.index}
+                      cx={cxCoord}
+                      cy={cyCoord}
+                      r={5}
+                      stroke={stroke}
+                      fill=""
+                      strokeLinecap={strokeLinecap}
+                      strokeLinejoin={strokeLinejoin}
+                      strokeWidth={strokeWidth}
+                      className={cx(
+                        "stroke-cbg dark:stroke-dbg",
+                        getColorClassName(
+                          categoryColors.get(
+                            dataKey,
+                          ) as AvailableChartColorsKeys,
+                          "fill",
+                        ),
+                      )}
+                    />
+                  );
+                }}
               />
             ))}
-            {/* hidden lines to increase clickable target area */}
-            {onValueChange
-              ? categories.map((category) => (
-                <Line
-                  className={cx("cursor-pointer")}
-                  strokeOpacity={0}
-                  key={category}
-                  name={category}
-                  type="linear"
-                  dataKey={category}
-                  stroke="transparent"
-                  fill="transparent"
-                  legendType="none"
-                  tooltipType="none"
-                  strokeWidth={12}
-                  connectNulls={connectNulls}
-                  onClick={(props: any, event) => {
-                    event.stopPropagation();
-                    const { name } = props;
-                    onCategoryClick(name);
-                  }}
-                />
-              ))
-              : null}
           </RechartsLineChart>
         </ResponsiveContainer>
       </div>
