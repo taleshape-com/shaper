@@ -1,7 +1,7 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
-import { BarChart } from "../tremor/BarChart";
+import { EChartsBarChart } from "../tremor/EChartsBarChart";
 
 type BarProps = {
   chartId: string;
@@ -94,14 +94,17 @@ const DashboardBarChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const indexAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : indexType === "time" ? [minT, maxT] : undefined
+  const indexAxisDomain = isTimeType(indexType) 
+    ? getIndexAxisDomain(minTimeValue, maxTimeValue) as [number, number]
+    : indexType === "time" 
+      ? [minT, maxT] as [number, number]
+      : undefined;
 
   return (
-    <BarChart
+    <EChartsBarChart
       chartId={chartId}
       className="h-full select-none"
       enableLegendSlider={categories.size > 10}
-      startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexType) ? 10 : 15)}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}
