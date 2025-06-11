@@ -200,6 +200,10 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
         tooltip: {
           show: showTooltip,
           trigger: 'axis',
+          triggerOn: 'mousemove',
+          enterable: false,
+          confine: true,
+          hideDelay: 100,
           formatter: (params: any) => {
             let indexValue: any;
             let extraData: any;
@@ -276,6 +280,10 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
             color: textColor,
           },
         },
+        axisPointer: {
+          type: 'line',
+          triggerOn: 'mousemove',
+        },
         legend: {
           show: showLegend,
           type: enableLegendSlider ? 'scroll' : 'plain',
@@ -296,6 +304,10 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           type: layout === "horizontal" ? (isTimestampData ? "time" : "category") : "value",
           data: layout === "horizontal" && !isTimestampData ? xAxisData : undefined,
           show: showXAxis,
+          axisPointer: {
+            type: 'line',
+            triggerOn: 'mousemove',
+          },
           axisLabel: {
             show: true, // Always show labels
             formatter: (value: any) => {
@@ -342,6 +354,10 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           type: layout === "horizontal" ? "value" : (isTimestampData ? "time" : "category"),
           data: layout === "vertical" && !isTimestampData ? xAxisData : undefined,
           show: showYAxis,
+          axisPointer: {
+            type: 'line',
+            triggerOn: 'mousemove',
+          },
           axisLabel: {
             show: true, // Always show labels
             formatter: (value: any) => {
@@ -387,15 +403,56 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
 
       // Handle hover state
       chart.on('mouseover', (params: any) => {
-        if (params.componentType === 'series') {
-          const indexValue = layout === "horizontal" 
-            ? params.name 
-            : Array.isArray(params.value) ? params.value[0] : params.value;
+        console.log('ECharts mouseover params:', params);
+        
+        // Only handle hover on series for horizontal charts to prevent flickering on vertical charts
+        if (params.componentType === 'series' && layout === "horizontal") {
+          let indexValue: any;
+          
+          if (isTimestampData && layout === "horizontal") {
+            // For time axis, the timestamp is in params.value[0]
+            indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
+          } else if (layout === "horizontal") {
+            // For category axis, use the data index to get the actual index value
+            const dataIndex = params.dataIndex;
+            indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
+          } else {
+            // For vertical layout
+            indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
+          }
+          
+          console.log('Setting hover state with indexValue:', indexValue);
           setHoverState(indexValue, chartId, indexType);
         }
       });
 
-      chart.on('mouseout', () => {
+      // Add tooltip event handler
+      chart.on('showTip', (params: any) => {
+        console.log('ECharts showTip params:', params);
+        
+        // Handle both dataIndex and axisValue approaches
+        let indexValue: any;
+        
+        if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
+          // Use dataIndex if available
+          const dataIndex = params.dataIndex;
+          if (dataIndex >= 0 && dataIndex < data.length) {
+            indexValue = data[dataIndex][index];
+          }
+        } else if (params.axisValue !== undefined) {
+          // Use axisValue as fallback
+          indexValue = params.axisValue;
+        }
+        
+        if (indexValue !== undefined) {
+          console.log('Setting hover state from showTip with indexValue:', indexValue);
+          setHoverState(indexValue, chartId, indexType);
+        }
+      });
+
+      // Also handle tooltip hide to clear hover state
+      chart.on('hideTip', () => {
+        console.log('ECharts hideTip');
         if (hoveredChartId === chartId) {
           setHoverState(null, null, null);
         }
@@ -406,6 +463,9 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
         const markLine = {
           silent: true,
           symbol: 'none',
+          label: {
+            show: false, // Hide any labels on the reference line
+          },
           lineStyle: {
             color: getComputedCssValue('--shaper-reference-line-color'),
           },
