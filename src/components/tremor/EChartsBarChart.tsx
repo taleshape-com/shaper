@@ -141,25 +141,59 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
       const textColor = getComputedCssValue('--shaper-text-color');
       const textColorSecondary = getComputedCssValue('--shaper-text-color-secondary');
 
-      // Set up chart options
-      const series: echarts.BarSeriesOption[] = categories.map((category) => ({
-        name: category,
-        type: 'bar',
-        stack: type === "stacked" || type === "percent" ? "stack" : undefined,
-        data: data.map((item) => item[category]),
-        itemStyle: {
-          color: getColorValue(categoryColors.get(category) || 'primary'),
-        },
-        emphasis: {
-          itemStyle: {
-            color: getColorValue(categoryColors.get(category) || 'primary'),
-            opacity: 0.8,
-          },
-        },
-      }));
+      // Debug: Log the data structure
+      console.log('ECharts data:', data);
+      console.log('Categories:', categories);
+      console.log('Index:', index);
+      console.log('Index type:', indexType);
 
+      // Check if we're dealing with timestamps
+      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year";
+      
+      // Set up chart options
+      const series: echarts.BarSeriesOption[] = categories.map((category) => {
+        if (isTimestampData && layout === "horizontal") {
+          // For time axis, we need to provide data as [timestamp, value] pairs
+          return {
+            name: category,
+            type: 'bar',
+            stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+            data: data.map((item) => [item[index], item[category]]),
+            itemStyle: {
+              color: getColorValue(categoryColors.get(category) || 'primary'),
+            },
+            emphasis: {
+              itemStyle: {
+                color: getColorValue(categoryColors.get(category) || 'primary'),
+                opacity: 0.8,
+              },
+            },
+          };
+        } else {
+          // For category axis, use the original format
+          return {
+            name: category,
+            type: 'bar',
+            stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+            data: data.map((item) => item[category]),
+            itemStyle: {
+              color: getColorValue(categoryColors.get(category) || 'primary'),
+            },
+            emphasis: {
+              itemStyle: {
+                color: getColorValue(categoryColors.get(category) || 'primary'),
+                opacity: 0.8,
+              },
+            },
+          };
+        }
+      });
+
+      // For category axis, we need to use the index values as category names
       const xAxisData = data.map((item) => item[index]);
-      const isTimeAxis = indexType === "time" || indexType === "timestamp";
+      
+      // Debug: Log the axis data
+      console.log('X-axis data:', xAxisData);
 
       const option: echarts.EChartsOption = {
         animation: false,
@@ -167,14 +201,34 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           show: showTooltip,
           trigger: 'axis',
           formatter: (params: any) => {
-            const indexValue = params[0].axisValue;
+            let indexValue: any;
+            let extraData: any;
+            
+            if (isTimestampData && layout === "horizontal") {
+              // For time axis, the first param contains the timestamp
+              indexValue = params[0].value[0]; // timestamp is the first element
+              const dataIndex = data.findIndex(item => item[index] === indexValue);
+              extraData = dataIndex >= 0 ? extraDataByIndexAxis[data[dataIndex][index]] : undefined;
+            } else {
+              // For category axis, use the original logic
+              indexValue = params[0].axisValue;
+              extraData = extraDataByIndexAxis[indexValue];
+            }
+            
             const formattedIndex = indexFormatter(indexValue);
-            const extraData = extraDataByIndexAxis[indexValue];
             
             let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
             
             if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
-              const total = params.reduce((sum: number, item: any) => sum + item.value, 0);
+              const total = params.reduce((sum: number, item: any) => {
+                let value: number;
+                if (isTimestampData && layout === "horizontal" && Array.isArray(item.value) && item.value.length >= 2) {
+                  value = item.value[1] as number;
+                } else {
+                  value = item.value as number;
+                }
+                return sum + value;
+              }, 0);
               tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
                 <span class="font-medium">${translate('Total')}</span>
                 <span>${formatValue(total, valueType, true)}</span>
@@ -183,24 +237,33 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
 
             if (extraData) {
               tooltipContent += `<div class="mt-2">`;
-              Object.entries(extraData).forEach(([key, [value, columnType]]) => {
-                tooltipContent += `<div class="flex justify-between space-x-2">
-                  <span class="font-medium">${key}</span>
-                  <span>${formatValue(value, columnType, true)}</span>
-                </div>`;
+              Object.entries(extraData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span class="font-medium">${key}</span>
+                    <span>${formatValue(value, columnType, true)}</span>
+                  </div>`;
+                }
               });
               tooltipContent += `</div>`;
             }
 
             tooltipContent += `<div class="mt-2">`;
             params.forEach((param: any) => {
-              const value = type === "percent" ? param.value * 100 + "%" : formatValue(param.value, valueType, true);
+              let value: number;
+              if (isTimestampData && layout === "horizontal" && Array.isArray(param.value) && param.value.length >= 2) {
+                value = param.value[1] as number;
+              } else {
+                value = param.value as number;
+              }
+              const formattedValue = type === "percent" ? value * 100 + "%" : formatValue(value, valueType, true);
               tooltipContent += `<div class="flex items-center justify-between space-x-2">
                 <div class="flex items-center space-x-2">
                   <span class="inline-block size-2 rounded-sm" style="background-color: ${param.color}"></span>
-                  <span>${param.seriesName}</span>
+                  ${categories.length > 1 ? `<span>${param.seriesName}</span>` : ''}
                 </div>
-                <span class="font-medium">${value}</span>
+                <span class="font-medium">${formattedValue}</span>
               </div>`;
             });
             tooltipContent += `</div>`;
@@ -230,18 +293,29 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           containLabel: true,
         },
         xAxis: {
-          type: layout === "horizontal" ? (isTimeAxis ? "time" : "category") : "value",
-          data: layout === "horizontal" ? xAxisData : undefined,
+          type: layout === "horizontal" ? (isTimestampData ? "time" : "category") : "value",
+          data: layout === "horizontal" && !isTimestampData ? xAxisData : undefined,
           show: showXAxis,
           axisLabel: {
-            show: true,
+            show: true, // Always show labels
             formatter: (value: any) => {
               if (type === "percent") {
                 return `${(value * 100).toFixed(0)}%`;
               }
+              // For timestamps, format the value properly
               return indexFormatter(value);
             },
             color: textColorSecondary,
+            rotate: 0,
+            // For time axes, use interval to prevent overlap
+            ...(isTimestampData && {
+              interval: Math.ceil(data.length / 10), // Show roughly 10 labels max
+              hideOverlap: true,
+            }),
+            // For other cases, use auto interval
+            ...(!isTimestampData && {
+              interval: 'auto',
+            }),
           },
           axisLine: {
             show: false,
@@ -265,11 +339,11 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           max: indexAxisDomain[1] === "auto" ? undefined : indexAxisDomain[1],
         },
         yAxis: {
-          type: layout === "horizontal" ? "value" : (isTimeAxis ? "time" : "category"),
-          data: layout === "vertical" ? xAxisData : undefined,
+          type: layout === "horizontal" ? "value" : (isTimestampData ? "time" : "category"),
+          data: layout === "vertical" && !isTimestampData ? xAxisData : undefined,
           show: showYAxis,
           axisLabel: {
-            show: true,
+            show: true, // Always show labels
             formatter: (value: any) => {
               if (type === "percent") {
                 return `${(value * 100).toFixed(0)}%`;
@@ -277,6 +351,15 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               return valueFormatter(value);
             },
             color: textColorSecondary,
+            // For time axes, use interval to prevent overlap
+            ...(isTimestampData && {
+              interval: Math.ceil(data.length / 10), // Show roughly 10 labels max
+              hideOverlap: true,
+            }),
+            // For other cases, use auto interval
+            ...(!isTimestampData && {
+              interval: 'auto',
+            }),
           },
           axisLine: {
             show: false,
