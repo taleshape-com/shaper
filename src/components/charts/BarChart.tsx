@@ -5,6 +5,8 @@ import {
   AvailableEChartsColors,
   constructEChartsCategoryColors,
   getEChartsColor,
+  isDarkMode,
+  getThemeColors,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -12,46 +14,7 @@ import { Column } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 
-// Function to get computed CSS value
-const getComputedCssValue = (cssVar: string): string => {
-  const root = document.documentElement;
-  const computedValue = getComputedStyle(root).getPropertyValue(cssVar).trim();
-  return computedValue || `var(${cssVar})`;
-};
-
-// Function to detect if dark mode is active
-const isDarkMode = (): boolean => {
-  // Check if the body has dark mode classes or if we're in a dark theme context
-  const body = document.body;
-  return body.classList.contains('dark') ||
-    body.classList.contains('dark-mode') ||
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
-};
-
-// Function to get theme-appropriate colors
-const getThemeColors = () => {
-  const isDark = isDarkMode();
-
-  if (isDark) {
-    return {
-      backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
-      borderColor: getComputedCssValue('--shaper-dark-mode-border-color'),
-      textColor: getComputedCssValue('--shaper-dark-mode-text-color'),
-      textColorSecondary: getComputedCssValue('--shaper-dark-mode-text-color-secondary'),
-      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
-    };
-  } else {
-    return {
-      backgroundColor: getComputedCssValue('--shaper-background-color'),
-      borderColor: getComputedCssValue('--shaper-border-color'),
-      textColor: getComputedCssValue('--shaper-text-color'),
-      textColorSecondary: getComputedCssValue('--shaper-text-color-secondary'),
-      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
-    };
-  }
-};
-
-interface EChartsBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
+interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   data: Record<string, any>[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
@@ -71,12 +34,12 @@ interface EChartsBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   label?: string;
 }
 
-const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
+const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
   (props, forwardedRef) => {
     const {
-      data = [],
+      data,
       extraDataByIndexAxis,
-      categories = [],
+      categories,
       index,
       indexType,
       valueType,
@@ -675,6 +638,6 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
   }
 );
 
-EChartsBarChart.displayName = "EChartsBarChart";
+BarChart.displayName = "EChartsBarChart";
 
-export { EChartsBarChart, type EChartsBarChartProps };
+export { BarChart, type BarChartProps };

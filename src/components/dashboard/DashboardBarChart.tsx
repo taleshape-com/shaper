@@ -1,7 +1,7 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
-import { EChartsBarChart } from "../tremor/EChartsBarChart";
+import { BarChart, type BarChartProps } from "../charts/BarChart";
 
 type BarProps = {
   chartId: string;
@@ -101,7 +101,7 @@ const DashboardBarChart = ({
       : undefined;
 
   return (
-    <EChartsBarChart
+    <BarChart
       chartId={chartId}
       className="h-full select-none"
       type={stacked ? "stacked" : "default"}

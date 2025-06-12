@@ -4,6 +4,7 @@ import { AxisDomain } from "recharts/types/util/types"
 
 export type ColorUtility = "bg" | "stroke" | "fill" | "text"
 
+// TODO: Remove this when Recharts is done
 export const chartColors = {
   primary: {
     bg: "bg-cprimary",
@@ -205,6 +206,45 @@ export function hasOnlyOneValueForKey(
   return true
 }
 
+// Helper function to get computed CSS value
+export const getComputedCssValue = (cssVar: string): string => {
+  const root = document.documentElement;
+  const computedValue = getComputedStyle(root).getPropertyValue(cssVar).trim();
+  return computedValue || `var(${cssVar})`;
+};
+
+// Function to detect if dark mode is active
+export const isDarkMode = (): boolean => {
+  // Check if the body has dark mode classes or if we're in a dark theme context
+  const body = document.body;
+  return body.classList.contains('dark') || 
+         body.classList.contains('dark-mode') ||
+         window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+// Function to get theme-appropriate colors
+export const getThemeColors = () => {
+  const isDark = isDarkMode();
+  
+  if (isDark) {
+    return {
+      backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
+      borderColor: getComputedCssValue('--shaper-dark-mode-border-color'),
+      textColor: getComputedCssValue('--shaper-dark-mode-text-color'),
+      textColorSecondary: getComputedCssValue('--shaper-dark-mode-text-color-secondary'),
+      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
+    };
+  } else {
+    return {
+      backgroundColor: getComputedCssValue('--shaper-background-color'),
+      borderColor: getComputedCssValue('--shaper-border-color'),
+      textColor: getComputedCssValue('--shaper-text-color'),
+      textColorSecondary: getComputedCssValue('--shaper-text-color-secondary'),
+      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
+    };
+  }
+};
+
 // ECharts color utilities
 export const echartsColors = {
   primary: {
@@ -273,16 +313,12 @@ export const getEChartsColor = (
   const color = echartsColors[colorKey];
   if (!color) {
     const fallbackVar = isDark ? '--shaper-dark-mode-primary-color' : '--shaper-primary-color';
-    const root = document.documentElement;
-    const computedValue = getComputedStyle(root).getPropertyValue(fallbackVar).trim();
-    return computedValue || `var(${fallbackVar})`;
+    return getComputedCssValue(fallbackVar);
   }
   
   const cssVar = isDark ? color.dark : color.light;
   // Extract the CSS variable name from the var() function
   const varName = cssVar.replace('var(', '').replace(')', '');
-  const root = document.documentElement;
-  const computedValue = getComputedStyle(root).getPropertyValue(varName).trim();
   
-  return computedValue || cssVar;
+  return getComputedCssValue(varName);
 };
