@@ -52,6 +52,38 @@ const getComputedCssValue = (cssVar: string): string => {
   return computedValue || `var(${cssVar})`;
 };
 
+// Function to detect if dark mode is active
+const isDarkMode = (): boolean => {
+  // Check if the body has dark mode classes or if we're in a dark theme context
+  const body = document.body;
+  return body.classList.contains('dark') || 
+         body.classList.contains('dark-mode') ||
+         window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+// Function to get theme-appropriate colors
+const getThemeColors = () => {
+  const isDark = isDarkMode();
+  
+  if (isDark) {
+    return {
+      backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
+      borderColor: getComputedCssValue('--shaper-dark-mode-border-color'),
+      textColor: getComputedCssValue('--shaper-dark-mode-text-color'),
+      textColorSecondary: getComputedCssValue('--shaper-dark-mode-text-color-secondary'),
+      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
+    };
+  } else {
+    return {
+      backgroundColor: getComputedCssValue('--shaper-background-color'),
+      borderColor: getComputedCssValue('--shaper-border-color'),
+      textColor: getComputedCssValue('--shaper-text-color'),
+      textColorSecondary: getComputedCssValue('--shaper-text-color-secondary'),
+      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
+    };
+  }
+};
+
 interface EChartsBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   data: Record<string, any>[];
@@ -111,6 +143,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<echarts.ECharts | null>(null);
     const [isChartHovered, setIsChartHovered] = React.useState(false);
+    const [currentTheme, setCurrentTheme] = React.useState<'light' | 'dark'>(isDarkMode() ? 'dark' : 'light');
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
@@ -120,10 +153,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo(() => {
       // Get computed colors for theme
-      const backgroundColor = getComputedCssValue('--shaper-background-color');
-      const borderColor = getComputedCssValue('--shaper-border-color');
-      const textColor = getComputedCssValue('--shaper-text-color');
-      const textColorSecondary = getComputedCssValue('--shaper-text-color-secondary');
+      const { backgroundColor, borderColor, textColor, textColorSecondary } = getThemeColors();
 
       // Check if we're dealing with timestamps
       const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
@@ -425,7 +455,34 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
       yAxisLabel,
       extraDataByIndexAxis,
       enableLegendSlider,
+      currentTheme,
     ]);
+
+    // Listen for theme changes
+    useEffect(() => {
+      const checkTheme = () => {
+        const newTheme = isDarkMode() ? 'dark' : 'light';
+        if (newTheme !== currentTheme) {
+          setCurrentTheme(newTheme);
+        }
+      };
+
+      // Check theme on mount
+      checkTheme();
+
+      // Listen for theme changes
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      mediaQuery.addEventListener('change', checkTheme);
+
+      // Also listen for class changes on body (for manual theme toggles)
+      const observer = new MutationObserver(checkTheme);
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+      return () => {
+        mediaQuery.removeEventListener('change', checkTheme);
+        observer.disconnect();
+      };
+    }, [currentTheme]);
 
     // Create a callback ref that handles both refs
     const setRefs = React.useCallback((node: HTMLDivElement | null) => {
@@ -550,7 +607,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
             show: false, // Hide any labels on the reference line
           },
           lineStyle: {
-            color: getComputedCssValue('--shaper-reference-line-color'),
+            color: getThemeColors().referenceLineColor,
           },
           data: [
             layout === "horizontal"
@@ -643,7 +700,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
                 const url = chartInstance.current.getDataURL({
                   type: 'png',
                   pixelRatio: 2,
-                  backgroundColor: getComputedCssValue('--shaper-background-color')
+                  backgroundColor: getThemeColors().backgroundColor
                 });
                 const link = document.createElement('a');
                 
