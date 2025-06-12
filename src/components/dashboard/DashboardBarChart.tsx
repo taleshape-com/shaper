@@ -104,7 +104,7 @@ const DashboardBarChart = ({
     <EChartsBarChart
       chartId={chartId}
       className="h-full select-none"
-      enableLegendSlider={categories.size > 10}
+      enableLegendSlider={true}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}
@@ -124,7 +124,6 @@ const DashboardBarChart = ({
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
       indexAxisDomain={indexAxisDomain}
-      maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
       label={label}
     />
   );
