@@ -94,9 +94,9 @@ const DashboardBarChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const indexAxisDomain = isTimeType(indexType) 
+  const indexAxisDomain = isTimeType(indexType)
     ? getIndexAxisDomain(minTimeValue, maxTimeValue) as [number, number]
-    : indexType === "time" 
+    : indexType === "time"
       ? [minT, maxT] as [number, number]
       : undefined;
 
@@ -104,7 +104,6 @@ const DashboardBarChart = ({
     <EChartsBarChart
       chartId={chartId}
       className="h-full select-none"
-      enableLegendSlider={true}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}
@@ -123,7 +122,8 @@ const DashboardBarChart = ({
       xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
-      indexAxisDomain={indexAxisDomain}
+      min={indexAxisDomain ? indexAxisDomain[0] : undefined}
+      max={indexAxisDomain ? indexAxisDomain[1] : undefined}
       label={label}
     />
   );

@@ -2,48 +2,15 @@ import React, { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 import { RiDownload2Line } from "@remixicon/react";
 import {
-  AvailableChartColors,
-  constructCategoryColors,
+  AvailableEChartsColors,
+  constructEChartsCategoryColors,
+  getEChartsColor,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { Column } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
-
-// Map of color keys to CSS variable names
-const colorKeyToCssVar: Record<string, string> = {
-  primary: '--shaper-primary-color',
-  color2: '--shaper-color-two',
-  color3: '--shaper-color-three',
-  color4: '--shaper-color-four',
-  color5: '--shaper-color-five',
-  color6: '--shaper-color-six',
-  color7: '--shaper-color-seven',
-  color8: '--shaper-color-eight',
-  color9: '--shaper-color-nine',
-  color10: '--shaper-color-ten',
-  violet: '--shaper-color-nine', // Using color-nine for violet
-  blue: '--shaper-color-eight', // Using color-eight for blue
-  fuchsia: '--shaper-color-three', // Using color-three for fuchsia
-  amber: '--shaper-color-six', // Using color-six for amber
-  cyan: '--shaper-color-two', // Using color-two for cyan
-  gray: '--shaper-color-ten', // Using color-ten for gray
-  lime: '--shaper-color-seven', // Using color-seven for lime
-};
-
-// Function to get the actual color value from a color key
-const getColorValue = (colorKey: string): string => {
-  const cssVar = colorKeyToCssVar[colorKey];
-  if (!cssVar) return '#000000'; // Fallback to black if color key not found
-  
-  // Get the computed value of the CSS variable from the root element
-  const root = document.documentElement;
-  const computedValue = getComputedStyle(root).getPropertyValue(cssVar).trim();
-  
-  // If we can't get the computed value, fall back to using the CSS variable directly
-  return computedValue || `var(${cssVar})`;
-};
 
 // Function to get computed CSS value
 const getComputedCssValue = (cssVar: string): string => {
@@ -56,15 +23,15 @@ const getComputedCssValue = (cssVar: string): string => {
 const isDarkMode = (): boolean => {
   // Check if the body has dark mode classes or if we're in a dark theme context
   const body = document.body;
-  return body.classList.contains('dark') || 
-         body.classList.contains('dark-mode') ||
-         window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return body.classList.contains('dark') ||
+    body.classList.contains('dark-mode') ||
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
 // Function to get theme-appropriate colors
 const getThemeColors = () => {
   const isDark = isDarkMode();
-  
+
   if (isDark) {
     return {
       backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
@@ -92,21 +59,15 @@ interface EChartsBarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
-  valueFormatter?: (value: number) => string;
-  indexFormatter?: (value: number) => string;
-  showXAxis?: boolean;
-  showYAxis?: boolean;
-  showGridLines?: boolean;
-  showTooltip?: boolean;
+  valueFormatter: (value: number) => string;
+  indexFormatter: (value: number) => string;
   showLegend?: boolean;
-  minValue?: number;
-  maxValue?: number;
-  enableLegendSlider?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  layout?: "vertical" | "horizontal";
-  type?: "default" | "stacked" | "percent";
-  indexAxisDomain?: [string | number, string | number];
+  layout: "vertical" | "horizontal";
+  type: "default" | "stacked";
+  min?: number;
+  max?: number;
   label?: string;
 }
 
@@ -121,20 +82,14 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
       valueType,
       valueFormatter = (value: number) => value.toString(),
       indexFormatter = (value: number) => value.toString(),
-      showXAxis = true,
-      showYAxis = true,
-      showGridLines = true,
-      showTooltip = true,
       showLegend = true,
-      minValue,
-      maxValue,
       className,
-      enableLegendSlider = false,
       xAxisLabel,
       yAxisLabel,
-      layout = "horizontal",
+      layout,
       type = "default",
-      indexAxisDomain = ["auto", "auto"],
+      min,
+      max,
       chartId,
       label,
       ...other
@@ -148,16 +103,17 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
-    const categoryColors = constructCategoryColors(categories, AvailableChartColors);
+    const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
 
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo(() => {
       // Get computed colors for theme
       const { backgroundColor, borderColor, textColor, textColorSecondary } = getThemeColors();
+      const isDark = isDarkMode();
 
       // Check if we're dealing with timestamps
       const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
-      
+
       // Set up chart options
       const series: echarts.BarSeriesOption[] = categories.map((category) => {
         if (isTimestampData) {
@@ -165,14 +121,14 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           return {
             name: category,
             type: 'bar',
-            stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+            stack: type === "stacked" ? "stack" : undefined,
             data: data.map((item) => [item[index], item[category]]),
             itemStyle: {
-              color: getColorValue(categoryColors.get(category) || 'primary'),
+              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
             },
             emphasis: {
               itemStyle: {
-                color: getColorValue(categoryColors.get(category) || 'primary'),
+                color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
                 opacity: 0.8,
               },
             },
@@ -182,14 +138,14 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           return {
             name: category,
             type: 'bar',
-            stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+            stack: type === "stacked" ? "stack" : undefined,
             data: data.map((item) => item[category]),
             itemStyle: {
-              color: getColorValue(categoryColors.get(category) || 'primary'),
+              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
             },
             emphasis: {
               itemStyle: {
-                color: getColorValue(categoryColors.get(category) || 'primary'),
+                color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
                 opacity: 0.8,
               },
             },
@@ -209,7 +165,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
         renderer: 'canvas',
         useDirtyRect: true,
         tooltip: {
-          show: showTooltip,
+          show: true,
           trigger: 'axis',
           triggerOn: 'mousemove',
           enterable: false,
@@ -220,7 +176,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           formatter: (params: any) => {
             let indexValue: any;
             let extraData: any;
-            
+
             if (isTimestampData) {
               // For time axis, the first param contains the timestamp for both layouts
               indexValue = params[0].value[0]; // timestamp is the first element
@@ -231,11 +187,11 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               indexValue = params[0].axisValue;
               extraData = extraDataByIndexAxis[indexValue];
             }
-            
+
             const formattedIndex = indexFormatter(indexValue);
-            
+
             let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
-            
+
             if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
               const total = params.reduce((sum: number, item: any) => {
                 let value: number;
@@ -244,12 +200,12 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
                 } else {
                   value = item.value as number;
                 }
-                
+
                 // Only include valid values in the total
                 if (value === null || value === undefined || isNaN(value)) {
                   return sum;
                 }
-                
+
                 return sum + value;
               }, 0);
               tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
@@ -280,12 +236,12 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               } else {
                 value = param.value as number;
               }
-              
+
               // Skip categories with missing or null values
               if (value === null || value === undefined || isNaN(value)) {
                 return;
               }
-              
+
               const formattedValue = formatValue(value, valueType, true);
               tooltipContent += `<div class="flex items-center justify-between space-x-2">
                 <div class="flex items-center space-x-2">
@@ -311,7 +267,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
         },
         legend: {
           show: showLegend,
-          type: enableLegendSlider ? 'scroll' : 'plain',
+          type: 'scroll',
           orient: 'horizontal',
           left: 10,
           top: '0',
@@ -329,7 +285,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
         xAxis: {
           type: layout === "horizontal" ? (isTimestampData ? "time" : "category") : "value",
           data: layout === "horizontal" && !isTimestampData ? xAxisData : undefined,
-          show: showXAxis,
+          show: true,
           axisPointer: {
             type: 'line',
             triggerOn: 'mousemove',
@@ -364,7 +320,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           axisTick: {
             show: false,
           },
-          splitLine: showGridLines && layout === "vertical" ? {
+          splitLine: layout === "vertical" ? {
             show: true,
             lineStyle: {
               color: borderColor,
@@ -376,13 +332,13 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           nameTextStyle: {
             color: textColor,
           },
-          min: indexAxisDomain[0] === "auto" ? undefined : indexAxisDomain[0],
-          max: indexAxisDomain[1] === "auto" ? undefined : indexAxisDomain[1],
+          min,
+          max,
         },
         yAxis: {
           type: layout === "horizontal" ? "value" : (isTimestampData ? "time" : "category"),
           data: layout === "vertical" && !isTimestampData ? xAxisData : undefined,
-          show: showYAxis,
+          show: true,
           axisPointer: {
             type: 'line',
             triggerOn: 'mousemove',
@@ -415,7 +371,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           axisTick: {
             show: false,
           },
-          splitLine: showGridLines && layout === "horizontal" ? {
+          splitLine: layout === "horizontal" ? {
             show: true,
             lineStyle: {
               color: borderColor,
@@ -427,8 +383,6 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           nameTextStyle: {
             color: textColor,
           },
-          min: minValue,
-          max: maxValue,
         },
         series,
       };
@@ -440,21 +394,15 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
       valueType,
       valueFormatter,
       indexFormatter,
-      showXAxis,
-      showYAxis,
-      showGridLines,
-      showTooltip,
       showLegend,
-      minValue,
-      maxValue,
       layout,
       type,
-      indexAxisDomain,
+      min,
+      max,
       categoryColors,
       xAxisLabel,
       yAxisLabel,
       extraDataByIndexAxis,
-      enableLegendSlider,
       currentTheme,
     ]);
 
@@ -538,7 +486,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
         // Only handle hover on series for horizontal charts to prevent flickering on vertical charts
         if (params.componentType === 'series' && layout === "horizontal") {
           let indexValue: any;
-          
+
           if (isTimestampData && layout === "horizontal") {
             // For time axis, the timestamp is in params.value[0]
             indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
@@ -550,7 +498,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
             // For vertical layout
             indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
           }
-          
+
           setHoverState(indexValue, chartId, indexType);
         }
       });
@@ -559,7 +507,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
       chart.on('showTip', (params: any) => {
         // Handle both dataIndex and axisValue approaches
         let indexValue: any;
-        
+
         if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
           // Use dataIndex if available
           const dataIndex = params.dataIndex;
@@ -570,7 +518,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
           // Use axisValue as fallback
           indexValue = params.axisValue;
         }
-        
+
         if (indexValue !== undefined) {
           setHoverState(indexValue, chartId, indexType);
         }
@@ -615,7 +563,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               : { yAxis: hoveredIndex },
           ],
         };
-        
+
         // Update only the series with markLine, not the entire chart
         chart.setOption({
           series: categories.map((category) => {
@@ -623,7 +571,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               return {
                 name: category,
                 type: 'bar',
-                stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+                stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => [item[index], item[category]]),
                 markLine,
               };
@@ -631,7 +579,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               return {
                 name: category,
                 type: 'bar',
-                stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+                stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => item[category]),
                 markLine,
               };
@@ -646,7 +594,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               return {
                 name: category,
                 type: 'bar',
-                stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+                stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => [item[index], item[category]]),
                 markLine: undefined,
               };
@@ -654,7 +602,7 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
               return {
                 name: category,
                 type: 'bar',
-                stack: type === "stacked" || type === "percent" ? "stack" : undefined,
+                stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => item[category]),
                 markLine: undefined,
               };
@@ -665,8 +613,8 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
     }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, layout, categories, data, index, type]);
 
     return (
-      <div 
-        className={cx("h-80 w-full relative", className)} 
+      <div
+        className={cx("h-80 w-full relative", className)}
         onMouseEnter={() => setIsChartHovered(true)}
         onMouseLeave={() => setIsChartHovered(false)}
         {...other}
@@ -703,13 +651,13 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
                   backgroundColor: getThemeColors().backgroundColor
                 });
                 const link = document.createElement('a');
-                
+
                 // Generate a simple filename
                 const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-                const filename = label 
+                const filename = label
                   ? `${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${timestamp}.png`
                   : `chart-${chartId}-${timestamp}.png`;
-                
+
                 link.download = filename;
                 link.href = url;
                 document.body.appendChild(link);
@@ -729,4 +677,4 @@ const EChartsBarChart = React.forwardRef<HTMLDivElement, EChartsBarChartProps>(
 
 EChartsBarChart.displayName = "EChartsBarChart";
 
-export { EChartsBarChart, type EChartsBarChartProps }; 
+export { EChartsBarChart, type EChartsBarChartProps };
