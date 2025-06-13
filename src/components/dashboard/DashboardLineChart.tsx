@@ -1,5 +1,5 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
-import { LineChart } from "../tremor/LineChart";
+import { LineChart } from "../charts/LineChart";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 
@@ -93,8 +93,6 @@ const DashboardLineChart = ({
     <LineChart
       chartId={chartId}
       className="h-full select-none"
-      enableLegendSlider
-      startEndOnly={isTimeType(indexType)}
       connectNulls
       data={chartdata}
       extraDataByIndexAxis={extraDataByIndexAxis}
@@ -111,8 +109,8 @@ const DashboardLineChart = ({
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
-      xAxisDomain={xAxisDomain}
-      maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
+      min={xAxisDomain ? xAxisDomain[0] : undefined}
+      max={xAxisDomain ? xAxisDomain[1] : undefined}
       label={label}
     />
   );

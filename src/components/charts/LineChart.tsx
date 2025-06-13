@@ -14,27 +14,25 @@ import { Column } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 
-interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
+interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   data: Record<string, any>[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
   indexType: Column['type'];
-  valueType: Column['type'];
   categories: string[];
   valueFormatter: (value: number) => string;
   indexFormatter: (value: number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  layout: "vertical" | "horizontal";
-  type: "default" | "stacked";
+  connectNulls?: boolean;
   min?: number;
   max?: number;
   label?: string;
 }
 
-const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
+const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
   (props, forwardedRef) => {
     const {
       data,
@@ -42,15 +40,13 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       categories,
       index,
       indexType,
-      valueType,
       valueFormatter = (value: number) => value.toString(),
       indexFormatter = (value: number) => value.toString(),
       showLegend = true,
       className,
       xAxisLabel,
       yAxisLabel,
-      layout,
-      type = "default",
+      connectNulls = false,
       min,
       max,
       chartId,
@@ -78,21 +74,37 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
 
       // Set up chart options
-      const series: echarts.BarSeriesOption[] = categories.map((category) => {
+      const series: echarts.LineSeriesOption[] = categories.map((category) => {
         if (isTimestampData) {
-          // For time axis, we need to provide data as [timestamp, value] pairs for both layouts
+          // For time axis, we need to provide data as [timestamp, value] pairs
           return {
             name: category,
-            type: 'bar',
-            stack: type === "stacked" ? "stack" : undefined,
+            type: 'line',
             data: data.map((item) => [item[index], item[category]]),
+            connectNulls,
+            symbol: 'circle',
+            symbolSize: 6,
+            showSymbol: false,
+            lineStyle: {
+              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              width: 2,
+            },
             itemStyle: {
               color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              borderColor: backgroundColor,
+              borderWidth: 2,
             },
             emphasis: {
+              showSymbol: true,
               itemStyle: {
                 color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-                opacity: 0.8,
+                borderColor: backgroundColor,
+                borderWidth: 2,
+                shadowBlur: 0,
+                shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              },
+              lineStyle: {
+                width: 2,
               },
             },
           };
@@ -100,16 +112,32 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           // For category axis, use the original format
           return {
             name: category,
-            type: 'bar',
-            stack: type === "stacked" ? "stack" : undefined,
+            type: 'line',
             data: data.map((item) => item[category]),
+            connectNulls,
+            symbol: 'circle',
+            symbolSize: 6,
+            showSymbol: false,
+            lineStyle: {
+              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              width: 2,
+            },
             itemStyle: {
               color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              borderColor: backgroundColor,
+              borderWidth: 2,
             },
             emphasis: {
+              showSymbol: true,
               itemStyle: {
                 color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-                opacity: 0.8,
+                borderColor: backgroundColor,
+                borderWidth: 2,
+                shadowBlur: 0,
+                shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              },
+              lineStyle: {
+                width: 2,
               },
             },
           };
@@ -141,7 +169,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             let extraData: any;
 
             if (isTimestampData) {
-              // For time axis, the first param contains the timestamp for both layouts
+              // For time axis, the first param contains the timestamp
               indexValue = params[0].value[0]; // timestamp is the first element
               const dataIndex = data.findIndex(item => item[index] === indexValue);
               extraData = dataIndex >= 0 ? extraDataByIndexAxis[data[dataIndex][index]] : undefined;
@@ -154,28 +182,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             const formattedIndex = indexFormatter(indexValue);
 
             let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
-
-            if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
-              const total = params.reduce((sum: number, item: any) => {
-                let value: number;
-                if (isTimestampData && Array.isArray(item.value) && item.value.length >= 2) {
-                  value = item.value[1] as number;
-                } else {
-                  value = item.value as number;
-                }
-
-                // Only include valid values in the total
-                if (value === null || value === undefined || isNaN(value)) {
-                  return sum;
-                }
-
-                return sum + value;
-              }, 0);
-              tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
-                <span class="font-medium">${translate('Total')}</span>
-                <span>${formatValue(total, valueType, true)}</span>
-              </div>`;
-            }
 
             if (extraData) {
               tooltipContent += `<div class="mt-2">`;
@@ -205,7 +211,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 return;
               }
 
-              const formattedValue = formatValue(value, valueType, true);
+              const formattedValue = formatValue(value, 'number', true);
               tooltipContent += `<div class="flex items-center justify-between space-x-2">
                 <div class="flex items-center space-x-2">
                   <span class="inline-block size-2 rounded-sm" style="background-color: ${param.color}"></span>
@@ -246,26 +252,22 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           containLabel: true,
         },
         xAxis: {
-          type: layout === "horizontal" ? (isTimestampData ? "time" : "category") : "value",
-          data: layout === "horizontal" && !isTimestampData ? xAxisData : undefined,
+          type: isTimestampData ? "time" : "category",
+          data: !isTimestampData ? xAxisData : undefined,
           show: true,
           axisPointer: {
             type: 'line',
             triggerOn: 'mousemove',
           },
           axisLabel: {
-            show: true, // Always show labels
+            show: true,
             formatter: (value: any) => {
-              if (valueType === "percent" && layout === "vertical") {
-                return `${(value * 100).toFixed(0)}%`;
-              }
-              // For timestamps, format the value properly
               return indexFormatter(value);
             },
             color: textColorSecondary,
             rotate: 0,
-            margin: 16, // Add margin between labels
-            padding: [4, 8, 4, 8], // Add padding around labels
+            margin: 16,
+            padding: [4, 8, 4, 8],
             interval: (index: number) => {
               // Always show first and last labels
               if (index === 0 || index === data.length - 1) {
@@ -275,7 +277,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               const step = Math.max(1, Math.floor(data.length / 3));
               return index % step === 0;
             },
-            hideOverlap: true, // Let ECharts handle overlap
+            hideOverlap: true,
           },
           axisLine: {
             show: false,
@@ -283,12 +285,12 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           axisTick: {
             show: false,
           },
-          splitLine: layout === "vertical" ? {
+          splitLine: {
             show: true,
             lineStyle: {
               color: borderColor,
             },
-          } : undefined,
+          },
           name: xAxisLabel,
           nameLocation: 'middle',
           nameGap: 45,
@@ -299,34 +301,30 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           max,
         },
         yAxis: {
-          type: layout === "horizontal" ? "value" : (isTimestampData ? "time" : "category"),
-          data: layout === "vertical" && !isTimestampData ? xAxisData : undefined,
+          type: "value",
           show: true,
           axisPointer: {
             type: 'line',
             triggerOn: 'mousemove',
           },
           axisLabel: {
-            show: true, // Always show labels
+            show: true,
             formatter: (value: any) => {
-              if (valueType === "percent" && layout === "horizontal") {
-                return `${(value * 100).toFixed(0)}%`;
-              }
               return valueFormatter(value);
             },
             color: textColorSecondary,
-            margin: 16, // Add margin between labels
-            padding: [4, 8, 4, 8], // Add padding around labels
+            margin: 16,
+            padding: [4, 8, 4, 8],
             interval: (index: number) => {
               // Always show first and last labels
-              if (index === 0 || index === data.length - 1) {
+              if (index === 0 || index === 5) {
                 return true;
               }
               // For intermediate labels, show every nth label
-              const step = Math.max(1, Math.floor(data.length / 3));
+              const step = Math.max(1, Math.floor(5 / 3));
               return index % step === 0;
             },
-            hideOverlap: true, // Let ECharts handle overlap
+            hideOverlap: true,
           },
           axisLine: {
             show: false,
@@ -334,12 +332,12 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           axisTick: {
             show: false,
           },
-          splitLine: layout === "horizontal" ? {
+          splitLine: {
             show: true,
             lineStyle: {
               color: borderColor,
             },
-          } : undefined,
+          },
           name: yAxisLabel,
           nameLocation: 'middle',
           nameGap: 60,
@@ -354,17 +352,15 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       categories,
       index,
       indexType,
-      valueType,
       valueFormatter,
       indexFormatter,
       showLegend,
-      layout,
-      type,
+      xAxisLabel,
+      yAxisLabel,
+      connectNulls,
       min,
       max,
       categoryColors,
-      xAxisLabel,
-      yAxisLabel,
       extraDataByIndexAxis,
       currentTheme,
     ]);
@@ -444,24 +440,18 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
 
       // Handle hover state
       chart.on('mouseover', (params: any) => {
-        // Only handle hover on series for horizontal charts to prevent flickering on vertical charts
-        if (params.componentType === 'series' && layout === "horizontal") {
-          let indexValue: any;
+        let indexValue: any;
 
-          if (isTimestampData && layout === "horizontal") {
-            // For time axis, the timestamp is in params.value[0]
-            indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
-          } else if (layout === "horizontal") {
-            // For category axis, use the data index to get the actual index value
-            const dataIndex = params.dataIndex;
-            indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
-          } else {
-            // For vertical layout
-            indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
-          }
-
-          setHoverState(indexValue, chartId, indexType);
+        if (isTimestampData) {
+          // For time axis, the timestamp is in params.value[0]
+          indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
+        } else {
+          // For category axis, use the data index to get the actual index value
+          const dataIndex = params.dataIndex;
+          indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
         }
+
+        setHoverState(indexValue, chartId, indexType);
       });
 
       // Add tooltip event handler
@@ -498,7 +488,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
         chart.off('showTip');
         chart.off('hideTip');
       };
-    }, [chartInstance.current, layout, indexType, data, index, chartId, setHoverState, hoveredChartId]);
+    }, [chartInstance.current, indexType, data, index, chartId, setHoverState, hoveredChartId]);
 
     // Separate useEffect for hover state updates to prevent chart recreation
     useEffect(() => {
@@ -519,9 +509,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             color: getThemeColors().referenceLineColor,
           },
           data: [
-            layout === "horizontal"
-              ? { xAxis: hoveredIndex }
-              : { yAxis: hoveredIndex },
+            { xAxis: hoveredIndex },
           ],
         };
 
@@ -531,17 +519,17 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             if (isTimestampData) {
               return {
                 name: category,
-                type: 'bar',
-                stack: type === "stacked" ? "stack" : undefined,
+                type: 'line',
                 data: data.map((item) => [item[index], item[category]]),
+                connectNulls,
                 markLine,
               };
             } else {
               return {
                 name: category,
-                type: 'bar',
-                stack: type === "stacked" ? "stack" : undefined,
+                type: 'line',
                 data: data.map((item) => item[category]),
+                connectNulls,
                 markLine,
               };
             }
@@ -554,24 +542,24 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             if (isTimestampData) {
               return {
                 name: category,
-                type: 'bar',
-                stack: type === "stacked" ? "stack" : undefined,
+                type: 'line',
                 data: data.map((item) => [item[index], item[category]]),
+                connectNulls,
                 markLine: undefined,
               };
             } else {
               return {
                 name: category,
-                type: 'bar',
-                stack: type === "stacked" ? "stack" : undefined,
+                type: 'line',
                 data: data.map((item) => item[category]),
+                connectNulls,
                 markLine: undefined,
               };
             }
           })
         });
       }
-    }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, layout, categories, data, index, type]);
+    }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, categories, data, index, connectNulls]);
 
     return (
       <div
@@ -636,6 +624,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
   }
 );
 
-BarChart.displayName = "EChartsBarChart";
+LineChart.displayName = "LineChart";
 
-export { BarChart, type BarChartProps };
+export { LineChart, type LineChartProps }; 

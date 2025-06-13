@@ -1,7 +1,7 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
-import { BarChart, type BarChartProps } from "../charts/BarChart";
+import { BarChart } from "../charts/BarChart";
 
 type BarProps = {
   chartId: string;
