@@ -1,19 +1,18 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import * as echarts from "echarts";
-import { RiDownload2Line } from "@remixicon/react";
 import {
   AvailableEChartsColors,
   constructEChartsCategoryColors,
   getEChartsColor,
   isDarkMode,
   getThemeColors,
-  downloadChartAsImage,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { Column } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
-import { translate } from "../../lib/translate";
+import { EChart } from "./EChart";
+import { ChartDownloadButton } from "./ChartDownloadButton";
 
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
@@ -55,24 +54,15 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       ...other
     } = props;
 
-    const chartRef = useRef<HTMLDivElement>(null);
-    const chartInstance = useRef<echarts.ECharts | null>(null);
-    const [currentTheme, setCurrentTheme] = React.useState<'light' | 'dark'>(isDarkMode() ? 'dark' : 'light');
+    const chartRef = React.useRef<echarts.ECharts | null>(null);
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
     const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
 
-    // Memoized download handler
-    const handleDownload = useCallback(() => {
-      if (chartInstance.current) {
-        downloadChartAsImage(chartInstance.current, chartId, label);
-      }
-    }, [chartId, label, chartInstance]);
-
     // Memoize the chart options to prevent unnecessary re-renders
-    const chartOptions = React.useMemo(() => {
+    const chartOptions = React.useMemo((): echarts.EChartsOption => {
       // Get computed colors for theme
       const { backgroundColor, borderColor, textColor, textColorSecondary } = getThemeColors();
       const isDark = isDarkMode();
@@ -255,7 +245,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
           containLabel: true,
         },
         xAxis: {
-          type: isTimestampData ? "time" : "category",
+          type: isTimestampData ? "time" as const : "category" as const,
           data: !isTimestampData ? xAxisData : undefined,
           show: true,
           axisLabel: {
@@ -305,7 +295,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
           max,
         },
         yAxis: {
-          type: "value",
+          type: "value" as const,
           show: true,
           axisLabel: {
             show: true,
@@ -315,15 +305,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
             color: textColorSecondary,
             margin: 16,
             padding: [4, 8, 4, 8],
-            interval: (index: number) => {
-              // Always show first and last labels
-              if (index === 0 || index === 5) {
-                return true;
-              }
-              // For intermediate labels, show every nth label
-              const step = Math.max(1, Math.floor(5 / 3));
-              return index % step === 0;
-            },
             hideOverlap: true,
           },
           axisPointer: {
@@ -357,6 +338,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       categories,
       index,
       indexType,
+      valueType,
       valueFormatter,
       indexFormatter,
       showLegend,
@@ -368,126 +350,65 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       extraDataByIndexAxis,
     ]);
 
-    // Listen for theme changes
-    useEffect(() => {
-      const checkTheme = () => {
-        const newTheme = isDarkMode() ? 'dark' : 'light';
-        if (newTheme !== currentTheme) {
-          setCurrentTheme(newTheme);
-        }
-      };
-      checkTheme();
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      mediaQuery.addEventListener('change', checkTheme);
-      return () => {
-        mediaQuery.removeEventListener('change', checkTheme);
-      };
-    }, [currentTheme]);
+    // Event handlers for the EChart component
+    const chartEvents = React.useMemo(() => {
+      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
 
-    // Create a callback ref that handles both refs
-    const setRefs = React.useCallback((node: HTMLDivElement | null) => {
-      // Set the forwarded ref
-      if (typeof forwardedRef === "function") {
-        forwardedRef(node);
-      } else if (forwardedRef) {
-        (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-      }
-      // Update our ref
-      (chartRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-    }, [forwardedRef]);
+      return {
+        // Handle hover state
+        mouseover: (params: any) => {
+          let indexValue: any;
 
+          if (isTimestampData) {
+            // For time axis, the timestamp is in params.value[0]
+            indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
+          } else {
+            // For category axis, use the data index to get the actual index value
+            const dataIndex = params.dataIndex;
+            indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
+          }
+
+          setHoverState(indexValue, chartId, indexType);
+        },
+        // Add tooltip event handler
+        showTip: (params: any) => {
+          // Handle both dataIndex and axisValue approaches
+          let indexValue: any;
+
+          if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
+            // Use dataIndex if available
+            const dataIndex = params.dataIndex;
+            if (dataIndex >= 0 && dataIndex < data.length) {
+              indexValue = data[dataIndex][index];
+            }
+          } else if (params.axisValue !== undefined) {
+            // Use axisValue as fallback
+            indexValue = params.axisValue;
+          }
+
+          if (indexValue !== undefined) {
+            setHoverState(indexValue, chartId, indexType);
+          }
+        },
+        // Also handle tooltip hide to clear hover state
+        hideTip: () => {
+          if (hoveredChartId === chartId) {
+            setHoverState(null, null, null);
+          }
+        },
+      };
+    }, [indexType, data, index, chartId, setHoverState, hoveredChartId]);
+
+    // Handle chart instance reference
+    const handleChartReady = useCallback((chart: echarts.ECharts) => {
+      chartRef.current = chart;
+    }, []);
+
+    // Handle reference line updates
     useEffect(() => {
       if (!chartRef.current) return;
 
-      // Initialize chart with device pixel ratio for sharp rendering
-      const chart = echarts.init(chartRef.current, undefined, {
-        useDirtyRect: true, // Optimize rendering performance
-      });
-      chartInstance.current = chart;
-
-      // Set chart options
-      chart.setOption(chartOptions);
-
-      // Handle resize
-      const handleResize = () => {
-        chart.resize();
-      };
-      window.addEventListener('resize', handleResize);
-
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        chart.dispose();
-      };
-    }, [
-      chartOptions,
-      chartRef,
-      chartInstance,
-    ]);
-
-    // Separate useEffect for event handlers
-    useEffect(() => {
-      if (!chartInstance.current) return;
-
-      const chart = chartInstance.current;
-      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
-
-      // Handle hover state
-      chart.on('mouseover', (params: any) => {
-        let indexValue: any;
-
-        if (isTimestampData) {
-          // For time axis, the timestamp is in params.value[0]
-          indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
-        } else {
-          // For category axis, use the data index to get the actual index value
-          const dataIndex = params.dataIndex;
-          indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
-        }
-
-        setHoverState(indexValue, chartId, indexType);
-      });
-
-      // Add tooltip event handler
-      chart.on('showTip', (params: any) => {
-        // Handle both dataIndex and axisValue approaches
-        let indexValue: any;
-
-        if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
-          // Use dataIndex if available
-          const dataIndex = params.dataIndex;
-          if (dataIndex >= 0 && dataIndex < data.length) {
-            indexValue = data[dataIndex][index];
-          }
-        } else if (params.axisValue !== undefined) {
-          // Use axisValue as fallback
-          indexValue = params.axisValue;
-        }
-
-        if (indexValue !== undefined) {
-          setHoverState(indexValue, chartId, indexType);
-        }
-      });
-
-      // Also handle tooltip hide to clear hover state
-      chart.on('hideTip', () => {
-        if (hoveredChartId === chartId) {
-          setHoverState(null, null, null);
-        }
-      });
-
-      return () => {
-        // Clean up event handlers
-        chart.off('mouseover');
-        chart.off('showTip');
-        chart.off('hideTip');
-      };
-    }, [chartInstance.current, indexType, data, index, chartId, setHoverState, hoveredChartId]);
-
-    // Separate useEffect for hover state updates to prevent chart recreation
-    useEffect(() => {
-      if (!chartInstance.current) return;
-
-      const chart = chartInstance.current;
+      const chart = chartRef.current;
       const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
 
       // Handle reference line
@@ -556,39 +477,24 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
 
     return (
       <div
+        ref={forwardedRef}
         className={cx("h-80 w-full relative group", className)}
         {...other}
       >
         {/* Chart container */}
-        <div
-          ref={setRefs}
+        <EChart
           className="absolute inset-0"
-          style={{
-            imageRendering: 'crisp-edges',
-          }}
+          option={chartOptions}
+          events={chartEvents}
+          onChartReady={handleChartReady}
         />
-        {/* Button container */}
-        <div className="absolute inset-0 pointer-events-none">
-          <button
-            className={cx(
-              "absolute right-2 z-10",
-              showLegend ? "top-7" : "top-2",
-              "p-1.5 rounded-md",
-              "bg-cbg dark:bg-dbg",
-              "border border-cb dark:border-db",
-              "text-ctext dark:text-dtext",
-              "hover:bg-cbgs dark:hover:bg-dbgs",
-              "transition-all duration-100",
-              "opacity-0 group-hover:opacity-100",
-              "focus:outline-none focus:ring-2 focus:ring-cprimary dark:focus:ring-dprimary",
-              "pointer-events-auto"
-            )}
-            onClick={handleDownload}
-            title={translate('Save as image')}
-          >
-            <RiDownload2Line className="size-4" />
-          </button>
-        </div>
+        {/* Download button */}
+        <ChartDownloadButton
+          chartRef={chartRef}
+          chartId={chartId}
+          label={label}
+          showLegend={showLegend}
+        />
       </div>
     );
   }
