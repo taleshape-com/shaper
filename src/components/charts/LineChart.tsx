@@ -362,7 +362,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       max,
       categoryColors,
       extraDataByIndexAxis,
-      currentTheme,
     ]);
 
     // Listen for theme changes
@@ -626,4 +625,4 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
 
 LineChart.displayName = "LineChart";
 
-export { LineChart, type LineChartProps }; 
+export { LineChart, type LineChartProps };

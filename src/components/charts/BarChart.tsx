@@ -366,7 +366,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       xAxisLabel,
       yAxisLabel,
       extraDataByIndexAxis,
-      currentTheme,
     ]);
 
     // Listen for theme changes
