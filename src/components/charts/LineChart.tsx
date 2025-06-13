@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import * as echarts from "echarts";
 import { RiDownload2Line } from "@remixicon/react";
 import {
@@ -7,6 +7,7 @@ import {
   getEChartsColor,
   isDarkMode,
   getThemeColors,
+  downloadChartAsImage,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -20,13 +21,13 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
   indexType: Column['type'];
+  valueType: Column['type'];
   categories: string[];
   valueFormatter: (value: number) => string;
   indexFormatter: (value: number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  connectNulls?: boolean;
   min?: number;
   max?: number;
   label?: string;
@@ -40,13 +41,13 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       categories,
       index,
       indexType,
+      valueType,
       valueFormatter = (value: number) => value.toString(),
       indexFormatter = (value: number) => value.toString(),
       showLegend = true,
       className,
       xAxisLabel,
       yAxisLabel,
-      connectNulls = false,
       min,
       max,
       chartId,
@@ -56,13 +57,19 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
 
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<echarts.ECharts | null>(null);
-    const [isChartHovered, setIsChartHovered] = React.useState(false);
     const [currentTheme, setCurrentTheme] = React.useState<'light' | 'dark'>(isDarkMode() ? 'dark' : 'light');
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
     const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
+
+    // Memoized download handler
+    const handleDownload = useCallback(() => {
+      if (chartInstance.current) {
+        downloadChartAsImage(chartInstance.current, chartId, label);
+      }
+    }, [chartId, label, chartInstance]);
 
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo(() => {
@@ -81,7 +88,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
             name: category,
             type: 'line',
             data: data.map((item) => [item[index], item[category]]),
-            connectNulls,
+            connectNulls: true,
             symbol: 'circle',
             symbolSize: 6,
             showSymbol: false,
@@ -114,7 +121,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
             name: category,
             type: 'line',
             data: data.map((item) => item[category]),
-            connectNulls,
+            connectNulls: true,
             symbol: 'circle',
             symbolSize: 6,
             showSymbol: false,
@@ -230,10 +237,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
             color: textColor,
           },
         },
-        axisPointer: {
-          type: 'line',
-          triggerOn: 'mousemove',
-        },
         legend: {
           show: showLegend,
           type: 'scroll',
@@ -255,10 +258,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
           type: isTimestampData ? "time" : "category",
           data: !isTimestampData ? xAxisData : undefined,
           show: true,
-          axisPointer: {
-            type: 'line',
-            triggerOn: 'mousemove',
-          },
           axisLabel: {
             show: true,
             formatter: (value: any) => {
@@ -278,6 +277,11 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               return index % step === 0;
             },
             hideOverlap: true,
+          },
+          axisPointer: {
+            type: 'line',
+            show: valueType === 'number' || valueType === 'duration' || valueType === 'percent',
+            triggerOn: 'mousemove',
           },
           axisLine: {
             show: false,
@@ -303,10 +307,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
         yAxis: {
           type: "value",
           show: true,
-          axisPointer: {
-            type: 'line',
-            triggerOn: 'mousemove',
-          },
           axisLabel: {
             show: true,
             formatter: (value: any) => {
@@ -325,6 +325,11 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               return index % step === 0;
             },
             hideOverlap: true,
+          },
+          axisPointer: {
+            type: 'line',
+            show: valueType === 'number' || valueType === 'duration' || valueType === 'percent',
+            triggerOn: 'mousemove',
           },
           axisLine: {
             show: false,
@@ -357,7 +362,6 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       showLegend,
       xAxisLabel,
       yAxisLabel,
-      connectNulls,
       min,
       max,
       categoryColors,
@@ -372,21 +376,11 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
           setCurrentTheme(newTheme);
         }
       };
-
-      // Check theme on mount
       checkTheme();
-
-      // Listen for theme changes
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       mediaQuery.addEventListener('change', checkTheme);
-
-      // Also listen for class changes on body (for manual theme toggles)
-      const observer = new MutationObserver(checkTheme);
-      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-
       return () => {
         mediaQuery.removeEventListener('change', checkTheme);
-        observer.disconnect();
       };
     }, [currentTheme]);
 
@@ -520,7 +514,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 name: category,
                 type: 'line',
                 data: data.map((item) => [item[index], item[category]]),
-                connectNulls,
+                connectNulls: true,
                 markLine,
               };
             } else {
@@ -528,7 +522,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 name: category,
                 type: 'line',
                 data: data.map((item) => item[category]),
-                connectNulls,
+                connectNulls: true,
                 markLine,
               };
             }
@@ -543,7 +537,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 name: category,
                 type: 'line',
                 data: data.map((item) => [item[index], item[category]]),
-                connectNulls,
+                connectNulls: true,
                 markLine: undefined,
               };
             } else {
@@ -551,20 +545,18 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                 name: category,
                 type: 'line',
                 data: data.map((item) => item[category]),
-                connectNulls,
+                connectNulls: true,
                 markLine: undefined,
               };
             }
           })
         });
       }
-    }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, categories, data, index, connectNulls]);
+    }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, categories, data, index]);
 
     return (
       <div
-        className={cx("h-80 w-full relative", className)}
-        onMouseEnter={() => setIsChartHovered(true)}
-        onMouseLeave={() => setIsChartHovered(false)}
+        className={cx("h-80 w-full relative group", className)}
         {...other}
       >
         {/* Chart container */}
@@ -587,32 +579,11 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
               "text-ctext dark:text-dtext",
               "hover:bg-cbgs dark:hover:bg-dbgs",
               "transition-all duration-100",
-              isChartHovered ? "opacity-100" : "opacity-0",
+              "opacity-0 group-hover:opacity-100",
               "focus:outline-none focus:ring-2 focus:ring-cprimary dark:focus:ring-dprimary",
               "pointer-events-auto"
             )}
-            onClick={() => {
-              if (chartInstance.current) {
-                const url = chartInstance.current.getDataURL({
-                  type: 'png',
-                  pixelRatio: 2,
-                  backgroundColor: getThemeColors().backgroundColor
-                });
-                const link = document.createElement('a');
-
-                // Generate a simple filename
-                const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-                const filename = label
-                  ? `${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${timestamp}.png`
-                  : `chart-${chartId}-${timestamp}.png`;
-
-                link.download = filename;
-                link.href = url;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }
-            }}
+            onClick={handleDownload}
             title={translate('Save as image')}
           >
             <RiDownload2Line className="size-4" />

@@ -7,11 +7,7 @@ export const getComputedCssValue = (cssVar: string): string => {
 
 // Function to detect if dark mode is active
 export const isDarkMode = (): boolean => {
-  // Check if the body has dark mode classes or if we're in a dark theme context
-  const body = document.body;
-  return body.classList.contains('dark') ||
-    body.classList.contains('dark-mode') ||
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
 // Function to get theme-appropriate colors
@@ -35,6 +31,33 @@ export const getThemeColors = () => {
       referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
     };
   }
+};
+
+// Function to download chart as image
+export const downloadChartAsImage = (
+  chartInstance: echarts.ECharts,
+  chartId: string,
+  label?: string
+): void => {
+  const url = chartInstance.getDataURL({
+    type: 'png',
+    pixelRatio: 2,
+    backgroundColor: getThemeColors().backgroundColor
+  });
+  
+  const link = document.createElement('a');
+
+  // Generate a simple filename
+  const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const filename = label
+    ? `${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${timestamp}.png`
+    : `chart-${chartId}-${timestamp}.png`;
+
+  link.download = filename;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 // ECharts color utilities

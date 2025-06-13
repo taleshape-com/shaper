@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import * as echarts from "echarts";
 import { RiDownload2Line } from "@remixicon/react";
 import {
@@ -7,6 +7,7 @@ import {
   getEChartsColor,
   isDarkMode,
   getThemeColors,
+  downloadChartAsImage,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -50,7 +51,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       xAxisLabel,
       yAxisLabel,
       layout,
-      type = "default",
+      type,
       min,
       max,
       chartId,
@@ -60,13 +61,19 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
 
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<echarts.ECharts | null>(null);
-    const [isChartHovered, setIsChartHovered] = React.useState(false);
     const [currentTheme, setCurrentTheme] = React.useState<'light' | 'dark'>(isDarkMode() ? 'dark' : 'light');
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
     const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
+
+    // Memoized download handler
+    const handleDownload = useCallback(() => {
+      if (chartInstance.current) {
+        downloadChartAsImage(chartInstance.current, chartId, label);
+      }
+    }, [chartId, label, chartInstance]);
 
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo(() => {
@@ -84,6 +91,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           return {
             name: category,
             type: 'bar',
+            barGap: '3%',
             stack: type === "stacked" ? "stack" : undefined,
             data: data.map((item) => [item[index], item[category]]),
             itemStyle: {
@@ -101,6 +109,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           return {
             name: category,
             type: 'bar',
+            barGap: '3%',
             stack: type === "stacked" ? "stack" : undefined,
             data: data.map((item) => item[category]),
             itemStyle: {
@@ -224,10 +233,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
             color: textColor,
           },
         },
-        axisPointer: {
-          type: 'line',
-          triggerOn: 'mousemove',
-        },
         legend: {
           show: showLegend,
           type: 'scroll',
@@ -249,10 +254,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           type: layout === "horizontal" ? (isTimestampData ? "time" : "category") : "value",
           data: layout === "horizontal" && !isTimestampData ? xAxisData : undefined,
           show: true,
-          axisPointer: {
-            type: 'line',
-            triggerOn: 'mousemove',
-          },
           axisLabel: {
             show: true, // Always show labels
             formatter: (value: any) => {
@@ -276,6 +277,11 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               return index % step === 0;
             },
             hideOverlap: true, // Let ECharts handle overlap
+          },
+          axisPointer: {
+            type: 'line',
+            show: layout === 'horizontal' || (valueType === 'number' || valueType === 'duration' || valueType === 'percent'),
+            triggerOn: 'mousemove',
           },
           axisLine: {
             show: false,
@@ -302,10 +308,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           type: layout === "horizontal" ? "value" : (isTimestampData ? "time" : "category"),
           data: layout === "vertical" && !isTimestampData ? xAxisData : undefined,
           show: true,
-          axisPointer: {
-            type: 'line',
-            triggerOn: 'mousemove',
-          },
           axisLabel: {
             show: true, // Always show labels
             formatter: (value: any) => {
@@ -327,6 +329,11 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               return index % step === 0;
             },
             hideOverlap: true, // Let ECharts handle overlap
+          },
+          axisPointer: {
+            type: 'line',
+            show: layout === 'vertical' || (valueType === 'number' || valueType === 'duration' || valueType === 'percent'),
+            triggerOn: 'mousemove',
           },
           axisLine: {
             show: false,
@@ -376,21 +383,11 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           setCurrentTheme(newTheme);
         }
       };
-
-      // Check theme on mount
       checkTheme();
-
-      // Listen for theme changes
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       mediaQuery.addEventListener('change', checkTheme);
-
-      // Also listen for class changes on body (for manual theme toggles)
-      const observer = new MutationObserver(checkTheme);
-      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-
       return () => {
         mediaQuery.removeEventListener('change', checkTheme);
-        observer.disconnect();
       };
     }, [currentTheme]);
 
@@ -409,7 +406,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
     useEffect(() => {
       if (!chartRef.current) return;
 
-      // Initialize chart with device pixel ratio for sharp rendering
       const chart = echarts.init(chartRef.current, undefined, {
         useDirtyRect: true, // Optimize rendering performance
       });
@@ -531,6 +527,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               return {
                 name: category,
                 type: 'bar',
+                barGap: '3%',
                 stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => [item[index], item[category]]),
                 markLine,
@@ -539,6 +536,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               return {
                 name: category,
                 type: 'bar',
+                barGap: '3%',
                 stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => item[category]),
                 markLine,
@@ -554,6 +552,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               return {
                 name: category,
                 type: 'bar',
+                barGap: '3%',
                 stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => [item[index], item[category]]),
                 markLine: undefined,
@@ -562,6 +561,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               return {
                 name: category,
                 type: 'bar',
+                barGap: '3%',
                 stack: type === "stacked" ? "stack" : undefined,
                 data: data.map((item) => item[category]),
                 markLine: undefined,
@@ -574,9 +574,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
 
     return (
       <div
-        className={cx("h-80 w-full relative", className)}
-        onMouseEnter={() => setIsChartHovered(true)}
-        onMouseLeave={() => setIsChartHovered(false)}
+        className={cx("h-80 w-full relative group", className)}
         {...other}
       >
         {/* Chart container */}
@@ -599,32 +597,11 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               "text-ctext dark:text-dtext",
               "hover:bg-cbgs dark:hover:bg-dbgs",
               "transition-all duration-100",
-              isChartHovered ? "opacity-100" : "opacity-0",
+              "opacity-0 group-hover:opacity-100",
               "focus:outline-none focus:ring-2 focus:ring-cprimary dark:focus:ring-dprimary",
               "pointer-events-auto"
             )}
-            onClick={() => {
-              if (chartInstance.current) {
-                const url = chartInstance.current.getDataURL({
-                  type: 'png',
-                  pixelRatio: 2,
-                  backgroundColor: getThemeColors().backgroundColor
-                });
-                const link = document.createElement('a');
-
-                // Generate a simple filename
-                const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-                const filename = label
-                  ? `${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${timestamp}.png`
-                  : `chart-${chartId}-${timestamp}.png`;
-
-                link.download = filename;
-                link.href = url;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }
-            }}
+            onClick={handleDownload}
             title={translate('Save as image')}
           >
             <RiDownload2Line className="size-4" />
@@ -635,6 +612,6 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
   }
 );
 
-BarChart.displayName = "EChartsBarChart";
+BarChart.displayName = "BarChart";
 
 export { BarChart, type BarChartProps };

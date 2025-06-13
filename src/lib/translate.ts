@@ -333,6 +333,9 @@ const translations: Record<string, Record<string, string>> = {
   "Total": {
     de: "Summe",
   },
+  "Save as image": {
+    de: "Als Bild speichern",
+  }
 };
 
 export function translate(s: string) {

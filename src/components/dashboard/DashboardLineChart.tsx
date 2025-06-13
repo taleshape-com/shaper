@@ -93,12 +93,12 @@ const DashboardLineChart = ({
     <LineChart
       chartId={chartId}
       className="h-full select-none"
-      connectNulls
       data={chartdata}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
       // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}
+      valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
       valueFormatter={(n: number) => {
         return formatValue(n, valueAxisHeader.type, true).toString();
