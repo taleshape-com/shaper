@@ -5,15 +5,8 @@ export const getComputedCssValue = (cssVar: string): string => {
   return computedValue || `var(${cssVar})`;
 };
 
-// Function to detect if dark mode is active
-export const isDarkMode = (): boolean => {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
-};
-
 // Function to get theme-appropriate colors
-export const getThemeColors = () => {
-  const isDark = isDarkMode();
-
+export const getThemeColors = (isDark: boolean) => {
   if (isDark) {
     return {
       backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
@@ -42,9 +35,9 @@ export const downloadChartAsImage = (
   const url = chartInstance.getDataURL({
     type: 'png',
     pixelRatio: 2,
-    backgroundColor: getThemeColors().backgroundColor
+    backgroundColor: getThemeColors(false).backgroundColor
   });
-  
+
   const link = document.createElement('a');
 
   // Generate a simple filename

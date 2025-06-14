@@ -4,11 +4,11 @@ import {
   AvailableEChartsColors,
   constructEChartsCategoryColors,
   getEChartsColor,
-  isDarkMode,
   getThemeColors,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
+import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { EChart } from "./EChart";
@@ -60,6 +60,8 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
+    const { isDarkMode } = React.useContext(DarkModeContext);
+
     const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
 
     // Update hoveredChartId ref whenever it changes
@@ -70,8 +72,8 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo((): echarts.EChartsOption => {
       // Get computed colors for theme
-      const { backgroundColor, borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors();
-      const isDark = isDarkMode();
+      const { backgroundColor, borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
+      const isDark = isDarkMode;
 
       // Check if we're dealing with timestamps
       const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
@@ -239,6 +241,13 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
           textStyle: {
             color: textColor,
           },
+          pageButtonPosition: 'end',
+          pageButtonGap: 5,
+          pageIconColor: textColorSecondary,
+          pageIconInactiveColor: borderColor,
+          pageTextStyle: {
+            color: textColor,
+          },
         },
         grid: {
           left: yAxisLabel ? 45 : 15,
@@ -355,6 +364,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       hoveredChartId,
       hoveredIndexType,
       chartId,
+      isDarkMode,
     ]);
 
     // Event handlers for the EChart component

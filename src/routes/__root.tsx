@@ -3,6 +3,7 @@ import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router
 import { IAuthContext } from "../lib/auth";
 import { QueryApiFunc } from "../hooks/useQueryApi";
 import { Toaster } from "../components/tremor/Toaster";
+import { DarkModeProvider } from "../components/DarkModeProvider";
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -35,14 +36,15 @@ interface RouterContext {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => {
-
     return (
-      <>
-        <Toaster />
-        <Outlet />
-        {/* <TanStackRouterDevtools /> */}
-      </>
-    )
+      <DarkModeProvider>
+        <>
+          <Toaster />
+          <Outlet />
+          {/* <TanStackRouterDevtools /> */}
+        </>
+      </DarkModeProvider>
+    );
   },
   notFoundComponent: () => {
     return (
