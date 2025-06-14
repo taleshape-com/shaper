@@ -149,6 +149,7 @@ const BarChart = (props: BarChartProps) => {
       // Anti-aliasing and rendering quality
       // renderer: 'canvas',
       useDirtyRect: true,
+      cursor: 'default',
       tooltip: {
         show: true,
         trigger: 'axis',
@@ -253,13 +254,16 @@ const BarChart = (props: BarChartProps) => {
         show: showLegend,
         type: 'scroll',
         orient: 'horizontal',
-        left: 10,
-        top: '0',
+        left: 0,
+        top: 7,
+        padding: [5, 25, 5, 5],
         textStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
         },
+        itemHeight: 10,
+        itemWidth: 10,
         pageButtonPosition: 'end',
         pageButtonGap: 5,
         pageIconColor: textColorSecondary,
@@ -271,9 +275,9 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       grid: {
-        left: yAxisLabel ? 45 : 15,
+        left: yAxisLabel ? 50 : 15,
         right: 10,
-        top: showLegend ? 40 : 10,
+        top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -307,8 +311,18 @@ const BarChart = (props: BarChartProps) => {
         },
         axisPointer: {
           type: 'line',
-          show: layout === 'horizontal' || (valueType === 'number' || valueType === 'duration' || valueType === 'percent'),
+          show: data.length > 1,
           triggerOn: 'mousemove',
+          label: {
+            show: true,
+            formatter: (params: any) => {
+              if (layout === "horizontal") {
+                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              }
+              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+            },
+            fontFamily: chartFont,
+          }
         },
         axisLine: {
           show: false,
@@ -324,11 +338,12 @@ const BarChart = (props: BarChartProps) => {
         } : undefined,
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: 45,
+        nameGap: 48,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          fontSize: 14,
         },
         min,
         max,
@@ -362,8 +377,18 @@ const BarChart = (props: BarChartProps) => {
         },
         axisPointer: {
           type: 'line',
-          show: layout === 'vertical' || (valueType === 'number' || valueType === 'duration' || valueType === 'percent'),
+          show: data.length > 1,
           triggerOn: 'mousemove',
+          label: {
+            show: true,
+            formatter: (params: any) => {
+              if (layout === "horizontal") {
+                return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              }
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+            },
+            fontFamily: chartFont,
+          }
         },
         axisLine: {
           show: false,
@@ -379,11 +404,12 @@ const BarChart = (props: BarChartProps) => {
         } : undefined,
         name: yAxisLabel,
         nameLocation: 'middle',
-        nameGap: 60,
+        nameGap: 70,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          fontSize: 14,
         },
       },
       series,

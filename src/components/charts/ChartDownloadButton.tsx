@@ -30,8 +30,8 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
     <div className="absolute inset-0 pointer-events-none">
       <button
         className={cx(
-          "absolute right-2 z-10",
-          showLegend ? "top-7" : "top-2",
+          "absolute -right-2 z-10",
+          label ? "-top-11" : "-top-2",
           "p-1.5 rounded-md",
           "bg-cbg dark:bg-dbg",
           "border border-cb dark:border-db",
@@ -50,4 +50,4 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
       </button>
     </div>
   );
-}; 
+};

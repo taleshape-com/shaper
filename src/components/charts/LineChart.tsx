@@ -89,17 +89,14 @@ const LineChart = (props: LineChartProps) => {
           : data.map((item) => item[category]),
         connectNulls: true,
         symbol: 'circle',
-        symbolSize: (params: any) => {
-          // Show symbol only when hovering
-          return params.dataIndex === hoveredIndex ? 6 : 0;
-        },
+        symbolSize: 6,
         emphasis: {
           itemStyle: {
             color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-            borderColor: borderColor,
-            borderWidth: 2,
+            borderWidth: 0,
             shadowBlur: 0,
             shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            opacity: 1,
           },
           lineStyle: {
             width: 2,
@@ -111,8 +108,8 @@ const LineChart = (props: LineChartProps) => {
         },
         itemStyle: {
           color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-          borderColor: borderColor,
-          borderWidth: 2,
+          borderWidth: 0,
+          opacity: data.length > 1 ? 0 : 1,
         },
         markLine: {
           silent: true,
@@ -158,6 +155,7 @@ const LineChart = (props: LineChartProps) => {
       // Anti-aliasing and rendering quality
       // renderer: 'canvas',
       useDirtyRect: true,
+      cursor: 'default',
       tooltip: {
         show: true,
         trigger: 'axis',
@@ -240,12 +238,17 @@ const LineChart = (props: LineChartProps) => {
         show: showLegend,
         type: 'scroll',
         orient: 'horizontal',
-        left: 10,
-        top: '0',
+        left: 0,
+        top: 7,
+        padding: [5, 25, 5, 5],
         textStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+        },
+        itemStyle: {
+          opacity: 1,
+          borderWidth: 0,
         },
         pageButtonPosition: 'end',
         pageButtonGap: 5,
@@ -256,9 +259,9 @@ const LineChart = (props: LineChartProps) => {
         },
       },
       grid: {
-        left: yAxisLabel ? 45 : 15,
+        left: yAxisLabel ? 50 : 15,
         right: 10,
-        top: showLegend ? 40 : 10,
+        top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -289,8 +292,15 @@ const LineChart = (props: LineChartProps) => {
         },
         axisPointer: {
           type: 'line',
-          show: valueType === 'number' || valueType === 'duration' || valueType === 'percent',
+          show: data.length > 1,
           triggerOn: 'mousemove',
+          label: {
+            show: true,
+            formatter: (params: any) => {
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+            },
+            fontFamily: chartFont,
+          }
         },
         axisLine: {
           show: false,
@@ -299,18 +309,16 @@ const LineChart = (props: LineChartProps) => {
           show: false,
         },
         splitLine: {
-          show: true,
-          lineStyle: {
-            color: borderColor,
-          },
+          show: false,
         },
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: 45,
+        nameGap: 48,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          fontSize: 14,
         },
         min,
         max,
@@ -331,8 +339,15 @@ const LineChart = (props: LineChartProps) => {
         },
         axisPointer: {
           type: 'line',
-          show: valueType === 'number' || valueType === 'duration' || valueType === 'percent',
+          show: data.length > 1,
           triggerOn: 'mousemove',
+          label: {
+            show: true,
+            formatter: (params: any) => {
+              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+            },
+            fontFamily: chartFont,
+          }
         },
         axisLine: {
           show: false,
@@ -348,11 +363,12 @@ const LineChart = (props: LineChartProps) => {
         },
         name: yAxisLabel,
         nameLocation: 'middle',
-        nameGap: 60,
+        nameGap: 70,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          fontSize: 14,
         },
       },
       series,
