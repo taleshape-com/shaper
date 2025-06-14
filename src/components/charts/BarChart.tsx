@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {
   AvailableEChartsColors,
@@ -44,8 +44,8 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       index,
       indexType,
       valueType,
-      valueFormatter = (value: number) => value.toString(),
-      indexFormatter = (value: number) => value.toString(),
+      valueFormatter,
+      indexFormatter,
       showLegend = true,
       className,
       xAxisLabel,
@@ -59,17 +59,23 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       ...other
     } = props;
 
-    const chartRef = React.useRef<echarts.ECharts | null>(null);
+    const chartRef = useRef<echarts.ECharts | null>(null);
+    const hoveredChartIdRef = useRef<string | null>(null);
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
+
+    // Update hoveredChartId ref whenever it changes
+    useEffect(() => {
+      hoveredChartIdRef.current = hoveredChartId;
+    }, [hoveredChartId]);
 
     const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
 
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo((): echarts.EChartsOption => {
       // Get computed colors for theme
-      const { backgroundColor, borderColor, textColor, textColorSecondary } = getThemeColors();
+      const { backgroundColor, borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors();
       const isDark = isDarkMode();
 
       // Check if we're dealing with timestamps
@@ -77,43 +83,56 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
 
       // Set up chart options
       const series: echarts.BarSeriesOption[] = categories.map((category) => {
-        if (isTimestampData) {
-          // For time axis, we need to provide data as [timestamp, value] pairs for both layouts
-          return {
-            name: category,
-            type: 'bar',
-            barGap: '3%',
-            stack: type === "stacked" ? "stack" : undefined,
-            data: data.map((item) => [item[index], item[category]]),
+        const baseSeries: echarts.BarSeriesOption = {
+          name: category,
+          type: 'bar' as const,
+          barGap: '3%',
+          stack: type === "stacked" ? "stack" : undefined,
+          data: isTimestampData
+            ? data.map((item) => [item[index], item[category]])
+            : data.map((item) => item[category]),
+          itemStyle: {
+            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          },
+          emphasis: {
             itemStyle: {
               color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+              opacity: 0.8,
             },
-            emphasis: {
-              itemStyle: {
-                color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-                opacity: 0.8,
-              },
+          },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            label: {
+              show: false,
             },
-          };
-        } else {
-          // For category axis, use the original format
+            data: [],
+          },
+        };
+
+        // Add markLine if we're hovering on a different chart
+        if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
           return {
-            name: category,
-            type: 'bar',
-            barGap: '3%',
-            stack: type === "stacked" ? "stack" : undefined,
-            data: data.map((item) => item[category]),
-            itemStyle: {
-              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-            },
-            emphasis: {
-              itemStyle: {
-                color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-                opacity: 0.8,
+            ...baseSeries,
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              label: {
+                show: false,
               },
+              lineStyle: {
+                color: referenceLineColor,
+              },
+              data: [
+                layout === "horizontal"
+                  ? { xAxis: hoveredIndex }
+                  : { yAxis: hoveredIndex },
+              ],
             },
           };
         }
+
+        return baseSeries;
       });
 
       // For category axis, we need to use the index values as category names
@@ -248,11 +267,10 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           axisLabel: {
             show: true, // Always show labels
             formatter: (value: any) => {
-              if (valueType === "percent" && layout === "vertical") {
-                return `${(value * 100).toFixed(0)}%`;
+              if (layout === "horizontal") {
+                return indexFormatter(value);
               }
-              // For timestamps, format the value properly
-              return indexFormatter(value);
+              return valueFormatter(value);
             },
             color: textColorSecondary,
             rotate: 0,
@@ -302,10 +320,10 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
           axisLabel: {
             show: true, // Always show labels
             formatter: (value: any) => {
-              if (valueType === "percent" && layout === "horizontal") {
-                return `${(value * 100).toFixed(0)}%`;
+              if (layout === "horizontal") {
+                return valueFormatter(value);
               }
-              return valueFormatter(value);
+              return indexFormatter(value);
             },
             color: textColorSecondary,
             margin: 16, // Add margin between labels
@@ -364,52 +382,46 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       xAxisLabel,
       yAxisLabel,
       extraDataByIndexAxis,
+      hoveredIndex,
+      hoveredIndexType,
+      hoveredChartId,
+      chartId,
     ]);
 
     // Event handlers for the EChart component
     const chartEvents = React.useMemo(() => {
-      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
-
       return {
-        // Handle hover state
-        mouseover: (params: any) => {
-          // Handle hover on series for both horizontal and vertical charts
-          if (params.componentType === 'series') {
-            let indexValue: any;
-
-            if (isTimestampData) {
-              // For time axis, the timestamp is in params.value[0]
-              indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
-            } else {
-              // For category axis, use the same logic as tooltip formatter
-              // For horizontal charts: use dataIndex to get the actual index value
-              // For vertical charts: use axisValue directly since categories are on y-axis
-              if (layout === "horizontal") {
-                const dataIndex = params.dataIndex;
-                indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
-              } else {
-                // For vertical layout, use axisValue which contains the category name
-                indexValue = params.axisValue;
-              }
-            }
-
-            setHoverState(indexValue, chartId, indexType);
-          }
-        },
         // Add tooltip event handler
         showTip: (params: any) => {
-          // Handle both dataIndex and axisValue approaches
+          let dataIndex = -1;
           let indexValue: any;
 
-          if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
-            // Use dataIndex if available
-            const dataIndex = params.dataIndex;
-            if (dataIndex >= 0 && dataIndex < data.length) {
-              indexValue = data[dataIndex][index];
+          if (layout === "vertical") {
+            // Safely access nested properties for vertical layout
+            const dataByCoordSys = Array.isArray(params?.dataByCoordSys) && params.dataByCoordSys.length > 0
+              ? params.dataByCoordSys[0]
+              : undefined;
+            if (dataByCoordSys?.dataByAxis) {
+              const yAxisData = dataByCoordSys.dataByAxis.find((item: any) => item?.axisDim === "y");
+              if (yAxisData?.value !== undefined) {
+                dataIndex = yAxisData.value;
+              }
             }
-          } else if (params.axisValue !== undefined) {
-            // Use axisValue as fallback
-            indexValue = params.axisValue;
+          } else {
+            // For horizontal layout, use standard params
+            if (params?.dataIndex !== undefined && params?.seriesIndex !== undefined) {
+              dataIndex = params.dataIndex;
+            } else if (params?.axisValue !== undefined) {
+              indexValue = params.axisValue;
+            }
+          }
+
+          // Only try to get indexValue from data if we have a valid dataIndex
+          if (dataIndex >= 0 && dataIndex < data.length) {
+            const item = data[dataIndex];
+            if (item && index in item) {
+              indexValue = item[index];
+            }
           }
 
           if (indexValue !== undefined) {
@@ -418,94 +430,18 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
         },
         // Also handle tooltip hide to clear hover state
         hideTip: () => {
-          if (hoveredChartId === chartId) {
+          // Always clear hover state when tooltip is hidden
+          if (hoveredChartIdRef.current === chartId) {
             setHoverState(null, null, null);
           }
         },
       };
-    }, [layout, indexType, data, index, chartId, setHoverState, hoveredChartId]);
+    }, [data, index, chartId, setHoverState, indexType, layout]);
 
     // Handle chart instance reference
     const handleChartReady = useCallback((chart: echarts.ECharts) => {
       chartRef.current = chart;
     }, []);
-
-    // Handle reference line updates
-    useEffect(() => {
-      if (!chartRef.current) return;
-
-      const chart = chartRef.current;
-      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
-
-      // Handle reference line
-      if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId !== chartId) {
-        const markLine = {
-          silent: true,
-          symbol: 'none',
-          label: {
-            show: false, // Hide any labels on the reference line
-          },
-          lineStyle: {
-            color: getThemeColors().referenceLineColor,
-          },
-          data: [
-            layout === "horizontal"
-              ? { xAxis: hoveredIndex }
-              : { yAxis: hoveredIndex },
-          ],
-        };
-
-        // Update only the series with markLine, not the entire chart
-        chart.setOption({
-          series: categories.map((category) => {
-            if (isTimestampData) {
-              return {
-                name: category,
-                type: 'bar',
-                barGap: '3%',
-                stack: type === "stacked" ? "stack" : undefined,
-                data: data.map((item) => [item[index], item[category]]),
-                markLine,
-              };
-            } else {
-              return {
-                name: category,
-                type: 'bar',
-                barGap: '3%',
-                stack: type === "stacked" ? "stack" : undefined,
-                data: data.map((item) => item[category]),
-                markLine,
-              };
-            }
-          })
-        });
-      } else {
-        // Remove markLine when not hovering
-        chart.setOption({
-          series: categories.map((category) => {
-            if (isTimestampData) {
-              return {
-                name: category,
-                type: 'bar',
-                barGap: '3%',
-                stack: type === "stacked" ? "stack" : undefined,
-                data: data.map((item) => [item[index], item[category]]),
-                markLine: undefined,
-              };
-            } else {
-              return {
-                name: category,
-                type: 'bar',
-                barGap: '3%',
-                stack: type === "stacked" ? "stack" : undefined,
-                data: data.map((item) => item[category]),
-                markLine: undefined,
-              };
-            }
-          })
-        });
-      }
-    }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, layout, categories, data, index, type]);
 
     return (
       <div

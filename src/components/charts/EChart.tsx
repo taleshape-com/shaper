@@ -20,6 +20,7 @@ export const EChart = ({
   ...props
 }: EChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
+  const prevEventKeysRef = useRef<string[]>([]);
   const resizeChart = useMemo(
     () =>
       debounce(() => {
@@ -34,17 +35,11 @@ export const EChart = ({
   );
 
   useEffect(() => {
+    console.log('init effect')
     if (!chartRef.current) return;
     const chart = echarts.init(chartRef.current, null, chartSettings);
     if (onChartReady) {
       onChartReady(chart);
-    }
-    for (const [key, handler] of Object.entries(events)) {
-      chart.on(key, (param) => {
-        if (typeof handler === 'function') {
-          handler(param);
-        }
-      });
     }
     const resizeObserver = new ResizeObserver(() => {
       resizeChart();
@@ -53,15 +48,40 @@ export const EChart = ({
     const currentRef = chartRef.current;
     return () => {
       chart?.dispose();
-
       if (currentRef) {
         resizeObserver.unobserve(currentRef);
       }
       resizeObserver.disconnect();
     };
-  }, [chartSettings, events, resizeChart, onChartReady]);
+  }, [chartSettings, resizeChart, onChartReady]);
 
   useEffect(() => {
+    console.log('events effect')
+
+    if (!chartRef.current) return;
+    const chart = echarts.getInstanceByDom(chartRef.current);
+    if (!chart) return;
+
+    // Remove previous event listeners
+    prevEventKeysRef.current.forEach(key => {
+      chart.off(key);
+    });
+
+    // Attach new event listeners
+    const currentEventKeys = Object.keys(events);
+    currentEventKeys.forEach(key => {
+      const handler = events[key];
+      if (typeof handler === 'function') {
+        chart.on(key, handler);
+      }
+    });
+
+    // Update previous event keys
+    prevEventKeysRef.current = currentEventKeys;
+  }, [events]);
+
+  useEffect(() => {
+    console.log('option effect')
     if (!chartRef.current) return;
     const chart = echarts.getInstanceByDom(chartRef.current);
     if (chart) {

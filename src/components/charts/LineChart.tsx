@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {
   AvailableEChartsColors,
@@ -54,17 +54,23 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       ...other
     } = props;
 
-    const chartRef = React.useRef<echarts.ECharts | null>(null);
+    const chartRef = useRef<echarts.ECharts | null>(null);
+    const hoveredChartIdRef = useRef<string | null>(null);
 
     const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
       React.useContext(ChartHoverContext);
 
     const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
 
+    // Update hoveredChartId ref whenever it changes
+    useEffect(() => {
+      hoveredChartIdRef.current = hoveredChartId;
+    }, [hoveredChartId]);
+
     // Memoize the chart options to prevent unnecessary re-renders
     const chartOptions = React.useMemo((): echarts.EChartsOption => {
       // Get computed colors for theme
-      const { backgroundColor, borderColor, textColor, textColorSecondary } = getThemeColors();
+      const { backgroundColor, borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors();
       const isDark = isDarkMode();
 
       // Check if we're dealing with timestamps
@@ -72,73 +78,70 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
 
       // Set up chart options
       const series: echarts.LineSeriesOption[] = categories.map((category) => {
-        if (isTimestampData) {
-          // For time axis, we need to provide data as [timestamp, value] pairs
-          return {
-            name: category,
-            type: 'line',
-            data: data.map((item) => [item[index], item[category]]),
-            connectNulls: true,
-            symbol: 'circle',
-            symbolSize: 6,
-            showSymbol: false,
-            lineStyle: {
-              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-              width: 2,
-            },
+        const baseSeries: echarts.LineSeriesOption = {
+          name: category,
+          type: 'line' as const,
+          data: isTimestampData
+            ? data.map((item) => [item[index], item[category]])
+            : data.map((item) => item[category]),
+          connectNulls: true,
+          symbol: 'circle',
+          symbolSize: (params: any) => {
+            // Show symbol only when hovering
+            return params.dataIndex === hoveredIndex ? 6 : 0;
+          },
+          emphasis: {
             itemStyle: {
               color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
               borderColor: backgroundColor,
               borderWidth: 2,
+              shadowBlur: 0,
+              shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
             },
-            emphasis: {
-              showSymbol: true,
-              itemStyle: {
-                color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-                borderColor: backgroundColor,
-                borderWidth: 2,
-                shadowBlur: 0,
-                shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-              },
-              lineStyle: {
-                width: 2,
-              },
-            },
-          };
-        } else {
-          // For category axis, use the original format
-          return {
-            name: category,
-            type: 'line',
-            data: data.map((item) => item[category]),
-            connectNulls: true,
-            symbol: 'circle',
-            symbolSize: 6,
-            showSymbol: false,
             lineStyle: {
-              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
               width: 2,
             },
-            itemStyle: {
-              color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-              borderColor: backgroundColor,
-              borderWidth: 2,
+          },
+          lineStyle: {
+            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            width: 2,
+          },
+          itemStyle: {
+            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            borderColor: backgroundColor,
+            borderWidth: 2,
+          },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            label: {
+              show: false,
             },
-            emphasis: {
-              showSymbol: true,
-              itemStyle: {
-                color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-                borderColor: backgroundColor,
-                borderWidth: 2,
-                shadowBlur: 0,
-                shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            data: [],
+          },
+        };
+
+        // Add markLine if we're hovering on a different chart
+        if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
+          return {
+            ...baseSeries,
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              label: {
+                show: false,
               },
               lineStyle: {
-                width: 2,
+                color: referenceLineColor,
               },
+              data: [
+                { xAxis: hoveredIndex },
+              ],
             },
           };
         }
+
+        return baseSeries;
       });
 
       // For category axis, we need to use the index values as category names
@@ -348,28 +351,15 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
       max,
       categoryColors,
       extraDataByIndexAxis,
+      hoveredIndex,
+      hoveredChartId,
+      hoveredIndexType,
+      chartId,
     ]);
 
     // Event handlers for the EChart component
     const chartEvents = React.useMemo(() => {
-      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
-
       return {
-        // Handle hover state
-        mouseover: (params: any) => {
-          let indexValue: any;
-
-          if (isTimestampData) {
-            // For time axis, the timestamp is in params.value[0]
-            indexValue = Array.isArray(params.value) ? params.value[0] : params.value;
-          } else {
-            // For category axis, use the data index to get the actual index value
-            const dataIndex = params.dataIndex;
-            indexValue = dataIndex >= 0 && dataIndex < data.length ? data[dataIndex][index] : params.name;
-          }
-
-          setHoverState(indexValue, chartId, indexType);
-        },
         // Add tooltip event handler
         showTip: (params: any) => {
           // Handle both dataIndex and axisValue approaches
@@ -392,88 +382,17 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
         },
         // Also handle tooltip hide to clear hover state
         hideTip: () => {
-          if (hoveredChartId === chartId) {
+          if (hoveredChartIdRef.current === chartId) {
             setHoverState(null, null, null);
           }
         },
       };
-    }, [indexType, data, index, chartId, setHoverState, hoveredChartId]);
+    }, [indexType, data, index, chartId, setHoverState]);
 
     // Handle chart instance reference
     const handleChartReady = useCallback((chart: echarts.ECharts) => {
       chartRef.current = chart;
     }, []);
-
-    // Handle reference line updates
-    useEffect(() => {
-      if (!chartRef.current) return;
-
-      const chart = chartRef.current;
-      const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
-
-      // Handle reference line
-      if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId !== chartId) {
-        const markLine = {
-          silent: true,
-          symbol: 'none',
-          label: {
-            show: false, // Hide any labels on the reference line
-          },
-          lineStyle: {
-            color: getThemeColors().referenceLineColor,
-          },
-          data: [
-            { xAxis: hoveredIndex },
-          ],
-        };
-
-        // Update only the series with markLine, not the entire chart
-        chart.setOption({
-          series: categories.map((category) => {
-            if (isTimestampData) {
-              return {
-                name: category,
-                type: 'line',
-                data: data.map((item) => [item[index], item[category]]),
-                connectNulls: true,
-                markLine,
-              };
-            } else {
-              return {
-                name: category,
-                type: 'line',
-                data: data.map((item) => item[category]),
-                connectNulls: true,
-                markLine,
-              };
-            }
-          })
-        });
-      } else {
-        // Remove markLine when not hovering
-        chart.setOption({
-          series: categories.map((category) => {
-            if (isTimestampData) {
-              return {
-                name: category,
-                type: 'line',
-                data: data.map((item) => [item[index], item[category]]),
-                connectNulls: true,
-                markLine: undefined,
-              };
-            } else {
-              return {
-                name: category,
-                type: 'line',
-                data: data.map((item) => item[category]),
-                connectNulls: true,
-                markLine: undefined,
-              };
-            }
-          })
-        });
-      }
-    }, [hoveredIndex, hoveredChartId, hoveredIndexType, chartId, indexType, categories, data, index]);
 
     return (
       <div
@@ -481,14 +400,12 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
         className={cx("h-80 w-full relative group", className)}
         {...other}
       >
-        {/* Chart container */}
         <EChart
           className="absolute inset-0"
           option={chartOptions}
           events={chartEvents}
           onChartReady={handleChartReady}
         />
-        {/* Download button */}
         <ChartDownloadButton
           chartRef={chartRef}
           chartId={chartId}
