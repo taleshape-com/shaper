@@ -99,11 +99,11 @@ const DashboardLineChart = ({
       indexType={indexType}
       valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
-      valueFormatter={(n: number) => {
-        return formatValue(n, valueAxisHeader.type, true).toString();
+      valueFormatter={(n: number, shortFormat?: boolean) => {
+        return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
-      indexFormatter={(n: number) => {
-        return formatValue(n, indexType, true).toString();
+      indexFormatter={(n: number, shortFormat?: boolean) => {
+        return formatValue(n, indexType, true, shortFormat).toString();
       }}
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}

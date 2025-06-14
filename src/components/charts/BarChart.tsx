@@ -24,8 +24,8 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
-  valueFormatter: (value: number) => string;
-  indexFormatter: (value: number) => string;
+  valueFormatter: (value: number, shortFormat?: boolean) => string;
+  indexFormatter: (value: number, shortFormat?: boolean) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -289,15 +289,13 @@ const BarChart = (props: BarChartProps) => {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              return indexFormatter(value);
+              return indexFormatter(value, true);
             }
-            return valueFormatter(value);
+            return valueFormatter(value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           padding: [4, 8, 4, 8], // Add padding around labels
-          alignMaxLabel: 'left',
-          alignMinLabel: 'center',
           hideOverlap: true,
         },
         axisPointer: {
@@ -347,9 +345,9 @@ const BarChart = (props: BarChartProps) => {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              return valueFormatter(value);
+              return valueFormatter(value, true);
             }
-            return indexFormatter(value);
+            return indexFormatter(value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,

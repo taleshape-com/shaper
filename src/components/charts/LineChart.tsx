@@ -23,8 +23,8 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
-  valueFormatter: (value: number) => string;
-  indexFormatter: (value: number) => string;
+  valueFormatter: (value: number, shortFormat?: boolean) => string;
+  indexFormatter: (value: number, shortFormat?: boolean) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -41,8 +41,8 @@ const LineChart = (props: LineChartProps) => {
     index,
     indexType,
     valueType,
-    valueFormatter = (value: number) => value.toString(),
-    indexFormatter = (value: number) => value.toString(),
+    valueFormatter,
+    indexFormatter,
     showLegend = true,
     className,
     xAxisLabel,
@@ -272,14 +272,12 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return indexFormatter(value);
+            return indexFormatter(value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           rotate: 0,
           padding: [4, 8, 4, 8],
-          alignMaxLabel: 'left',
-          alignMinLabel: 'center',
           hideOverlap: true,
         },
         axisPointer: {
@@ -321,7 +319,7 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return valueFormatter(value);
+            return valueFormatter(value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
