@@ -103,7 +103,6 @@ const DashboardBarChart = ({
   return (
     <BarChart
       chartId={chartId}
-      className="h-full select-none"
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}

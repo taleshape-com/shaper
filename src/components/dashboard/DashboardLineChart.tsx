@@ -92,7 +92,6 @@ const DashboardLineChart = ({
   return (
     <LineChart
       chartId={chartId}
-      className="h-full select-none"
       data={chartdata}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
