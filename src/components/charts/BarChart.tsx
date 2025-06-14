@@ -5,6 +5,7 @@ import {
   constructEChartsCategoryColors,
   getEChartsColor,
   getThemeColors,
+  getChartFont,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -76,8 +77,9 @@ const BarChart = (props: BarChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
     // Get computed colors for theme
-    const { backgroundColor, borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
+    const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const isDark = isDarkMode;
+    const chartFont = getChartFont();
 
     // Check if we're dealing with timestamps
     const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
@@ -211,6 +213,8 @@ const BarChart = (props: BarChartProps) => {
             tooltipContent += `</div>`;
           }
 
+          // Use a Set to track shown categories
+          const shownCategories = new Set<string>();
           tooltipContent += `<div class="mt-2">`;
           params.forEach((param: any) => {
             let value: number;
@@ -225,6 +229,12 @@ const BarChart = (props: BarChartProps) => {
               return;
             }
 
+            // Skip if we've already shown this category
+            if (shownCategories.has(param.seriesName)) {
+              return;
+            }
+            shownCategories.add(param.seriesName);
+
             const formattedValue = formatValue(value, valueType, true);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
@@ -238,11 +248,6 @@ const BarChart = (props: BarChartProps) => {
 
           return tooltipContent;
         },
-        backgroundColor,
-        borderColor,
-        textStyle: {
-          color: textColor,
-        },
       },
       legend: {
         show: showLegend,
@@ -252,6 +257,8 @@ const BarChart = (props: BarChartProps) => {
         top: '0',
         textStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
         pageButtonPosition: 'end',
         pageButtonGap: 5,
@@ -259,6 +266,8 @@ const BarChart = (props: BarChartProps) => {
         pageIconInactiveColor: borderColor,
         pageTextStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
       },
       grid: {
@@ -281,6 +290,7 @@ const BarChart = (props: BarChartProps) => {
             return valueFormatter(value);
           },
           color: textColorSecondary,
+          fontFamily: chartFont,
           rotate: 0,
           margin: 16, // Add margin between labels
           padding: [4, 8, 4, 8], // Add padding around labels
@@ -317,6 +327,8 @@ const BarChart = (props: BarChartProps) => {
         nameGap: 45,
         nameTextStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
         min,
         max,
@@ -334,6 +346,7 @@ const BarChart = (props: BarChartProps) => {
             return indexFormatter(value);
           },
           color: textColorSecondary,
+          fontFamily: chartFont,
           margin: 16, // Add margin between labels
           padding: [4, 8, 4, 8], // Add padding around labels
           interval: (index: number) => {
@@ -369,6 +382,8 @@ const BarChart = (props: BarChartProps) => {
         nameGap: 60,
         nameTextStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
       },
       series,

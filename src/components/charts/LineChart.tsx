@@ -5,6 +5,7 @@ import {
   constructEChartsCategoryColors,
   getEChartsColor,
   getThemeColors,
+  getChartFont,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -71,8 +72,9 @@ const LineChart = (props: LineChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
     // Get computed colors for theme
-    const { backgroundColor, borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
+    const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const isDark = isDarkMode;
+    const chartFont = getChartFont();
 
     // Check if we're dealing with timestamps
     const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
@@ -94,7 +96,7 @@ const LineChart = (props: LineChartProps) => {
         emphasis: {
           itemStyle: {
             color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-            borderColor: backgroundColor,
+            borderColor: borderColor,
             borderWidth: 2,
             shadowBlur: 0,
             shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
@@ -109,7 +111,7 @@ const LineChart = (props: LineChartProps) => {
         },
         itemStyle: {
           color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-          borderColor: backgroundColor,
+          borderColor: borderColor,
           borderWidth: 2,
         },
         markLine: {
@@ -198,6 +200,8 @@ const LineChart = (props: LineChartProps) => {
             tooltipContent += `</div>`;
           }
 
+          // Use a Set to track shown categories
+          const shownCategories = new Set<string>();
           tooltipContent += `<div class="mt-2">`;
           params.forEach((param: any) => {
             let value: number;
@@ -212,6 +216,12 @@ const LineChart = (props: LineChartProps) => {
               return;
             }
 
+            // Skip if we've already shown this category
+            if (shownCategories.has(param.seriesName)) {
+              return;
+            }
+            shownCategories.add(param.seriesName);
+
             const formattedValue = formatValue(value, 'number', true);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
@@ -225,11 +235,6 @@ const LineChart = (props: LineChartProps) => {
 
           return tooltipContent;
         },
-        backgroundColor,
-        borderColor,
-        textStyle: {
-          color: textColor,
-        },
       },
       legend: {
         show: showLegend,
@@ -239,6 +244,8 @@ const LineChart = (props: LineChartProps) => {
         top: '0',
         textStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
         pageButtonPosition: 'end',
         pageButtonGap: 5,
@@ -265,6 +272,7 @@ const LineChart = (props: LineChartProps) => {
             return indexFormatter(value);
           },
           color: textColorSecondary,
+          fontFamily: chartFont,
           rotate: 0,
           margin: 16,
           padding: [4, 8, 4, 8],
@@ -301,6 +309,8 @@ const LineChart = (props: LineChartProps) => {
         nameGap: 45,
         nameTextStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
         min,
         max,
@@ -314,6 +324,7 @@ const LineChart = (props: LineChartProps) => {
             return valueFormatter(value);
           },
           color: textColorSecondary,
+          fontFamily: chartFont,
           margin: 16,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
@@ -340,6 +351,8 @@ const LineChart = (props: LineChartProps) => {
         nameGap: 60,
         nameTextStyle: {
           color: textColor,
+          fontFamily: chartFont,
+          fontWeight: 500,
         },
       },
       series,

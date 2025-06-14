@@ -5,6 +5,12 @@ export const getComputedCssValue = (cssVar: string): string => {
   return computedValue || `var(${cssVar})`;
 };
 
+// Helper function to get the display font
+export const getChartFont = (): string => {
+  if (typeof window === 'undefined') return 'sans-serif';
+  return getComputedCssValue('--shaper-font') || 'sans-serif';
+};
+
 // Function to get theme-appropriate colors
 export const getThemeColors = (isDark: boolean) => {
   if (isDark) {

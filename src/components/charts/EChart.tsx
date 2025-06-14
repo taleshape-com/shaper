@@ -35,7 +35,6 @@ export const EChart = ({
   );
 
   useEffect(() => {
-    console.log('init effect')
     if (!chartRef.current) return;
     const chart = echarts.init(chartRef.current, null, chartSettings);
     if (onChartReady) {
@@ -56,8 +55,6 @@ export const EChart = ({
   }, [chartSettings, resizeChart, onChartReady]);
 
   useEffect(() => {
-    console.log('events effect')
-
     if (!chartRef.current) return;
     const chart = echarts.getInstanceByDom(chartRef.current);
     if (!chart) return;
@@ -81,7 +78,6 @@ export const EChart = ({
   }, [events]);
 
   useEffect(() => {
-    console.log('option effect')
     if (!chartRef.current) return;
     const chart = echarts.getInstanceByDom(chartRef.current);
     if (chart) {
@@ -90,10 +86,10 @@ export const EChart = ({
   }, [option, optionSettings]);
 
   return (
-    <div 
+    <div
       ref={chartRef}
       style={{ imageRendering: 'crisp-edges' }}
       {...props}
-      />
+    />
   );
 };
