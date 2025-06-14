@@ -277,17 +277,9 @@ const LineChart = (props: LineChartProps) => {
           color: textColorSecondary,
           fontFamily: chartFont,
           rotate: 0,
-          margin: 16,
           padding: [4, 8, 4, 8],
-          interval: (index: number) => {
-            // Always show first and last labels
-            if (index === 0 || index === data.length - 1) {
-              return true;
-            }
-            // For intermediate labels, show every nth label
-            const step = Math.max(1, Math.floor(data.length / 3));
-            return index % step === 0;
-          },
+          alignMaxLabel: 'left',
+          alignMinLabel: 'center',
           hideOverlap: true,
         },
         axisPointer: {
@@ -313,7 +305,7 @@ const LineChart = (props: LineChartProps) => {
         },
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: 48,
+        nameGap: 40,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
@@ -333,7 +325,6 @@ const LineChart = (props: LineChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          margin: 16,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
         },
@@ -363,7 +354,7 @@ const LineChart = (props: LineChartProps) => {
         },
         name: yAxisLabel,
         nameLocation: 'middle',
-        nameGap: 70,
+        nameGap: 60,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,

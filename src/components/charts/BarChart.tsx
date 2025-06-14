@@ -295,19 +295,10 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          rotate: 0,
-          margin: 16, // Add margin between labels
           padding: [4, 8, 4, 8], // Add padding around labels
-          interval: (index: number) => {
-            // Always show first and last labels
-            if (index === 0 || index === data.length - 1) {
-              return true;
-            }
-            // For intermediate labels, show every nth label
-            const step = Math.max(1, Math.floor(data.length / 3));
-            return index % step === 0;
-          },
-          hideOverlap: true, // Let ECharts handle overlap
+          alignMaxLabel: 'left',
+          alignMinLabel: 'center',
+          hideOverlap: true,
         },
         axisPointer: {
           type: 'line',
@@ -338,7 +329,7 @@ const BarChart = (props: BarChartProps) => {
         } : undefined,
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: 48,
+        nameGap: 40,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
@@ -362,18 +353,8 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          margin: 16, // Add margin between labels
           padding: [4, 8, 4, 8], // Add padding around labels
-          interval: (index: number) => {
-            // Always show first and last labels
-            if (index === 0 || index === data.length - 1) {
-              return true;
-            }
-            // For intermediate labels, show every nth label
-            const step = Math.max(1, Math.floor(data.length / 3));
-            return index % step === 0;
-          },
-          hideOverlap: true, // Let ECharts handle overlap
+          hideOverlap: true,
         },
         axisPointer: {
           type: 'line',
@@ -404,7 +385,7 @@ const BarChart = (props: BarChartProps) => {
         } : undefined,
         name: yAxisLabel,
         nameLocation: 'middle',
-        nameGap: 70,
+        nameGap: 60,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
