@@ -1,5 +1,5 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
-import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
+import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 import { BarChart } from "../charts/BarChart";
 
@@ -20,8 +20,6 @@ const DashboardBarChart = ({
   data,
   stacked,
   vertical,
-  minTimeValue,
-  maxTimeValue,
   label,
 }: BarProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
@@ -94,11 +92,6 @@ const DashboardBarChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const indexAxisDomain = isTimeType(indexType)
-    ? getIndexAxisDomain(minTimeValue, maxTimeValue) as [number, number]
-    : indexType === "time"
-      ? [minT, maxT] as [number, number]
-      : undefined;
 
   return (
     <BarChart
@@ -121,8 +114,6 @@ const DashboardBarChart = ({
       xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
-      min={indexAxisDomain ? indexAxisDomain[0] : undefined}
-      max={indexAxisDomain ? indexAxisDomain[1] : undefined}
       label={label}
     />
   );

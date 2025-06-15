@@ -31,14 +31,11 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   yAxisLabel?: string;
   layout: "vertical" | "horizontal";
   type: "default" | "stacked";
-  min?: number;
-  max?: number;
   label?: string;
 }
 
 const BarChart = (props: BarChartProps) => {
   const {
-    data,
     extraDataByIndexAxis,
     categories,
     index,
@@ -52,12 +49,11 @@ const BarChart = (props: BarChartProps) => {
     yAxisLabel,
     layout,
     type,
-    min,
-    max,
     chartId,
     label,
     ...other
   } = props;
+  let data = props.data;
 
   const chartRef = useRef<echarts.ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
@@ -84,6 +80,15 @@ const BarChart = (props: BarChartProps) => {
     // Check if we're dealing with timestamps
     const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
 
+    if (layout === 'vertical' && isTimestampData) {
+      data = data.map((item) => {
+        return {
+          ...item,
+          [index]: indexFormatter(item[index])
+        };
+      });
+    }
+
     // Set up chart options
     const series: echarts.BarSeriesOption[] = categories.map((category) => {
       const baseSeries: echarts.BarSeriesOption = {
@@ -91,7 +96,7 @@ const BarChart = (props: BarChartProps) => {
         type: 'bar' as const,
         barGap: '3%',
         stack: type === "stacked" ? "stack" : undefined,
-        data: isTimestampData
+        data: isTimestampData && layout === "horizontal"
           ? data.map((item) => [item[index], item[category]])
           : data.map((item) => item[category]),
         itemStyle: {
@@ -138,9 +143,6 @@ const BarChart = (props: BarChartProps) => {
       return baseSeries;
     });
 
-    // For category axis, we need to use the index values as category names
-    const xAxisData = data.map((item) => item[index]);
-
     return {
       animation: false,
       // Quality settings for sharper rendering
@@ -160,28 +162,27 @@ const BarChart = (props: BarChartProps) => {
         showDelay: 0, // Show immediately
         borderRadius: 5,
         formatter: (params: any) => {
-          let indexValue: any;
-          let extraData: any;
+          let hoverValue: any;
 
-          if (isTimestampData) {
-            // For time axis, the first param contains the timestamp for both layouts
-            indexValue = params[0].value[0]; // timestamp is the first element
-            const dataIndex = data.findIndex(item => item[index] === indexValue);
-            extraData = dataIndex >= 0 ? extraDataByIndexAxis[data[dataIndex][index]] : undefined;
+          if (layout === 'horizontal') {
+            hoverValue = params[0].axisValue;
           } else {
-            // For category axis, use the original logic
-            indexValue = params[0].axisValue;
-            extraData = extraDataByIndexAxis[indexValue];
+            hoverValue = params[0].name
+            const yAxisData = params.find((item: any) => item?.axisDim === "y");
+            if (yAxisData?.axisValue !== undefined) {
+              hoverValue = yAxisData.axisValue;
+            }
           }
+          const extraData = extraDataByIndexAxis[hoverValue];
 
-          const formattedIndex = indexFormatter(indexValue);
+          const title = layout === 'horizontal' || !isTimestampData ? indexFormatter(hoverValue) : hoverValue;
 
-          let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
+          let tooltipContent = `<div class="text-sm font-medium">${title}</div>`;
 
           if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
             const total = params.reduce((sum: number, item: any) => {
               let value: number;
-              if (isTimestampData && Array.isArray(item.value) && item.value.length >= 2) {
+              if (isTimestampData && layout === 'horizontal' && Array.isArray(item.value) && item.value.length >= 2) {
                 value = item.value[1] as number;
               } else {
                 value = item.value as number;
@@ -219,7 +220,7 @@ const BarChart = (props: BarChartProps) => {
           tooltipContent += `<div class="mt-2">`;
           params.forEach((param: any) => {
             let value: number;
-            if (isTimestampData && Array.isArray(param.value) && param.value.length >= 2) {
+            if (isTimestampData && layout === 'horizontal' && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
             } else {
               value = param.value as number;
@@ -283,7 +284,7 @@ const BarChart = (props: BarChartProps) => {
       },
       xAxis: {
         type: layout === "horizontal" ? (isTimestampData ? "time" as const : "category" as const) : "value" as const,
-        data: layout === "horizontal" && !isTimestampData ? xAxisData : undefined,
+        data: layout === "horizontal" && !isTimestampData ? data.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true, // Always show labels
@@ -334,18 +335,19 @@ const BarChart = (props: BarChartProps) => {
           fontWeight: 500,
           fontSize: 14,
         },
-        min,
-        max,
       },
       yAxis: {
-        type: layout === "horizontal" ? "value" as const : (isTimestampData ? "time" as const : "category" as const),
-        data: layout === "vertical" && !isTimestampData ? xAxisData : undefined,
+        type: layout === "horizontal" ? "value" as const : ("category" as const),
+        data: layout === "vertical" ? data.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
               return valueFormatter(value, true);
+            }
+            if (isTimestampData) {
+              return value
             }
             return indexFormatter(value, true);
           },
@@ -363,6 +365,9 @@ const BarChart = (props: BarChartProps) => {
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              }
+              if (isTimestampData) {
+                return params.value;
               }
               return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
@@ -404,8 +409,6 @@ const BarChart = (props: BarChartProps) => {
     showLegend,
     layout,
     type,
-    min,
-    max,
     categoryColors,
     xAxisLabel,
     yAxisLabel,
@@ -489,7 +492,6 @@ const BarChart = (props: BarChartProps) => {
         chartRef={chartRef}
         chartId={chartId}
         label={label}
-        showLegend={showLegend}
       />
     </div>
   );

@@ -28,8 +28,6 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  min?: number;
-  max?: number;
   label?: string;
 }
 
@@ -47,8 +45,6 @@ const LineChart = (props: LineChartProps) => {
     className,
     xAxisLabel,
     yAxisLabel,
-    min,
-    max,
     chartId,
     label,
     ...other
@@ -310,8 +306,6 @@ const LineChart = (props: LineChartProps) => {
           fontWeight: 500,
           fontSize: 14,
         },
-        min,
-        max,
       },
       yAxis: {
         type: "value" as const,
@@ -373,8 +367,6 @@ const LineChart = (props: LineChartProps) => {
     showLegend,
     xAxisLabel,
     yAxisLabel,
-    min,
-    max,
     categoryColors,
     extraDataByIndexAxis,
     hoveredIndex,
@@ -436,7 +428,6 @@ const LineChart = (props: LineChartProps) => {
         chartRef={chartRef}
         chartId={chartId}
         label={label}
-        showLegend={showLegend}
       />
     </div>
   );

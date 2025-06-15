@@ -9,7 +9,6 @@ interface ChartDownloadButtonProps {
   chartRef: React.RefObject<echarts.ECharts | null>;
   chartId: string;
   label?: string;
-  showLegend?: boolean;
   className?: string;
 }
 
@@ -17,7 +16,6 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
   chartRef,
   chartId,
   label,
-  showLegend = true,
   className,
 }) => {
   const handleDownload = React.useCallback(() => {

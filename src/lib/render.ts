@@ -98,12 +98,6 @@ export const formatCellValue = (value: string | number | boolean | null | undefi
   return value;
 }
 
-// Without adding some margins, some bars can end up directly on the edge of the chart
-export const getIndexAxisDomain = (minTimeValue: number, maxTimeValue: number) => {
-  const margin = (maxTimeValue - minTimeValue) * 0.04
-  return [minTimeValue - margin, maxTimeValue + margin]
-}
-
 export const isJSONType = (columnType: Column['type']) => {
   return columnType === "array" || columnType === "object"
 }

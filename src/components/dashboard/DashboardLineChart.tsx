@@ -16,8 +16,6 @@ const DashboardLineChart = ({
   chartId,
   headers,
   data,
-  minTimeValue,
-  maxTimeValue,
   label,
 }: LineProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
@@ -87,7 +85,6 @@ const DashboardLineChart = ({
   );
   const chartdata = Object.values(dataByIndexAxis);
   const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const xAxisDomain = isTimeType(indexType) ? [minTimeValue, maxTimeValue] : indexType === "time" ? [minT, maxT] : undefined
 
   return (
     <LineChart
@@ -108,8 +105,6 @@ const DashboardLineChart = ({
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
-      min={xAxisDomain ? xAxisDomain[0] : undefined}
-      max={xAxisDomain ? xAxisDomain[1] : undefined}
       label={label}
     />
   );
