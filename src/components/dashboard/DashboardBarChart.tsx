@@ -36,6 +36,7 @@ const DashboardBarChart = ({
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
+  // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = data.reduce(
     (acc, row) => {

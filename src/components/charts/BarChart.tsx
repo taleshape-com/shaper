@@ -165,18 +165,9 @@ const BarChart = (props: BarChartProps) => {
         showDelay: 0, // Show immediately
         borderRadius: 5,
         formatter: (params: any) => {
-          let hoverValue: any;
-
-          if (layout === 'horizontal') {
-            hoverValue = params[0].axisValue;
-          } else {
-            hoverValue = params[0].name
-            const yAxisData = params.find((item: any) => item?.axisDim === "y");
-            if (yAxisData?.axisValue !== undefined) {
-              hoverValue = yAxisData.axisValue;
-            }
-          }
-          const extraData = extraDataByIndexAxis[hoverValue];
+          const indexDim = layout === 'horizontal' ? 'x' : 'y';
+          const axisData = params.find((item: any) => item?.axisDim === indexDim);
+          const hoverValue = axisData?.axisValue;
 
           const title = layout === 'horizontal'
             ? isTimestampData && data.length < 2
@@ -190,6 +181,9 @@ const BarChart = (props: BarChartProps) => {
 
           if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
             const total = params.reduce((sum: number, item: any) => {
+              if (item.axisDim !== indexDim) {
+                return sum; // Skip non-index axis items
+              }
               let value: number;
               if (isTimestampData && layout === 'horizontal' && Array.isArray(item.value) && item.value.length >= 2) {
                 value = item.value[1] as number;
@@ -210,6 +204,7 @@ const BarChart = (props: BarChartProps) => {
             </div>`;
           }
 
+          const extraData = extraDataByIndexAxis[hoverValue];
           if (extraData) {
             tooltipContent += `<div class="mt-2">`;
             Object.entries(extraData).forEach(([key, valueData]) => {
@@ -225,9 +220,11 @@ const BarChart = (props: BarChartProps) => {
           }
 
           // Use a Set to track shown categories
-          const shownCategories = new Set<string>();
           tooltipContent += `<div class="mt-2">`;
           params.forEach((param: any) => {
+            if (param.axisDim !== indexDim) {
+              return; // Skip non-index axis items
+            }
             let value: number;
             if (isTimestampData && layout === 'horizontal' && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
@@ -239,12 +236,6 @@ const BarChart = (props: BarChartProps) => {
             if (value === null || value === undefined || isNaN(value)) {
               return;
             }
-
-            // Skip if we've already shown this category
-            if (shownCategories.has(param.seriesName)) {
-              return;
-            }
-            shownCategories.add(param.seriesName);
 
             const formattedValue = formatValue(value, valueType, true);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">

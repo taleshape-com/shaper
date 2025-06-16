@@ -163,19 +163,15 @@ const LineChart = (props: LineChartProps) => {
           let indexValue: any;
           let extraData: any;
 
+          const axisData = params.find((item: any) => item?.axisDim === 'x');
           if (isTimestampData) {
-            // For time axis, the first param contains the timestamp
-            indexValue = params[0].value[0]; // timestamp is the first element
-            const dataIndex = data.findIndex(item => item[index] === indexValue);
-            extraData = dataIndex >= 0 ? extraDataByIndexAxis[data[dataIndex][index]] : undefined;
+            indexValue = axisData.value[0]; // timestamp is the first element
           } else {
-            // For category axis, use the original logic
-            indexValue = params[0].axisValue;
-            extraData = extraDataByIndexAxis[indexValue];
+            indexValue = axisData.axisValue;
           }
+          extraData = extraDataByIndexAxis[indexValue];
 
           const formattedIndex = indexFormatter(indexValue);
-
           let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
           if (extraData) {
@@ -193,9 +189,12 @@ const LineChart = (props: LineChartProps) => {
           }
 
           // Use a Set to track shown categories
-          const shownCategories = new Set<string>();
           tooltipContent += `<div class="mt-2">`;
           params.forEach((param: any) => {
+            if (param.axisDim !== 'x') {
+              return; // Skip non-index axis items
+            }
+
             let value: number;
             if (isTimestampData && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
@@ -208,13 +207,7 @@ const LineChart = (props: LineChartProps) => {
               return;
             }
 
-            // Skip if we've already shown this category
-            if (shownCategories.has(param.seriesName)) {
-              return;
-            }
-            shownCategories.add(param.seriesName);
-
-            const formattedValue = formatValue(value, 'number', true);
+            const formattedValue = formatValue(value, valueType, true);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${param.color}"></span>
