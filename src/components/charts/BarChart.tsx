@@ -83,7 +83,7 @@ const BarChart = (props: BarChartProps) => {
 
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
-    if (layout === 'vertical' && isTimestampData) {
+    if (isTimestampData && (layout === 'vertical' || data.length < 2)) {
       dataCopy = data.map((item) => {
         return {
           ...item,
@@ -99,7 +99,7 @@ const BarChart = (props: BarChartProps) => {
         type: 'bar' as const,
         barGap: '3%',
         stack: type === "stacked" ? "stack" : undefined,
-        data: isTimestampData && layout === "horizontal"
+        data: isTimestampData && layout === "horizontal" && data.length > 1
           ? dataCopy.map((item) => [item[index], item[category]])
           : dataCopy.map((item) => item[category]),
         itemStyle: {
@@ -178,7 +178,13 @@ const BarChart = (props: BarChartProps) => {
           }
           const extraData = extraDataByIndexAxis[hoverValue];
 
-          const title = layout === 'horizontal' || !isTimestampData ? indexFormatter(hoverValue) : hoverValue;
+          const title = layout === 'horizontal'
+            ? isTimestampData && data.length < 2
+              ? hoverValue
+              : indexFormatter(hoverValue)
+            : !isTimestampData
+              ? hoverValue
+              : indexFormatter(hoverValue);
 
           let tooltipContent = `<div class="text-sm font-medium">${title}</div>`;
 
@@ -294,13 +300,16 @@ const BarChart = (props: BarChartProps) => {
         containLabel: true,
       },
       xAxis: {
-        type: layout === "horizontal" ? (isTimestampData ? "time" as const : "category" as const) : "value" as const,
-        data: layout === "horizontal" && !isTimestampData ? dataCopy.map((item) => item[index]) : undefined,
+        type: layout === "horizontal" ? (isTimestampData && data.length > 1 ? "time" as const : "category" as const) : "value" as const,
+        data: layout === "horizontal" && (!isTimestampData || data.length < 2) ? dataCopy.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
+              if (isTimestampData && data.length < 2) {
+                return value;
+              }
               return indexFormatter(value, true);
             }
             return valueFormatter(value, true);
@@ -311,11 +320,11 @@ const BarChart = (props: BarChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: 'line',
-          show: dataCopy.length > 1,
+          type: dataCopy.length > 1 ? 'line' : 'none',
+          show: true,
           triggerOn: 'mousemove',
           label: {
-            show: true,
+            show: !isTimestampData || data.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
