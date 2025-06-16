@@ -10,7 +10,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column } from "../../lib/dashboard";
+import { Column, isTimeType } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
@@ -78,8 +78,10 @@ const BarChart = (props: BarChartProps) => {
     const chartFont = getChartFont();
 
     // Check if we're dealing with timestamps
-    const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
+    // TODO: I am still not completely sure why we need to handle time as timestamp as well
+    const isTimestampData = isTimeType(indexType) || indexType === "time";
 
+    // We treat vertical timestamp data as categories.
     if (layout === 'vertical' && isTimestampData) {
       data = data.map((item) => {
         return {

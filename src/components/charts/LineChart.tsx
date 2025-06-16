@@ -10,7 +10,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column } from "../../lib/dashboard";
+import { Column, isTimeType } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { EChart } from "./EChart";
 import { ChartDownloadButton } from "./ChartDownloadButton";
@@ -73,7 +73,8 @@ const LineChart = (props: LineChartProps) => {
     const chartFont = getChartFont();
 
     // Check if we're dealing with timestamps
-    const isTimestampData = indexType === "date" || indexType === "timestamp" || indexType === "hour" || indexType === "month" || indexType === "year" || indexType === "time";
+    // TODO: I am still not completely sure why we need to handle time as timestamp as well
+    const isTimestampData = isTimeType(indexType) || indexType === "time";
 
     // Set up chart options
     const series: echarts.LineSeriesOption[] = categories.map((category) => {
@@ -139,9 +140,6 @@ const LineChart = (props: LineChartProps) => {
 
       return baseSeries;
     });
-
-    // For category axis, we need to use the index values as category names
-    const xAxisData = data.map((item) => item[index]);
 
     return {
       animation: false,
@@ -274,7 +272,7 @@ const LineChart = (props: LineChartProps) => {
       },
       xAxis: {
         type: isTimestampData ? "time" as const : "category" as const,
-        data: !isTimestampData ? xAxisData : undefined,
+        data: !isTimestampData ? data.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true,
