@@ -264,7 +264,7 @@ const LineChart = (props: LineChartProps) => {
         },
       },
       grid: {
-        left: yAxisLabel ? 40 : 15,
+        left: yAxisLabel ? 45 : 15,
         right: 10,
         top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
@@ -360,7 +360,7 @@ const LineChart = (props: LineChartProps) => {
         // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
         {
           type: "text",
-          left: 0,
+          left: 5,
           top: "center",
           rotation: Math.PI / 2,
           style: {
