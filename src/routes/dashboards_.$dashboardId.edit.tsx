@@ -3,7 +3,7 @@ import * as monaco from "monaco-editor";
 
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useContext } from "react";
 import { Helmet } from "react-helmet";
 import { RiPencilLine, RiCloseLine } from "@remixicon/react";
 import { useAuth } from "../lib/auth";
@@ -25,6 +25,7 @@ import { MenuProvider } from "../components/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
+import { DarkModeContext } from "../contexts/DarkModeContext";
 import {
   Dialog,
   DialogContent,
@@ -71,23 +72,11 @@ function DashboardEditor() {
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia("(prefers-color-scheme: dark)").matches,
-  );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+  const { isDarkMode } = useContext(DarkModeContext);
 
   // Check for unsaved changes when component mounts
   useEffect(() => {

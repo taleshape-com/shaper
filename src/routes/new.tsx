@@ -6,7 +6,7 @@ import {
   isRedirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useContext } from 'react'
 import { Helmet } from 'react-helmet'
 import { useAuth } from '../lib/auth'
 import { Dashboard } from '../components/dashboard'
@@ -28,6 +28,7 @@ import { MenuTrigger } from '../components/MenuTrigger'
 import { Result } from '../lib/dashboard'
 import { useToast } from '../hooks/useToast'
 import { Tooltip } from '../components/tremor/Tooltip'
+import { DarkModeContext } from '../contexts/DarkModeContext'
 import {
   Dialog,
   DialogContent,
@@ -58,22 +59,10 @@ function NewDashboard() {
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia('(prefers-color-scheme: dark)').matches,
-  )
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [dashboardName, setDashboardName] = useState('')
   const { toast } = useToast()
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches)
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [])
+  const { isDarkMode } = useContext(DarkModeContext)
 
   // Check for unsaved changes when component mounts
   useEffect(() => {

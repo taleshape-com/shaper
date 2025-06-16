@@ -1,206 +1,138 @@
-// Tremor Raw chartColors [v0.1.0]
+// Helper function to get computed CSS value
+export const getComputedCssValue = (cssVar: string): string => {
+  const root = document.documentElement;
+  const computedValue = getComputedStyle(root).getPropertyValue(cssVar).trim();
+  return computedValue || `var(${cssVar})`;
+};
 
-import { AxisDomain } from "recharts/types/util/types"
+// Helper function to get the display font
+export const getChartFont = (): string => {
+  if (typeof window === 'undefined') return 'sans-serif';
+  return getComputedCssValue('--shaper-font') || 'sans-serif';
+};
 
-export type ColorUtility = "bg" | "stroke" | "fill" | "text"
+// Function to get theme-appropriate colors
+export const getThemeColors = (isDark: boolean) => {
+  if (isDark) {
+    return {
+      backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
+      borderColor: getComputedCssValue('--shaper-dark-mode-border-color'),
+      textColor: getComputedCssValue('--shaper-dark-mode-text-color'),
+      textColorSecondary: getComputedCssValue('--shaper-dark-mode-text-color-secondary'),
+      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
+    };
+  } else {
+    return {
+      backgroundColor: getComputedCssValue('--shaper-background-color'),
+      borderColor: getComputedCssValue('--shaper-border-color'),
+      textColor: getComputedCssValue('--shaper-text-color'),
+      textColorSecondary: getComputedCssValue('--shaper-text-color-secondary'),
+      referenceLineColor: getComputedCssValue('--shaper-reference-line-color'),
+    };
+  }
+};
 
-export const chartColors = {
+// Function to download chart as image
+export const downloadChartAsImage = (
+  chartInstance: echarts.ECharts,
+  chartId: string,
+  label?: string
+): void => {
+  const url = chartInstance.getDataURL({
+    type: 'png',
+    pixelRatio: 2,
+    backgroundColor: getThemeColors(false).backgroundColor
+  });
+
+  const link = document.createElement('a');
+
+  // Generate a simple filename
+  const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const filename = label
+    ? `${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${timestamp}.png`
+    : `chart-${chartId}-${timestamp}.png`;
+
+  link.download = filename;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// ECharts color utilities
+export const echartsColors = {
   primary: {
-    bg: "bg-cprimary",
-    stroke: "stroke-cprimary",
-    fill: "fill-cprimary",
-    text: "text-cprimary",
+    light: 'var(--shaper-primary-color)',
+    dark: 'var(--shaper-dark-mode-primary-color)',
   },
   color2: {
-    bg: "bg-ctwo",
-    stroke: "stroke-ctwo",
-    fill: "fill-ctwo",
-    text: "text-ctwo",
+    light: 'var(--shaper-color-two)',
+    dark: 'var(--shaper-color-two)',
   },
   color3: {
-    bg: "bg-cthree",
-    stroke: "stroke-cthree",
-    fill: "fill-cthree",
-    text: "text-cthree",
+    light: 'var(--shaper-color-three)',
+    dark: 'var(--shaper-color-three)',
   },
   color4: {
-    bg: "bg-cfour",
-    stroke: "stroke-cfour",
-    fill: "fill-cfour",
-    text: "text-cfour",
+    light: 'var(--shaper-color-four)',
+    dark: 'var(--shaper-color-four)',
   },
   color5: {
-    bg: "bg-cfive",
-    stroke: "stroke-cfive",
-    fill: "fill-cfive",
-    text: "text-cfive",
+    light: 'var(--shaper-color-five)',
+    dark: 'var(--shaper-color-five)',
   },
   color6: {
-    bg: "bg-csix",
-    stroke: "stroke-csix",
-    fill: "fill-csix",
-    text: "text-csix",
+    light: 'var(--shaper-color-six)',
+    dark: 'var(--shaper-color-six)',
   },
   color7: {
-    bg: "bg-cseven",
-    stroke: "stroke-cseven",
-    fill: "fill-cseven",
-    text: "text-cseven",
+    light: 'var(--shaper-color-seven)',
+    dark: 'var(--shaper-color-seven)',
   },
   color8: {
-    bg: "bg-ceight",
-    stroke: "stroke-ceight",
-    fill: "fill-ceight",
-    text: "text-ceight",
+    light: 'var(--shaper-color-eight)',
+    dark: 'var(--shaper-color-eight)',
   },
   color9: {
-    bg: "bg-cnine",
-    stroke: "stroke-cnine",
-    fill: "fill-cnine",
-    text: "text-cnine",
+    light: 'var(--shaper-color-nine)',
+    dark: 'var(--shaper-color-nine)',
   },
   color10: {
-    bg: "bg-cten",
-    stroke: "stroke-cten",
-    fill: "fill-cten",
-    text: "text-cten",
+    light: 'var(--shaper-color-ten)',
+    dark: 'var(--shaper-color-ten)',
   },
-  // indigo: {
-  //   bg: "bg-indigo-500",
-  //   stroke: "stroke-indigo-500",
-  //   fill: "fill-indigo-500",
-  //   text: "text-indigo-500",
-  // },
-  // emerald: {
-  //   bg: "bg-emerald-300",
-  //   stroke: "stroke-emerald-300",
-  //   fill: "fill-emerald-300",
-  //   text: "text-emerald-300",
-  // },
-  // pink: {
-  //   bg: "bg-pink-400",
-  //   stroke: "stroke-pink-400",
-  //   fill: "fill-pink-400",
-  //   text: "text-pink-400",
-  // },
-  // yellow: {
-  //   bg: "bg-yellow-200",
-  //   stroke: "stroke-yellow-200",
-  //   fill: "fill-yellow-200",
-  //   text: "text-yellow-200",
-  // },
-  // sky: {
-  //   bg: "bg-sky-300",
-  //   stroke: "stroke-sky-300",
-  //   fill: "fill-sky-300",
-  //   text: "text-sky-300",
-  // },
-  violet: {
-    bg: "bg-violet-400",
-    stroke: "stroke-violet-400",
-    fill: "fill-violet-400",
-    text: "text-violet-400",
-  },
-  blue: {
-    bg: "bg-blue-500",
-    stroke: "stroke-blue-500",
-    fill: "fill-blue-500",
-    text: "text-blue-500",
-  },
-  fuchsia: {
-    bg: "bg-fuchsia-500",
-    stroke: "stroke-fuchsia-500",
-    fill: "fill-fuchsia-500",
-    text: "text-fuchsia-500",
-  },
-  amber: {
-    bg: "bg-amber-500",
-    stroke: "stroke-amber-500",
-    fill: "fill-amber-500",
-    text: "text-amber-500",
-  },
-  cyan: {
-    bg: "bg-cyan-500",
-    stroke: "stroke-cyan-500",
-    fill: "fill-cyan-500",
-    text: "text-cyan-500",
-  },
-  gray: {
-    bg: "bg-gray-500",
-    stroke: "stroke-gray-500",
-    fill: "fill-gray-500",
-    text: "text-gray-500",
-  },
-  lime: {
-    bg: "bg-lime-500",
-    stroke: "stroke-lime-500",
-    fill: "fill-lime-500",
-    text: "text-lime-500",
-  },
-} as const satisfies {
-  [color: string]: {
-    [key in ColorUtility]: string
-  }
-}
+} as const;
 
-export type AvailableChartColorsKeys = keyof typeof chartColors
+export type EChartsColorKey = keyof typeof echartsColors;
 
-export const AvailableChartColors: AvailableChartColorsKeys[] = Object.keys(
-  chartColors,
-) as Array<AvailableChartColorsKeys>
+export const AvailableEChartsColors: EChartsColorKey[] = Object.keys(
+  echartsColors,
+) as Array<EChartsColorKey>;
 
-export const constructCategoryColors = (
+export const constructEChartsCategoryColors = (
   categories: string[],
-  colors: AvailableChartColorsKeys[],
-): Map<string, AvailableChartColorsKeys> => {
-  const categoryColors = new Map<string, AvailableChartColorsKeys>()
+  colors: EChartsColorKey[],
+): Map<string, EChartsColorKey> => {
+  const categoryColors = new Map<string, EChartsColorKey>();
   categories.forEach((category, index) => {
-    categoryColors.set(category, colors[index % colors.length])
-  })
-  return categoryColors
-}
+    categoryColors.set(category, colors[index % colors.length]);
+  });
+  return categoryColors;
+};
 
-export const getColorClassName = (
-  color: AvailableChartColorsKeys,
-  type: ColorUtility,
+export const getEChartsColor = (
+  colorKey: EChartsColorKey,
+  isDark: boolean = false,
 ): string => {
-  const fallbackColor = {
-    bg: "bg-gray-500",
-    stroke: "stroke-gray-500",
-    fill: "fill-gray-500",
-    text: "text-gray-500",
-  }
-  return chartColors[color]?.[type] ?? fallbackColor[type]
-}
-
-// Tremor Raw getYAxisDomain [v0.0.0]
-
-export const getYAxisDomain = (
-  autoMinValue: boolean,
-  minValue: number | undefined,
-  maxValue: number | undefined,
-): AxisDomain => {
-  const minDomain = autoMinValue ? "auto" : minValue ?? 0
-  const maxDomain = maxValue ?? "auto"
-  return [minDomain, maxDomain]
-}
-
-// Tremor Raw hasOnlyOneValueForKey [v0.1.0]
-
-export function hasOnlyOneValueForKey(
-  array: any[],
-  keyToCheck: string,
-): boolean {
-  const val: any[] = []
-
-  for (const obj of array) {
-    if (Object.prototype.hasOwnProperty.call(obj, keyToCheck)) {
-      val.push(obj[keyToCheck])
-      if (val.length > 1) {
-        return false
-      }
-    }
+  const color = echartsColors[colorKey];
+  if (!color) {
+    const fallbackVar = isDark ? '--shaper-dark-mode-primary-color' : '--shaper-primary-color';
+    return getComputedCssValue(fallbackVar);
   }
 
-  return true
-}
+  const cssVar = isDark ? color.dark : color.light;
+  // Extract the CSS variable name from the var() function
+  const varName = cssVar.replace('var(', '').replace(')', '');
+
+  return getComputedCssValue(varName);
+};

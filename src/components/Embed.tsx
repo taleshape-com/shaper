@@ -1,6 +1,7 @@
 import { Dashboard } from './dashboard'
 import { useCallback, useEffect, useState, useRef } from "react";
 import { parseJwt, VarsParamSchema } from "../lib/utils";
+import { DarkModeProvider } from "./DarkModeProvider";
 
 export type EmbedProps = {
   baseUrl?: string;
@@ -21,7 +22,7 @@ export function EmbedComponent({
   const jwtRef = useRef<string | null>(null);
 
   let baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
-  if (baseUrl[0] !== "/") {
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://') && baseUrl[0] !== "/") {
     baseUrl = "/" + baseUrl;
   }
   if (baseUrl[baseUrl.length - 1] !== "/") {
@@ -55,12 +56,16 @@ export function EmbedComponent({
     return newJwt;
   }, [baseUrl, getJwt]);
 
-  return <Dashboard
-    id={props.dashboardId}
-    baseUrl={baseUrl}
-    vars={props.vars}
-    getJwt={handleGetJwt}
-    onVarsChanged={handleVarsChanged}
-  />;
+  return (
+    <DarkModeProvider>
+      <Dashboard
+        id={props.dashboardId}
+        baseUrl={baseUrl}
+        vars={props.vars}
+        getJwt={handleGetJwt}
+        onVarsChanged={handleVarsChanged}
+      />
+    </DarkModeProvider>
+  );
 }
 

@@ -1,5 +1,5 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
-import { LineChart } from "../tremor/LineChart";
+import { LineChart } from "../charts/LineChart";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 
@@ -7,6 +7,7 @@ type LineProps = {
   chartId: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
+  // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
   label?: string;
@@ -16,8 +17,6 @@ const DashboardLineChart = ({
   chartId,
   headers,
   data,
-  minTimeValue,
-  maxTimeValue,
   label,
 }: LineProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
@@ -33,9 +32,6 @@ const DashboardLineChart = ({
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
-  // TODO: It might more efficient to calculate these min/max values in the backend
-  let minT = Number.MAX_VALUE;
-  let maxT = 0;
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
@@ -49,14 +45,6 @@ const DashboardLineChart = ({
       }
       row.forEach((cell, i) => {
         if (i === indexAxisIndex) {
-          if (indexAxisHeader.type === 'time' && typeof cell === 'number') {
-            if (cell < minT) {
-              minT = cell;
-            }
-            if (cell > maxT) {
-              maxT = cell;
-            }
-          }
           return;
         }
         if (i === categoryIndex) {
@@ -86,33 +74,26 @@ const DashboardLineChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const xAxisDomain = isTimeType(indexType) ? [minTimeValue, maxTimeValue] : indexType === "time" ? [minT, maxT] : undefined
+  const indexType = indexAxisHeader.type;
 
   return (
     <LineChart
       chartId={chartId}
-      className="h-full select-none"
-      enableLegendSlider
-      startEndOnly={isTimeType(indexType)}
-      connectNulls
       data={chartdata}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
-      // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}
+      valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
-      valueFormatter={(n: number) => {
-        return formatValue(n, valueAxisHeader.type, true).toString();
+      valueFormatter={(n: number, shortFormat?: boolean) => {
+        return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
-      indexFormatter={(n: number) => {
-        return formatValue(n, indexType, true).toString();
+      indexFormatter={(n: number, shortFormat?: boolean) => {
+        return formatValue(n, indexType, true, shortFormat).toString();
       }}
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
-      xAxisDomain={xAxisDomain}
-      maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
       label={label}
     />
   );

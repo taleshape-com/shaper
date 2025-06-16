@@ -7,7 +7,7 @@ function parseLocalDate(d: string | number) {
   return new Date(d);
 }
 
-export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column['type'], shouldFormatNumbers?: boolean) => {
+export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column['type'], shouldFormatNumbers?: boolean, shortFormat?: boolean) => {
   if (value === null || value === undefined) {
     return ""
   }
@@ -25,13 +25,13 @@ export const formatValue = (value: string | number | boolean | null | undefined,
     return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'short', timeZone: 'UTC' });
   }
   if (columnType === "date") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC', weekday: 'short' })
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
   }
   if (columnType === "hour") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', weekday: 'short' })
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
   }
   if (columnType === "timestamp") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: shortFormat ? undefined : '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
   }
   if (columnType === "duration" && !value) {
     return "0"
@@ -46,21 +46,27 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       const hours = Math.floor((value % 86400000) / 3600000);
       const minutes = Math.floor((value % 3600000) / 60000);
       const seconds = Math.floor((value % 60000) / 1000);
-      const ms = value % 1000;
+      const ms = Math.floor(value % 1000);
       const mainParts = []
       if (day > 0) {
         mainParts.push(`${day}d`)
       }
-      if (hours > 0) {
-        mainParts.push(`${hours}h`)
+      if (!shortFormat || value < 864000000) {
+        if (hours > 0) {
+          mainParts.push(`${hours}h`)
+        }
       }
-      if (minutes > 0) {
-        mainParts.push(`${minutes}min`)
+      if (!shortFormat || value < 86400000) {
+        if (minutes > 0) {
+          mainParts.push(`${minutes}min`)
+        }
       }
-      if (ms > 0) {
-        mainParts.push(`${seconds}.${ms.toString().padStart(3, '0')}s`)
-      } else if (seconds > 0) {
-        mainParts.push(`${seconds}s`)
+      if (!shortFormat || value < 3600000) {
+        if (ms > 0) {
+          mainParts.push(`${seconds}.${ms.toString().padStart(3, '0')}s`)
+        } else if (seconds > 0) {
+          mainParts.push(`${seconds}s`)
+        }
       }
       if (mainParts.length === 0) {
         return "0s"
@@ -71,8 +77,8 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       const hours = Math.floor(value / 3600000);
       const minutes = Math.floor((value % 3600000) / 60000);
       const seconds = Math.floor((value % 60000) / 1000);
-      const ms = value % 1000;
-      const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      const ms = Math.floor(value % 1000);
+      const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}${shortFormat ? '' : `:${String(seconds).padStart(2, '0')}`}`;
       return ms > 0 ? `${timeString}.${String(ms).padStart(3, '0')}` : timeString;
     }
     if (columnType === "percent") {
@@ -90,12 +96,6 @@ export const formatCellValue = (value: string | number | boolean | null | undefi
     return value ? 0 : 1;
   }
   return value;
-}
-
-// Without adding some margins, some bars can end up directly on the edge of the chart
-export const getIndexAxisDomain = (minTimeValue: number, maxTimeValue: number) => {
-  const margin = (maxTimeValue - minTimeValue) * 0.04
-  return [minTimeValue - margin, maxTimeValue + margin]
 }
 
 export const isJSONType = (columnType: Column['type']) => {

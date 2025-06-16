@@ -1,12 +1,13 @@
 import { Column, isTimeType, Result } from "../../lib/dashboard";
-import { formatValue, formatCellValue, getIndexAxisDomain } from "../../lib/render";
+import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
-import { BarChart } from "../tremor/BarChart";
+import { BarChart } from "../charts/BarChart";
 
 type BarProps = {
   chartId: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
+  // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
   stacked?: boolean;
@@ -20,8 +21,6 @@ const DashboardBarChart = ({
   data,
   stacked,
   vertical,
-  minTimeValue,
-  maxTimeValue,
   label,
 }: BarProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
@@ -37,9 +36,6 @@ const DashboardBarChart = ({
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
-  // TODO: It might more efficient to calculate these min/max values in the backend
-  let minT = Number.MAX_VALUE;
-  let maxT = 0;
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
@@ -56,14 +52,6 @@ const DashboardBarChart = ({
       }
       row.forEach((cell, i) => {
         if (i === indexAxisIndex) {
-          if (indexAxisHeader.type === 'time' && typeof cell === 'number') {
-            if (cell < minT) {
-              minT = cell;
-            }
-            if (cell > maxT) {
-              maxT = cell;
-            }
-          }
           return;
         }
         if (i === categoryIndex) {
@@ -93,35 +81,28 @@ const DashboardBarChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
-  const indexAxisDomain = isTimeType(indexType) ? getIndexAxisDomain(minTimeValue, maxTimeValue) : indexType === "time" ? [minT, maxT] : undefined
+  const indexType = indexAxisHeader.type;
 
   return (
     <BarChart
       chartId={chartId}
-      className="h-full select-none"
-      enableLegendSlider={categories.size > 10}
-      startEndOnly={chartdata.length > (vertical ? 20 : isTimeType(indexType) ? 10 : 15)}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={chartdata}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
-      // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}
       valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
-      valueFormatter={(n: number) => {
-        return formatValue(n, valueAxisHeader.type, true).toString();
+      valueFormatter={(n: number, shortFormat?: boolean) => {
+        return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
-      indexFormatter={(n: number) => {
-        return formatValue(n, indexType, true).toString();
+      indexFormatter={(n: number, shortFormat?: boolean) => {
+        return formatValue(n, indexType, true, shortFormat).toString();
       }}
       xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
-      indexAxisDomain={indexAxisDomain}
-      maxValue={valueAxisHeader.type === 'percent' ? 1 : undefined}
       label={label}
     />
   );
