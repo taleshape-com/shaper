@@ -287,7 +287,7 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       grid: {
-        left: yAxisLabel ? 50 : 15,
+        left: yAxisLabel ? 40 : 15,
         right: 10,
         top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
@@ -397,17 +397,23 @@ const BarChart = (props: BarChartProps) => {
             color: borderColor,
           },
         } : undefined,
-        name: yAxisLabel,
-        nameLocation: 'middle',
-        nameGap: 60,
-        nameTextStyle: {
-          color: textColor,
-          fontFamily: chartFont,
-          fontWeight: 500,
-          fontSize: 14,
-        },
       },
       series,
+      graphic: [
+        // We use a graphic element to display the y-axis label instead of the axis name
+        // since the name can overlap with the axis labels.
+        // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
+        {
+          type: "text",
+          left: 0,
+          top: "center",
+          rotation: Math.PI / 2,
+          style: {
+            text: yAxisLabel,
+            font: `500 14px ${chartFont}`,
+          }
+        },
+      ],
     };
   }, [
     data,
