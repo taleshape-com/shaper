@@ -22,7 +22,7 @@ export function EmbedComponent({
   const jwtRef = useRef<string | null>(null);
 
   let baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
-  if (baseUrl[0] !== "/") {
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://') && baseUrl[0] !== "/") {
     baseUrl = "/" + baseUrl;
   }
   if (baseUrl[baseUrl.length - 1] !== "/") {
