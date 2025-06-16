@@ -161,7 +161,6 @@ const LineChart = (props: LineChartProps) => {
         borderRadius: 5,
         formatter: (params: any) => {
           let indexValue: any;
-          let extraData: any;
 
           const axisData = params.find((item: any) => item?.axisDim === 'x');
           if (isTimestampData) {
@@ -169,7 +168,7 @@ const LineChart = (props: LineChartProps) => {
           } else {
             indexValue = axisData.axisValue;
           }
-          extraData = extraDataByIndexAxis[indexValue];
+          const extraData = extraDataByIndexAxis[indexValue];
 
           const formattedIndex = indexFormatter(indexValue);
           let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
@@ -279,8 +278,8 @@ const LineChart = (props: LineChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: 'line',
-          show: data.length > 1,
+          type: data.length > 1 ? 'line' : 'none',
+          show: true,
           triggerOn: 'mousemove',
           label: {
             show: true,
