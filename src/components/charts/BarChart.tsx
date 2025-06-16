@@ -36,6 +36,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const BarChart = (props: BarChartProps) => {
   const {
+    data,
     extraDataByIndexAxis,
     categories,
     index,
@@ -53,7 +54,6 @@ const BarChart = (props: BarChartProps) => {
     label,
     ...other
   } = props;
-  let data = props.data;
 
   const chartRef = useRef<echarts.ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
@@ -82,8 +82,9 @@ const BarChart = (props: BarChartProps) => {
     const isTimestampData = isTimeType(indexType) || indexType === "time";
 
     // We treat vertical timestamp data as categories.
+    let dataCopy = data;
     if (layout === 'vertical' && isTimestampData) {
-      data = data.map((item) => {
+      dataCopy = data.map((item) => {
         return {
           ...item,
           [index]: indexFormatter(item[index])
@@ -99,8 +100,8 @@ const BarChart = (props: BarChartProps) => {
         barGap: '3%',
         stack: type === "stacked" ? "stack" : undefined,
         data: isTimestampData && layout === "horizontal"
-          ? data.map((item) => [item[index], item[category]])
-          : data.map((item) => item[category]),
+          ? dataCopy.map((item) => [item[index], item[category]])
+          : dataCopy.map((item) => item[category]),
         itemStyle: {
           color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
         },
@@ -294,7 +295,7 @@ const BarChart = (props: BarChartProps) => {
       },
       xAxis: {
         type: layout === "horizontal" ? (isTimestampData ? "time" as const : "category" as const) : "value" as const,
-        data: layout === "horizontal" && !isTimestampData ? data.map((item) => item[index]) : undefined,
+        data: layout === "horizontal" && !isTimestampData ? dataCopy.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true, // Always show labels
@@ -311,7 +312,7 @@ const BarChart = (props: BarChartProps) => {
         },
         axisPointer: {
           type: 'line',
-          show: data.length > 1,
+          show: dataCopy.length > 1,
           triggerOn: 'mousemove',
           label: {
             show: true,
@@ -348,7 +349,7 @@ const BarChart = (props: BarChartProps) => {
       },
       yAxis: {
         type: layout === "horizontal" ? "value" as const : ("category" as const),
-        data: layout === "vertical" ? data.map((item) => item[index]) : undefined,
+        data: layout === "vertical" ? dataCopy.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true, // Always show labels
@@ -368,7 +369,7 @@ const BarChart = (props: BarChartProps) => {
         },
         axisPointer: {
           type: 'line',
-          show: data.length > 1,
+          show: dataCopy.length > 1,
           triggerOn: 'mousemove',
           label: {
             show: true,
