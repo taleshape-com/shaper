@@ -36,12 +36,6 @@ type EmbedArgs = EmbedProps & {
 };
 
 export function dashboard({ container, ...initialProps }: EmbedArgs) {
-  if (container.children.length > 0) {
-    throw new Error(
-      "Shaper: Container must be empty before initializing dashboard. This may indicate duplicate initialization calls.",
-    );
-  }
-
   injectCustomCSS();
   container.classList.add("shaper-scope");
 
