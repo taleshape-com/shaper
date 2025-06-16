@@ -7,6 +7,7 @@ type LineProps = {
   chartId: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
+  // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
   label?: string;
@@ -31,9 +32,6 @@ const DashboardLineChart = ({
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
-  // TODO: It might more efficient to calculate these min/max values in the backend
-  let minT = Number.MAX_VALUE;
-  let maxT = 0;
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = data.reduce(
     (acc, row) => {
@@ -47,14 +45,6 @@ const DashboardLineChart = ({
       }
       row.forEach((cell, i) => {
         if (i === indexAxisIndex) {
-          if (indexAxisHeader.type === 'time' && typeof cell === 'number') {
-            if (cell < minT) {
-              minT = cell;
-            }
-            if (cell > maxT) {
-              maxT = cell;
-            }
-          }
           return;
         }
         if (i === categoryIndex) {
@@ -84,7 +74,7 @@ const DashboardLineChart = ({
     {} as Record<string, Record<string, string | number>>,
   );
   const chartdata = Object.values(dataByIndexAxis);
-  const indexType = isTimeType(indexAxisHeader.type) && chartdata.length < 2 ? "timestamp" : indexAxisHeader.type
+  const indexType = indexAxisHeader.type;
 
   return (
     <LineChart
@@ -92,7 +82,6 @@ const DashboardLineChart = ({
       data={chartdata}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
-      // TODO: This logic should be in the backend in getTimestampType, but in the backend we currently do not group data by index. We should probably do the grouping also in the backend already.
       indexType={indexType}
       valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
