@@ -159,6 +159,13 @@ const LineChart = (props: LineChartProps) => {
         hideDelay: 200, // Increase hide delay to prevent flickering
         showDelay: 0, // Show immediately
         borderRadius: 5,
+        backgroundColor: undefined,
+        borderColor,
+        className: 'bg-cbg dark:bg-dbg',
+        textStyle: {
+          fontFamily: chartFont,
+          color: textColor,
+        },
         formatter: (params: any) => {
           let indexValue: any;
 
@@ -358,6 +365,7 @@ const LineChart = (props: LineChartProps) => {
           style: {
             text: yAxisLabel,
             font: `500 14px ${chartFont}`,
+            fill: textColor,
           }
         },
       ],

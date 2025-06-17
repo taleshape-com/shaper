@@ -164,6 +164,13 @@ const BarChart = (props: BarChartProps) => {
         hideDelay: 200, // Increase hide delay to prevent flickering
         showDelay: 0, // Show immediately
         borderRadius: 5,
+        backgroundColor: undefined,
+        borderColor,
+        className: 'bg-cbg dark:bg-dbg',
+        textStyle: {
+          fontFamily: chartFont,
+          color: textColor,
+        },
         formatter: (params: any) => {
           const indexDim = layout === 'horizontal' ? 'x' : 'y';
           const axisData = params.find((item: any) => item?.axisDim === indexDim);
@@ -411,6 +418,7 @@ const BarChart = (props: BarChartProps) => {
           style: {
             text: yAxisLabel,
             font: `500 14px ${chartFont}`,
+            fill: textColor,
           }
         },
       ],
