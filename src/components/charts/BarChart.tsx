@@ -180,7 +180,7 @@ const BarChart = (props: BarChartProps) => {
             ? isTimestampData && data.length < 2
               ? hoverValue
               : indexFormatter(hoverValue)
-            : !isTimestampData
+            : isTimestampData
               ? hoverValue
               : indexFormatter(hoverValue);
 
@@ -318,9 +318,10 @@ const BarChart = (props: BarChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: dataCopy.length > 1 ? 'line' : 'none',
-          show: true,
+          type: layout === 'vertical' || dataCopy.length > 1 ? 'line' : 'none',
+          show: layout === 'horizontal' || dataCopy.length > 1,
           triggerOn: 'mousemove',
+          triggerTooltip: layout === "horizontal",
           label: {
             show: !isTimestampData || data.length > 1,
             formatter: (params: any) => {
@@ -375,8 +376,8 @@ const BarChart = (props: BarChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: 'line',
-          show: dataCopy.length > 1,
+          type: layout === 'horizontal' || dataCopy.length > 1 ? 'line' : 'none',
+          show: layout === 'vertical' || dataCopy.length > 1,
           triggerOn: 'mousemove',
           label: {
             show: true,
