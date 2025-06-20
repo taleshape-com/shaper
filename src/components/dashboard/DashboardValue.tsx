@@ -1,3 +1,4 @@
+import React from "react";
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 
@@ -23,9 +24,12 @@ function DashboardValue({ headers, data }: ValueProps) {
   const hasLabel = valueHeader.name !== value && valueHeader.name !== `'${value}'`
 
   return (
-    <div className="items-center h-full flex flex-col justify-center text-center overflow-auto">
-      <div className={cx("font-semibold", {
+    <div className="items-center h-full flex flex-col justify-center overflow-auto">
+      <div className={cx({
         "font-mono": isJSONType(valueHeader.type),
+        "font-semibold": formattedValue.length < 300,
+        "text-center": formattedValue.length < 400,
+        "text-justify": formattedValue.length >= 400,
         "text-xs": formattedValue.length >= 47,
         "text-sm": formattedValue.length < 47 && formattedValue.length >= 42,
         "text-lg": formattedValue.length < 38 && formattedValue.length >= 34,
@@ -37,31 +41,42 @@ function DashboardValue({ headers, data }: ValueProps) {
         "text-6xl": formattedValue.length < 13 && formattedValue.length >= 6,
         "text-7xl": formattedValue.length < 6,
       })}>
-        {formattedValue}
+        {typeof formattedValue === 'string' && formattedValue.includes('\n')
+          ? formattedValue.split('\n').map((line, idx, arr) => (
+            <React.Fragment key={idx}>
+              {line}
+              {idx < arr.length - 1 && <br />}
+            </React.Fragment>
+          ))
+          : formattedValue}
       </div>
-      {hasLabel && getNameIfSet(valueHeader.name) && (
-        <div className={cx("mt-3 font-medium font-display", {
-          "text-xs": valueHeader.name.length >= 40,
-          "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 35,
-          "text-lg": valueHeader.name.length < 30 && valueHeader.name.length >= 20,
-          "text-xl": valueHeader.name.length < 20,
-        })}>
-          {valueHeader.name}
-        </div>
-      )}
-      {compareValue && compareHeader ? (
-        <div className="text-sm mt-2 flex items-center justify-center font-medium">
-          <span>{compareHeader.name}:</span>
-          <span className="ml-1">{formatValue(compareValue, valueHeader.type, true)}</span>
-          {percent && <div
-            className={cx(
-              "ml-2 rounded px-1 py-1 text-sm font-medium text-ctexti dark:text-dtexti flex flex-nowrap items-center b bg-cbgi dark:bg-dbgi",
-              // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
-            )}
-          >{percent > 0 && '+'}{percent}%{percent > 0 ? <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" /> : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />}</div>}
-        </div>
-      ) : undefined}
-    </div>
+      {
+        hasLabel && getNameIfSet(valueHeader.name) && (
+          <div className={cx("mt-3 font-medium font-display", {
+            "text-xs": valueHeader.name.length >= 40,
+            "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 35,
+            "text-lg": valueHeader.name.length < 30 && valueHeader.name.length >= 20,
+            "text-xl": valueHeader.name.length < 20,
+          })}>
+            {valueHeader.name}
+          </div>
+        )
+      }
+      {
+        compareValue && compareHeader ? (
+          <div className="text-sm mt-2 flex items-center justify-center font-medium">
+            <span>{compareHeader.name}:</span>
+            <span className="ml-1">{formatValue(compareValue, valueHeader.type, true)}</span>
+            {percent && <div
+              className={cx(
+                "ml-2 rounded px-1 py-1 text-sm font-medium text-ctexti dark:text-dtexti flex flex-nowrap items-center b bg-cbgi dark:bg-dbgi",
+                // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
+              )}
+            >{percent > 0 && '+'}{percent}%{percent > 0 ? <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" /> : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />}</div>}
+          </div>
+        ) : undefined
+      }
+    </div >
   );
 }
 

@@ -106,7 +106,8 @@ const LineChart = (props: LineChartProps) => {
         itemStyle: {
           color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
           borderWidth: 0,
-          opacity: data.length > 1 ? 0 : 1,
+          // always show dots when there are not too many data points and we only have a single line
+          opacity: categories.length > 1 || (data.length / (chartRef.current?.getWidth() ?? 0) > 0.05) ? 0 : 1,
         },
         markLine: {
           silent: true,
@@ -332,6 +333,7 @@ const LineChart = (props: LineChartProps) => {
           type: 'line',
           show: data.length > 1,
           triggerOn: 'mousemove',
+          triggerEmphasis: false,
           label: {
             show: true,
             formatter: (params: any) => {

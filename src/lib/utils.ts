@@ -61,8 +61,9 @@ export const goToLoginPage = () => {
 };
 
 const castRegex = /^CAST\(.+ AS .+\)$/;
+const singleQuoteEscapedRegex = /^'(?:[^']|'')*'$/;
 export const getNameIfSet = (name: string) => {
-  if (castRegex.test(name)) {
+  if (castRegex.test(name) || singleQuoteEscapedRegex.test(name)) {
     return undefined;
   }
   return name;
