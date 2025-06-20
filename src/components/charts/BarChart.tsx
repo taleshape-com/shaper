@@ -98,6 +98,7 @@ const BarChart = (props: BarChartProps) => {
         name: category,
         type: 'bar' as const,
         barGap: '3%',
+        barMaxWidth: dataCopy.length === 1 ? layout == 'horizontal' ? '50%' : '25%' : undefined,
         stack: type === "stacked" ? "stack" : undefined,
         data: isTimestampData && layout === "horizontal" && data.length > 1
           ? dataCopy.map((item) => [item[index], item[category]])
@@ -156,7 +157,7 @@ const BarChart = (props: BarChartProps) => {
       useDirtyRect: true,
       cursor: 'default',
       tooltip: {
-        show: true,
+        show: dataCopy.length > 1 || Object.keys(extraDataByIndexAxis).length > 0,
         trigger: 'axis',
         triggerOn: 'mousemove',
         enterable: false,
@@ -292,7 +293,7 @@ const BarChart = (props: BarChartProps) => {
       },
       grid: {
         left: yAxisLabel ? 45 : 15,
-        right: 10,
+        right: 15,
         top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
@@ -323,7 +324,7 @@ const BarChart = (props: BarChartProps) => {
           triggerOn: 'mousemove',
           triggerTooltip: layout === "horizontal",
           label: {
-            show: !isTimestampData || data.length > 1,
+            show: data.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
@@ -340,7 +341,7 @@ const BarChart = (props: BarChartProps) => {
           show: false,
         },
         splitLine: layout === "vertical" ? {
-          show: true,
+          show: dataCopy.length > 1,
           lineStyle: {
             color: borderColor,
           },
@@ -380,7 +381,7 @@ const BarChart = (props: BarChartProps) => {
           show: layout === 'vertical' || dataCopy.length > 1,
           triggerOn: 'mousemove',
           label: {
-            show: true,
+            show: layout === 'horizontal' || dataCopy.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
@@ -400,7 +401,7 @@ const BarChart = (props: BarChartProps) => {
           show: false,
         },
         splitLine: layout === "horizontal" ? {
-          show: true,
+          show: dataCopy.length > 1,
           lineStyle: {
             color: borderColor,
           },

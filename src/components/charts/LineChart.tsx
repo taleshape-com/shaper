@@ -265,7 +265,7 @@ const LineChart = (props: LineChartProps) => {
       },
       grid: {
         left: yAxisLabel ? 45 : 15,
-        right: 10,
+        right: 15,
         top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
