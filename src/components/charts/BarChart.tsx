@@ -109,7 +109,7 @@ const BarChart = (props: BarChartProps) => {
         emphasis: {
           itemStyle: {
             color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
-            opacity: 0.8,
+            opacity: dataCopy.length > 1 ? 0.8 : 1,
           },
         },
         markLine: {

@@ -149,8 +149,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel)
 		query.Render = Render{
-			Type:  rInfo.Type,
-			Label: rInfo.Label,
+			Type:            rInfo.Type,
+			Label:           rInfo.Label,
+			GaugeCategories: rInfo.GaugeCategories,
 		}
 
 		if rInfo.Download != "" {
@@ -363,6 +364,11 @@ func mapTag(index int, rInfo renderInfo) string {
 	}
 	if rInfo.Download != "" {
 		return "download"
+	}
+	if rInfo.Type == "gauge" {
+		if rInfo.ValueAxisIndex != nil && index == *rInfo.ValueAxisIndex {
+			return "value"
+		}
 	}
 	if rInfo.Type == "value" {
 		if rInfo.CompareIndex != nil && index == *rInfo.CompareIndex {
@@ -703,6 +709,80 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Label: labelValue,
 			Type:  "placeholder",
 		}
+	}
+
+	gauge, gaugeIndex := findColumnByTag(columns, "GAUGE")
+	if gauge != nil && len(rows) == 1 {
+		rangeCol, rangeIndex := findColumnByTag(columns, "RANGE")
+		labelsCol, labelsIndex := findColumnByTag(columns, "LABELS")
+		colorsCol, colorsIndex := findColumnByTag(columns, "COLORS")
+		row := rows[0]
+		rangeArr := []any{}
+		if rangeCol != nil {
+			if rangeUnion, ok := row[rangeIndex].(duckdb.Union); ok {
+				// TODO: Assert that gaugeUnion.Tag and rangeUnion.Tag match; gaugeUnion := row[gaugeIndex].(duckdb.Union)
+				if arr, ok := rangeUnion.Value.([]any); ok {
+					rangeArr = arr
+				}
+			}
+		}
+		if len(rangeArr) < 2 {
+			// TODO: Set default range
+		}
+		labelsArr := []any{}
+		if labelsCol != nil {
+			if labelsUnion, ok := row[labelsIndex].(duckdb.Union); ok {
+				if arr, ok := labelsUnion.Value.([]any); ok {
+					labelsArr = arr
+				}
+			}
+		}
+		labelsLen := len(labelsArr)
+		colorsArr := []any{}
+		if colorsCol != nil {
+			if colorsUnion, ok := row[colorsIndex].(duckdb.Union); ok {
+				if arr, ok := colorsUnion.Value.([]any); ok {
+					colorsArr = arr
+				}
+			}
+		}
+		colorsLen := len(colorsArr)
+		categories := []GaugeCategory{}
+		fromAny := rangeArr[0]
+		from, ok := fromAny.(float64)
+		if !ok {
+			from = float64(formatInterval(fromAny))
+		}
+		for i := 1; i < len(rangeArr); i++ {
+			toAny := rangeArr[i]
+			to, ok := toAny.(float64)
+			if !ok {
+				to = float64(formatInterval(toAny))
+			}
+			g := GaugeCategory{
+				From: from,
+				To:   to,
+			}
+			if labelsLen >= i {
+				if labelValue, ok := labelsArr[i-1].(string); ok {
+					g.Label = labelValue
+				}
+			}
+			if colorsLen >= i {
+				if colorValue, ok := colorsArr[i-1].(string); ok {
+					g.Color = colorValue
+				}
+			}
+			categories = append(categories, g)
+			from = to
+		}
+		r := renderInfo{
+			Label:           labelValue,
+			Type:            "gauge",
+			ValueAxisIndex:  &gaugeIndex,
+			GaugeCategories: categories,
+		}
+		return r
 	}
 
 	// TODO: assert that COMPARE can only be used if both values are the same type

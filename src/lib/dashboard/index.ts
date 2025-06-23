@@ -28,19 +28,30 @@ export type Result = {
   sections: ({
     type: 'header';
     title?: string;
-    queries: {
-      render: {
-        type:
-        | "dropdown"
-        | "dropdownMulti"
-        | "button"
-        | "datepicker"
-        | "daterangePicker";
-        label?: string;
-      }
+    queries: ({
+      render:
+        | ({
+            type:
+              | "dropdown"
+              | "dropdownMulti"
+              | "button"
+              | "datepicker"
+              | "daterangePicker";
+            label?: string;
+          })
+        | ({
+            type: "gauge";
+            label?: string;
+            gaugeCategories: {
+              from: number;
+              to: number;
+              label: string;
+              color: string;
+            }[];
+          });
       columns: Column[];
       rows: (string | number | boolean)[][];
-    }[];
+    })[];
   } | {
     type: 'content';
     queries: {
@@ -59,5 +70,5 @@ export type Result = {
       columns: Column[];
       rows: (string | number | boolean)[][];
     }[];
-  })[]
+  })[];
 };
