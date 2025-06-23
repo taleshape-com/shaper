@@ -33,7 +33,7 @@
     "@react-stately/datepicker": "^3.14.2",
     "@remixicon/react": "^4.5.0",
     "@tailwindcss/container-queries": "^0.1.1",
-    "@tanstack/react-router": "^1.78.2",
+    "@tanstack/react-router": "^1.121.34",
     "@types/echarts": "^4.9.22",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
