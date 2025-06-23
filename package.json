@@ -46,7 +46,7 @@
     "react-helmet": "^6.1.0",
     "tailwind-merge": "^2.5.4",
     "tailwind-variants": "^1.0.0",
-    "use-debounce": "^10.0.4",
+    "use-debounce": "^10.0.5",
     "vite-plugin-css-injected-by-js": "^3.5.2"
   },
   "devDependencies": {
