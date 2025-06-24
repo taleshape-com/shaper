@@ -42,7 +42,7 @@ export function MenuProvider({
       setUserName(decoded.userName || "");
     } catch (error) {
       if (isRedirect(error)) {
-        navigate(error);
+        navigate(error.options);
         return;
       }
       console.error("Failed to fetch username:", error);
@@ -143,7 +143,7 @@ export function MenuProvider({
               </span>
               <Button
                 onClick={async () => {
-                  navigate(await logout());
+                  navigate((await logout()).options);
                 }}
                 variant="light"
               >

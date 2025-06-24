@@ -102,7 +102,7 @@ function DashboardEditor() {
       setPreviewData(data);
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err.options);
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -166,7 +166,7 @@ function DashboardEditor() {
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err.options);
       }
       toast({
         title: translate("Error"),
@@ -226,7 +226,7 @@ function DashboardEditor() {
       setName(newName);
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err.options);
       }
       toast({
         title: translate("Error"),
@@ -257,7 +257,7 @@ function DashboardEditor() {
       navigate({ to: "/" });
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err.options);
       }
       toast({
         title: translate("Error"),

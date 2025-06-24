@@ -55,7 +55,7 @@ function DashboardViewComponent() {
 
   const handleRedirectError = useCallback((err: Error) => {
     if (isRedirect(err)) {
-      navigate(err);
+      navigate(err.options);
     }
   }, [navigate]);
 
