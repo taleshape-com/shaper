@@ -149,8 +149,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel)
 		query.Render = Render{
-			Type:  rInfo.Type,
-			Label: rInfo.Label,
+			Type:            rInfo.Type,
+			Label:           rInfo.Label,
+			GaugeCategories: rInfo.GaugeCategories,
 		}
 
 		if rInfo.Download != "" {
@@ -364,6 +365,11 @@ func mapTag(index int, rInfo renderInfo) string {
 	if rInfo.Download != "" {
 		return "download"
 	}
+	if rInfo.Type == "gauge" {
+		if rInfo.ValueAxisIndex != nil && index == *rInfo.ValueAxisIndex {
+			return "value"
+		}
+	}
 	if rInfo.Type == "value" {
 		if rInfo.CompareIndex != nil && index == *rInfo.CompareIndex {
 			return "compare"
@@ -544,8 +550,6 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	return ""
 }
 
-// TODO: Charts should assert that only the required columns are present.
-// TODO: BARCHART_STACKED must have CATEGORY column
 func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
@@ -703,6 +707,131 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Label: labelValue,
 			Type:  "placeholder",
 		}
+	}
+
+	gauge, gaugeIndex := findColumnByTag(columns, "GAUGE")
+	isGaugePercent := false
+	if gauge == nil {
+		gauge, gaugeIndex = findColumnByTag(columns, "GAUGE_PERCENT")
+		isGaugePercent = true
+	}
+	if gauge != nil && len(rows) == 1 {
+		rangeCol, rangeIndex := findColumnByTag(columns, "RANGE")
+		labelsCol, labelsIndex := findColumnByTag(columns, "LABELS")
+		colorsCol, colorsIndex := findColumnByTag(columns, "COLORS")
+		row := rows[0]
+		rangeArr := []any{}
+		if rangeCol != nil {
+			if rangeUnion, ok := row[rangeIndex].(duckdb.Union); ok {
+				// TODO: Assert that gaugeUnion.Tag and rangeUnion.Tag match; gaugeUnion := row[gaugeIndex].(duckdb.Union)
+				if arr, ok := rangeUnion.Value.([]any); ok {
+					rangeArr = arr
+				}
+			}
+		}
+		// TODO: warn if range length is less than 2
+		if len(rangeArr) < 2 {
+			// default values
+			var gaugeValue float64 = 0.0
+			var isInterval bool = false
+			var singleValue float64
+			hasSingleValue := false
+			if len(rangeArr) == 1 {
+				switch v := rangeArr[0].(type) {
+				case float64:
+					singleValue = v
+					hasSingleValue = true
+				case duckdb.Interval:
+					singleValue = float64(formatInterval(v))
+					hasSingleValue = true
+				}
+			}
+			if gauge, ok := row[gaugeIndex].(duckdb.Union); ok {
+				switch v := gauge.Value.(type) {
+				case float64:
+					gaugeValue = v
+				case duckdb.Interval:
+					isInterval = true
+				}
+			}
+			if hasSingleValue && singleValue >= 0 && gaugeValue >= 0 {
+				rangeArr = []any{0.0, singleValue}
+			} else if isInterval {
+				// 1 hour in milliseconds
+				rangeArr = []any{0.0, float64(60 * 60 * 1000)}
+			} else if isGaugePercent && gaugeValue >= 0 && gaugeValue <= 1 {
+				rangeArr = []any{0.0, 1.0}
+			} else {
+				absValue := math.Abs(gaugeValue)
+				var nextPower float64 = 10.0
+				if absValue > 0 {
+					nextPower = math.Pow(10, math.Ceil(math.Log10(absValue)))
+				}
+				if gaugeValue < 0 {
+					rangeArr = []any{-nextPower, nextPower}
+				} else if gaugeValue > 0 {
+					rangeArr = []any{0.0, nextPower}
+				} else {
+					rangeArr = []any{0.0, 10.0}
+				}
+			}
+		}
+		labelsArr := []any{}
+		if labelsCol != nil {
+			if labelsUnion, ok := row[labelsIndex].(duckdb.Union); ok {
+				if arr, ok := labelsUnion.Value.([]any); ok {
+					labelsArr = arr
+				}
+			}
+		}
+		// TODO: warn if labels length doesn't match range length
+		labelsLen := len(labelsArr)
+		colorsArr := []any{}
+		if colorsCol != nil {
+			if colorsUnion, ok := row[colorsIndex].(duckdb.Union); ok {
+				if arr, ok := colorsUnion.Value.([]any); ok {
+					colorsArr = arr
+				}
+			}
+		}
+		// TODO: warn if colors length doesn't match range length
+		colorsLen := len(colorsArr)
+		categories := []GaugeCategory{}
+		fromAny := rangeArr[0]
+		from, ok := fromAny.(float64)
+		if !ok {
+			from = float64(formatInterval(fromAny))
+		}
+		for i := 1; i < len(rangeArr); i++ {
+			toAny := rangeArr[i]
+			to, ok := toAny.(float64)
+			if !ok {
+				to = float64(formatInterval(toAny))
+			}
+			g := GaugeCategory{
+				From: from,
+				To:   to,
+			}
+			if labelsLen >= i {
+				if labelValue, ok := labelsArr[i-1].(string); ok {
+					g.Label = labelValue
+				}
+			}
+			if colorsLen >= i {
+				if colorValue, ok := colorsArr[i-1].(string); ok {
+					g.Color = colorValue
+				}
+			}
+			categories = append(categories, g)
+			from = to
+		}
+		r := renderInfo{
+			Label:           labelValue,
+			Type:            "gauge",
+			ValueAxisIndex:  &gaugeIndex,
+			GaugeCategories: categories,
+		}
+		return r
 	}
 
 	// TODO: assert that COMPARE can only be used if both values are the same type

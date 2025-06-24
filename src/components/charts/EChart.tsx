@@ -8,6 +8,7 @@ interface EChartProps {
   optionSettings?: echarts.SetOptionOpts;
   events?: Record<string, (param: any) => void>;
   onChartReady?: (chart: echarts.ECharts) => void;
+  onResize?: (chart: echarts.ECharts) => void;
   [key: string]: any;
 }
 
@@ -17,6 +18,7 @@ export const EChart = ({
   optionSettings,
   events = {},
   onChartReady,
+  onResize,
   ...props
 }: EChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -28,6 +30,9 @@ export const EChart = ({
           const chart = echarts.getInstanceByDom(chartRef.current);
           if (chart) {
             chart.resize();
+            if (onResize) {
+              onResize(chart);
+            }
           }
         }
       }, 50),

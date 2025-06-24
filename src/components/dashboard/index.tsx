@@ -14,6 +14,7 @@ import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
+import DashboardGauge from "./DashboardGauge";
 
 export interface DashboardProps {
   id?: string;
@@ -403,6 +404,16 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        label={query.render.label}
+      />
+    );
+  }
+  if (query.render.type === "gauge") {
+    return (
+      <DashboardGauge
+        headers={query.columns}
+        data={query.rows}
+        gaugeCategories={query.render.gaugeCategories}
         label={query.render.label}
       />
     );

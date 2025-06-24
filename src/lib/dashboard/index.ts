@@ -20,6 +20,13 @@ export const isTimeType = (t: Column['type']) => {
   return t === "year" || t === "month" || t === "hour" || t === "date" || t === "timestamp";
 }
 
+export type GaugeCategory = {
+  from: number;
+  to: number;
+  label?: string;
+  color?: string;
+};
+
 export type Result = {
   name: string;
   minTimeValue: number;
@@ -28,8 +35,9 @@ export type Result = {
   sections: ({
     type: 'header';
     title?: string;
-    queries: {
-      render: {
+    queries: ({
+      render:
+      | ({
         type:
         | "dropdown"
         | "dropdownMulti"
@@ -37,10 +45,15 @@ export type Result = {
         | "datepicker"
         | "daterangePicker";
         label?: string;
-      }
+      })
+      | ({
+        type: "gauge";
+        label?: string;
+        gaugeCategories: GaugeCategory[];
+      });
       columns: Column[];
       rows: (string | number | boolean)[][];
-    }[];
+    })[];
   } | {
     type: 'content';
     queries: {
@@ -59,5 +72,5 @@ export type Result = {
       columns: Column[];
       rows: (string | number | boolean)[][];
     }[];
-  })[]
+  })[];
 };

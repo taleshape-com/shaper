@@ -51,6 +51,7 @@ const LineChart = (props: LineChartProps) => {
   } = props;
 
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const [chartWidth, setChartWidth] = React.useState(0);
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
@@ -107,7 +108,7 @@ const LineChart = (props: LineChartProps) => {
           color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
           borderWidth: 0,
           // always show dots when there are not too many data points and we only have a single line
-          opacity: categories.length > 1 || (data.length / (chartRef.current?.getWidth() ?? 0) > 0.05) ? 0 : 1,
+          opacity: categories.length > 1 || (data.length / (chartWidth) > 0.05) ? 0 : 1,
         },
         markLine: {
           silent: true,
@@ -265,7 +266,7 @@ const LineChart = (props: LineChartProps) => {
       },
       grid: {
         left: yAxisLabel ? 45 : 15,
-        right: 10,
+        right: 15,
         top: showLegend ? 50 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
@@ -391,6 +392,7 @@ const LineChart = (props: LineChartProps) => {
     hoveredIndexType,
     chartId,
     isDarkMode,
+    chartWidth,
   ]);
 
   // Event handlers for the EChart component
@@ -425,9 +427,13 @@ const LineChart = (props: LineChartProps) => {
     };
   }, [indexType, data, index, chartId, setHoverState]);
 
-  // Handle chart instance reference
   const handleChartReady = useCallback((chart: echarts.ECharts) => {
     chartRef.current = chart;
+    setChartWidth(chart.getWidth());
+  }, []);
+
+  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+    setChartWidth(chart.getWidth());
   }, []);
 
   return (
@@ -440,6 +446,7 @@ const LineChart = (props: LineChartProps) => {
         option={chartOptions}
         events={chartEvents}
         onChartReady={handleChartReady}
+        onResize={handleChartResize}
       />
       <ChartDownloadButton
         chartRef={chartRef}
