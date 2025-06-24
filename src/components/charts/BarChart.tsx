@@ -157,7 +157,7 @@ const BarChart = (props: BarChartProps) => {
       useDirtyRect: true,
       cursor: 'default',
       tooltip: {
-        show: dataCopy.length > 1 || Object.keys(extraDataByIndexAxis).length > 0,
+        show: true,
         trigger: 'axis',
         triggerOn: 'mousemove',
         enterable: false,
