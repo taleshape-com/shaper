@@ -550,8 +550,6 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	return ""
 }
 
-// TODO: Charts should assert that only the required columns are present.
-// TODO: BARCHART_STACKED must have CATEGORY column
 func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInfo {
 	var labelValue *string
 	if label != "" {
@@ -712,6 +710,11 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 	}
 
 	gauge, gaugeIndex := findColumnByTag(columns, "GAUGE")
+	isGaugePercent := false
+	if gauge == nil {
+		gauge, gaugeIndex = findColumnByTag(columns, "GAUGE_PERCENT")
+		isGaugePercent = true
+	}
 	if gauge != nil && len(rows) == 1 {
 		rangeCol, rangeIndex := findColumnByTag(columns, "RANGE")
 		labelsCol, labelsIndex := findColumnByTag(columns, "LABELS")
@@ -726,8 +729,52 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 				}
 			}
 		}
+		// TODO: warn if range length is less than 2
 		if len(rangeArr) < 2 {
-			// TODO: Set default range
+			// default values
+			var gaugeValue float64 = 0.0
+			var isInterval bool = false
+			var singleValue float64
+			hasSingleValue := false
+			if len(rangeArr) == 1 {
+				switch v := rangeArr[0].(type) {
+				case float64:
+					singleValue = v
+					hasSingleValue = true
+				case duckdb.Interval:
+					singleValue = float64(formatInterval(v))
+					hasSingleValue = true
+				}
+			}
+			if gauge, ok := row[gaugeIndex].(duckdb.Union); ok {
+				switch v := gauge.Value.(type) {
+				case float64:
+					gaugeValue = v
+				case duckdb.Interval:
+					isInterval = true
+				}
+			}
+			if hasSingleValue && singleValue >= 0 && gaugeValue >= 0 {
+				rangeArr = []any{0.0, singleValue}
+			} else if isInterval {
+				// 1 hour in milliseconds
+				rangeArr = []any{0.0, float64(60 * 60 * 1000)}
+			} else if isGaugePercent && gaugeValue >= 0 && gaugeValue <= 1 {
+				rangeArr = []any{0.0, 1.0}
+			} else {
+				absValue := math.Abs(gaugeValue)
+				var nextPower float64 = 10.0
+				if absValue > 0 {
+					nextPower = math.Pow(10, math.Ceil(math.Log10(absValue)))
+				}
+				if gaugeValue < 0 {
+					rangeArr = []any{-nextPower, nextPower}
+				} else if gaugeValue > 0 {
+					rangeArr = []any{0.0, nextPower}
+				} else {
+					rangeArr = []any{0.0, 10.0}
+				}
+			}
 		}
 		labelsArr := []any{}
 		if labelsCol != nil {
@@ -737,6 +784,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 				}
 			}
 		}
+		// TODO: warn if labels length doesn't match range length
 		labelsLen := len(labelsArr)
 		colorsArr := []any{}
 		if colorsCol != nil {
@@ -746,6 +794,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 				}
 			}
 		}
+		// TODO: warn if colors length doesn't match range length
 		colorsLen := len(colorsArr)
 		categories := []GaugeCategory{}
 		fromAny := rangeArr[0]

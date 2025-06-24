@@ -48,8 +48,8 @@ type Render struct {
 type GaugeCategory struct {
 	From  float64 `json:"from"`
 	To    float64 `json:"to"`
-	Label string  `json:"label"`
-	Color string  `json:"color"`
+	Label string  `json:"label,omitempty"`
+	Color string  `json:"color,omitempty"`
 }
 
 type renderInfo struct {
