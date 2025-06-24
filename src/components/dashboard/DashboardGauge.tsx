@@ -16,6 +16,7 @@ type DashboardGaugeProps = {
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCategories, label }) => {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const { isDarkMode } = React.useContext(DarkModeContext);
+  const [chartHeight, setChartHeight] = React.useState<number>(0);
 
 
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
@@ -116,7 +117,9 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
       endAngle: 0,
       center: ['50%', '75%'],
       radius: '100%',
-    }
+    };
+
+    const pointerOffset = chartHeight * -0.5 + 36;
 
     return {
       series: [
@@ -143,7 +146,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
             icon: 'triangle',
             length: 16,
             width: 14,
-            offsetCenter: [0, '-77%'],
+            offsetCenter: [0, pointerOffset],
             itemStyle: {
               color: theme.textColorSecondary,
               shadowBlur: 2,
@@ -190,10 +193,16 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
     gaugeCategories,
     headers,
     label,
+    chartHeight,
   ]);
 
   const handleChartReady = useCallback((chart: echarts.ECharts) => {
     chartRef.current = chart;
+    setChartHeight(chart.getHeight());
+  }, []);
+
+  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+    setChartHeight(chart.getHeight());
   }, []);
 
   return (
@@ -202,6 +211,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
         className="absolute inset-0"
         option={chartOptions}
         onChartReady={handleChartReady}
+        onResize={handleChartResize}
       />
     </div>
   );
