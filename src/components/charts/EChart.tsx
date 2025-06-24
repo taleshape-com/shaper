@@ -5,17 +5,20 @@ import { debounce } from 'lodash';
 interface EChartProps {
   option: echarts.EChartsOption;
   chartSettings?: echarts.EChartsInitOpts;
-  optionSettings?: echarts.SetOptionOpts;
   events?: Record<string, (param: any) => void>;
   onChartReady?: (chart: echarts.ECharts) => void;
   onResize?: (chart: echarts.ECharts) => void;
   [key: string]: any;
 }
 
+const optionSettings = {
+  replaceMerge: 'series',
+  lazyUpdate: true,
+}
+
 export const EChart = ({
   option,
   chartSettings,
-  optionSettings,
   events = {},
   onChartReady,
   onResize,
@@ -88,7 +91,7 @@ export const EChart = ({
     if (chart) {
       chart.setOption(option, optionSettings);
     }
-  }, [option, optionSettings]);
+  }, [option]);
 
   return (
     <div
