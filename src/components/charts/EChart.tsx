@@ -36,7 +36,7 @@ export const EChart = ({
           }
         }
       }, 50),
-    []
+    [onResize]
   );
 
   useEffect(() => {
