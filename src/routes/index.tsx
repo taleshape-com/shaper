@@ -117,7 +117,7 @@ function Index() {
       });
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err);
+        return navigate(err.options);
       }
       toast({
         title: translate("Error"),

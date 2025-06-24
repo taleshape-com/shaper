@@ -87,7 +87,7 @@ function NewDashboard() {
       setPreviewData(data)
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err)
+        return navigate(err.options)
       }
       setPreviewError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -167,7 +167,7 @@ function NewDashboard() {
       })
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err)
+        return navigate(err.options)
       }
       toast({
         title: translate('Error'),

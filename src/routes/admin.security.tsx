@@ -32,7 +32,7 @@ function Admin() {
       })
     } catch (error) {
       if (isRedirect(error)) {
-        return navigate(error)
+        return navigate(error.options)
       }
       toast({
         title: translate('Error'),
