@@ -31,9 +31,8 @@ export const Route = createFileRoute("/login")({
       });
     }
   },
-  errorComponent: LoginErrorComponent as any,
-}).update({
   component: LoginComponent,
+  errorComponent: LoginErrorComponent as any,
 });
 
 function LoginErrorComponent({ error }: ErrorComponentProps) {

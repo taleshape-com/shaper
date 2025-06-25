@@ -8,174 +8,69 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as NewRouteImport } from './routes/new'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as DashboardsDashboardIdRouteImport } from './routes/dashboards.$dashboardId'
+import { Route as AdminSecurityRouteImport } from './routes/admin.security'
+import { Route as AdminKeysRouteImport } from './routes/admin.keys'
+import { Route as DashboardsDashboardIdEditRouteImport } from './routes/dashboards_.$dashboardId.edit'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as SignupImport } from './routes/signup'
-import { Route as NewImport } from './routes/new'
-import { Route as LoginImport } from './routes/login'
-import { Route as AdminImport } from './routes/admin'
-import { Route as IndexImport } from './routes/index'
-import { Route as AdminIndexImport } from './routes/admin.index'
-import { Route as DashboardsDashboardIdImport } from './routes/dashboards.$dashboardId'
-import { Route as AdminSecurityImport } from './routes/admin.security'
-import { Route as AdminKeysImport } from './routes/admin.keys'
-import { Route as DashboardsDashboardIdEditImport } from './routes/dashboards_.$dashboardId.edit'
-
-// Create/Update Routes
-
-const SignupRoute = SignupImport.update({
+const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const NewRoute = NewImport.update({
+const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const LoginRoute = LoginImport.update({
+const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AdminRoute = AdminImport.update({
+const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AdminIndexRoute = AdminIndexImport.update({
+const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-
-const DashboardsDashboardIdRoute = DashboardsDashboardIdImport.update({
+const DashboardsDashboardIdRoute = DashboardsDashboardIdRouteImport.update({
   id: '/dashboards/$dashboardId',
   path: '/dashboards/$dashboardId',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AdminSecurityRoute = AdminSecurityImport.update({
+const AdminSecurityRoute = AdminSecurityRouteImport.update({
   id: '/security',
   path: '/security',
   getParentRoute: () => AdminRoute,
 } as any)
-
-const AdminKeysRoute = AdminKeysImport.update({
+const AdminKeysRoute = AdminKeysRouteImport.update({
   id: '/keys',
   path: '/keys',
   getParentRoute: () => AdminRoute,
 } as any)
-
-const DashboardsDashboardIdEditRoute = DashboardsDashboardIdEditImport.update({
-  id: '/dashboards_/$dashboardId/edit',
-  path: '/dashboards/$dashboardId/edit',
-  getParentRoute: () => rootRoute,
-} as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminImport
-      parentRoute: typeof rootRoute
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginImport
-      parentRoute: typeof rootRoute
-    }
-    '/new': {
-      id: '/new'
-      path: '/new'
-      fullPath: '/new'
-      preLoaderRoute: typeof NewImport
-      parentRoute: typeof rootRoute
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupImport
-      parentRoute: typeof rootRoute
-    }
-    '/admin/keys': {
-      id: '/admin/keys'
-      path: '/keys'
-      fullPath: '/admin/keys'
-      preLoaderRoute: typeof AdminKeysImport
-      parentRoute: typeof AdminImport
-    }
-    '/admin/security': {
-      id: '/admin/security'
-      path: '/security'
-      fullPath: '/admin/security'
-      preLoaderRoute: typeof AdminSecurityImport
-      parentRoute: typeof AdminImport
-    }
-    '/dashboards/$dashboardId': {
-      id: '/dashboards/$dashboardId'
-      path: '/dashboards/$dashboardId'
-      fullPath: '/dashboards/$dashboardId'
-      preLoaderRoute: typeof DashboardsDashboardIdImport
-      parentRoute: typeof rootRoute
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexImport
-      parentRoute: typeof AdminImport
-    }
-    '/dashboards_/$dashboardId/edit': {
-      id: '/dashboards_/$dashboardId/edit'
-      path: '/dashboards/$dashboardId/edit'
-      fullPath: '/dashboards/$dashboardId/edit'
-      preLoaderRoute: typeof DashboardsDashboardIdEditImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Create and export the route tree
-
-interface AdminRouteChildren {
-  AdminKeysRoute: typeof AdminKeysRoute
-  AdminSecurityRoute: typeof AdminSecurityRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminKeysRoute: AdminKeysRoute,
-  AdminSecurityRoute: AdminSecurityRoute,
-  AdminIndexRoute: AdminIndexRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+const DashboardsDashboardIdEditRoute =
+  DashboardsDashboardIdEditRouteImport.update({
+    id: '/dashboards_/$dashboardId/edit',
+    path: '/dashboards/$dashboardId/edit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -189,7 +84,6 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
@@ -201,9 +95,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
@@ -215,7 +108,6 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/dashboards_/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -254,7 +146,6 @@ export interface FileRouteTypes {
     | '/dashboards_/$dashboardId/edit'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
@@ -265,6 +156,95 @@ export interface RootRouteChildren {
   DashboardsDashboardIdEditRoute: typeof DashboardsDashboardIdEditRoute
 }
 
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new': {
+      id: '/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/dashboards/$dashboardId': {
+      id: '/dashboards/$dashboardId'
+      path: '/dashboards/$dashboardId'
+      fullPath: '/dashboards/$dashboardId'
+      preLoaderRoute: typeof DashboardsDashboardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/security': {
+      id: '/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AdminSecurityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/keys': {
+      id: '/admin/keys'
+      path: '/keys'
+      fullPath: '/admin/keys'
+      preLoaderRoute: typeof AdminKeysRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/dashboards_/$dashboardId/edit': {
+      id: '/dashboards_/$dashboardId/edit'
+      path: '/dashboards/$dashboardId/edit'
+      fullPath: '/dashboards/$dashboardId/edit'
+      preLoaderRoute: typeof DashboardsDashboardIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
+}
+
+interface AdminRouteChildren {
+  AdminKeysRoute: typeof AdminKeysRoute
+  AdminSecurityRoute: typeof AdminSecurityRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminKeysRoute: AdminKeysRoute,
+  AdminSecurityRoute: AdminSecurityRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -274,64 +254,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
   DashboardsDashboardIdEditRoute: DashboardsDashboardIdEditRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/admin",
-        "/login",
-        "/new",
-        "/signup",
-        "/dashboards/$dashboardId",
-        "/dashboards_/$dashboardId/edit"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/admin": {
-      "filePath": "admin.tsx",
-      "children": [
-        "/admin/keys",
-        "/admin/security",
-        "/admin/"
-      ]
-    },
-    "/login": {
-      "filePath": "login.tsx"
-    },
-    "/new": {
-      "filePath": "new.tsx"
-    },
-    "/signup": {
-      "filePath": "signup.tsx"
-    },
-    "/admin/keys": {
-      "filePath": "admin.keys.tsx",
-      "parent": "/admin"
-    },
-    "/admin/security": {
-      "filePath": "admin.security.tsx",
-      "parent": "/admin"
-    },
-    "/dashboards/$dashboardId": {
-      "filePath": "dashboards.$dashboardId.tsx"
-    },
-    "/admin/": {
-      "filePath": "admin.index.tsx",
-      "parent": "/admin"
-    },
-    "/dashboards_/$dashboardId/edit": {
-      "filePath": "dashboards_.$dashboardId.edit.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
