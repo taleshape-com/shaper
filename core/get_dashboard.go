@@ -730,7 +730,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			}
 		}
 		// TODO: warn if range length is less than 2
-		if len(rangeArr) < 2 {
+		if lessThanTwoUniqueRangeValues(rangeArr) {
 			// default values
 			var gaugeValue float64 = 0.0
 			var isInterval bool = false
@@ -754,7 +754,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 					isInterval = true
 				}
 			}
-			if hasSingleValue && singleValue >= 0 && gaugeValue >= 0 {
+			if hasSingleValue && singleValue > 0 && gaugeValue >= 0 {
 				rangeArr = []any{0.0, singleValue}
 			} else if isInterval {
 				// 1 hour in milliseconds
@@ -1433,4 +1433,26 @@ func getReloadValue(rows Rows) int64 {
 		return 0
 	}
 	return 0
+}
+
+func lessThanTwoUniqueRangeValues(r []any) bool {
+	if len(r) < 2 {
+		return true
+	}
+	uniqueValues := make(map[float64]bool)
+	for _, v := range r {
+		switch v := v.(type) {
+		case float64:
+			uniqueValues[v] = true
+		case duckdb.Interval:
+			ms := float64(formatInterval(v))
+			uniqueValues[ms] = true
+		default:
+			return true // Unsupported type
+		}
+		if len(uniqueValues) >= 2 {
+			return false
+		}
+	}
+	return true
 }
