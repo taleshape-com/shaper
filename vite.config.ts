@@ -6,11 +6,11 @@ import { visualizer } from "rollup-plugin-visualizer";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
     }),
+    react(),
     visualizer({
       filename: 'vite/stats.html',
       gzipSize: true,

@@ -5,19 +5,23 @@ import * as echarts from 'echarts';
 import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';
 import { DarkModeContext } from '../../contexts/DarkModeContext';
 import { formatValue } from "../../lib/render";
+import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 
 type DashboardGaugeProps = {
+  chartId: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows'];
   gaugeCategories: GaugeCategory[];
   label?: string;
 };
 
-const chartSettings = {
-  renderer: 'svg' as const,
-};
-
-const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCategories, label }) => {
+const DashboardGauge: React.FC<DashboardGaugeProps> = ({
+  chartId,
+  headers,
+  data,
+  gaugeCategories,
+  label,
+}) => {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [chartSize, setChartSize] = React.useState<{ width: number, height: number }>({ width: 0, height: 0 });
@@ -150,14 +154,14 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
             formatter: categoryLabelFormatter,
           },
           progress: {
-            show: gaugeCategories.length <= 2,
+            show: gaugeCategories.length < 2,
             width: 36,
             itemStyle: {
               color: theme.primaryColor,
             }
           },
           pointer: {
-            show: gaugeCategories.length > 2,
+            show: gaugeCategories.length >= 2,
             icon: 'triangle',
             length: 16,
             width: 14,
@@ -219,13 +223,17 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
   }, []);
 
   return (
-    <div className="w-full h-full relative select-none">
+    <div className="w-full h-full relative group select-none">
       <EChart
         className="absolute inset-0"
-        chartSettings={chartSettings}
         option={chartOptions}
         onChartReady={handleChartReady}
         onResize={handleChartResize}
+      />
+      <ChartDownloadButton
+        chartRef={chartRef}
+        chartId={chartId}
+        label={label}
       />
     </div>
   );

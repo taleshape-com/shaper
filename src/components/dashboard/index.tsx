@@ -411,6 +411,7 @@ const renderContent = (
   if (query.render.type === "gauge") {
     return (
       <DashboardGauge
+        chartId={`${sectionIndex}-${queryIndex}`}
         headers={query.columns}
         data={query.rows}
         gaugeCategories={query.render.gaugeCategories}

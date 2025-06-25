@@ -43,7 +43,7 @@ export const downloadChartAsImage = (
   const url = chartInstance.getDataURL({
     type: 'png',
     pixelRatio: 2,
-    backgroundColor: getThemeColors(false).backgroundColor
+    backgroundColor: getThemeColors(false).backgroundColor,
   });
 
   const link = document.createElement('a');
