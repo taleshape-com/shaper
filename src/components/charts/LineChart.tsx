@@ -81,6 +81,7 @@ const LineChart = (props: LineChartProps) => {
     const series: echarts.LineSeriesOption[] = categories.map((category) => {
       const baseSeries: echarts.LineSeriesOption = {
         name: category,
+        id: category,
         type: 'line' as const,
         data: isTimestampData
           ? data.map((item) => [item[index], item[category]])

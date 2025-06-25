@@ -96,6 +96,7 @@ const BarChart = (props: BarChartProps) => {
     const series: echarts.BarSeriesOption[] = categories.map((category) => {
       const baseSeries: echarts.BarSeriesOption = {
         name: category,
+        id: category,
         type: 'bar' as const,
         barGap: '3%',
         barMaxWidth: dataCopy.length === 1 ? layout == 'horizontal' ? '50%' : '25%' : undefined,
