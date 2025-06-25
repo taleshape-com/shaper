@@ -13,10 +13,14 @@ type DashboardGaugeProps = {
   label?: string;
 };
 
+const chartSettings = {
+  renderer: 'svg' as const,
+};
+
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCategories, label }) => {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const { isDarkMode } = React.useContext(DarkModeContext);
-  const [chartHeight, setChartHeight] = React.useState<number>(0);
+  const [chartSize, setChartSize] = React.useState<{ width: number, height: number }>({ width: 0, height: 0 });
 
 
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
@@ -115,17 +119,20 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
       ],
       startAngle: 180,
       endAngle: 0,
-      center: ['50%', '75%'],
-      radius: '100%',
+      center: ['50%', chartSize.width > chartSize.height ? '75%' : '68%'],
+      radius: chartSize.width > 340 ? '100%' : '86%',
     };
 
-    const pointerOffset = chartHeight * -0.5 + 36;
+    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1 : 0.86) * -0.5 + 36;
 
     return {
+      animation: false,
       series: [
         {
           ...baseSeries,
           splitNumber: centerNumber,
+          // Avoids cursor:pointer on pointer hover. Need to change if we ever want to make the gauge interactive
+          silent: true,
           axisLine: {
             lineStyle: {
               width: 36,
@@ -142,22 +149,28 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
             fontFamily: chartFont,
             formatter: categoryLabelFormatter,
           },
+          progress: {
+            show: gaugeCategories.length <= 2,
+            width: 36,
+            itemStyle: {
+              color: theme.primaryColor,
+            }
+          },
           pointer: {
+            show: gaugeCategories.length > 2,
             icon: 'triangle',
             length: 16,
             width: 14,
             offsetCenter: [0, pointerOffset],
             itemStyle: {
-              color: theme.textColorSecondary,
-              shadowBlur: 2,
-              shadowColor: 'rgba(0,0,0,0.10)',
+              color: theme.textColor,
             }
           },
           detail: {
             valueAnimation: false,
-            fontSize: 36,
+            fontSize: chartSize.width > 300 ? 36 : 24,
             fontFamily: chartFont,
-            offsetCenter: [0, '-7%'],
+            offsetCenter: [0, '-26%'],
             color: theme.textColor,
             fontWeight: 600,
             formatter: function(v: number) {
@@ -193,22 +206,23 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({ headers, data, gaugeCat
     gaugeCategories,
     headers,
     label,
-    chartHeight,
+    chartSize,
   ]);
 
   const handleChartReady = useCallback((chart: echarts.ECharts) => {
     chartRef.current = chart;
-    setChartHeight(chart.getHeight());
+    setChartSize({ width: chart.getWidth(), height: chart.getHeight() });
   }, []);
 
   const handleChartResize = useCallback((chart: echarts.ECharts) => {
-    setChartHeight(chart.getHeight());
+    setChartSize({ width: chart.getWidth(), height: chart.getHeight() });
   }, []);
 
   return (
     <div className="w-full h-full relative select-none">
       <EChart
         className="absolute inset-0"
+        chartSettings={chartSettings}
         option={chartOptions}
         onChartReady={handleChartReady}
         onResize={handleChartResize}

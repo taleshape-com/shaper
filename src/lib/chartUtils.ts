@@ -15,6 +15,7 @@ export const getChartFont = (): string => {
 export const getThemeColors = (isDark: boolean) => {
   if (isDark) {
     return {
+      primaryColor: getComputedCssValue('--shaper-dark-mode-primary-color'),
       backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
       borderColor: getComputedCssValue('--shaper-dark-mode-border-color'),
       textColor: getComputedCssValue('--shaper-dark-mode-text-color'),
@@ -23,6 +24,7 @@ export const getThemeColors = (isDark: boolean) => {
     };
   } else {
     return {
+      primaryColor: getComputedCssValue('--shaper-primary-color'),
       backgroundColor: getComputedCssValue('--shaper-background-color'),
       borderColor: getComputedCssValue('--shaper-border-color'),
       textColor: getComputedCssValue('--shaper-text-color'),
