@@ -71,6 +71,8 @@ type Config struct {
 	StateStreamName        string
 	IngestStreamName       string
 	ConfigKVBucketName     string
+	IngestStreamMaxAge     time.Duration
+	StateStreamMaxAge      time.Duration
 	IngestConsumerNameFile string
 	StateConsumerNameFile  string
 	IngestSubjectPrefix    string
@@ -115,6 +117,8 @@ func loadConfig() Config {
 	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
+	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
+	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
 	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
 	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
@@ -206,6 +210,8 @@ func loadConfig() Config {
 		StateStreamName:        *streamPrefix + *stateStream,
 		IngestStreamName:       *streamPrefix + *ingestStream,
 		ConfigKVBucketName:     *streamPrefix + *configKVBucket,
+		IngestStreamMaxAge:     *ingestStreamMaxAge,
+		StateStreamMaxAge:      *stateStreamMaxAge,
 		IngestConsumerNameFile: *ingestConsumerNameFile,
 		StateConsumerNameFile:  *stateConsumerNameFile,
 		IngestSubjectPrefix:    *subjectPrefix + *ingestSubjectPrefix,
@@ -315,6 +321,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,
+		cfg.StateStreamMaxAge,
 		stateConsumerName,
 		cfg.ConfigKVBucketName,
 	)
@@ -340,7 +347,16 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	ingestConsumer, err := ingest.Start(cfg.IngestSubjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, cfg.IngestStreamName, ingestConsumerName)
+	ingestConsumer, err := ingest.Start(
+		cfg.IngestSubjectPrefix,
+		dbConnector,
+		db,
+		logger.WithGroup("ingest"),
+		c.Conn,
+		cfg.IngestStreamName,
+		cfg.IngestStreamMaxAge,
+		ingestConsumerName,
+	)
 	if err != nil {
 		panic(err)
 	}

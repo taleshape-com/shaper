@@ -38,6 +38,7 @@ type App struct {
 	StateSubjectPrefix  string
 	IngestSubjectPrefix string
 	StateStreamName     string
+	StateStreamMaxAge   time.Duration
 	StateConsumerName   string
 	ConfigKVBucketName  string
 }
@@ -54,6 +55,7 @@ func New(
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
+	stateStreamMaxAge time.Duration,
 	stateConsumerName string,
 	configKVBucketName string,
 ) (*App, error) {
@@ -82,6 +84,7 @@ func New(
 		IngestSubjectPrefix: ingestSubjectPrefix,
 		StateSubjectPrefix:  stateSubjectPrefix,
 		StateStreamName:     stateStreamName,
+		StateStreamMaxAge:   stateStreamMaxAge,
 		StateConsumerName:   stateConsumerName,
 		ConfigKVBucketName:  configKVBucketName,
 	}
@@ -116,6 +119,7 @@ func (app *App) setupStreamAndConsumer() error {
 		Name:     app.StateStreamName,
 		Subjects: []string{app.StateSubjectPrefix + ">"},
 		Storage:  jetstream.FileStorage,
+		MaxAge:   app.StateStreamMaxAge,
 	})
 	if err != nil {
 		return err
