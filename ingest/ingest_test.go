@@ -1657,6 +1657,7 @@ func TestDirectPublishConnectionClosed(t *testing.T) {
 	subjectPrefix := "shaper.ingest." // Match the prefix used in the real subject
 	streamName := "test-stream"
 	consumerName := "test-consumer"
+	streamMaxAge := 2 * time.Hour
 
 	// Find a random available port
 	port := findRandomPort(t)
@@ -1678,7 +1679,7 @@ func TestDirectPublishConnectionClosed(t *testing.T) {
 	defer c.Close()
 
 	// Start ingest consumer
-	ingestConsumer, err := Start(subjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, streamName, consumerName)
+	ingestConsumer, err := Start(subjectPrefix, dbConnector, db, logger.WithGroup("ingest"), c.Conn, streamName, streamMaxAge, consumerName)
 	require.NoError(t, err, "Failed to start ingest consumer")
 	defer ingestConsumer.Close()
 
