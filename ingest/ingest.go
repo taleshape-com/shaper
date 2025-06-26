@@ -87,7 +87,7 @@ func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, log
 }
 
 func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, streamName string, streamMaxAge time.Duration, consumerName string) (jetstream.Consumer, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
 	stream, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
