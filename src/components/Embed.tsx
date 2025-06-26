@@ -6,7 +6,7 @@ import { DarkModeProvider } from "./DarkModeProvider";
 export type EmbedProps = {
   baseUrl?: string;
   dashboardId: string;
-  getJwt: (args: { baseUrl?: string }) => Promise<string>;
+  getJwt: () => Promise<string>;
   vars?: VarsParamSchema;
   onVarsChanged?: (newVars: VarsParamSchema) => void;
 }
@@ -51,7 +51,7 @@ export function EmbedComponent({
         return jwtRef.current;
       }
     }
-    const newJwt = await getJwt({ baseUrl });
+    const newJwt = await getJwt();
     jwtRef.current = newJwt
     return newJwt;
   }, [baseUrl, getJwt]);
