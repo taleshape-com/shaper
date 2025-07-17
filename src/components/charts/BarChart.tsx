@@ -81,9 +81,11 @@ const BarChart = (props: BarChartProps) => {
     // TODO: I am still not completely sure why we need to handle time as timestamp as well
     const isTimestampData = isTimeType(indexType) || indexType === "time";
 
+    const timeTypeThreshold = 6;
+
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
-    if (isTimestampData && (layout === 'vertical' || data.length < 2)) {
+    if (isTimestampData && (layout === 'vertical' || data.length < timeTypeThreshold)) {
       dataCopy = data.map((item) => {
         return {
           ...item,
@@ -101,7 +103,7 @@ const BarChart = (props: BarChartProps) => {
         barGap: '3%',
         barMaxWidth: dataCopy.length === 1 ? layout == 'horizontal' ? '50%' : '25%' : undefined,
         stack: type === "stacked" ? "stack" : undefined,
-        data: isTimestampData && layout === "horizontal" && data.length > 1
+        data: isTimestampData && layout === "horizontal" && data.length >= timeTypeThreshold
           ? dataCopy.map((item) => [item[index], item[category]])
           : dataCopy.map((item) => item[category]),
         itemStyle: {
@@ -179,7 +181,7 @@ const BarChart = (props: BarChartProps) => {
           const hoverValue = axisData?.axisValue;
 
           const title = layout === 'horizontal'
-            ? isTimestampData && data.length < 2
+            ? isTimestampData && data.length < timeTypeThreshold
               ? hoverValue
               : indexFormatter(hoverValue)
             : isTimestampData
@@ -300,14 +302,14 @@ const BarChart = (props: BarChartProps) => {
         containLabel: true,
       },
       xAxis: {
-        type: layout === "horizontal" ? (isTimestampData && data.length > 1 ? "time" as const : "category" as const) : "value" as const,
-        data: layout === "horizontal" && (!isTimestampData || data.length < 2) ? dataCopy.map((item) => item[index]) : undefined,
+        type: layout === "horizontal" ? (isTimestampData && data.length >= timeTypeThreshold ? "time" as const : "category" as const) : "value" as const,
+        data: layout === "horizontal" && (!isTimestampData || data.length < timeTypeThreshold) ? dataCopy.map((item) => item[index]) : undefined,
         show: true,
         axisLabel: {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              if (isTimestampData && data.length < 2) {
+              if (isTimestampData && data.length < timeTypeThreshold) {
                 return value;
               }
               return indexFormatter(value, true);
