@@ -64,7 +64,7 @@ function DashboardValue({ headers, data }: ValueProps) {
           "text-center": formattedValue.length < 400,
           "text-justify": formattedValue.length >= 400,
         })}
-        style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.1 }}
+        style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.2 }}
       >
         {typeof formattedValue === 'string' && formattedValue.includes('\n')
           ? formattedValue.split('\n').map((line, idx, arr) => (
