@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 
@@ -8,6 +8,15 @@ import { cx, getNameIfSet } from "../../lib/utils";
 type ValueProps = {
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
+};
+
+const getLongestLineLength = (text: string) => {
+  return Math.max(...text.split('\n').map(line => line.length));
+};
+
+const calcFontSize = (width: number, longestLine: number, factor: number, min: number, max: number, round: number) => {
+  if (!width || !longestLine) return min;
+  return Math.max(min, Math.min(max, Math.floor((width / longestLine) * factor / round) * round));
 };
 
 function DashboardValue({ headers, data }: ValueProps) {
@@ -23,24 +32,40 @@ function DashboardValue({ headers, data }: ValueProps) {
   const formattedValue = formatValue(value, valueHeader.type, true).toString()
   const hasLabel = valueHeader.name !== value && valueHeader.name !== `'${value}'`
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+    const updateWidth = () => setContainerWidth(node.offsetWidth);
+    updateWidth();
+    const ro = new window.ResizeObserver(updateWidth);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
+
+  const valueLongestLine = getLongestLineLength(formattedValue);
+  const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.6, 16, 64, 8);
+
+  const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : '';
+  const labelLongestLine = getLongestLineLength(labelText);
+  const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 24, 4);
+
   return (
-    <div className="items-center h-full flex flex-col justify-center overflow-auto">
-      <div className={cx({
-        "font-mono": isJSONType(valueHeader.type),
-        "font-semibold": formattedValue.length < 300,
-        "text-center": formattedValue.length < 400,
-        "text-justify": formattedValue.length >= 400,
-        "text-xs": formattedValue.length >= 47,
-        "text-sm": formattedValue.length < 47 && formattedValue.length >= 42,
-        "text-lg": formattedValue.length < 38 && formattedValue.length >= 34,
-        "text-xl": formattedValue.length < 34 && formattedValue.length >= 29,
-        "text-2xl": formattedValue.length < 29 && formattedValue.length >= 25,
-        "text-3xl": formattedValue.length < 25 && formattedValue.length >= 21,
-        "text-4xl": formattedValue.length < 21 && formattedValue.length >= 17,
-        "text-5xl": formattedValue.length < 17 && formattedValue.length >= 13,
-        "text-6xl": formattedValue.length < 13 && formattedValue.length >= 6,
-        "text-7xl": formattedValue.length < 6,
-      })}>
+    <div
+      className="items-center h-full w-full flex flex-col justify-center overflow-auto"
+      ref={containerRef}
+    >
+      <div
+        className={cx({
+          "font-mono": isJSONType(valueHeader.type),
+          "font-semibold": formattedValue.length < 300,
+          "text-center": formattedValue.length < 400,
+          "text-justify": formattedValue.length >= 400,
+        })}
+        style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.1 }}
+      >
         {typeof formattedValue === 'string' && formattedValue.includes('\n')
           ? formattedValue.split('\n').map((line, idx, arr) => (
             <React.Fragment key={idx}>
@@ -52,12 +77,10 @@ function DashboardValue({ headers, data }: ValueProps) {
       </div>
       {
         hasLabel && getNameIfSet(valueHeader.name) && (
-          <div className={cx("mt-3 font-medium font-display", {
-            "text-xs": valueHeader.name.length >= 40,
-            "text-sm": valueHeader.name.length < 40 && valueHeader.name.length >= 35,
-            "text-lg": valueHeader.name.length < 30 && valueHeader.name.length >= 20,
-            "text-xl": valueHeader.name.length < 20,
-          })}>
+          <div
+            className={cx("mt-3 font-medium font-display text-center")}
+            style={{ fontSize: `${labelFontSize}px`, lineHeight: 1.2 }}
+          >
             {valueHeader.name}
           </div>
         )

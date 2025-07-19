@@ -14,7 +14,6 @@ type ButtonProps = {
   getJwt: () => Promise<string>;
 };
 
-// TODO: Support multiple buttons in one select to download different file formats
 function DashboardButton({
   label,
   data,
