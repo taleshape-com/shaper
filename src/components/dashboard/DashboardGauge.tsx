@@ -15,8 +15,6 @@ type DashboardGaugeProps = {
   label?: string;
 };
 
-const barWidth = 42;
-
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   chartId,
   headers,
@@ -92,7 +90,29 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
 
     const centerValues = diffs.map((d, i) => {
       return boundaryValues[i] + d / 2;
-    });
+    })
+
+    function categoryLabelFormatter(v: number) {
+      const i = centerValues.findIndex(b => Math.abs(b - v) < 1e-6);
+      if (i === -1) {
+        return '';
+      }
+      const { label } = gaugeCategoriesWithColor[i]
+      if (!label) {
+        return '';
+      }
+      const relative = (v - min) / (max - min);
+      if (relative < 0.4) {
+        return `{right|${label}}`
+      }
+      if (relative > 0.6) {
+        return `{left|${label}}`
+      }
+      return label
+    }
+
+    const centerGCD = diffs.reduce((acc, val) => gcd(acc, val / 2));
+    const centerNumber = Math.min((max - min) / centerGCD, 1000);
 
     const baseSeries = {
       type: 'gauge' as const,
@@ -116,64 +136,55 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       startAngle: 180,
       endAngle: 0,
       center: ['50%', chartSize.width > chartSize.height ? '75%' : '68%'],
-      radius: chartSize.width > 340 ? '110%' : '86%',
+      radius: chartSize.width > 340 ? '100%' : '86%',
     };
 
-    const gaugeRadius = chartSize.width > 340 ? 1.1 : 0.86;
-    const centerY = chartSize.width > chartSize.height ? 0.75 : 0.68;
-    const centerPx = [0.5 * chartSize.width, centerY * Math.min(chartSize.width, chartSize.height)];
-    const r = (Math.min(chartSize.width, chartSize.height) / 2) * gaugeRadius + 9;
-
-    // Using custom graphics to draw labels size with axisLabel we cannot control the individual alignment to ensure they don't overlap with the bar
-    const graphics = (chartSize.width > 0 && chartSize.height > 0)
-      ? centerValues.map((v, i) => {
-        const relative = (v - min) / (max - min);
-        const angle = Math.PI - (relative) * Math.PI; // 180° to 0°
-        const x = centerPx[0] + r * Math.cos(angle);
-        const y = centerPx[1] - r * Math.sin(angle);
-        return {
-          type: 'text',
-          x,
-          y,
-          style: {
-            text: gaugeCategoriesWithColor[i].label ?? '',
-            fill: theme.textColorSecondary,
-            font: `600 12px ${chartFont}`,
-            textAlign: relative < 0.4 ? 'right' : relative > 0.6 ? 'left' : 'center',
-            textVerticalAlign: 'middle',
-          },
-          z: 100,
-          cursor: 'default',
-        };
-      })
-      : [];
-
-    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1.1 : 0.86) * -0.5 + barWidth;
+    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1 : 0.86) * -0.5 + 36;
 
     return {
       animation: false,
       series: [
         {
           ...baseSeries,
-          splitNumber,
+          splitNumber: centerNumber,
           // Avoids cursor:pointer on pointer hover. Need to change if we ever want to make the gauge interactive
           silent: true,
           axisLine: {
             lineStyle: {
-              width: barWidth,
+              width: 36,
               color: colorStops,
             },
           },
           axisLabel: {
-            distance: 26,
+            show: true,
+            distance: -35,
             color: theme.textColorSecondary,
             fontSize: 12,
+            fontWeight: 500,
             fontFamily: chartFont,
-            formatter: valueLabelFormatter,
+            formatter: categoryLabelFormatter,
+            rich: {
+              right: {
+                align: 'right',
+                color: theme.textColorSecondary,
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: chartFont,
+                width: 0
+              },
+              left: {
+                align: 'left',
+                color: theme.textColorSecondary,
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: chartFont,
+                width: 0
+              }
+            }
           },
           progress: {
             show: gaugeCategories.length < 2,
-            width: barWidth,
+            width: 36,
             itemStyle: {
               color: theme.primaryColor,
             }
@@ -200,8 +211,27 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
             },
           },
         },
+        {
+          ...baseSeries,
+          splitNumber: splitNumber,
+          axisLine: {
+            show: false,
+          },
+          axisLabel: {
+            distance: 26,
+            color: theme.textColorSecondary,
+            fontSize: 12,
+            fontFamily: chartFont,
+            formatter: valueLabelFormatter,
+          },
+          pointer: {
+            show: false,
+          },
+          detail: {
+            show: false,
+          },
+        },
       ],
-      graphic: graphics,
     };
   }, [
     data,
