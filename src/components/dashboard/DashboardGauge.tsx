@@ -15,6 +15,8 @@ type DashboardGaugeProps = {
   label?: string;
 };
 
+const barWidth = 42;
+
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   chartId,
   headers,
@@ -124,10 +126,10 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       startAngle: 180,
       endAngle: 0,
       center: ['50%', chartSize.width > chartSize.height ? '75%' : '68%'],
-      radius: chartSize.width > 340 ? '100%' : '86%',
+      radius: chartSize.width > 340 ? '110%' : '86%',
     };
 
-    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1 : 0.86) * -0.5 + 36;
+    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1.1 : 0.86) * -0.5 + barWidth;
 
     return {
       animation: false,
@@ -139,7 +141,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           silent: true,
           axisLine: {
             lineStyle: {
-              width: 36,
+              width: barWidth,
               color: colorStops,
             },
           },
@@ -155,7 +157,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           },
           progress: {
             show: gaugeCategories.length < 2,
-            width: 36,
+            width: barWidth,
             itemStyle: {
               color: theme.primaryColor,
             }
