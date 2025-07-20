@@ -395,3 +395,25 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 		return c.JSONPretty(http.StatusOK, result, "  ")
 	}
 }
+
+func GetPublicStatus(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		if err != nil {
+			c.Logger().Error("error getting public status:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+		if dashboard.Visibility == nil || *dashboard.Visibility != "public" {
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+		return c.JSON(http.StatusOK, struct {
+			Visibility string `json:"visibility"`
+		}{
+			Visibility: "public",
+		})
+	}
+}

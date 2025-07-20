@@ -57,12 +57,12 @@ func Login(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func validateVariables(mixedMap map[string]interface{}) error {
+func validateVariables(mixedMap map[string]any) error {
 	for k, v := range mixedMap {
 		switch val := v.(type) {
 		case string:
 			continue
-		case []interface{}:
+		case []any:
 			for _, item := range val {
 				if _, ok := item.(string); !ok {
 					return fmt.Errorf("invalid type in array for key %s: %T", k, item)
@@ -87,9 +87,9 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
-			Token       string                 `json:"token"`
-			DashboardID string                 `json:"dashboardId"`
-			Variables   map[string]interface{} `json:"variables"`
+			Token       string         `json:"token"`
+			DashboardID string         `json:"dashboardId"`
+			Variables   map[string]any `json:"variables"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -122,7 +122,60 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		if len(loginRequest.Variables) > 0 {
 			err := validateVariables(loginRequest.Variables)
 			if err != nil {
-				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				return c.JSON(http.StatusBadRequest, map[string]any{
+					"error":     "Invalid variables format: " + err.Error(),
+					"variables": loginRequest.Variables,
+				})
+			}
+			claims["variables"] = loginRequest.Variables
+		}
+
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := jwtToken.SignedString(app.JWTSecret)
+		if err != nil {
+			c.Logger().Error("Failed to sign token", slog.Any("error", err))
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
+		}
+		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
+	}
+}
+
+func PublicAuth(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// Parse the request body
+		var loginRequest struct {
+			DashboardID string         `json:"dashboardId"`
+			Variables   map[string]any `json:"variables"`
+		}
+		if err := c.Bind(&loginRequest); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		}
+		if loginRequest.DashboardID == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing dashboardId"})
+		}
+
+		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), loginRequest.DashboardID)
+		if err != nil {
+			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+		if dashboard.Visibility == nil || *dashboard.Visibility != "public" {
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+
+		// Add user or API key info to claims
+		claims := jwt.MapClaims{
+			"exp": time.Now().Add(app.JWTExp).Unix(),
+		}
+		claims["dashboardId"] = loginRequest.DashboardID
+		if len(loginRequest.Variables) > 0 {
+			err := validateVariables(loginRequest.Variables)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]any{
 					"error":     "Invalid variables format: " + err.Error(),
 					"variables": loginRequest.Variables,
 				})
