@@ -189,6 +189,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleUpdateDashboardContent
 	case "update_dashboard_name":
 		handler = HandleUpdateDashboardName
+	case "update_dashboard_visibility":
+		handler = HandleUpdateDashboardVisibility
 	case "delete_dashboard":
 		handler = HandleDeleteDashboard
 	case "create_api_key":
@@ -273,6 +275,14 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating apps table: %w", err)
+	}
+
+	// Add visibility column
+	_, err = db.Exec(`
+		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS visibility VARCHAR
+	`)
+	if err != nil {
+		return fmt.Errorf("error adding visibility column to apps table: %w", err)
 	}
 
 	// Create api_keys table

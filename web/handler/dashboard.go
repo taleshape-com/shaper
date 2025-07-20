@@ -136,6 +136,36 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 	}
 }
 
+func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			Visibility string `json:"visibility"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
+		}
+
+		err := core.SaveDashboardVisibility(app, c.Request().Context(), c.Param("id"), request.Visibility)
+		if err != nil {
+			c.Logger().Error("error saving visibility:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
 func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)

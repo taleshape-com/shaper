@@ -335,7 +335,46 @@ const translations: Record<string, Record<string, string>> = {
   },
   "Save as image": {
     de: "Als Bild speichern",
-  }
+  },
+  "Dashboard unshared": {
+    de: "Dashboard nicht mehr öffentlich",
+  },
+  "Dashboard made public": {
+    de: "Dashboard öffentlich gemacht",
+  },
+  "The dashboard is not publicly accessible anymore.": {
+    de: "Das Dashboard ist nicht mehr öffentlich zugänglich.",
+  },
+  "Try the link in the sidebar": {
+    de: "Öffentlicher Link ist in der Menüleiste",
+  },
+  "private": {
+    de: "privat",
+  },
+  "public": {
+    de: "öffentlich",
+  },
+  "Public Link": {
+    de: "Ansicht",
+  },
+  "Do you want to unshare the dashboard?": {
+    de: "Möchten Sie das Dashboard privat machen?",
+  },
+  "Do you want to share the dashboard publicly?": {
+    de: "Möchten Sie das Dashboard öffentlich machen?",
+  },
+  "Are you sure you want to remove public access to the dasboard?": {
+    de: "Sind Sie sicher, dass Sie den öffentlichen Zugriff auf das Dashboard entfernen möchten?",
+  },
+  "Are you sure you want to make the dashboard visible to everyone?": {
+    de: "Sind Sie sicher, dass Sie das Dashboard für alle sichtbar machen möchten?",
+  },
+  "Unshare": {
+    de: "Bestätigung",
+  },
+  "Make Public": {
+    de: "Veröffentlichen",
+  },
 };
 
 export function translate(s: string) {

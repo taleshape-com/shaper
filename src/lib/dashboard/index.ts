@@ -7,6 +7,7 @@ export interface IDashboard {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
+  visibility?: 'public';
 }
 
 export type Column = {
