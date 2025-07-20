@@ -6,9 +6,42 @@ import { DarkModeProvider } from "./DarkModeProvider";
 export type EmbedProps = {
   baseUrl?: string;
   dashboardId: string;
-  getJwt: () => Promise<string>;
+  getJwt?: () => Promise<string>;
   vars?: VarsParamSchema;
   onVarsChanged?: (newVars: VarsParamSchema) => void;
+}
+
+const getPublicJwt = async (baseUrl: string, dashboardId: string): Promise<string | null> => {
+  return fetch(`${baseUrl}api/auth/public`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      dashboardId,
+    }),
+  }).then(async (response) => {
+    if (response.status !== 200) {
+      return null;
+    }
+    const res = await response.json();
+    return res.jwt;
+  });
+}
+
+const getVisibility = async (baseUrl: string, dashboardId: string): Promise<string> => {
+  return fetch(`${baseUrl}api/public/${dashboardId}/status`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  }).then(async (response) => {
+    if (response.status !== 200) {
+      return 'private';
+    }
+    const res = await response.json();
+    return res.visibility ?? 'private';
+  });
 }
 
 export function EmbedComponent({
@@ -50,6 +83,18 @@ export function EmbedComponent({
       if ((Date.now() / 1000) + 10 < claims.exp) {
         return jwtRef.current;
       }
+    }
+    if (!getJwt) {
+      const visibility = await getVisibility(baseUrl, props.dashboardId);
+      if (visibility === 'private') {
+        throw new Error("Dashboard is not public");
+      }
+      const newJwt = await getPublicJwt(baseUrl, props.dashboardId);
+      if (newJwt == null) {
+        throw new Error("Failed to retrieve JWT for public dashboard");
+      }
+      jwtRef.current = newJwt
+      return newJwt;
     }
     const newJwt = await getJwt();
     jwtRef.current = newJwt

@@ -144,8 +144,7 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
-			DashboardID string         `json:"dashboardId"`
-			Variables   map[string]any `json:"variables"`
+			DashboardID string `json:"dashboardId"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -172,16 +171,6 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 			"exp": time.Now().Add(app.JWTExp).Unix(),
 		}
 		claims["dashboardId"] = loginRequest.DashboardID
-		if len(loginRequest.Variables) > 0 {
-			err := validateVariables(loginRequest.Variables)
-			if err != nil {
-				return c.JSON(http.StatusBadRequest, map[string]any{
-					"error":     "Invalid variables format: " + err.Error(),
-					"variables": loginRequest.Variables,
-				})
-			}
-			claims["variables"] = loginRequest.Variables
-		}
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)
