@@ -25,6 +25,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/embed": {
+        target: "http://localhost:5454",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/view": {
+        target: "http://localhost:5454",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });
