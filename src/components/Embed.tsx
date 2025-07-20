@@ -9,6 +9,7 @@ export type EmbedProps = {
   getJwt?: () => Promise<string>;
   vars?: VarsParamSchema;
   onVarsChanged?: (newVars: VarsParamSchema) => void;
+  onTitleChanged?: (title: string) => void;
 }
 
 const getPublicJwt = async (baseUrl: string, dashboardId: string): Promise<string | null> => {
@@ -52,6 +53,7 @@ export function EmbedComponent({
   updateSubscriber: (updateFn: (props: Partial<EmbedProps>) => void) => void;
 }) {
   const [props, setProps] = useState<EmbedProps>(initialProps);
+  const { onVarsChanged, onTitleChanged, getJwt } = props;
   const jwtRef = useRef<string | null>(null);
 
   let baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
@@ -61,8 +63,6 @@ export function EmbedComponent({
   if (baseUrl[baseUrl.length - 1] !== "/") {
     baseUrl = baseUrl + "/";
   }
-  const { onVarsChanged, getJwt } = props;
-
   useEffect(() => {
     updateSubscriber((newProps: Partial<EmbedProps>) => {
       setProps(prevProps => ({ ...prevProps, ...newProps }));
@@ -75,6 +75,12 @@ export function EmbedComponent({
       onVarsChanged(vars);
     }
   }, [onVarsChanged]);
+
+  const handleDataChanged = useCallback(({ name }: { name: string }) => {
+    if (onTitleChanged) {
+      onTitleChanged(name);
+    }
+  }, [onTitleChanged]);
 
   const handleGetJwt = useCallback(async () => {
     if (jwtRef.current != null) {
@@ -109,8 +115,8 @@ export function EmbedComponent({
         vars={props.vars}
         getJwt={handleGetJwt}
         onVarsChanged={handleVarsChanged}
+        onDataChange={handleDataChanged}
       />
     </DarkModeProvider>
   );
 }
-
