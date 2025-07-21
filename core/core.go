@@ -31,6 +31,7 @@ type App struct {
 	JWTExp              time.Duration
 	SessionExp          time.Duration
 	InviteExp           time.Duration
+	NoPublicSharing     bool
 	StateConsumeCtx     jetstream.ConsumeContext
 	JetStream           jetstream.JetStream
 	ConfigKV            jetstream.KeyValue
@@ -52,6 +53,7 @@ func New(
 	jwtExp time.Duration,
 	sessionExp time.Duration,
 	inviteExp time.Duration,
+	noPublicSharing bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
@@ -71,6 +73,10 @@ func New(
 		logger.Warn("No users found. Authentication is disabled until first user is created. Make sure you don't expose sensitive data publicly.")
 	}
 
+	if noPublicSharing {
+		logger.Info("Publicly sharing dashboards is disabled.")
+	}
+
 	app := &App{
 		Name:                name,
 		DB:                  db,
@@ -81,6 +87,7 @@ func New(
 		JWTExp:              jwtExp,
 		SessionExp:          sessionExp,
 		InviteExp:           inviteExp,
+		NoPublicSharing:     noPublicSharing,
 		IngestSubjectPrefix: ingestSubjectPrefix,
 		StateSubjectPrefix:  stateSubjectPrefix,
 		StateStreamName:     stateStreamName,

@@ -33,6 +33,12 @@ func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, err
 	var dashboard Dashboard
 	err := app.DB.GetContext(ctx, &dashboard,
 		`SELECT * FROM `+app.Schema+`.apps WHERE id = $1`, id)
+	if app.NoPublicSharing {
+		dashboard.Visibility = nil
+	} else if dashboard.Visibility == nil {
+		dashboard.Visibility = new(string)
+		*dashboard.Visibility = "private"
+	}
 	if err != nil {
 		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
 	}

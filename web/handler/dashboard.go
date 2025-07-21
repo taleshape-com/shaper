@@ -138,6 +138,11 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 
 func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoPublicSharing {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
+		}
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -399,6 +404,11 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 // TODO: This route exists to check if dashboard is public or password protected. It only makes sense once password-protected links are implemented.
 func GetPublicStatus(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoPublicSharing {
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
 		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting public status:", slog.Any("error", err))

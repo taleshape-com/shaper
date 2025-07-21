@@ -61,6 +61,7 @@ type Config struct {
 	CustomCSS              string
 	Favicon                string
 	JWTExp                 time.Duration
+	NoPublicSharing        bool
 	NatsServers            string
 	NatsHost               string
 	NatsPort               int
@@ -106,6 +107,7 @@ func loadConfig() Config {
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
+	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	natsServers := flags.StringLong("nats-servers", "", "Use external NATS servers, specify as comma separated list")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
@@ -200,6 +202,7 @@ func loadConfig() Config {
 		JWTExp:                 *jwtExp,
 		SessionExp:             *sessionExp,
 		InviteExp:              *inviteExp,
+		NoPublicSharing:        *noPublicSharing,
 		NatsServers:            *natsServers,
 		NatsHost:               *natsHost,
 		NatsPort:               *natsPort,
@@ -318,6 +321,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.JWTExp,
 		cfg.SessionExp,
 		cfg.InviteExp,
+		cfg.NoPublicSharing,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,

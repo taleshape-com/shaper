@@ -142,6 +142,12 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 
 func PublicAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoPublicSharing {
+			c.Logger().Warn("public sharing disabled")
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
 		// Parse the request body
 		var loginRequest struct {
 			DashboardID string `json:"dashboardId"`

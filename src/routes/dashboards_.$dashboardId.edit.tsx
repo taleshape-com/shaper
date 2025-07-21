@@ -346,25 +346,27 @@ function DashboardEditor() {
                     rows={4}
                   ></textarea>
                 </label>
-                <div className="my-2">
-                  <Button
-                    onClick={() => setShowVisibilityDialog(true)}
-                    variant="secondary"
-                    className="mt-4 capitalize"
-                  >
-                    {translate(dashboard.visibility ?? "private")}
-                    <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
-                  </Button>
-                  {dashboard.visibility === 'public' && (
-                    <a
-                      href={`/view/${params.dashboardId}`}
-                      target="_blank"
-                      className="py-2 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 inline-block">
-                      {translate("Public Link")}
-                      <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
-                    </a>
-                  )}
-                </div>
+                {dashboard.visibility && (
+                  <div className="my-2">
+                    <Button
+                      onClick={() => setShowVisibilityDialog(true)}
+                      variant="secondary"
+                      className="mt-4 capitalize"
+                    >
+                      {translate(dashboard.visibility)}
+                      <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
+                    </Button>
+                    {dashboard.visibility === 'public' && (
+                      <a
+                        href={`/view/${params.dashboardId}`}
+                        target="_blank"
+                        className="py-2 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 inline-block">
+                        {translate("Public Link")}
+                        <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
+                      </a>
+                    )}
+                  </div>
+                )}
                 <Button
                   onClick={() => setShowDeleteDialog(true)}
                   variant="destructive"
@@ -581,7 +583,7 @@ function DashboardEditor() {
                 setShowVisibilityDialog(false);
               }}
             >
-              {translate(dashboard.visibility ? "Unshare" : "Make Public")}
+              {translate(dashboard.visibility === "public" ? "Unshare" : "Make Public")}
             </Button>
           </DialogFooter>
         </DialogContent>
