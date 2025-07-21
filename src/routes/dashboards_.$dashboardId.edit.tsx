@@ -284,7 +284,7 @@ function DashboardEditor() {
         title: translate(dashboard.visibility === 'public' ? "Dashboard unshared" : "Dashboard made public"),
         description: translate(dashboard.visibility === 'public' ? "The dashboard is not publicly accessible anymore." : "Try the link in the sidebar"),
       });
-      dashboard.visibility = dashboard.visibility === 'public' ? undefined : 'public';
+      dashboard.visibility = dashboard.visibility === 'public' ? 'private' : 'public';
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options);
