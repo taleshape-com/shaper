@@ -112,7 +112,7 @@ function DashboardViewComponent() {
         </label>
         {visibility === 'public' && (
           <a
-            href={`/view/${params.dashboardId}`}
+            href={`../view/${params.dashboardId}`}
             target="_blank"
             className="py-4 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 block">
             {translate("Public Link")}

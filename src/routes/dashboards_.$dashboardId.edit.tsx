@@ -358,7 +358,7 @@ function DashboardEditor() {
                     </Button>
                     {dashboard.visibility === 'public' && (
                       <a
-                        href={`/view/${params.dashboardId}`}
+                        href={`../../view/${params.dashboardId}`}
                         target="_blank"
                         className="py-2 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 inline-block">
                         {translate("Public Link")}
