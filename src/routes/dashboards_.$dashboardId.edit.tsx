@@ -531,7 +531,7 @@ function DashboardEditor() {
             loading={isPreviewLoading}
           />
         </div>
-      </div >
+      </div>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
@@ -612,6 +612,6 @@ function DashboardEditor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </MenuProvider >
+    </MenuProvider>
   );
 }

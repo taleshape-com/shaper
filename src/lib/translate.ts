@@ -375,6 +375,9 @@ const translations: Record<string, Record<string, string>> = {
   "Make Public": {
     de: "Veröffentlichen",
   },
+  "This dashboard is public": {
+    de: "Dieses Dashboard ist öffentlich",
+  },
 };
 
 export function translate(s: string) {

@@ -148,7 +148,6 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "not found"}, "  ")
 		}
-		// Parse the request body
 		var loginRequest struct {
 			DashboardID string `json:"dashboardId"`
 		}

@@ -277,14 +277,15 @@ func initDB(db *sqlx.DB, schema string) error {
 			created_at TIMESTAMP NOT NULL,
 			updated_at TIMESTAMP NOT NULL,
 			created_by VARCHAR,
-			updated_by VARCHAR
+			updated_by VARCHAR,
+			visibility VARCHAR
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating apps table: %w", err)
 	}
 
-	// Add visibility column
+	// TODO: Remove once ran for all active users
 	_, err = db.Exec(`
 		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS visibility VARCHAR
 	`)
