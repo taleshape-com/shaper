@@ -20,6 +20,7 @@ type ListResult struct {
 
 type GetResult struct {
 	Name         string    `json:"name"`
+	Visibility   *string   `json:"visibility,omitempty"`
 	Sections     []Section `json:"sections"`
 	MinTimeValue int64     `json:"minTimeValue"`
 	MaxTimeValue int64     `json:"maxTimeValue"`

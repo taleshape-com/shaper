@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useDebouncedCallback } from "use-debounce";
-import { RiPencilLine } from "@remixicon/react";
+import { RiPencilLine, RiExternalLinkLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
@@ -52,6 +52,7 @@ function DashboardViewComponent() {
   const navigate = useNavigate({ from: "/dashboards/$dashboardId" });
   const [hasVariableError, setHasVariableError] = useState(false);
   const [title, setTitle] = useState("Dashboard");
+  const [visibility, setVisibility] = useState<Result["visibility"]>(undefined);
 
   const handleRedirectError = useCallback((err: Error) => {
     if (isRedirect(err)) {
@@ -109,12 +110,22 @@ function DashboardViewComponent() {
             rows={4}
           ></textarea>
         </label>
+        {visibility === 'public' && (
+          <a
+            href={`/view/${params.dashboardId}`}
+            target="_blank"
+            className="py-4 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 block">
+            {translate("Public Link")}
+            <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
+          </a>
+        )}
       </div>
     </MenuTrigger>
   );
 
   const onDataChange = useCallback((data: Result) => {
     setTitle(data.name);
+    setVisibility(data.visibility);
   }, [])
 
   return (

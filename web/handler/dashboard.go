@@ -206,10 +206,6 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		idParam := c.Param("id")
-		// TODO: remove after migration
-		if idParam == "embed" {
-			idParam = "ja1ce8t8x53fkpd8dsmh8qrt"
-		}
 		if id, hasId := claims["dashboardId"]; hasId && id != idParam {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`

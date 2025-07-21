@@ -30,6 +30,7 @@ export type GaugeCategory = {
 
 export type Result = {
   name: string;
+  visibility?: 'public' | 'private';
   minTimeValue: number;
   maxTimeValue: number;
   reloadAt: number;
