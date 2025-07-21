@@ -115,7 +115,7 @@ func GetInvite(app *core.App) echo.HandlerFunc {
 			c.Logger().Error("error getting invite:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
-			}{Error: err.Error()}, "  ")
+			}{Error: "not found"}, "  ")
 		}
 
 		return c.JSONPretty(http.StatusOK, invite, "  ")

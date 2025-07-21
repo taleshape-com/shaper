@@ -18,7 +18,7 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
-import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc } from "@remixicon/react";
+import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc, RiGlobalLine } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/MenuProvider";
@@ -207,9 +207,17 @@ function Index() {
                         <Link
                           to="/dashboards/$dashboardId"
                           params={{ dashboardId: dashboard.id }}
-                          className="block p-4"
+                          className="p-4 block"
                         >
                           {dashboard.name}
+                          {dashboard.visibility === "public" && (
+                            <Tooltip
+                              showArrow={false}
+                              content={translate("This dashboard is public")}
+                            >
+                              <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                            </Tooltip>
+                          )}
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">

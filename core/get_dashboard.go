@@ -18,15 +18,17 @@ import (
 const QUERY_MAX_ROWS = 2000
 
 type DashboardQuery struct {
-	Content string
-	ID      string
-	Name    string
+	Content    string
+	ID         string
+	Name       string
+	Visibility *string
 }
 
 func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	result := GetResult{
-		Name:     dashboardQuery.Name,
-		Sections: []Section{},
+		Name:       dashboardQuery.Name,
+		Visibility: dashboardQuery.Visibility,
+		Sections:   []Section{},
 	}
 	nextLabel := ""
 	hideNextContentSection := false
@@ -320,9 +322,10 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	}
 
 	return QueryDashboard(app, ctx, DashboardQuery{
-		Content: dashboard.Content,
-		ID:      dashboardId,
-		Name:    dashboard.Name,
+		Content:    dashboard.Content,
+		ID:         dashboardId,
+		Name:       dashboard.Name,
+		Visibility: dashboard.Visibility,
 	}, queryParams, variables)
 }
 

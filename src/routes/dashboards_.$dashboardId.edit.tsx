@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, useContext } from "react";
 import { Helmet } from "react-helmet";
-import { RiPencilLine, RiCloseLine } from "@remixicon/react";
+import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiExternalLinkLine } from "@remixicon/react";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import { useDebouncedCallback } from "use-debounce";
@@ -73,6 +73,7 @@ function DashboardEditor() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
   const { toast } = useToast();
@@ -270,6 +271,35 @@ function DashboardEditor() {
     }
   };
 
+  const handleVisibilityChange = async () => {
+    try {
+      await queryApi(
+        `dashboards/${params.dashboardId}/visibility`,
+        {
+          method: "POST",
+          body: { visibility: dashboard.visibility === 'public' ? 'private' : 'public' },
+        },
+      );
+      toast({
+        title: translate(dashboard.visibility === 'public' ? "Dashboard unshared" : "Dashboard made public"),
+        description: translate(dashboard.visibility === 'public' ? "The dashboard is not publicly accessible anymore." : "Try the link in the sidebar"),
+      });
+      dashboard.visibility = dashboard.visibility === 'public' ? undefined : 'public';
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+      toast({
+        title: translate("Error"),
+        description:
+          err instanceof Error
+            ? err.message
+            : translate("An error occurred"),
+        variant: "error",
+      });
+    }
+  };
+
   const handleRestoreUnsavedChanges = () => {
     if (unsavedContent) {
       setEditorQuery(unsavedContent);
@@ -316,6 +346,27 @@ function DashboardEditor() {
                     rows={4}
                   ></textarea>
                 </label>
+                {dashboard.visibility && (
+                  <div className="my-2">
+                    <Button
+                      onClick={() => setShowVisibilityDialog(true)}
+                      variant="secondary"
+                      className="mt-4 capitalize"
+                    >
+                      {translate(dashboard.visibility)}
+                      <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
+                    </Button>
+                    {dashboard.visibility === 'public' && (
+                      <a
+                        href={`../../view/${params.dashboardId}`}
+                        target="_blank"
+                        className="py-2 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 inline-block">
+                        {translate("Public Link")}
+                        <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
+                      </a>
+                    )}
+                  </div>
+                )}
                 <Button
                   onClick={() => setShowDeleteDialog(true)}
                   variant="destructive"
@@ -505,6 +556,34 @@ function DashboardEditor() {
               }}
             >
               {translate("Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showVisibilityDialog} onOpenChange={setShowVisibilityDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{translate(dashboard.visibility === 'public' ? "Do you want to unshare the dashboard?" : "Do you want to share the dashboard publicly?")}</DialogTitle>
+            <DialogDescription>
+              {translate(dashboard.visibility === 'public' ? "Are you sure you want to remove public access to the dasboard?" : "Are you sure you want to make the dashboard visible to everyone?")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowVisibilityDialog(false)}
+              variant="secondary"
+            >
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                handleVisibilityChange();
+                setShowVisibilityDialog(false);
+              }}
+            >
+              {translate(dashboard.visibility === "public" ? "Unshare" : "Make Public")}
             </Button>
           </DialogFooter>
         </DialogContent>

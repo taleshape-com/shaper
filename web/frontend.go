@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,6 +15,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 )
+
+//go:embed view.html
+var viewHTML []byte
 
 func frontend(frontendFS fs.FS) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
@@ -78,6 +82,13 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.Ha
 			http.ServeContent(c.Response(), c.Request(), filename, modTime, file.(io.ReadSeeker))
 		}
 
+		return nil
+	}
+}
+
+func serveViewHTML(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		http.ServeContent(c.Response(), c.Request(), "view.html", modTime, bytes.NewReader(viewHTML))
 		return nil
 	}
 }

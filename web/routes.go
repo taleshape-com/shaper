@@ -78,10 +78,12 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/api/login/enabled", handler.LoginEnabled(app))
 	e.POST("/api/login", handler.Login(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
+	e.POST("/api/auth/public", handler.PublicAuth(app))
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.GET("/api/public/:id/status", handler.GetPublicStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
@@ -90,6 +92,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.GET("/dashboards/:id/query", handler.GetDashboardQuery(app))
 	apiWithAuth.POST("/dashboards/:id/query", handler.SaveDashboardQuery(app))
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
+	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 	apiWithAuth.POST("/query/dashboard", handler.PreviewDashboardQuery(app))
 	apiWithAuth.GET("/users", handler.ListUsers(app))
@@ -110,6 +113,12 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	assetsGroup.GET("/*", frontend(frontendFS))
 
 	e.GET("/embed/*", serveEmbedJS(frontendFS, modTime, customCSS), CacheControl(CacheConfig{
+		MaxAge: 24 * time.Hour, // 1 day
+		Public: true,
+		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
+	}))
+
+	e.GET("/view/:id", serveViewHTML(frontendFS, modTime), CacheControl(CacheConfig{
 		MaxAge: 24 * time.Hour, // 1 day
 		Public: true,
 		// TODO: Once we version this file properly can set Immutable: true, and cache for a year

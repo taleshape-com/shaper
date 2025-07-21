@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" class="shaper-scope">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>loading...</title>
+  </head>
+  <body class="antialiased text-ctext dark:text-dtext bg-cbg dark:bg-dbg">
+    <div id="dashboard-container"></div>
+
+    <script src="../embed/shaper.js"></script>
+
+    <script>
+      function varsFromSearch() {
+        const vars = {};
+        for (const [key, value] of (new URLSearchParams(window.location.search))) {
+          try {
+            vars[key] = JSON.parse(decodeURIComponent(value));
+          } catch (e) {
+            console.warn(`Failed to parse variable ${key} with value ${value}:`, e);
+            vars[key] = value;
+          }
+        }
+        return vars;
+      }
+
+      const { pathname } = window.location;
+      const parts = pathname.split("/")
+      const dashboardId = parts[parts.length - (pathname.endsWith("/") ? 2 : 1)];
+
+      const dashboard = shaper.dashboard({
+        container: document.getElementById("dashboard-container"),
+        dashboardId,
+        vars: varsFromSearch(),
+        onVarsChanged(newVars) {
+          const url = new URL(window.location.toString());
+          for (const [key, value] of Object.entries(newVars)) {
+            if (value === undefined) {
+              url.searchParams.delete(key);
+            } else {
+              url.searchParams.set(key, encodeURIComponent(JSON.stringify(value)));
+            }
+          }
+          history.pushState(null, "", url);
+        },
+        onTitleChanged(newTitle) {
+          document.title = newTitle;
+        },
+      });
+
+      window.addEventListener("popstate", function() {
+        dashboard.update({ vars: varsFromSearch() });
+      });
+    </script>
+  </body>
+</html>
+

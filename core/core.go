@@ -31,6 +31,7 @@ type App struct {
 	JWTExp              time.Duration
 	SessionExp          time.Duration
 	InviteExp           time.Duration
+	NoPublicSharing     bool
 	StateConsumeCtx     jetstream.ConsumeContext
 	JetStream           jetstream.JetStream
 	ConfigKV            jetstream.KeyValue
@@ -52,6 +53,7 @@ func New(
 	jwtExp time.Duration,
 	sessionExp time.Duration,
 	inviteExp time.Duration,
+	noPublicSharing bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
@@ -71,6 +73,10 @@ func New(
 		logger.Warn("No users found. Authentication is disabled until first user is created. Make sure you don't expose sensitive data publicly.")
 	}
 
+	if noPublicSharing {
+		logger.Info("Publicly sharing dashboards is disabled.")
+	}
+
 	app := &App{
 		Name:                name,
 		DB:                  db,
@@ -81,6 +87,7 @@ func New(
 		JWTExp:              jwtExp,
 		SessionExp:          sessionExp,
 		InviteExp:           inviteExp,
+		NoPublicSharing:     noPublicSharing,
 		IngestSubjectPrefix: ingestSubjectPrefix,
 		StateSubjectPrefix:  stateSubjectPrefix,
 		StateStreamName:     stateStreamName,
@@ -189,6 +196,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleUpdateDashboardContent
 	case "update_dashboard_name":
 		handler = HandleUpdateDashboardName
+	case "update_dashboard_visibility":
+		handler = HandleUpdateDashboardVisibility
 	case "delete_dashboard":
 		handler = HandleDeleteDashboard
 	case "create_api_key":
@@ -268,11 +277,20 @@ func initDB(db *sqlx.DB, schema string) error {
 			created_at TIMESTAMP NOT NULL,
 			updated_at TIMESTAMP NOT NULL,
 			created_by VARCHAR,
-			updated_by VARCHAR
+			updated_by VARCHAR,
+			visibility VARCHAR
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating apps table: %w", err)
+	}
+
+	// TODO: Remove once ran for all active users
+	_, err = db.Exec(`
+		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS visibility VARCHAR
+	`)
+	if err != nil {
+		return fmt.Errorf("error adding visibility column to apps table: %w", err)
 	}
 
 	// Create api_keys table

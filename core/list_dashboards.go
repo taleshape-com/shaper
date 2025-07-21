@@ -28,5 +28,10 @@ func ListDashboards(app *App, ctx context.Context, sort string, order string) (L
 	if err != nil {
 		err = fmt.Errorf("error listing dashboards: %w", err)
 	}
+	if app.NoPublicSharing {
+		for i := range dashboards {
+			dashboards[i].Visibility = nil
+		}
+	}
 	return ListResult{Dashboards: dashboards}, err
 }

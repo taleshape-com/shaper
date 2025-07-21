@@ -7,6 +7,7 @@ export interface IDashboard {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
+  visibility?: 'public' | 'private';
 }
 
 export type Column = {
@@ -29,6 +30,7 @@ export type GaugeCategory = {
 
 export type Result = {
   name: string;
+  visibility?: 'public' | 'private';
   minTimeValue: number;
   maxTimeValue: number;
   reloadAt: number;

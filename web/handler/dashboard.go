@@ -136,6 +136,41 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 	}
 }
 
+func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if app.NoPublicSharing {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
+		}
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			Visibility string `json:"visibility"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
+		}
+
+		err := core.SaveDashboardVisibility(app, c.Request().Context(), c.Param("id"), request.Visibility)
+		if err != nil {
+			c.Logger().Error("error saving visibility:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
 func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
@@ -171,10 +206,6 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		idParam := c.Param("id")
-		// TODO: remove after migration
-		if idParam == "embed" {
-			idParam = "ja1ce8t8x53fkpd8dsmh8qrt"
-		}
 		if id, hasId := claims["dashboardId"]; hasId && id != idParam {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -363,5 +394,33 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 		}
 
 		return c.JSONPretty(http.StatusOK, result, "  ")
+	}
+}
+
+// TODO: This route exists to check if dashboard is public or password protected. It only makes sense once password-protected links are implemented.
+func GetPublicStatus(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if app.NoPublicSharing {
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		if err != nil {
+			c.Logger().Error("error getting public status:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+		if dashboard.Visibility == nil || *dashboard.Visibility != "public" {
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "not found"}, "  ")
+		}
+		return c.JSON(http.StatusOK, struct {
+			Visibility string `json:"visibility"`
+		}{
+			Visibility: "public",
+		})
 	}
 }
