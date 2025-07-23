@@ -10,6 +10,7 @@ import { App } from "./App";
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "@tanstack/react-router";
 import { checkLoginRequired } from "./lib/auth";
+import "./lib/globals";
 
 // Polyfill container queries
 const supportsContainerQueries = "container" in document.documentElement.style;

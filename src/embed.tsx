@@ -2,16 +2,7 @@ import "./index.css";
 import ReactDOM from "react-dom/client";
 import { EmbedComponent, type EmbedProps } from "./components/Embed";
 import { RemoveScroll } from "react-remove-scroll/UI";
-
-// Add type definition for the global shaper object
-declare global {
-  interface Window {
-    shaper: {
-      defaultBaseUrl: string;
-      customCSS?: string;
-    };
-  }
-}
+import "./lib/globals";
 
 (RemoveScroll.defaultProps ?? {}).enabled = false;
 

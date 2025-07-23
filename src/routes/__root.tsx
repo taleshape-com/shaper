@@ -4,18 +4,6 @@ import { IAuthContext } from "../lib/auth";
 import { QueryApiFunc } from "../hooks/useQueryApi";
 import { Toaster } from "../components/tremor/Toaster";
 import { DarkModeProvider } from "../components/DarkModeProvider";
-import { loader } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-
-// Initialize Monaco Editor from source files instead of CDN
-self.MonacoEnvironment = {
-  getWorker() {
-    return new editorWorker();
-  },
-};
-loader.config({ monaco });
-loader.init();
 
 //const TanStackRouterDevtools =
 //process.env.NODE_ENV === "production"

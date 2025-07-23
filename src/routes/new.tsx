@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from '../components/tremor/Dialog'
 import { Input } from '../components/tremor/Input'
+import "../lib/editorInit";
 
 const defaultQuery = '-- Enter your SQL query here'
 

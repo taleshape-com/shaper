@@ -34,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/tremor/Dialog";
+import "../lib/editorInit";
 
 export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
   validateSearch: z.object({
