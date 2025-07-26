@@ -17,6 +17,22 @@ import (
 
 const QUERY_MAX_ROWS = 2000
 
+var sideEffectSQLStatements = [][]string{
+	// TODO: Once I am sure no one is using ATTACH in a dashboard anymore, remove it
+	{"ATTACH"},
+	{"USE"},
+	{"SET", "VARIABLE"},
+	{"RESET", "VARIABLE"},
+	{"CREATE", "TEMPORARY", "TABLE"},
+	{"CREATE", "TEMPORARY", "VIEW"},
+	{"CREATE", "TEMP", "TABLE"},
+	{"CREATE", "TEMP", "VIEW"},
+	{"CREATE", "OR", "REPLACE", "TEMPORARY", "TABLE"},
+	{"CREATE", "OR", "REPLACE", "TEMPORARY", "VIEW"},
+	{"CREATE", "OR", "REPLACE", "TEMP", "TABLE"},
+	{"CREATE", "OR", "REPLACE", "TEMP", "VIEW"},
+}
+
 type DashboardQuery struct {
 	Content    string
 	ID         string
@@ -65,7 +81,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
 		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
-		rows, err := conn.QueryxContext(ctx, varPrefix+string(sqlString)+";")
+		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
 		// TODO: Harden DB cleanup logic. We must not leak vars to other queries. Also consider parallel queries
 		if varCleanup != "" {
 			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
@@ -75,6 +91,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if err != nil {
 			return result, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
 		}
+
 		colTypes, err := rows.ColumnTypes()
 		if err != nil {
 			return result, err
@@ -98,7 +115,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 		}
 
-		if isSideEffect(colTypes, query.Rows) {
+		if isSideEffect(sqlString) {
 			continue
 		}
 
@@ -499,20 +516,24 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 	return nil, 0
 }
 
-// This is a heuristic to determine if a query is something like `ATTACH` or `CREATE TABLE`.
-// They don't return anything useful and for now we want to allow users to put them directly into dashboards.
-func isSideEffect(cols []*sql.ColumnType, rows Rows) bool {
-	if len(rows) > 0 || len(cols) != 1 {
-		return false
-	}
-	c := cols[0]
-	n := c.Name()
-	t := c.DatabaseTypeName()
-	if n == "Success" && t == "BOOLEAN" {
-		return true
-	}
-	if n == "Count" && t == "BIGINT" {
-		return true
+// Some SQL statements are only used for their side effects and should not be shown on the dashboard.
+// We ignore case and extra whitespace when matching the statements
+func isSideEffect(sqlString string) bool {
+	normalized := strings.ToUpper(strings.TrimSpace(sqlString))
+	for _, stmt := range sideEffectSQLStatements {
+		mismatch := false
+		sub := normalized
+		for _, s := range stmt {
+			if !strings.HasPrefix(sub, s) {
+				mismatch = true
+				break
+			}
+			sub = strings.TrimSpace(strings.TrimPrefix(sub, s))
+		}
+		if !mismatch {
+			fmt.Println(stmt)
+			return true
+		}
 	}
 	return false
 }
@@ -1022,6 +1043,7 @@ func getAxisType(rows Rows, index int) (string, error) {
 // TODO: assert that variable names are alphanumeric
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
+// TODO: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
 func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
 	varPrefix := strings.Builder{}
 	varCleanup := strings.Builder{}
