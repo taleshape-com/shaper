@@ -286,6 +286,7 @@ function DashboardEditor() {
         description: translate(dashboard.visibility === 'public' ? "The dashboard is not publicly accessible anymore." : "Try the link in the sidebar"),
       });
       dashboard.visibility = dashboard.visibility === 'public' ? 'private' : 'public';
+      router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options);
