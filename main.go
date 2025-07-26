@@ -260,6 +260,8 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 	sqlDB := sql.OpenDB(dbConnector)
+	// This is important to avoid leaking variables or temp tables/views. Must not reuse connections.
+	sqlDB.SetMaxIdleConns(0)
 	db := sqlx.NewDb(sqlDB, "duckdb")
 	logger.Info("DuckDB opened", slog.Any("file", dbFile))
 

@@ -75,7 +75,7 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.Ha
 
 			defaultBaseUrl := strings.TrimSuffix(getRequestURL(c.Request()).String(), "/embed/shaper.js")
 			// Inject default base URL and custom CSS
-			content = append(content, []byte(fmt.Sprintf("\nshaper.defaultBaseUrl = %q;\nshaper.customCSS = %q;\n", defaultBaseUrl, customCSS))...)
+			content = fmt.Appendf(content, "\nshaper.defaultBaseUrl = %q;\nshaper.customCSS = %q;\n", defaultBaseUrl, customCSS)
 
 			http.ServeContent(c.Response(), c.Request(), filename, modTime, bytes.NewReader(content))
 		} else {
