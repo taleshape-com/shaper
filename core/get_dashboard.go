@@ -531,7 +531,6 @@ func isSideEffect(sqlString string) bool {
 			sub = strings.TrimSpace(strings.TrimPrefix(sub, s))
 		}
 		if !mismatch {
-			fmt.Println(stmt)
 			return true
 		}
 	}

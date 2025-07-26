@@ -31,7 +31,7 @@ export const ChartHoverProvider = ({
       value={{ hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState }}
     >
       <div
-        className="@container flex flex-col min-h-[500px] h-full antialiased text-ctext dark:text-dtext"
+        className="@container flex flex-col min-h-[432px] h-full antialiased text-ctext dark:text-dtext"
         onTouchEnd={() => {
           setHoverState(null, null, null);
         }}
