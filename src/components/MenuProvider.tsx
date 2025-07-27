@@ -100,7 +100,7 @@ export function MenuProvider({
             disabled={isHome}
             className={cx("block px-4 py-4", {
               "hover:underline": !isHome,
-              "bg-cprimary dark:bg-dprimary text-cbga dark:text-cbga": isHome,
+              "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
             <RiHomeLine className="size-4 inline mr-2 mb-1" />
@@ -111,7 +111,7 @@ export function MenuProvider({
             disabled={isNewPage}
             className={cx("block px-4 py-4", {
               "hover:underline": !isNewPage,
-              "bg-cprimary dark:bg-dprimary text-cbga dark:text-cbga": isNewPage,
+              "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isNewPage,
             })}
           >
             <RiFileAddLine className="size-4 inline mr-2 mb-1" />
