@@ -5,7 +5,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"log/slog"
-	"shaper/core"
+	"shaper/server/core"
 	"time"
 
 	"github.com/jmoiron/sqlx"

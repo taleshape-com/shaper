@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"shaper/core"
+	"shaper/server/core"
 
 	"github.com/labstack/echo/v4"
 )

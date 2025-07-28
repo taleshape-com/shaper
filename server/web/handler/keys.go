@@ -3,7 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
-	"shaper/core"
+	"shaper/server/core"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"

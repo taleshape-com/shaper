@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"shaper/util"
+	"shaper/server/util"
 	"strings"
 	"time"
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"shaper/core"
-	"shaper/web/handler"
+	"shaper/server/core"
+	"shaper/server/web/handler"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"

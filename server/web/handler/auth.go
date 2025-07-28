@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"shaper/core"
+	"shaper/server/core"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"

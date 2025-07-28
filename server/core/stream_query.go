@@ -8,7 +8,7 @@ import (
 	"io"
 	"math"
 	"net/url"
-	"shaper/util"
+	"shaper/server/util"
 	"strconv"
 	"strings"
 	"time"

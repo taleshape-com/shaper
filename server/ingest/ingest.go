@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"reflect"
-	"shaper/util"
+	"shaper/server/util"
 	"strings"
 	"sync"
 	"time"

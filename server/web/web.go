@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
-	"shaper/core"
+	"shaper/server/core"
 	"strings"
 	"time"
 
