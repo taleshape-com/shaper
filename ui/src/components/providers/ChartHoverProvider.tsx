@@ -1,6 +1,6 @@
 import React from "react";
-import { ChartHoverContext } from "../contexts/ChartHoverContext";
-import { Column } from "../lib/dashboard";
+import { ChartHoverContext } from "../../contexts/ChartHoverContext";
+import { Column } from "../../lib/dashboard";
 
 export const ChartHoverProvider = ({
   children,

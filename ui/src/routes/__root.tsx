@@ -3,7 +3,7 @@ import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router
 import { IAuthContext } from "../lib/auth";
 import { QueryApiFunc } from "../hooks/useQueryApi";
 import { Toaster } from "../components/tremor/Toaster";
-import { DarkModeProvider } from "../components/DarkModeProvider";
+import { DarkModeProvider } from "../components/providers/DarkModeProvider";
 
 //const TanStackRouterDevtools =
 //process.env.NODE_ENV === "production"

@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { RemoveScroll } from "react-remove-scroll/UI";
 import { createRouter } from "@tanstack/react-router";
-import { AuthProvider } from "./components/AuthProvider";
+import { AuthProvider } from "./components/providers/AuthProvider";
 import { App } from "./App";
 
 // Import the generated route tree

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { cx, parseJwt } from "../lib/utils";
+import { cx, parseJwt } from "../../lib/utils";
 import {
   RiMenuLine,
   RiHomeLine,
@@ -8,11 +8,11 @@ import {
   RiLogoutBoxRLine,
   RiBook2Line,
 } from "@remixicon/react";
-import { useAuth, logout } from "../lib/auth";
+import { useAuth, logout } from "../../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
-import { translate } from "../lib/translate";
-import { Button } from "../components/tremor/Button";
-import { MenuContext } from "../contexts/MenuContext";
+import { translate } from "../../lib/translate";
+import { Button } from "../../components/tremor/Button";
+import { MenuContext } from "../../contexts/MenuContext";
 
 const isLg = () => window.innerWidth >= 1024;
 

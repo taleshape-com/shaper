@@ -9,8 +9,8 @@ import {
   localStorageJwtKey,
   localStorageLoginRequiredKey,
   checkLoginRequiredWithoutCache,
-} from "../lib/auth";
-import { goToLoginPage, parseJwt } from "../lib/utils";
+} from "../../lib/auth";
+import { goToLoginPage, parseJwt } from "../../lib/utils";
 
 const getVariablesString = () => {
   return localStorage.getItem(localStorageVariablesKey) ?? "{}";

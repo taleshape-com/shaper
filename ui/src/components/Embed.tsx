@@ -1,7 +1,7 @@
 import { Dashboard } from './dashboard'
 import { useCallback, useEffect, useState, useRef } from "react";
 import { parseJwt, VarsParamSchema } from "../lib/utils";
-import { DarkModeProvider } from "./DarkModeProvider";
+import { DarkModeProvider } from "./providers/DarkModeProvider";
 
 export type EmbedProps = {
   baseUrl?: string;

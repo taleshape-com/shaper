@@ -17,7 +17,7 @@ import { useAuth } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
 import { Result } from "../lib/dashboard";
-import { MenuProvider } from "../components/MenuProvider";
+import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 
 export const Route = createFileRoute("/dashboards/$dashboardId")({

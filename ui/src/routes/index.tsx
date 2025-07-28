@@ -21,7 +21,7 @@ import {
 import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc, RiGlobalLine } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { MenuProvider } from "../components/MenuProvider";
+import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { Button } from "../components/tremor/Button";
 import { Tooltip } from "../components/tremor/Tooltip";

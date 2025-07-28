@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { DarkModeContext } from "../contexts/DarkModeContext";
+import { DarkModeContext } from "../../contexts/DarkModeContext";
 
 export const DarkModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Initialize dark mode from system preference

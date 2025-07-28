@@ -1,5 +1,5 @@
 import { Result } from "../../lib/dashboard";
-import { ChartHoverProvider } from "../ChartHoverProvider";
+import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";

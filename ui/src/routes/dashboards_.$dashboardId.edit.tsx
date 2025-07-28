@@ -21,7 +21,7 @@ import { editorStorage } from "../lib/editorStorage";
 import { IDashboard, Result } from "../lib/dashboard";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { MenuProvider } from "../components/MenuProvider";
+import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";

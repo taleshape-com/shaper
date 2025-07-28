@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { Helmet } from "react-helmet";
 import { translate } from "../lib/translate";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
-import { MenuProvider } from "../components/MenuProvider";
+import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { RiAdminLine } from "@remixicon/react";
 
