@@ -126,7 +126,7 @@ export function MenuProvider({
             className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2"
             target="shaper-docs"
           >
-            <RiBook2Line className="size-4 inline mr-2 mb-1" />
+            <RiBook2Line className="size-4 inline mr-1.5 mb-1" />
             {translate("Docs")}
           </a>
           <Link to="/admin" disabled={isAdmin} className={cx(
