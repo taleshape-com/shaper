@@ -331,12 +331,12 @@ jobs:
 
       - name: Update npm package version
         run: |
-          cd npm
+          cd npm-package
           npm version $(echo ${{ github.ref_name }} | sed 's/^v//') --no-git-tag-version
 
       - name: Publish to npm
         run: |
-          cd npm
+          cd npm-package
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
