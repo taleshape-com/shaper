@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"shaper/comms"
+	"shaper/server/comms"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/marcboeker/go-duckdb/v2"
