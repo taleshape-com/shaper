@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import path from "path";
 import cssInjectedByJsPlugin from "vite-plugin-css-injected-by-js";
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 export default defineConfig({
   plugins: [
@@ -13,6 +15,14 @@ export default defineConfig({
       gzipSize: true,
     }) as PluginOption,
   ],
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss({ config: 'ui/tailwind.config.js' }),
+        autoprefixer,
+      ],
+    }
+  },
   build: {
     outDir: path.resolve(__dirname, "../dist/embed"),
     copyPublicDir: false,

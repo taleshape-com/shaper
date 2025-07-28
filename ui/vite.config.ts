@@ -3,6 +3,8 @@ import { defineConfig, type PluginOption } from 'vite';
 import react from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { visualizer } from "rollup-plugin-visualizer";
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,6 +26,14 @@ export default defineConfig({
       gzipSize: true,
     }) as PluginOption,
   ],
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss({ config: 'ui/tailwind.config.js' }),
+        autoprefixer,
+      ],
+    }
+  },
   server: {
     host: "0.0.0.0",
     port: 5453,
