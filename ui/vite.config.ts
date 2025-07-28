@@ -20,7 +20,7 @@ export default defineConfig({
     }),
     react(),
     visualizer({
-      filename: 'vite/stats.html',
+      filename: '.vite-stats/stats.html',
       gzipSize: true,
     }) as PluginOption,
   ],

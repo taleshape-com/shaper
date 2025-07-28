@@ -1,7 +1,7 @@
 ./bin
 node_modules
 dist
-vite
+.vite-stats
 
 # Editor directories and files
 .vscode/*

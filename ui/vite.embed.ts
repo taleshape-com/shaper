@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     cssInjectedByJsPlugin(),
     visualizer({
-      filename: "vite/stats-embed.html",
+      filename: ".vite-stats/stats-embed.html",
       gzipSize: true,
     }) as PluginOption,
   ],
