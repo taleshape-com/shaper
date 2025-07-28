@@ -590,6 +590,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 		// Get DB connection
 		// TODO: Do we need to connect every time or can we connect once and reuse the connection?
+		// TODO: Consider using normal sql.DB instead of driver.Conn. Then we need less initialization logic in main.go. From sql.Conn we should be able to access the underlying raw connection too.
 		conn, err := dbConnector.Connect(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to connect to database: %w", err)
