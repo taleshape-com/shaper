@@ -7,8 +7,9 @@ import containerQueries from '@tailwindcss/container-queries';
 
 export default {
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "ui/index.html",
+    "ui/src/**/*.{js,ts,jsx,tsx}",
+    "server/web/view.html",
   ],
   important: '.shaper-scope',
   theme: {

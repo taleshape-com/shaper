@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig, type PluginOption } from 'vite';
 import react from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -7,11 +8,15 @@ import { visualizer } from "rollup-plugin-visualizer";
 export default defineConfig({
   build: {
     modulePreload: false,
+    outDir: path.join(__dirname, "../dist"),
+    emptyOutDir: true,
   },
   plugins: [
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
+      routesDirectory: 'ui/src/routes',
+      generatedRouteTree: 'ui/src/routeTree.gen.ts',
     }),
     react(),
     visualizer({

@@ -14,7 +14,7 @@ export default defineConfig({
     }) as PluginOption,
   ],
   build: {
-    outDir: "dist/embed",
+    outDir: path.resolve(__dirname, "../dist/embed"),
     copyPublicDir: false,
     lib: {
       name: "shaper",

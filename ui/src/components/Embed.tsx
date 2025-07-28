@@ -105,7 +105,7 @@ export function EmbedComponent({
     const newJwt = await getJwt();
     jwtRef.current = newJwt
     return newJwt;
-  }, [baseUrl, getJwt]);
+  }, [baseUrl, getJwt, props.dashboardId]);
 
   return (
     <DarkModeProvider>

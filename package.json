@@ -4,10 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && npm run build:embed",
-    "build:embed": "vite build -c vite.embed.ts",
-    "lint": "eslint ."
+    "dev": "vite ui",
+    "build": "npm run typecheck && npm run build:main && npm run build:embed",
+    "build:main": "vite build ui",
+    "build:embed": "vite build -c ui/vite.embed.ts",
+    "typecheck": "tsc -b ui",
+    "lint": "eslint -c ui/eslint.config.js"
   },
   "dependencies": {
     "@internationalized/date": "^3.5.6",
