@@ -1,3 +1,9 @@
+# Lint, test, build and release
+#
+# The jobs are layed out in a way that prioritizes reducing total spent resources (CPU time).
+# This means that we don't parallelize as much as we could.
+# But at the same time we parallelize some work work to reduce the total duration.
+# It's a balance between the two.
 name: CI
 on:
   push:
@@ -12,26 +18,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  frontend-lint:
-    name: Frontend Lint
+  frontend:
+    name: Frontend Lint, Typecheck, Build
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - name: Install dependencies
-        run: npm ci
-      - name: Run linting
-        run: npm run lint
-
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    needs: [frontend-lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,7 +33,7 @@ jobs:
         run: npm ci
       - name: Build frontend
         run: |
-          NODE_ENV=production npm run build
+          NODE_ENV=production npm run all
       - name: Upload frontend build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -52,8 +41,8 @@ jobs:
           path: dist/
           retention-days: 1
 
-  go-vet:
-    name: Go Vet
+  go-verify:
+    name: Go Vet and Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -71,23 +60,6 @@ jobs:
           touch dist/placeholder
       - name: Run go vet
         run: go vet ./...
-
-  go-test:
-    name: Go Test
-    runs-on: ubuntu-latest
-    needs: [go-vet]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: "go.mod"
-          cache: true
-      - name: Create placeholder dist directory
-        run: |
-          mkdir -p dist
-          touch dist/placeholder
       - name: Run go test
         run: go test ./...
 
