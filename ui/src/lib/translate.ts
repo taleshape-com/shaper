@@ -1,5 +1,5 @@
 // Currently supporting English and German
-const translations: Record<string, Record<string, string>> = {
+const translations = {
   Error: {
     de: "Fehler",
   },
@@ -53,6 +53,9 @@ const translations: Record<string, Record<string, string>> = {
   },
   "New Dashboard": {
     de: "Neu Dashboard",
+  },
+  "New": {
+    de: "Neu",
   },
   Save: {
     de: "Speichern",
@@ -379,15 +382,47 @@ const translations: Record<string, Record<string, string>> = {
   "This dashboard is public": {
     de: "Dieses Dashboard ist öffentlich",
   },
+  "Enter key name": {
+    de: "Geben Sie den Namen des Schlüssels ein",
+  },
+  "Create Key": {
+    de: "Schlüssel erstellen",
+  },
+  "API Key Created": {
+    de: "API-Schlüssel erstellt",
+  },
+  "Your new API key": {
+    de: "Ihr neuer API-Schlüssel",
+  },
+  "Make sure to copy this key now. You won't be able to see it again!": {
+    de: "Stellen Sie sicher, dass Sie diesen Schlüssel jetzt kopieren. Sie werden ihn nicht noch einmal sehen können!",
+  },
+  "Create Dashboard": {
+    de: "Dashboard erstellen",
+  },
+  "No data": {
+    de: "Keine Daten",
+  },
+  "Enter a name to identify this API key": {
+    de: "Geben Sie einen Namen ein, um diesen API-Schlüssel zu identifizieren",
+  },
+  "Click to edit dashboard name": {
+    de: "Klicken Sie, um den Dashboard-Namen zu bearbeiten",
+  },
+  "Restore": {
+    de: "Wiederherstellen",
+  },
 };
 
-export function translate(s: string) {
+export function translate(s: keyof typeof translations) {
   const available = translations[s] ?? {};
   for (const lang of navigator.languages) {
-    if (lang === "en" || lang === "en-US") {
+    const firstPart = lang.split("-")[0];
+    if (firstPart === "en") {
       return s;
     }
-    const t = available[lang];
+    // TODO: The type casting is more hack than accurate.
+    const t = available[firstPart as 'de'];
     if (t) {
       return t;
     }

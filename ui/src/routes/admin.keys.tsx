@@ -237,7 +237,7 @@ function Admin() {
           {newKey ? (
             <div className="space-y-4">
               <div>
-                <Label>{translate("Your new API key:")}</Label>
+                <Label>{translate("Your new API key")}:</Label>
                 <div className="flex items-center gap-2 mt-2">
                   <code className="bg-cbga dark:bg-dbga p-2 rounded flex-grow overflow-hidden text-ellipsis">
                     {newKey.key}
