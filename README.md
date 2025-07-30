@@ -4,7 +4,9 @@
 
 Learn more at: https://taleshape.com/shaper/docs/
 
+[
 ![Screenshot](https://taleshape.com/_astro/session_dashboard.DjtFqCnO_Z15ug1D.webp)
+](https://taleshape.com/shaper/docs/)
 
 
 ## Quickstart
