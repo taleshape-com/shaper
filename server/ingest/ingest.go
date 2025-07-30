@@ -1,3 +1,17 @@
+// Support ingesting data via NATS.
+// Process JSON data from NATS JetStream and write to DuckDB.
+// Expects objects or arrays of objects in JSON format.
+//
+// Auto-create tables based on incoming data schema.
+// Automatically adds new columns to existing tables as needed.
+// Currently doesn't support changing column types if data is not compatible with existing type.
+// Adds _id and _ts columns to every table.
+// _id and _ts can be set in JSON directly.
+// If set, Nats-Msg-Id header can be used as _id.
+// metadata.Timestamp is used as _ts if not set in JSON.
+// Column types are detected as boolean, double, timestamp, date, varchar, or json based on the data.
+//
+// Batches processing to improve performance.
 package ingest
 
 import (

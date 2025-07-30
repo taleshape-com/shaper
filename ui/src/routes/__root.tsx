@@ -1,5 +1,4 @@
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
-//import React from "react";
 import { IAuthContext } from "../lib/auth";
 import { QueryApiFunc } from "../hooks/useQueryApi";
 import { Toaster } from "../components/tremor/Toaster";

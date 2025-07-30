@@ -4,6 +4,7 @@ import { goToLoginPage } from "../lib/utils";
 
 export type QueryApiFunc = (url: string, options?: { method?: 'POST' | 'DELETE'; body?: any }) => Promise<any>;
 
+// Use to call API with JWT authentication and redirect to login page on 401
 export const useQueryApi = (): QueryApiFunc => {
   const auth = useAuth();
   return useCallback((async (url, options = {}) => {

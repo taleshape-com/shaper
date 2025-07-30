@@ -15,10 +15,11 @@ import (
 	"github.com/marcboeker/go-duckdb/v2"
 )
 
-const QUERY_MAX_ROWS = 2000
+const QUERY_MAX_ROWS = 10000
 
+// These SQL statements are used only for their side effects and not to display anything.
+// They are not visible in the dashboard output.
 var sideEffectSQLStatements = [][]string{
-	// TODO: Once I am sure no one is using ATTACH in a dashboard anymore, remove it
 	{"ATTACH"},
 	{"USE"},
 	{"SET", "VARIABLE"},
@@ -40,6 +41,8 @@ type DashboardQuery struct {
 	Visibility *string
 }
 
+// QueryDashboard is where most of the complexity of the dashboarding functionality lies.
+// It executes the SQL and generates a dashboard definition from the results that can be rendered in the frontend.
 func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	result := GetResult{
 		Name:       dashboardQuery.Name,
@@ -82,7 +85,6 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
 		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
-		// TODO: Harden DB cleanup logic. We must not leak vars to other queries. Also consider parallel queries
 		if varCleanup != "" {
 			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
 				return result, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
@@ -1042,7 +1044,7 @@ func getAxisType(rows Rows, index int) (string, error) {
 // TODO: assert that variable names are alphanumeric
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
-// TODO: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
+// NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
 func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
 	varPrefix := strings.Builder{}
 	varCleanup := strings.Builder{}

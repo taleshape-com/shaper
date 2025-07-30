@@ -1,3 +1,4 @@
+// Run internal NATS server or connect to external one
 package comms
 
 import (
@@ -46,6 +47,7 @@ type ClientAuth struct {
 	IngestSubjectPrefix string
 }
 
+// Implement NATS token auth to allow static token and API key authentication
 func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 	opts := auth.GetOpts()
 
@@ -116,7 +118,7 @@ func New(config Config) (Comms, error) {
 	}
 
 	// TODO: support TLS
-	// TODO: NATS prometheus metrics
+	// TODO: NATS Server prometheus metrics
 	// TODO: allow setting jetstream domain
 	opts := &server.Options{
 		JetStream:              true,
@@ -165,15 +167,12 @@ func New(config Config) (Comms, error) {
 		return Comms{}, err
 	}
 	clientOpts := []nats.Option{
-		// TODO: Make inprocess optional. Allow connecting to remote NATS
 		nats.InProcessServer(ns),
 	}
-
 	// Add authentication to client if token is set
 	if config.Token != "" {
 		clientOpts = append(clientOpts, nats.Token(config.Token))
 	}
-
 	// TODO: set nats.Name() for connection once we use more than one connection
 	nc, err := nats.Connect(ns.ClientURL(), clientOpts...)
 	if err != nil {

@@ -397,7 +397,7 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 	}
 }
 
-// TODO: This route exists to check if dashboard is public or password protected. It only makes sense once password-protected links are implemented.
+// NOTE: This route exists to check if dashboard is public or password protected. It only makes sense once password-protected links are implemented.
 func GetPublicStatus(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if app.NoPublicSharing {

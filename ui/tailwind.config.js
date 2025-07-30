@@ -1,5 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-// (Optional) Import default theme when using a custom font (Step 7)
 import defaultTheme from 'tailwindcss/defaultTheme';
 import formPlugin from '@tailwindcss/forms';
 import { scopedPreflightStyles, isolateInsideOfContainer } from 'tailwindcss-scoped-preflight';
@@ -11,6 +10,7 @@ export default {
     "ui/src/**/*.{js,ts,jsx,tsx}",
     "server/web/view.html",
   ],
+  // We scope styles to avoid with other instances of tailwind in the parent application when embedding
   important: '.shaper-scope',
   theme: {
     extend: {
@@ -55,6 +55,7 @@ export default {
         sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],
         display: ['var(--shaper-display-font)', ...defaultTheme.fontFamily.sans],
       },
+      // Custom container query sizes that match the Tailwind breakpoints
       containers: {
         'sm': '640px',
         'lg': '1024px',
@@ -62,6 +63,7 @@ export default {
         '2xl': '1536px',
         '4xl': '1948px',
       },
+      // keyframes and animations are used by Tremor components
       keyframes: {
         hide: {
           from: { opacity: "1" },

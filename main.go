@@ -26,27 +26,31 @@ import (
 	"github.com/peterbourgon/ff/v4/ffhelp"
 )
 
+const APP_NAME = "shaper"
+
+// Embedding frontend files.
+// Has to happen in main package because you cannot embed files from a parent directory.
+// That's also the main reason why main.go is in the root of the project.
+//
 //go:embed dist
 var frontendFS embed.FS
-
-const APP_NAME = "shaper"
 
 // Version is set during build time via ldflags
 var Version = "dev"
 
-// TODO: Add a short description of what shaper does once I know how to explain it
-const USAGE = `All options are optional.
+const USAGE = `Version: {{.Version}}
 
-Version: {{.Version}}
+  Shaper is a minimal data platform built on top of DuckDB and NATS to create analytics dashboards and embed them into your software.
 
-All configuration options can be set via command line flags, environment variables or config file.
+  All configuration options can be set via command line flags, environment variables or config file.
+  All options are optional.
 
-Environment variables must be prefixed with SHAPER_ and use uppercase letters and underscores.
-For example, --nats-token turns into SHAPER_NATS_TOKEN.
+  Environment variables must be prefixed with SHAPER_ and use uppercase letters and underscores.
+  For example, --nats-token turns into SHAPER_NATS_TOKEN.
 
-The config file format is plain text, with one flag per line. The flag name and value are separated by whitespace.
+  The config file format is plain text, with one flag per line. The flag name and value are separated by whitespace.
 
-For more see: https://taleshape.com/shaper/docs
+  For more see: https://taleshape.com/shaper/docs
 
 `
 
@@ -391,7 +395,6 @@ func Run(cfg Config) func(context.Context) {
 }
 
 func getExecutableModTime() (time.Time, error) {
-
 	ex, err := os.Executable()
 	if err != nil {
 		return time.Time{}, err
@@ -400,7 +403,9 @@ func getExecutableModTime() (time.Time, error) {
 	return stat.ModTime(), err
 }
 
-// Helper function to get or generate consumer name
+// Consumer name is a CUID2 with a prefix and it's stored in the given file
+// Binding consumer names to the local file system means they reset when the file system is reset.
+// This fits works well together with Docker containers.
 func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName string, prefix string) string {
 	fileName := nameFile
 	if fileName == "" {

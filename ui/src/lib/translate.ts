@@ -1,3 +1,4 @@
+// Currently supporting English and German
 const translations: Record<string, Record<string, string>> = {
   Error: {
     de: "Fehler",

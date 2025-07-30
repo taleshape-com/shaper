@@ -63,7 +63,8 @@ export const checkLoginRequiredWithoutCache = async (): Promise<boolean> => {
   return data.enabled;
 };
 
-// Check if login is required using the auth status endpoint
+// Check if login is required using the auth status endpoint.
+// We call this before even starting the React app to avoid glitching behavior when loading.
 export const checkLoginRequired = async (): Promise<boolean> => {
   const storedVal = localStorage.getItem(localStorageLoginRequiredKey)
   if (storedVal === "true") {

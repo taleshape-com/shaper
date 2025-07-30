@@ -1,6 +1,7 @@
 import React from 'react';
 import { Column } from '../lib/dashboard';
 
+// Coordinate to display cursor across charts when hovering
 export const ChartHoverContext = React.createContext<{
   hoveredIndex: string | number | null;
   hoveredChartId: string | null;

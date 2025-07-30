@@ -23,6 +23,8 @@ const MICROSECONDS_PER_DAY = 24.0 * 60.0 * 60.0 * 1_000_000.0
 
 const EXCEL_INTERVAL_FORMAT = "[h]:mm:ss"
 
+// Stream the result of a dashboard query as CSV file to client.
+// Same as dashboard, it handles variables from JWT and from URL params.
 func StreamQueryCSV(
 	app *App,
 	ctx context.Context,
@@ -134,26 +136,13 @@ func StreamQueryCSV(
 	return rows.Err()
 }
 
-// getDisplayWidth returns the approximate display width of a value.
-// This is a simple implementation that could be enhanced for better accuracy.
-func getDisplayWidth(value any) float64 {
-	if value == nil {
-		return 4 // Width of "null"
-	}
-
-	switch v := value.(type) {
-	case time.Time:
-		return 20 // Approximate width for RFC3339 format
-	case duckdb.Interval:
-		return float64(len(intervalToString(v)))
-	case duckdb.Union:
-		return getDisplayWidth(v.Value)
-	default:
-		str := fmt.Sprintf("%v", value)
-		return float64(len(str))
-	}
-}
-
+// Stream the result of a dashboard query as CSV file to client.
+// Same as dashboard, it handles variables from JWT and from URL params.
+// We format headers and different values in a way that is suitable for Excel.
+// Note that while the interface is streaming, the whole file is rendered in memory.
+// This is a restriction of the excelize library and maybe of the XLSX format itself.
+//
+// TODO: Limit file size and for large files tell user to use CSV instead.
 func StreamQueryXLSX(
 	app *App,
 	ctx context.Context,
@@ -343,6 +332,26 @@ func StreamQueryXLSX(
 
 	// Write the XLSX file to the writer
 	return xlsx.Write(writer)
+}
+
+// getDisplayWidth returns the approximate display width of a value.
+// This is a simple implementation that could be enhanced for better accuracy.
+func getDisplayWidth(value any) float64 {
+	if value == nil {
+		return 4 // Width of "null"
+	}
+
+	switch v := value.(type) {
+	case time.Time:
+		return 20 // Approximate width for RFC3339 format
+	case duckdb.Interval:
+		return float64(len(intervalToString(v)))
+	case duckdb.Union:
+		return getDisplayWidth(v.Value)
+	default:
+		str := fmt.Sprintf("%v", value)
+		return float64(len(str))
+	}
 }
 
 func handleCellValue(value any, xlsx *excelize.File, sheetName string, cell string, styles map[string]int) {

@@ -2,6 +2,10 @@ package core
 
 import "github.com/jmoiron/sqlx"
 
+// Custom SQL types Shaper provides that can be used to build rich dashboards.
+// Internally they are all UNION types so we can identify them in the query result,
+// and so that they work transparently with other SQL types.
+//
 // TODO: Consider making _shaper_ prefix configurable
 // TODO: Support DATE, INTERVAL and potential other types in axis
 // TODO: Support DATE, TIME, INTERVAL, DOUBLE in CATEGORY

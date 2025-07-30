@@ -11,7 +11,7 @@ import (
 type DeleteDashboardPayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
-	// TODO: Not used, but might want to log this in the future
+	// NOTE: Not used, but might want to log this in the future
 	DeletedBy string `json:"deletedBy"`
 }
 

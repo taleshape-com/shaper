@@ -15,6 +15,8 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
+// Actor is either a user or an API key.
+// This is useful for audit logging and saving that context to the database.
 func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -136,7 +138,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 // We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time
 func GetJWTKeyfunc(app *core.App) jwt.Keyfunc {
-	return func(token *jwt.Token) (interface{}, error) {
+	return func(token *jwt.Token) (any, error) {
 		if token.Method.Alg() != echojwt.AlgorithmHS256 {
 			return nil, &echojwt.TokenError{Token: token, Err: fmt.Errorf("unexpected jwt signing method=%v", token.Header["alg"])}
 		}

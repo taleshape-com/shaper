@@ -113,7 +113,7 @@ func HandleCreateUser(app *App, data []byte) bool {
 type DeleteInvitePayload struct {
 	Code      string    `json:"code"`
 	Timestamp time.Time `json:"timestamp"`
-	// TODO: Not used, but might want to log this in the future
+	// NOTE: Not used, but might want to log this in the future
 	DeletedBy string `json:"deletedBy"`
 }
 

@@ -1,3 +1,8 @@
+# Using slim instead of a from scratch image because:
+# 1. We are dynamically linking DuckDB since some extensions have issues with static linking
+# 2. We need wget to run the healthcheck
+# 3. Having a shell is useful for debugging
+# Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
 FROM debian:12-slim
 LABEL maintainer="Taleshape <hi@taleshape.com>"
 LABEL org.opencontainers.image.source="https://github.com/taleshape-com/shaper"
@@ -15,6 +20,7 @@ ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
 EXPOSE 5454
 HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
 
+# install wget for healthcheck
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
 # Copy the correct binary based on architecture

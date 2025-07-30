@@ -28,10 +28,10 @@ func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, cust
 	e.Use(middleware.BodyLimit("2M"))
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 5}))
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
-		// Does more bad than good https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+		// Does more bad than good: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
 		XSSProtection:      "",
 		ContentTypeNosniff: "nosniff",
-		// TODO: In the future we should make this configurable to support embedding the whole app
+		// TODO: Make this configurable to support embedding the whole app
 		XFrameOptions: "SAMEORIGIN",
 		HSTSMaxAge:    2592000, // 30 days
 	}))
@@ -46,12 +46,12 @@ func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, cust
 		LogLevel:  log.ERROR,
 	}))
 	// Promethues metrics
-	e.Use(echoprometheus.NewMiddleware(app.Name)) // adds middleware to gather metrics
+	e.Use(echoprometheus.NewMiddleware(app.Name))
 
 	// Routes
 	routes(e, app, frontendFS, modTime, customCSS, favicon)
 
-	// Start server
+	// Start server in background
 	go func() {
 		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("error starting server", err)

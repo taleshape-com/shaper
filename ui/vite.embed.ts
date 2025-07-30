@@ -9,6 +9,7 @@ import autoprefixer from 'autoprefixer';
 export default defineConfig({
   plugins: [
     react(),
+    // Include tailwind-generated CSS in the JS library
     cssInjectedByJsPlugin(),
     visualizer({
       filename: ".vite-stats/stats-embed.html",

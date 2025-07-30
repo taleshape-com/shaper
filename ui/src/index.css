@@ -85,10 +85,6 @@
   --shaper-dark-mode-error-color-alternate: #d23537;
 }
 
-.shaper-scope body {
-  margin: 0;
-}
-
 .shaper-scope .\@container {
   container-type: size;
 }
