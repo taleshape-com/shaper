@@ -104,24 +104,28 @@ func loadConfig() Config {
 	version := flags.Bool('v', "version", "show version")
 	addr := flags.StringLong("addr", "localhost:5454", "server address")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
-	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
-	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
-	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
-	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
-	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
+	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
+	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
-	natsServers := flags.StringLong("nats-servers", "", "Use external NATS servers, specify as comma separated list")
+	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
 	natsToken := flags.String('t', "nats-token", "", "NATS authentication token")
-	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
-	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
+	natsServers := flags.StringLong("nats-servers", "", "Use external NATS servers, specify as comma separated list")
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
+	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
+	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
+	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
+	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
+	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
+	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
+	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
+	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
 	streamPrefix := flags.StringLong("stream-prefix", "", "Prefix for NATS stream and KV bucket names. Must be a valid NATS subject name")
-	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
+	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
 	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
 	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
@@ -130,10 +134,6 @@ func loadConfig() Config {
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
-	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
-	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
-	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
-	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -405,7 +405,7 @@ func getExecutableModTime() (time.Time, error) {
 
 // Consumer name is a CUID2 with a prefix and it's stored in the given file
 // Binding consumer names to the local file system means they reset when the file system is reset.
-// This fits works well together with Docker containers.
+// This works well together with Docker containers.
 func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName string, prefix string) string {
 	fileName := nameFile
 	if fileName == "" {

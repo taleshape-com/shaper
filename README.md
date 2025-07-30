@@ -1,65 +1,54 @@
-# React + TypeScript + Vite
+# Shaper
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Minimal Embedded Analytics and Data Platform**
 
-Currently, two official plugins are available:
+Learn more at: https://taleshape.com/shaper/docs/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
-
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+![Screenshot](https://taleshape.com/_astro/session_dashboard.DjtFqCnO_Z15ug1D.webp)
 
 
-## Viz Logic
+## Quickstart
 
-- Line chart: date or timestamp, 1+ number columns
-    int stack, float not
-- Bar chart: text col, 1+ number columns
-    int stack, float not
-
-
-## NATS
-
+The quickest way to try out Shaper without installing anything is to run it via [Docker](https://www.docker.com/):
 ```sh
-nats pub --count 10 shaper.ingest.events '{"valid_at": "{{TimeStamp}}", "id": "{{ID}}", "action": "{{Random 3 10}}"}'
+docker run --rm -it -p5454:5454 taleshape/shaper
 ```
+
+Then open http://localhost:5454/new in your browser and try out a SQL query like this:
+
+```sql
+SELECT 'Hello World';
+```
+
+For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs/getting-started/).
+
+
+## Connect
+
+Feel free to open an [issue](https://github.com/taleshape-com/shaper/issues) or start a [discussion](https://github.com/taleshape-com/shaper/discussions) if you have any questions or suggestions.
+
+Also follow along on [BlueSky](https://bsky.app/profile/taleshape.bsky.social) or [LinkedIn](https://www.linkedin.com/company/taleshape/).
+
+And subscribe to our [newsletter](https://taleshape.com/newsletter) to get updates about Shaper.
+
+
+## Developing Shaper
+
+1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
+2. Run the backend server: `go run .`
+3. Run the frontend: `npm start`
+4. Access the app at [http://localhost:5453](http://localhost:5453)
+5. Verify your changes:
+  - `go test ./...`
+  - `go vet ./...`
+  - `npm run all`
+
+
+### Releasing
+
+Create a new Git tag to trigger a release.
+
+
+## Release Notes
+
+See [Github Releases](https://github.com/taleshape-com/shaper/releases)
