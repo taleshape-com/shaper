@@ -1,4 +1,4 @@
-./bin
+bin
 node_modules
 dist
 .vite-stats

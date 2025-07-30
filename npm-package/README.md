@@ -1,6 +1,6 @@
 Shaper is a minimal data platform built on top of DuckDB and NATS to build and embed analytics dashboards into your software.
 
-This NPM package makes it easy to install and run Shaper locally for development purposes.
+This NPM package makes it easy to install and run Shaper locally.
 
 You can run Shaper directly via npx:
 ```bash
@@ -17,7 +17,7 @@ Then run it:
 shaper
 ```
 
-To run Shaper in production, we recommend using Docker.
+To run Shaper in production, we recommend using the Docker image since it ensures a consistent environment.
 
 Find more detailed installation and usage instructions in the documentation:
 
