@@ -80,10 +80,10 @@ func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibilit
 	if count == 0 {
 		return fmt.Errorf("dashboard not found")
 	}
-	if visibility == "private" {
-		visibility = ""
+	if visibility == "" {
+		visibility = "private"
 	}
-	if visibility != "public" && visibility != "" {
+	if visibility != "public" && visibility != "private" {
 		return fmt.Errorf("invalid visibility value: %s", visibility)
 	}
 	err = app.SubmitState(ctx, "update_dashboard_visibility", UpdateDashboardVisibilityPayload{
@@ -162,10 +162,11 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update dashboard visibility payload", slog.Any("error", err))
 		return false
 	}
-	var visibility *string
+	visibility := "private"
 	if payload.Visibility == "public" {
-		visibility = &payload.Visibility
+		visibility = "public"
 	}
+	fmt.Println(visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	_, err = app.DB.Exec(
 		`UPDATE `+app.Schema+`.apps
 		 SET visibility = $1, updated_at = $2, updated_by = $3
