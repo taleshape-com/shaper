@@ -34,6 +34,14 @@ Also follow along on [BlueSky](https://bsky.app/profile/taleshape.bsky.social) o
 And subscribe to our [newsletter](https://taleshape.com/newsletter) to get updates about Shaper.
 
 
+## Running Shaper from Source
+
+1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
+2. Build the frontend: `npm run all`
+3. Run the backend server: `go run .`
+4. Access the app at [http://localhost:5454](http://localhost:5454)
+
+
 ## Developing Shaper
 
 1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
