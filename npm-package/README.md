@@ -23,3 +23,9 @@ Find more detailed installation and usage instructions in the documentation:
 
 https://taleshape.com/shaper/docs/installing-shaper/
 
+
+## License and Copyright
+
+Shaper is licensed under the [Mozilla Public License 2.0](https://github.com/taleshape-com/shaper/blob/main/LICENSE).
+
+Copyright © 2024-2025 Taleshape OÜ

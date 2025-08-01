@@ -8,6 +8,8 @@
 FROM debian:12.11-slim
 LABEL maintainer="Taleshape <hi@taleshape.com>"
 
+ARG BUILD_DATE
+ARG VERSION
 LABEL org.opencontainers.image.authors="Taleshape OÜ"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.url="https://hub.docker.com/r/taleshape/shaper"
