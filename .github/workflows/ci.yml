@@ -303,7 +303,7 @@ jobs:
 
       - name: Combine checksums
         run: |
-          cat bin/checksums-*.txt | sort | uniq > npm/bin/SHA256SUMS
+          cat bin/checksums-*.txt | sort | uniq > npm-package/bin/SHA256SUMS
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
