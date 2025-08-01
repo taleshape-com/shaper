@@ -24,7 +24,7 @@ SELECT 'Hello World';
 For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs/getting-started/).
 
 
-## Connect
+## Get in Touch
 
 Feel free to open an [issue](https://github.com/taleshape-com/shaper/issues) or start a [discussion](https://github.com/taleshape-com/shaper/discussions) if you have any questions or suggestions.
 
@@ -33,7 +33,7 @@ Also follow along on [BlueSky](https://bsky.app/profile/taleshape.bsky.social) o
 And subscribe to our [newsletter](https://taleshape.com/newsletter) to get updates about Shaper.
 
 
-## Setup
+## Development Setup
 
 1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
 2. Install dependencies: `npm install`
