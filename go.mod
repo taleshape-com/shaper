@@ -6,15 +6,15 @@ go 1.24
 toolchain go1.24.2
 
 require (
-	github.com/golang-jwt/jwt/v5 v5.2.3
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo-contrib v0.17.4
 	github.com/labstack/echo-jwt/v4 v4.3.1
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/labstack/gommon v0.4.2
-	github.com/marcboeker/go-duckdb/v2 v2.3.3
+	github.com/marcboeker/go-duckdb/v2 v2.3.4
 	github.com/nats-io/nats-server/v2 v2.11.6
-	github.com/nats-io/nats.go v1.43.0
+	github.com/nats-io/nats.go v1.44.0
 	github.com/nrednav/cuid2 v1.1.0
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
 	github.com/samber/slog-echo v1.16.1
