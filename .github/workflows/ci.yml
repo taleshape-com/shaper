@@ -257,6 +257,10 @@ jobs:
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v6
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          # current date-time as defined by RFC 3339
+          BUILD_DATE: ${{ github.event.release.published_at || github.event.head_commit.timestamp }}
         with:
           context: .
           push: true

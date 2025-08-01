@@ -62,6 +62,7 @@ Create a new Git tag to trigger a release.
 
 See [Github Releases](https://github.com/taleshape-com/shaper/releases)
 
+
 ## License and Copyright
 
 Shaper is licensed under the [Mozilla Public License 2.0](https://github.com/taleshape-com/shaper/blob/main/LICENSE).

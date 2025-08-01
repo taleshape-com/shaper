@@ -13,6 +13,7 @@
   "files": [
     "bin",
     "README.md",
+    "LICENSE",
     "index.js",
     "install.js",
     "uninstall.js"
@@ -24,7 +25,7 @@
     "duckdb"
   ],
   "author": "Taleshape <hi@taleshape.com>",
-  "license": "UNLICENSED",
+  "license": "MPL-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/taleshape-com/shaper.git"
