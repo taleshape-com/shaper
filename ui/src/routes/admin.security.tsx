@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { Button } from '../components/tremor/Button'
 import { useState } from 'react'
 import {

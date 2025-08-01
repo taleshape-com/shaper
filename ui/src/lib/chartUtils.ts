@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // Helper function to get computed CSS value
 export const getComputedCssValue = (cssVar: string): string => {
   const root = document.documentElement;

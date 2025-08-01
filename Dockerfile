@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+
 # Using slim instead of a from scratch image because:
 # 1. We are dynamically linking DuckDB since some extensions have issues with static linking
 # 2. We need wget to run the healthcheck

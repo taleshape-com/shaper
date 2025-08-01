@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import React, { useState, useEffect, useCallback } from "react";
 import { cx, parseJwt } from "../../lib/utils";
 import {

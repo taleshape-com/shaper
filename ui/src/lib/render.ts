@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { Column } from "./dashboard";
 
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.

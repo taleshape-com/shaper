@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import path from 'path';
 import { defineConfig, type PluginOption } from 'vite';
 import react from "@vitejs/plugin-react";

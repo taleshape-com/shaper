@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // Currently supporting English and German
 const translations = {
   Error: {

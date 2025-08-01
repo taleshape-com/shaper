@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { useAuth } from '../lib/auth'
 import { useCallback } from "react";
 import { goToLoginPage } from "../lib/utils";

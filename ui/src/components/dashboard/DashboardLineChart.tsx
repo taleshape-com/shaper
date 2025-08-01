@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { Column, isTimeType, Result } from "../../lib/dashboard";
 import { LineChart } from "../charts/LineChart";
 import { formatValue, formatCellValue } from "../../lib/render";

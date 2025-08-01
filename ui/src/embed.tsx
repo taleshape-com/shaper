@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import "./index.css";
 import ReactDOM from "react-dom/client";
 import { EmbedComponent, type EmbedProps } from "./components/Embed";

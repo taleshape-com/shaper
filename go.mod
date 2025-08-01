@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 module shaper
 
 go 1.24

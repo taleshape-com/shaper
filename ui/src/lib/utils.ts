@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { redirect } from "@tanstack/react-router";
 import { z } from "zod";
 import clsx, { type ClassValue } from "clsx";

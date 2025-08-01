@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {

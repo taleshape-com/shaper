@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";
 import { formatValue, isJSONType } from "../../lib/render";

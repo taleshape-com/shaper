@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import React, { useEffect, useContext } from "react";
 import { RiMenuLine } from "@remixicon/react";
 import { MenuContext } from "../contexts/MenuContext";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import { IAuthContext } from "../lib/auth";
 import { QueryApiFunc } from "../hooks/useQueryApi";

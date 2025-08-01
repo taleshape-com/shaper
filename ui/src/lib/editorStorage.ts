@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 const STORAGE_PREFIX = "shaper-dashboard-editor-";
 
 export const editorStorage = {

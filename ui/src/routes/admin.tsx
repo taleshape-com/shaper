@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { translate } from "../lib/translate";

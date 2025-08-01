@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // Support ingesting data via NATS.
 // Process JSON data from NATS JetStream and write to DuckDB.
 // Expects objects or arrays of objects in JSON format.

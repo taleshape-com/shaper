@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import React from "react";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { Column } from "../../lib/dashboard";

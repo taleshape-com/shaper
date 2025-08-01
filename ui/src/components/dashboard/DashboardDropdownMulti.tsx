@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import * as SelectPrimitives from "@radix-ui/react-select";
 import { RiExpandUpDownLine } from "@remixicon/react";
 import { Column, Result } from "../../lib/dashboard";

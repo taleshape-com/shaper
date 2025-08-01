@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { RouterProvider } from "@tanstack/react-router";
 import { useAuth } from './lib/auth'
 import { useQueryApi } from "./hooks/useQueryApi";

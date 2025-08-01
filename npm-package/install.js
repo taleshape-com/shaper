@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -60,7 +62,7 @@ function calculateSHA256(filePath) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
     const stream = fs.createReadStream(filePath);
-    
+
     stream.on('error', err => reject(err));
     stream.on('data', chunk => hash.update(chunk));
     stream.on('end', () => resolve(hash.digest('hex')));
@@ -110,7 +112,7 @@ async function main() {
     console.log('Loading checksums...');
     const checksums = loadChecksums();
     const expectedChecksum = checksums[assetName];
-    
+
     if (!expectedChecksum) {
       throw new Error(`No checksum found for ${assetName} in SHA256SUMS`);
     }
@@ -144,4 +146,4 @@ async function main() {
   }
 }
 
-main(); 
+main();

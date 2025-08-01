@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /** @type {import('tailwindcss').Config} */
 import defaultTheme from 'tailwindcss/defaultTheme';
 import formPlugin from '@tailwindcss/forms';

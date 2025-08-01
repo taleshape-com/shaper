@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { Dashboard } from './dashboard'
 import { useCallback, useEffect, useState, useRef } from "react";
 import { parseJwt, VarsParamSchema } from "../lib/utils";

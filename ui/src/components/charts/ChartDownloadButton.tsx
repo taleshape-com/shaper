@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import React from 'react';
 import * as echarts from 'echarts';
 import { RiDownload2Line } from "@remixicon/react";

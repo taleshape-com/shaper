@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { Editor } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 

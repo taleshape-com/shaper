@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useState } from "react";
 import {

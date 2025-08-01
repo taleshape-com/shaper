@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import { useMemo, useRef, useEffect } from 'react';
 import * as echarts from 'echarts';
 import { debounce } from 'lodash';

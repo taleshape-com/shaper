@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+
 # Lint, test, build and release
 #
 # The jobs are layed out in a way that prioritizes reducing total spent resources (CPU time).

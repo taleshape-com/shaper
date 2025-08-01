@@ -1,8 +1,10 @@
 #!/bin/sh
 
+# SPDX-License-Identifier: MPL-2.0
+
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 BINARY="$SCRIPT_DIR/bin/shaper"
 
 # Execute the binary with all arguments
-exec "$BINARY" "$@" 
+exec "$BINARY" "$@"

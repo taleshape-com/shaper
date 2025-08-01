@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import React, { useState, useEffect } from "react";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 

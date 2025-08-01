@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // Run internal NATS server or connect to external one
 package comms
 

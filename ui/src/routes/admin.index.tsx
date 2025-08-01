@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 import z from "zod";
 import {
   createFileRoute,
