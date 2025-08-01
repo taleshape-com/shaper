@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: MPL-2.0
 
+# Lint, test, build and release
+#
 # The jobs are layed out in a way that prioritizes reducing total spent resources (CPU time).
 # This means that we don't parallelize as much as we could.
 # But at the same time we parallelize some work work to reduce the total duration.
 # It's a balance between the two.
-name: Lint, test, build and release
+name: CI
 on:
   push:
     branches:
