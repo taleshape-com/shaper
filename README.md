@@ -3,6 +3,7 @@
 **Shaper is a minimal data platform built on top of DuckDB and NATS to create analytics dashboards and embed them into your software.**
 
 Learn more at: https://taleshape.com/shaper/docs/
+
 [
 ![Screenshot](https://taleshape.com/_astro/session_dashboard.DjtFqCnO_Z15ug1D.webp)
 ](https://taleshape.com/shaper/docs/)

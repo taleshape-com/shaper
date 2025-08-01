@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: MPL-2.0
-
 /* eslint-disable */
 
 // @ts-nocheck
