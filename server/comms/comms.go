@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: MPL-2.0
+
+// Run internal NATS server or connect to external one
+package comms
+
+import (
+	"context"
+	"crypto/subtle"
+	"fmt"
+	"log/slog"
+	"shaper/server/core"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
+)
+
+// TODO: Move consts to config
+const (
+	CONNECT_TIMEOUT = 10 * time.Second
+)
+
+type Comms struct {
+	Conn   *nats.Conn
+	Server *server.Server
+}
+
+type Config struct {
+	Logger              *slog.Logger
+	Servers             string
+	Host                string
+	Port                int
+	Token               string
+	JSDir               string
+	JSKey               string
+	MaxStore            int64
+	DB                  *sqlx.DB
+	Schema              string
+	IngestSubjectPrefix string
+}
+
+type AuthCheckFunc func(context.Context, string) (bool, error)
+
+type ClientAuth struct {
+	Token               []byte
+	DB                  *sqlx.DB
+	Schema              string
+	IngestSubjectPrefix string
+}
+
+// Implement NATS token auth to allow static token and API key authentication
+func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
+	opts := auth.GetOpts()
+
+	// First check static token
+	if subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1 {
+		auth.RegisterUser(c.createUser("root", true))
+		return true
+	}
+
+	valid, err := core.ValidateAPIKey(c.DB, c.Schema, context.Background(), opts.Token)
+	if err != nil {
+		return false
+	}
+	if valid {
+		keyId := core.GetAPIKeyID(opts.Token)
+		auth.RegisterUser(c.createUser("key."+keyId, false))
+		return true
+	}
+
+	return false
+}
+
+func (c ClientAuth) createUser(name string, root bool) *server.User {
+	if root {
+		return &server.User{
+			Username: name,
+			Permissions: &server.Permissions{
+				Publish: &server.SubjectPermission{
+					Allow: []string{">"},
+				},
+				Subscribe: &server.SubjectPermission{
+					Allow: []string{">"},
+				},
+			},
+		}
+	}
+	return &server.User{
+		Username: name,
+		Permissions: &server.Permissions{
+			Publish: &server.SubjectPermission{
+				Allow: []string{c.IngestSubjectPrefix + ">"},
+			},
+			// TODO: jetstream publish is done via request/reply so we need inbox permissions to get the ACK,
+			//       but it's not the most secure that the client can listen to all replies.
+			//       Unfortunately NATS doesn't seem to support this scenario yet.
+			Subscribe: &server.SubjectPermission{
+				Allow: []string{"_INBOX.>"},
+			},
+			Response: &server.ResponsePermission{},
+		},
+	}
+}
+
+func New(config Config) (Comms, error) {
+	// If external servers are specified, connect to them instead of starting an internal server
+	if config.Servers != "" {
+		clientOpts := []nats.Option{}
+		if config.Token != "" {
+			clientOpts = append(clientOpts, nats.Token(config.Token))
+		}
+
+		nc, err := nats.Connect(config.Servers, clientOpts...)
+		if err != nil {
+			return Comms{}, err
+		}
+		config.Logger.Info("nats: Connected to external NATS", slog.String("servers", config.Servers))
+		return Comms{Conn: nc}, nil
+	}
+
+	// TODO: support TLS
+	// TODO: NATS Server prometheus metrics
+	// TODO: allow setting jetstream domain
+	opts := &server.Options{
+		JetStream:              true,
+		DisableJetStreamBanner: true,
+		Host:                   config.Host,
+		Port:                   config.Port,
+		DontListen:             config.Port == 0,
+		// We handle signals separately
+		NoSigs: true,
+		CustomClientAuthentication: ClientAuth{
+			Token:               []byte(config.Token),
+			DB:                  config.DB,
+			Schema:              config.Schema,
+			IngestSubjectPrefix: config.IngestSubjectPrefix,
+		},
+	}
+	// Configure authentication if token is provided
+	if config.Token != "" {
+		opts.Authorization = config.Token
+	} else {
+		if config.Port > 0 {
+			config.Logger.Warn(fmt.Sprintf("nats: No nats-token provided and NATS is listening. If running in production make sure %s:%d is not exposed, configure a nats-token or remove nats-port", config.Host, config.Port))
+		}
+	}
+	if config.Port == 0 {
+		config.Logger.Info("nats: Not listening on any network interfaces. Specify a port to make NATS available on the network.")
+	}
+	// Configure JetStream directory if provided
+	opts.StoreDir = config.JSDir
+	// Configure JetStream encryption if key is provided
+	if config.JSKey != "" {
+		opts.JetStreamKey = config.JSKey
+	}
+	// Configure stream retention if set
+	if config.MaxStore > 0 {
+		opts.JetStreamMaxStore = config.MaxStore
+	}
+
+	ns, err := server.NewServer(opts)
+	if err != nil {
+		return Comms{}, err
+	}
+	ns.SetLoggerV2(newNATSLogger(config.Logger), false, false, false)
+	ns.Start()
+	if !ns.ReadyForConnections(CONNECT_TIMEOUT) {
+		return Comms{}, err
+	}
+	clientOpts := []nats.Option{
+		nats.InProcessServer(ns),
+	}
+	// Add authentication to client if token is set
+	if config.Token != "" {
+		clientOpts = append(clientOpts, nats.Token(config.Token))
+	}
+	// TODO: set nats.Name() for connection once we use more than one connection
+	nc, err := nats.Connect(ns.ClientURL(), clientOpts...)
+	if err != nil {
+		return Comms{}, err
+	}
+	return Comms{Conn: nc, Server: ns}, err
+}
+
+func (c Comms) Close() {
+	if c.Server != nil {
+		c.Server.Shutdown()
+		c.Server.WaitForShutdown()
+	}
+	if c.Conn != nil {
+		c.Conn.Close()
+	}
+}

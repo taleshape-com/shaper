@@ -1,0 +1,47 @@
+{
+  "name": "@taleshape/shaper",
+  "version": "0.0.0",
+  "description": "Minimal Embedded Analytics and Data Platform",
+  "main": "index.js",
+  "bin": {
+    "shaper": "./bin/shaper"
+  },
+  "scripts": {
+    "postinstall": "node install.js",
+    "preuninstall": "node uninstall.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE",
+    "index.js",
+    "install.js",
+    "uninstall.js"
+  ],
+  "keywords": [
+    "data",
+    "analytics",
+    "dashboards",
+    "duckdb"
+  ],
+  "author": "Taleshape <hi@taleshape.com>",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taleshape-com/shaper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/taleshape-com/shaper/issues"
+  },
+  "homepage": "https://taleshape.com/shaper",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "axios": "^1.6.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

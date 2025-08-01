@@ -1,0 +1,316 @@
+# SPDX-License-Identifier: MPL-2.0
+
+# The jobs are layed out in a way that prioritizes reducing total spent resources (CPU time).
+# This means that we don't parallelize as much as we could.
+# But at the same time we parallelize some work work to reduce the total duration.
+# It's a balance between the two.
+name: Lint, test, build and release
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+
+concurrency:
+  group: ${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-build:
+    name: Frontend Lint, Typecheck, Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build frontend
+        run: |
+          NODE_ENV=production npm run all
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 1
+
+  go-verify:
+    name: Go Vet and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - name: Tidy Go modules
+        run: go mod tidy
+      - name: Create placeholder dist directory
+        run: |
+          mkdir -p dist
+          touch dist/placeholder
+      - name: Run go vet
+        run: go vet ./...
+      - name: Run go test
+        run: go test ./...
+
+  build-linux:
+    name: Build Linux Binaries
+    needs: [go-verify, frontend-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    container: debian:12-slim
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install required packages
+        run: |
+          apt-get update
+          apt-get install -y wget git build-essential
+          # Install cross-compilation tools for arm64
+          apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Download frontend build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+
+      - name: Build Linux binaries
+        run: |
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          mkdir -p bin
+          # Build amd64
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-linux-amd64 -ldflags="-X 'main.Version=$VERSION'"
+          # Build arm64
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -o bin/shaper-linux-arm64 -ldflags="-X 'main.Version=$VERSION'"
+
+      - name: Generate checksums
+        run: |
+          cd bin
+          sha256sum shaper-linux-* > checksums-linux.txt
+
+      - name: Upload Linux binaries and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries
+          path: |
+            bin/shaper-linux-*
+            bin/checksums-linux.txt
+          retention-days: 1
+
+  build-darwin:
+    name: Build macOS Binaries
+    needs: [go-verify, frontend-build]
+    runs-on: macos-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Xcode Command Line Tools
+        run: |
+          xcode-select --install || true
+          # Wait for installation to complete
+          while ! xcode-select -p; do
+            sleep 5
+          done
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Download frontend build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+
+      - name: Build macOS binaries
+        run: |
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          mkdir -p bin
+          # Build amd64
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-darwin-amd64 -ldflags="-X 'main.Version=$VERSION'"
+          # Build arm64
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -o bin/shaper-darwin-arm64 -ldflags="-X 'main.Version=$VERSION'"
+
+      - name: Generate checksums
+        run: |
+          cd bin
+          shasum -a 256 shaper-darwin-* > checksums-darwin.txt
+
+      - name: Upload macOS binaries and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-binaries
+          path: |
+            bin/shaper-darwin-*
+            bin/checksums-darwin.txt
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: [build-linux, build-darwin]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Linux binaries and checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: bin
+
+      - name: Download macOS binaries and checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-binaries
+          path: bin
+
+      - name: Combine checksums
+        run: |
+          cd bin
+          cat checksums-*.txt | sort | uniq > SHA256SUMS
+          rm checksums-*.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bin/shaper-linux-*
+            bin/shaper-darwin-*
+            bin/SHA256SUMS
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    needs: [build-linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: bin/
+
+      - name: Make binaries executable
+        run: chmod +x bin/shaper-*
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          # Split version into components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "MAJOR=$MAJOR" >> $GITHUB_OUTPUT
+          echo "MINOR=$MAJOR.$MINOR" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v6
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          # current date-time as defined by RFC 3339
+          BUILD_DATE: ${{ github.event.release.published_at || github.event.head_commit.timestamp }}
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            taleshape/shaper:latest
+            taleshape/shaper:${{ steps.version.outputs.VERSION }}
+            taleshape/shaper:${{ steps.version.outputs.MINOR }}
+            taleshape/shaper:${{ steps.version.outputs.MAJOR }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  npm-publish:
+    name: Publish to npm
+    needs: [release, build-linux, build-darwin]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux binaries and checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: bin
+
+      - name: Download macOS binaries and checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-binaries
+          path: bin
+
+      - name: Combine checksums
+        run: |
+          cat bin/checksums-*.txt | sort | uniq > npm/bin/SHA256SUMS
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      - name: Update npm package version
+        run: |
+          cd npm-package
+          npm version $(echo ${{ github.ref_name }} | sed 's/^v//') --no-git-tag-version
+
+      - name: Publish to npm
+        run: |
+          cd npm-package
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

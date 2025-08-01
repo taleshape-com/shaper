@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MPL-2.0
+bin
+node_modules
+dist
+.vite-stats
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
