@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "../tremor/Table";
 import { cx } from "../../lib/utils";
+import TextWithLinks from "../TextWithLinks";
 
 type TableProps = {
   headers: Column[];
@@ -63,7 +64,7 @@ function DashboardTable({ headers, data }: TableProps) {
                           "font-mono": isJSONType(header.type) || header.type === 'number' || header.type === 'boolean' || header.type === 'percent',
                           "text-xs": formattedValue.length > 30,
                         })}>
-                          {formattedValue}
+                          <TextWithLinks text={formattedValue} />
                         </span>
                       }
                     </TableCell>

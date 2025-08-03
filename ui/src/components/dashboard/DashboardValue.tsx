@@ -6,6 +6,7 @@ import { Column, Result } from "../../lib/dashboard";
 
 import { formatValue, isJSONType } from "../../lib/render";
 import { cx, getNameIfSet } from "../../lib/utils";
+import TextWithLinks from "../TextWithLinks";
 
 type ValueProps = {
   headers: Column[];
@@ -71,11 +72,11 @@ function DashboardValue({ headers, data }: ValueProps) {
         {typeof formattedValue === 'string' && formattedValue.includes('\n')
           ? formattedValue.split('\n').map((line, idx, arr) => (
             <React.Fragment key={idx}>
-              {line}
+              <TextWithLinks text={line} />
               {idx < arr.length - 1 && <br />}
             </React.Fragment>
           ))
-          : formattedValue}
+          : <TextWithLinks text={formattedValue} />}
       </div>
       {
         hasLabel && getNameIfSet(valueHeader.name) && (

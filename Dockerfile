@@ -6,7 +6,7 @@
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
 FROM debian:12.11-slim
-LABEL maintainer="Taleshape <hi@taleshape.com>"
+LABEL maintainer="hi@taleshape.com"
 
 ARG BUILD_DATE
 ARG VERSION
