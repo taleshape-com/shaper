@@ -56,6 +56,7 @@ const BarChart = (props: BarChartProps) => {
 
   const chartRef = useRef<echarts.ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
+  const [chartWidth, setChartWidth] = React.useState(0);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
@@ -148,6 +149,19 @@ const BarChart = (props: BarChartProps) => {
 
       return baseSeries;
     });
+
+    const numLegendItems = categories.filter(c => c.length > 0).length;
+    const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 5.8, 50);
+    const legendPaddingLeft = 5;
+    const legendPaddingRight = 5;
+    const legendItemGap = 10;
+    const legendWidth = chartWidth - legendPaddingLeft - legendPaddingRight;
+    const halfLegendItems = Math.ceil(numLegendItems / 2);
+    const legendItemWidth = numLegendItems === 1
+      ? legendWidth
+      : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
+    const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
 
     return {
       animation: false,
@@ -263,17 +277,19 @@ const BarChart = (props: BarChartProps) => {
       },
       legend: {
         show: showLegend,
-        type: 'scroll',
+        type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
         left: 0,
         top: 7,
-        padding: [5, 25, 5, 5],
+        padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          width: canFitLegendItems ? legendItemWidth : undefined,
+          overflow: 'truncate',
         },
-        itemGap: 12,
+        itemGap: legendItemGap,
         itemHeight: 10,
         itemWidth: 10,
         pageButtonPosition: 'end',
@@ -296,7 +312,7 @@ const BarChart = (props: BarChartProps) => {
       grid: {
         left: yAxisLabel ? 45 : 15,
         right: 15,
-        top: showLegend ? 50 : 20,
+        top: showLegend ? 62 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -447,6 +463,7 @@ const BarChart = (props: BarChartProps) => {
     hoveredChartId,
     chartId,
     isDarkMode,
+    chartWidth,
   ]);
 
   // Event handlers for the EChart component
@@ -502,6 +519,11 @@ const BarChart = (props: BarChartProps) => {
   // Handle chart instance reference
   const handleChartReady = useCallback((chart: echarts.ECharts) => {
     chartRef.current = chart;
+    setChartWidth(chart.getWidth());
+  }, []);
+
+  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+    setChartWidth(chart.getWidth());
   }, []);
 
   return (
@@ -514,6 +536,7 @@ const BarChart = (props: BarChartProps) => {
         option={chartOptions}
         events={chartEvents}
         onChartReady={handleChartReady}
+        onResize={handleChartResize}
         data-chart-id={chartId}
       />
     </div>
