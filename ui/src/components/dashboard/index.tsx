@@ -321,13 +321,14 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
+            const isChartQuery = query.render.type === 'linechart' || query.render.type === 'gauge' || query.render.type.startsWith('barchart');
             return (
               <Card
                 key={queryIndex}
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
-                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": !(query.render.type === "value" && numQueriesInSection === 1),
+                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
                     "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
                     "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
                     "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
@@ -339,18 +340,20 @@ const DataView = ({
                     <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
                   </div>
                 )}
-                <ChartDownloadButton
-                  chartId={`${sectionIndex}-${queryIndex}`}
-                  label={query.render.label}
-                  className="absolute top-2 right-2 z-40"
-                />
+                {isChartQuery && (
+                  <ChartDownloadButton
+                    chartId={`${sectionIndex}-${queryIndex}`}
+                    label={query.render.label}
+                    className="absolute top-2 right-2 z-40"
+                  />
+                )}
                 {query.render.label ? (
                   <h2 className="text-md pt-4 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
                 ) : null}
                 <div
-                  className="m-4 flex-1 relative"
+                  className="m-4 flex-1 relative overflow-auto"
                 >
                   {renderContent(
                     query,
@@ -367,18 +370,20 @@ const DataView = ({
         </section>
       );
     })}
-    {numContentSections === 0 ? (
-      <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
-        <RiLayoutFill
-          className="mx-auto size-9"
-          aria-hidden={true}
-        />
-        <p className="mt-3 font-medium">
-          {translate("Nothing to show yet")}
-        </p>
-      </div>
-    ) : null}
-  </ChartHoverProvider>)
+    {
+      numContentSections === 0 ? (
+        <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
+          <RiLayoutFill
+            className="mx-auto size-9"
+            aria-hidden={true}
+          />
+          <p className="mt-3 font-medium">
+            {translate("Nothing to show yet")}
+          </p>
+        </div>
+      ) : null
+    }
+  </ChartHoverProvider >)
 }
 
 const renderContent = (
@@ -412,7 +417,6 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
-        label={query.render.label}
       />
     );
   }
@@ -448,7 +452,6 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
-        label={query.render.label}
       />
     );
   }

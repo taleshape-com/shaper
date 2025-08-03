@@ -59,7 +59,7 @@ function DashboardValue({ headers, data, yScroll }: ValueProps) {
   return (
     <div
       className={cx(
-        "items-center h-full w-full flex flex-col justify-center overflow-x-auto overflow-y-hidden",
+        "items-center h-full w-full flex flex-col justify-center py-2 overflow-x-auto overflow-y-hidden",
         { "overflow-y-auto": yScroll },
       )}
       ref={containerRef}

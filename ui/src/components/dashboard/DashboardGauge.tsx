@@ -224,7 +224,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   }, []);
 
   return (
-    <div className="w-full h-full relative group select-none">
+    <div className="w-full h-full relative select-none overflow-hidden">
       <EChart
         className="absolute inset-0"
         option={chartOptions}

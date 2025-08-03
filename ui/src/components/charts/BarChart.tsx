@@ -528,7 +528,7 @@ const BarChart = (props: BarChartProps) => {
 
   return (
     <div
-      className={cx("h-full w-full relative group select-none", className)}
+      className={cx("h-full w-full relative select-none overflow-hidden", className)}
       {...other}
     >
       <EChart

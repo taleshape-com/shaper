@@ -49,11 +49,6 @@ export type Result = {
         | "datepicker"
         | "daterangePicker";
         label?: string;
-      })
-      | ({
-        type: "gauge";
-        label?: string;
-        gaugeCategories: GaugeCategory[];
       });
       columns: Column[];
       rows: (string | number | boolean)[][];
@@ -72,7 +67,12 @@ export type Result = {
         | "barchartVertical"
         | "barchartVerticalStacked";
         label?: string;
-      };
+      }
+      | ({
+        type: "gauge";
+        label?: string;
+        gaugeCategories: GaugeCategory[];
+      });
       columns: Column[];
       rows: (string | number | boolean)[][];
     }[];
