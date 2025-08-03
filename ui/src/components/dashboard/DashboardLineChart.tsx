@@ -12,14 +12,12 @@ type LineProps = {
   // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
-  label?: string;
 };
 
 const DashboardLineChart = ({
   chartId,
   headers,
   data,
-  label,
 }: LineProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
@@ -97,7 +95,6 @@ const DashboardLineChart = ({
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1}
-      label={label}
     />
   );
 };

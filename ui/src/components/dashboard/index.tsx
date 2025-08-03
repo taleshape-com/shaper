@@ -17,6 +17,7 @@ import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
+import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 
 export interface DashboardProps {
   id?: string;
@@ -324,7 +325,7 @@ const DataView = ({
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
                     "min-h-[320px] h-[calc(50dvh-3.15rem)]": !(query.render.type === "value" && numQueriesInSection === 1),
                     "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
@@ -338,16 +339,18 @@ const DataView = ({
                     <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
                   </div>
                 )}
+                <ChartDownloadButton
+                  chartId={`${sectionIndex}-${queryIndex}`}
+                  label={query.render.label}
+                  className="absolute top-2 right-2 z-40"
+                />
                 {query.render.label ? (
-                  <h2 className="text-md py-4 text-center font-semibold font-display">
+                  <h2 className="text-md pt-4 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
                 ) : null}
                 <div
-                  className={cx("pb-5 mx-4", {
-                    "h-[calc(100%-3rem)]": query.render.label,
-                    "h-full pt-4": !query.render.label,
-                  })}
+                  className="m-4 flex-1 relative"
                 >
                   {renderContent(
                     query,

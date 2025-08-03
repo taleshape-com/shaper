@@ -7,7 +7,7 @@ import * as echarts from 'echarts';
 import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';
 import { DarkModeContext } from '../../contexts/DarkModeContext';
 import { formatValue } from "../../lib/render";
-import { ChartDownloadButton } from "../charts/ChartDownloadButton";
+
 
 type DashboardGaugeProps = {
   chartId: string;
@@ -230,11 +230,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
         option={chartOptions}
         onChartReady={handleChartReady}
         onResize={handleChartResize}
-      />
-      <ChartDownloadButton
-        chartRef={chartRef}
-        chartId={chartId}
-        label={label}
+        data-chart-id={chartId}
       />
     </div>
   );

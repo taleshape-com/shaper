@@ -15,7 +15,6 @@ import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column, isTimeType } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { EChart } from "./EChart";
-import { ChartDownloadButton } from "./ChartDownloadButton";
 
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
@@ -30,7 +29,6 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  label?: string;
 }
 
 const LineChart = (props: LineChartProps) => {
@@ -48,7 +46,6 @@ const LineChart = (props: LineChartProps) => {
     xAxisLabel,
     yAxisLabel,
     chartId,
-    label,
     ...other
   } = props;
 
@@ -450,11 +447,7 @@ const LineChart = (props: LineChartProps) => {
         events={chartEvents}
         onChartReady={handleChartReady}
         onResize={handleChartResize}
-      />
-      <ChartDownloadButton
-        chartRef={chartRef}
-        chartId={chartId}
-        label={label}
+        data-chart-id={chartId}
       />
     </div>
   );

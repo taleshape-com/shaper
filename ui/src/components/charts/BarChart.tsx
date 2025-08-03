@@ -16,7 +16,6 @@ import { Column, isTimeType } from "../../lib/dashboard";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
-import { ChartDownloadButton } from "./ChartDownloadButton";
 
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
@@ -33,7 +32,6 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   yAxisLabel?: string;
   layout: "vertical" | "horizontal";
   type: "default" | "stacked";
-  label?: string;
 }
 
 const BarChart = (props: BarChartProps) => {
@@ -53,7 +51,6 @@ const BarChart = (props: BarChartProps) => {
     layout,
     type,
     chartId,
-    label,
     ...other
   } = props;
 
@@ -512,18 +509,12 @@ const BarChart = (props: BarChartProps) => {
       className={cx("h-full w-full relative group select-none", className)}
       {...other}
     >
-      {/* Chart container */}
       <EChart
         className="absolute inset-0"
         option={chartOptions}
         events={chartEvents}
         onChartReady={handleChartReady}
-      />
-      {/* Download button */}
-      <ChartDownloadButton
-        chartRef={chartRef}
-        chartId={chartId}
-        label={label}
+        data-chart-id={chartId}
       />
     </div>
   );

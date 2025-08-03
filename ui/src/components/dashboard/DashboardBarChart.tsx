@@ -14,7 +14,6 @@ type BarProps = {
   maxTimeValue: number;
   stacked?: boolean;
   vertical?: boolean;
-  label?: string;
 };
 
 const DashboardBarChart = ({
@@ -23,7 +22,6 @@ const DashboardBarChart = ({
   data,
   stacked,
   vertical,
-  label,
 }: BarProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
@@ -106,7 +104,6 @@ const DashboardBarChart = ({
       xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1}
-      label={label}
     />
   );
 };

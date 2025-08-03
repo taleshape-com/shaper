@@ -8,30 +8,37 @@ import { cx } from "../../lib/utils";
 import { translate } from "../../lib/translate";
 
 interface ChartDownloadButtonProps {
-  chartRef: React.RefObject<echarts.ECharts | null>;
   chartId: string;
   label?: string;
   className?: string;
 }
 
 export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
-  chartRef,
   chartId,
   label,
   className,
 }) => {
   const handleDownload = React.useCallback(() => {
-    if (chartRef.current) {
-      downloadChartAsImage(chartRef.current, chartId, label);
+    let chart: echarts.ECharts | null = null;
+    const chartElement = document.querySelector(`[data-chart-id="${chartId}"]`) as HTMLElement;
+    if (chartElement) {
+      const instances = echarts.getInstanceByDom(chartElement);
+      if (instances) {
+        chart = instances;
+      }
     }
-  }, [chartId, label, chartRef]);
+    if (chart) {
+      downloadChartAsImage(chart, chartId, label);
+      return;
+    }
+    console.warn(`Could not find chart element with id: ${chartId}`);
+  }, [chartId, label]);
 
   return (
     <div className="absolute inset-0 pointer-events-none">
       <button
         className={cx(
-          "absolute -right-2 z-10",
-          label ? "-top-11" : "-top-2",
+          "absolute top-2 right-2 z-50",
           "p-1.5 rounded-md",
           "bg-cbg dark:bg-dbg",
           "border border-cb dark:border-db",
