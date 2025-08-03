@@ -324,8 +324,9 @@ const DataView = ({
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-3.15rem)] bg-cbgs dark:bg-dbgs border-none shadow-sm",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm",
                   {
+                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": !(query.render.type === "value" && numQueriesInSection === 1),
                     "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
                     "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
                     "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
@@ -354,6 +355,7 @@ const DataView = ({
                     queryIndex,
                     data.minTimeValue,
                     data.maxTimeValue,
+                    numQueriesInSection,
                   )}
                 </div>
               </Card>
@@ -382,6 +384,7 @@ const renderContent = (
   queryIndex: number,
   minTimeValue: number,
   maxTimeValue: number,
+  numQueriesInSection: number,
 ) => {
   if (query.rows.length === 0) {
     return (
@@ -447,7 +450,7 @@ const renderContent = (
     );
   }
   if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} />;
+    return <DashboardValue headers={query.columns} data={query.rows} yScroll={numQueriesInSection > 1} />;
   }
   return <DashboardTable headers={query.columns} data={query.rows} />;
 };
