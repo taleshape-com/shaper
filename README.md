@@ -15,12 +15,7 @@ The quickest way to try out Shaper without installing anything is to run it via 
 ```sh
 docker run --rm -it -p5454:5454 taleshape/shaper
 ```
-
-Then open http://localhost:5454/new in your browser and try out a SQL query like this:
-
-```sql
-SELECT 'Hello World';
-```
+Then open http://localhost:5454/new in your browser.
 
 For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs/getting-started/).
 

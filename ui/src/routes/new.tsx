@@ -41,7 +41,11 @@ import {
 import { Input } from '../components/tremor/Input'
 import "../lib/editorInit";
 
-const defaultQuery = '-- Enter your SQL query here'
+const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
+
+SELECT 'Label'::LABEL;
+SELECT 'Hello World';`;
+
 
 export const Route = createFileRoute('/new')({
   validateSearch: z.object({
