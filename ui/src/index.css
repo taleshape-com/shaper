@@ -49,13 +49,13 @@
   --shaper-display-font: SourceSansPro;
   --shaper-reference-line-color: rgb(244 114 182 / .5);
 
-  --shaper-primary-color: #3a6bff;
+  --shaper-primary-color: #567ef7;
   --shaper-primary-color-alternate: #2857c8;
   --shaper-color-two: #abdaf7;
-  --shaper-color-three: #ff7cd2;
-  --shaper-color-four: #ab0000;
-  --shaper-color-five: #ff4141;
-  --shaper-color-six: #ffbf7b;
+  --shaper-color-three: #f079c7;
+  --shaper-color-four: #ce1e1e;
+  --shaper-color-five: #ffbf7b;
+  --shaper-color-six: #fb7777;
   --shaper-color-seven: #65d65b;
   --shaper-color-eight: #4d4dff;
   --shaper-color-nine: #c992ff;
@@ -72,7 +72,7 @@
   --shaper-error-color: #eb3647;
   --shaper-error-color-alternate: #d01114;
 
-  --shaper-dark-mode-primary-color: #3a6bff;
+  --shaper-dark-mode-primary-color: #567ef7;
   --shaper-dark-mode-primary-color-alternate: #2732d1;
   --shaper-dark-mode-text-color: rgb(239, 240, 244);
   --shaper-dark-mode-text-color-secondary: rgb(215, 216, 221);
