@@ -12,12 +12,8 @@ import { useCallback, useEffect, useRef, useState, useContext } from 'react'
 import { Helmet } from 'react-helmet'
 import { useAuth } from '../lib/auth'
 import { Dashboard } from '../components/dashboard'
-import { useDebouncedCallback } from 'use-debounce'
 import {
-  cx,
-  focusRing,
   getSearchParamString,
-  hasErrorInput,
   isMac,
   varsParamSchema,
 } from '../lib/utils'
@@ -39,6 +35,7 @@ import {
   DialogTitle,
 } from '../components/tremor/Dialog'
 import { Input } from '../components/tremor/Input'
+import { VariablesMenu } from '../components/VariablesMenu'
 import "../lib/editorInit";
 
 const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
@@ -62,7 +59,6 @@ function NewDashboard() {
   const [editorQuery, setEditorQuery] = useState(defaultQuery)
   const [runningQuery, setRunningQuery] = useState(defaultQuery)
   const [creating, setCreating] = useState(false)
-  const [hasVariableError, setHasVariableError] = useState(false)
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
@@ -199,20 +195,6 @@ function NewDashboard() {
     [navigate],
   )
 
-  const onVariablesEdit = useDebouncedCallback((value) => {
-    auth.updateVariables(value).then(
-      (ok) => {
-        setHasVariableError(!ok)
-        if (ok) {
-          // Refresh preview when variables change
-          previewDashboard()
-        }
-      },
-      () => {
-        setHasVariableError(true)
-      },
-    )
-  }, 500)
 
   return (
     <MenuProvider isNewPage>
@@ -224,24 +206,7 @@ function NewDashboard() {
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
           <div className="flex items-center p-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
-              <div className="mt-6 px-4 w-full">
-                <label>
-                  <span className="text-lg font-medium font-display ml-1 mb-2 block">
-                    {translate('Variables')}
-                  </span>
-                  <textarea
-                    className={cx(
-                      'w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-28',
-                      focusRing,
-                      hasVariableError && hasErrorInput,
-                    )}
-                    onChange={(event) => {
-                      onVariablesEdit(event.target.value)
-                    }}
-                    defaultValue={JSON.stringify(auth.variables, null, 2)}
-                  ></textarea>
-                </label>
-              </div>
+              <VariablesMenu onVariablesChange={previewDashboard} />
             </MenuTrigger>
 
             <h1 className="text-xl font-semibold font-display flex-grow">
