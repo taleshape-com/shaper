@@ -92,7 +92,7 @@ function DashboardEditor() {
     setIsPreviewLoading(true);
     try {
       const searchParams = getSearchParamString(vars);
-      const data = await queryApi(`query/dashboard?${searchParams}`, {
+      const data = await queryApi(`run/dashboard?${searchParams}`, {
         method: "POST",
         body: {
           dashboardId: params.dashboardId,

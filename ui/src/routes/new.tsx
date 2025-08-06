@@ -79,7 +79,7 @@ function NewDashboard() {
     setIsPreviewLoading(true)
     try {
       const searchParams = getSearchParamString(vars)
-      const data = await queryApi(`query/dashboard?${searchParams}`, {
+      const data = await queryApi(`run/dashboard?${searchParams}`, {
         method: 'POST',
         body: {
           content: runningQuery,
@@ -110,20 +110,6 @@ function NewDashboard() {
       previewDashboard()
     }
   }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading])
-
-  // We handle this command in monac and outside
-  // so even if the editor is not focused the shortcut works
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+Enter or Cmd+Enter (Mac)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault()
-        handleRun()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleRun])
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || ''
