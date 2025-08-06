@@ -98,7 +98,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.POST("/query/dashboard", handler.PreviewDashboardQuery(app))
+	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
 	apiWithAuth.GET("/users", handler.ListUsers(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
 	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
