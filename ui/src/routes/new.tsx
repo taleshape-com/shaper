@@ -34,6 +34,7 @@ import {
 import { Input } from '../components/tremor/Input'
 import { VariablesMenu } from '../components/VariablesMenu'
 import { SqlEditor } from "../components/SqlEditor";
+import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 
 const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
@@ -241,11 +242,7 @@ function NewDashboard() {
 
         <div className="flex-grow overflow-y-auto relative">
           {previewError && (
-            <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
-              <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
-                {previewError}
-              </div>
-            </div>
+            <PreviewError>{previewError}</PreviewError>
           )}
           <Dashboard
             vars={vars}
