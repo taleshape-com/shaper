@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Editor } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
 import { z } from 'zod'
 import {
   createFileRoute,
   isRedirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState, useContext } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
 import { useAuth } from '../lib/auth'
 import { Dashboard } from '../components/dashboard'
@@ -26,7 +24,6 @@ import { MenuTrigger } from '../components/MenuTrigger'
 import { Result } from '../lib/dashboard'
 import { useToast } from '../hooks/useToast'
 import { Tooltip } from '../components/tremor/Tooltip'
-import { DarkModeContext } from '../contexts/DarkModeContext'
 import {
   Dialog,
   DialogContent,
@@ -36,6 +33,7 @@ import {
 } from '../components/tremor/Dialog'
 import { Input } from '../components/tremor/Input'
 import { VariablesMenu } from '../components/VariablesMenu'
+import { SqlEditor } from "../components/SqlEditor";
 import "../lib/editorInit";
 
 const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
@@ -65,7 +63,6 @@ function NewDashboard() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [dashboardName, setDashboardName] = useState('')
   const { toast } = useToast()
-  const { isDarkMode } = useContext(DarkModeContext)
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
@@ -112,12 +109,6 @@ function NewDashboard() {
       previewDashboard()
     }
   }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading])
-
-  const handleRunRef = useRef(handleRun)
-
-  useEffect(() => {
-    handleRunRef.current = handleRun
-  }, [handleRun])
 
   // We handle this command in monac and outside
   // so even if the editor is not focused the shortcut works
@@ -240,39 +231,15 @@ function NewDashboard() {
           </div>
 
           <div className="flex-grow">
-            <Editor
-              height="100%"
-              defaultLanguage="sql"
-              value={editorQuery}
+            <SqlEditor
               onChange={handleQueryChange}
-              theme={isDarkMode ? 'vs-dark' : 'light'}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                automaticLayout: true,
-                formatOnPaste: true,
-                formatOnType: true,
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: true,
-                tabSize: 2,
-                bracketPairColorization: { enabled: true },
-              }}
-              onMount={(editor) => {
-                editor.addCommand(
-                  monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                  () => {
-                    handleRunRef.current()
-                  },
-                )
-              }}
+              onRun={handleRun}
+              content={editorQuery}
             />
           </div>
         </div>
 
-        <div className="flex-grow overflow-scroll relative pt-1">
+        <div className="flex-grow overflow-y-auto relative">
           {previewError && (
             <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
               <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">

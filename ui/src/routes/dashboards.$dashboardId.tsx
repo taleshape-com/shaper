@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { RiExternalLinkLine, RiPencilLine } from "@remixicon/react";
+import { RiPencilLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
@@ -15,6 +15,7 @@ import { Result } from "../lib/dashboard";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { VariablesMenu } from "../components/VariablesMenu";
+import { PublicLink } from "../components/PublicLink";
 
 export const Route = createFileRoute("/dashboards/$dashboardId")({
   validateSearch: z.object({
@@ -81,13 +82,9 @@ function DashboardViewComponent() {
       </Link>
       <VariablesMenu />
       {visibility === 'public' && (
-        <a
-          href={`../view/${params.dashboardId}`}
-          target="_blank"
-          className="py-4 px-6 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 block">
-          {translate("Public Link")}
-          <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
-        </a>
+        <div className="my-2 px-4">
+          <PublicLink href={`../view/${params.dashboardId}`} />
+        </div>
       )}
     </MenuTrigger>
   );

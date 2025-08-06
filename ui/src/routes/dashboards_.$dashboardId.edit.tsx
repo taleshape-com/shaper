@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Editor } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState, useContext } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiExternalLinkLine } from "@remixicon/react";
+import { RiPencilLine, RiCloseLine, RiArrowDownSLine } from "@remixicon/react";
 import { useAuth } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import {
@@ -25,7 +22,6 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
-import { DarkModeContext } from "../contexts/DarkModeContext";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +31,8 @@ import {
   DialogTitle,
 } from "../components/tremor/Dialog";
 import { VariablesMenu } from "../components/VariablesMenu";
+import { PublicLink } from "../components/PublicLink";
+import { SqlEditor } from "../components/SqlEditor";
 import "../lib/editorInit";
 
 export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
@@ -78,7 +76,6 @@ function DashboardEditor() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isDarkMode } = useContext(DarkModeContext);
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
@@ -123,28 +120,6 @@ function DashboardEditor() {
     }
   }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading]);
 
-  const handleRunRef = useRef(handleRun);
-
-  useEffect(() => {
-    handleRunRef.current = handleRun;
-  }, [handleRun]);
-
-  // We handle this command in monac and outside
-  // so even if the editor is not focused the shortcut works
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+Enter or Cmd+Enter (Mac)
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        handleRun();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleRun]);
-
-
-  // Update textarea onChange handler
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
     // Save to localStorage
@@ -320,7 +295,7 @@ function DashboardEditor() {
                 onVariablesChange={previewDashboard}
               />
               {dashboard.visibility && (
-                <div className="my-2 px-4 ">
+                <div className="my-2 px-4">
                   <Button
                     onClick={() => setShowVisibilityDialog(true)}
                     variant="secondary"
@@ -330,13 +305,7 @@ function DashboardEditor() {
                     <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
                   </Button>
                   {dashboard.visibility === 'public' && (
-                    <a
-                      href={`../../view/${params.dashboardId}`}
-                      target="_blank"
-                      className="py-2 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 inline-block">
-                      {translate("Public Link")}
-                      <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
-                    </a>
+                    <PublicLink href={`../../view/${params.dashboardId}`} />
                   )}
                 </div>
               )}
@@ -456,34 +425,10 @@ function DashboardEditor() {
           </div>
 
           <div className="flex-grow">
-            <Editor
-              height="100%"
-              defaultLanguage="sql"
-              value={editorQuery}
+            <SqlEditor
               onChange={handleQueryChange}
-              theme={isDarkMode ? "vs-dark" : "light"}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: "on",
-                scrollBeyondLastLine: true,
-                wordWrap: "on",
-                automaticLayout: true,
-                formatOnPaste: true,
-                formatOnType: true,
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: true,
-                tabSize: 2,
-                bracketPairColorization: { enabled: true },
-              }}
-              onMount={(editor) => {
-                editor.addCommand(
-                  monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                  () => {
-                    handleRunRef.current();
-                  },
-                );
-              }}
+              onRun={handleRun}
+              content={editorQuery}
             />
           </div>
         </div>
