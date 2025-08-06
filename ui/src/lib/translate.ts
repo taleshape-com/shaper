@@ -414,6 +414,51 @@ const translations = {
   "Restore": {
     de: "Wiederherstellen",
   },
+  "Dashboard": {
+    de: "Dashboard",
+  },
+  "Workflow": {
+    de: "Workflow",
+  },
+  "New Workflow": {
+    de: "Neuer Workflow",
+  },
+  "Create Workflow": {
+    de: "Workflow erstellen",
+  },
+  "Enter a name for the workflow": {
+    de: "Geben Sie einen Namen für den Workflow ein",
+  },
+  "Running workflow...": {
+    de: "Workflow wird ausgeführt...",
+  },
+  "Click Run to execute the workflow": {
+    de: "Klicken Sie auf Ausführen, um den Workflow zu starten",
+  },
+  "Started at": {
+    de: "Gestartet um",
+  },
+  "Failed": {
+    de: "Fehlgeschlagen",
+  },
+  "Query": {
+    de: "Abfrage",
+  },
+  "Result": {
+    de: "Ergebnis",
+  },
+  "row": {
+    de: "Zeile",
+  },
+  "rows": {
+    de: "Zeilen",
+  },
+  "No rows returned": {
+    de: "Keine Zeilen zurückgegeben",
+  },
+  "Total Duration": {
+    de: "Gesamtdauer",
+  },
 };
 
 export function translate(s: keyof typeof translations) {
