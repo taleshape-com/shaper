@@ -152,7 +152,7 @@ function Index() {
           </h1>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-lg shadow flex-grow p-6">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow p-6">
           {data.dashboards.length === 0 ? (
             <div className="my-4 flex flex-col items-center justify-center flex-grow">
               <RiLayoutFill

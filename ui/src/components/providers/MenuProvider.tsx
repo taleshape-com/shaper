@@ -100,29 +100,29 @@ export function MenuProvider({
           <Link
             to="/"
             disabled={isHome}
-            className={cx("block px-4 py-4", {
+            className={cx("block px-4 py-2", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <RiHomeLine className="size-4 inline mr-2 mb-1" />
+            <RiHomeLine className="size-4 inline mr-1.5 mb-1" />
             {translate("Home")}
           </Link>
           <Link
             to="/new"
             disabled={isNewPage}
-            className={cx("block px-4 py-4", {
+            className={cx("block px-4 py-2", {
               "hover:underline": !isNewPage,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isNewPage,
             })}
           >
-            <RiFileAddLine className="size-4 inline mr-2 mb-1" />
+            <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
             {translate("New")}
           </Link>
           {extraContent}
         </div>
 
-        <div className="mt-auto pt-4 pb-4 space-y-3">
+        <div className="mt-auto pt-4 pb-4 space-y-2">
           <a
             href="https://taleshape.com/shaper/docs"
             className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2"
