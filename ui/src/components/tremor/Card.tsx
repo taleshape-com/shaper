@@ -17,7 +17,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={forwardedRef}
         className={cx(
           // base
-          "relative rounded-md border",
+          "relative rounded-sm border",
           // background color
           "bg-cbg dark:bg-dbg",
           // border color
