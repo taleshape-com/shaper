@@ -50,15 +50,7 @@ const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
 SELECT 'Label'::LABEL;
 SELECT 'Hello World';`;
 
-const defaultWorkflowQuery = `-- Example workflow: Load and process data
-CREATE TABLE temp_data AS 
-SELECT 1 as id, 'Item A' as name
-UNION ALL 
-SELECT 2 as id, 'Item B' as name;
-
-SELECT * FROM temp_data;
-
-DROP TABLE temp_data;`;
+const defaultWorkflowQuery = `-- Load data, materialized views, send webhooks, ...`;
 
 export const Route = createFileRoute('/new')({
   validateSearch: z.object({
@@ -170,12 +162,12 @@ function NewDashboard() {
         type: newType === 'dashboard' ? undefined : newType,
       }),
     })
-    
+
     // Clear results when switching types
     setPreviewData(undefined)
     setWorkflowData(undefined)
     setPreviewError(null)
-    
+
     // Auto-run dashboard when switching to it
     if (newType === 'dashboard') {
       setTimeout(() => previewDashboard(), 0)
@@ -185,7 +177,7 @@ function NewDashboard() {
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || ''
     const currentDefaultQuery = appType === 'workflow' ? defaultWorkflowQuery : defaultQuery
-    
+
     // Save to localStorage
     if (newQuery !== currentDefaultQuery && newQuery.trim() !== '') {
       editorStorage.saveChanges('new', newQuery)

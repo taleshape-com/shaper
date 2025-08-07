@@ -27,8 +27,8 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-2 border-gray-300 border-t-blue-600 rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">{translate('Running workflow...')}</p>
+          <div className="animate-spin h-8 w-8 border-2 border-cb dark:border-db border-t-cprimary dark:border-t-dprimary rounded-full mx-auto mb-4"></div>
+          <p className="text-ctext2 dark:text-dtext2">{translate('Running workflow...')}</p>
         </div>
       </div>
     )
@@ -38,7 +38,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-lg">
+          <p className="text-ctext2 dark:text-dtext2 text-lg">
             {translate('Click Run to execute the workflow')}
           </p>
         </div>
@@ -49,10 +49,10 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-ctext2 dark:text-dtext2">
           <span className={`px-2 py-1 rounded text-sm font-medium ${data.success
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+            ? 'bg-cprimary text-ctexti dark:bg-dprimary dark:text-dtexti'
+            : 'bg-cerra text-cerr dark:bg-derra dark:text-derr'
             }`}>
             {data.success ? translate('Success') : translate('Failed')}
           </span>
@@ -60,7 +60,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
             {translate('Started at')}: {new Date(data.startTime).toLocaleString()}
           </span>
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mr-4">
+        <div className="text-xs text-ctext2 dark:text-dtext2 mr-4">
           {translate('Total Duration')}:
           <span className="ml-2">{data.queries.reduce((acc, q) => acc + q.duration, 0)}ms</span>
         </div>
@@ -70,26 +70,26 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
         <Card key={index}>
           <div className="space-y-3 p-4">
             <div className="flex items-start justify-between">
-              <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              <h3 className="text-sm font-medium text-ctext dark:text-dtext">
                 {translate('Query')} {index + 1}
               </h3>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-xs text-ctext2 dark:text-dtext2">
                 <span>{query.duration}ms</span>
                 {query.error && (
-                  <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">
+                  <span className="px-2 py-1 bg-cerra text-cerr dark:bg-derra dark:text-derr rounded">
                     {translate('Error')}
                   </span>
                 )}
               </div>
             </div>
 
-            <pre className="text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded border overflow-x-auto">
+            <pre className="text-xs bg-cbgs dark:bg-dbgs p-2 rounded border border-cb dark:border-db overflow-x-auto">
               <code>{query.sql}</code>
             </pre>
 
             {query.error && (
-              <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded">
-                <p className="text-sm text-red-800 dark:text-red-200">
+              <div className="p-2 bg-cerra dark:bg-derra border border-cerr dark:border-derr rounded">
+                <p className="text-sm text-cerr dark:text-derr">
                   <strong>{translate('Error')}:</strong> {query.error}
                 </p>
               </div>
@@ -97,7 +97,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
 
             {query.result && query.result.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">
+                <h4 className="text-sm font-medium mb-2 text-ctext dark:text-dtext">
                   {translate('Result')} ({query.result.length} {query.result.length === 1 ? translate('row') : translate('rows')})
                 </h4>
                 <div className="overflow-x-auto">
@@ -105,7 +105,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
                     <thead>
                       <tr>
                         {Object.keys(query.result[0]).map((column) => (
-                          <th key={column} className="py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th key={column} className="py-2 text-left text-xs font-medium text-ctext2 dark:text-dtext2 uppercase tracking-wider">
                             {column}
                           </th>
                         ))}
@@ -113,13 +113,13 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
                     </thead>
                     <tbody>
                       {query.result.map((row, rowIndex) => (
-                        <tr key={rowIndex} className="border-t border-gray-200 dark:border-gray-700">
+                        <tr key={rowIndex} className="border-t border-cb dark:border-db">
                           {Object.values(row).map((value, colIndex) => (
                             <td key={colIndex} className="py-2 text-sm">
                               {value === null ? (
-                                <span className="text-gray-400 italic">null</span>
+                                <span className="text-ctext2 dark:text-dtext2 italic">null</span>
                               ) : (
-                                <code>{JSON.stringify(value, null, 2)}</code>
+                                <code className="text-ctext dark:text-dtext">{JSON.stringify(value, null, 2)}</code>
                               )}
                             </td>
                           ))}
@@ -132,7 +132,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
             )}
 
             {query.result && query.result.length === 0 && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-ctext2 dark:text-dtext2">
                 {translate('No rows returned')}
               </p>
             )}
