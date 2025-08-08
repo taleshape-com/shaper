@@ -24,7 +24,8 @@ func ListDashboards(app *App, ctx context.Context, sort string, order string) (L
 
 	dashboards := []Dashboard{}
 	err := app.DB.SelectContext(ctx, &dashboards,
-		fmt.Sprintf(`SELECT *
+		// TODO: list workflows
+		fmt.Sprintf(`SELECT * EXCLUDE type
 		 FROM %s.apps
 		 ORDER BY %s %s`, app.Schema, orderBy, order))
 	if err != nil {
