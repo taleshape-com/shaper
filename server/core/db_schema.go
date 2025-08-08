@@ -25,7 +25,8 @@ func initDB(db *sqlx.DB, schema string) error {
 			updated_at TIMESTAMP NOT NULL,
 			created_by VARCHAR,
 			updated_by VARCHAR,
-			visibility VARCHAR
+			visibility VARCHAR,
+			type VARCHAR NOT NULL,
 		)
 	`)
 	if err != nil {
@@ -38,6 +39,16 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error adding visibility column to apps table: %w", err)
+	}
+
+	// TODO: Remove once ran for all active users
+	_, err = db.Exec(`
+		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS type VARCHAR;
+		UPDATE ` + schema + `.apps SET type = 'dashboard' WHERE type IS NULL;
+		ALTER TABLE ` + schema + `.apps ALTER COLUMN type SET NOT NULL;
+	`)
+	if err != nil {
+		return fmt.Errorf("error adding type column to apps table: %w", err)
 	}
 
 	// Create api_keys table

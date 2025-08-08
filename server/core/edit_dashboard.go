@@ -34,7 +34,7 @@ type UpdateDashboardVisibilityPayload struct {
 func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
 	err := app.DB.GetContext(ctx, &dashboard,
-		`SELECT * FROM `+app.Schema+`.apps WHERE id = $1`, id)
+		`SELECT * EXCLUDE (type) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if app.NoPublicSharing {
 		dashboard.Visibility = nil
 	} else if dashboard.Visibility == nil {
@@ -53,7 +53,7 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -75,7 +75,7 @@ func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibilit
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -103,7 +103,7 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -129,7 +129,7 @@ func HandleUpdateDashboardContent(app *App, data []byte) bool {
 	_, err = app.DB.Exec(
 		`UPDATE `+app.Schema+`.apps
 		 SET content = $1, updated_at = $2, updated_by = $3
-		 WHERE id = $4`,
+		 WHERE id = $4 AND type = 'dashboard'`,
 		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
@@ -148,7 +148,7 @@ func HandleUpdateDashboardName(app *App, data []byte) bool {
 	_, err = app.DB.Exec(
 		`UPDATE `+app.Schema+`.apps
 		 SET name = $1, updated_at = $2, updated_by = $3
-		 WHERE id = $4`,
+		 WHERE id = $4 AND type = 'dashboard'`,
 		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
@@ -172,7 +172,7 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 	_, err = app.DB.Exec(
 		`UPDATE `+app.Schema+`.apps
 		 SET visibility = $1, updated_at = $2, updated_by = $3
-		 WHERE id = $4`,
+		 WHERE id = $4 AND type = 'dashboard'`,
 		visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
