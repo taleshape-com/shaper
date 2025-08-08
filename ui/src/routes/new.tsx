@@ -219,24 +219,44 @@ function NewDashboard() {
 
     setCreating(true)
     try {
-      const { id } = await queryApi('dashboards', {
-        method: 'POST',
-        body: {
-          name: dashboardName,
-          content: editorQuery,
-        },
-      })
-      // Clear localStorage after successful save
-      editorStorage.clearChanges('new')
-      clearStoredAppType() // Reset the app type preference
+      if (appType === 'workflow') {
+        const { id } = await queryApi('workflows', {
+          method: 'POST',
+          body: {
+            name: dashboardName,
+            content: editorQuery,
+          },
+        })
+        // Clear localStorage after successful save
+        editorStorage.clearChanges('new')
+        clearStoredAppType() // Reset the app type preference
 
-      // Navigate to the edit page of the new dashboard
-      navigate({
-        replace: true,
-        to: '/dashboards/$dashboardId/edit',
-        params: { dashboardId: id },
-        search: () => ({ vars }),
-      })
+        // Navigate to the workflow edit page
+        navigate({
+          replace: true,
+          to: '/workflows/$workflowId',
+          params: { workflowId: id },
+        })
+      } else {
+        const { id } = await queryApi('dashboards', {
+          method: 'POST',
+          body: {
+            name: dashboardName,
+            content: editorQuery,
+          },
+        })
+        // Clear localStorage after successful save
+        editorStorage.clearChanges('new')
+        clearStoredAppType() // Reset the app type preference
+
+        // Navigate to the dashboard edit page
+        navigate({
+          replace: true,
+          to: '/dashboards/$dashboardId/edit',
+          params: { dashboardId: id },
+          search: () => ({ vars }),
+        })
+      }
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options)
@@ -250,7 +270,7 @@ function NewDashboard() {
       setCreating(false)
       setShowCreateDialog(false)
     }
-  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName])
+  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName, appType])
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {

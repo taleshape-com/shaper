@@ -456,6 +456,36 @@ const translations = {
   "Total Duration": {
     de: "Gesamtdauer",
   },
+  "Loading workflow...": {
+    de: "Workflow wird geladen...",
+  },
+  "Workflow not found": {
+    de: "Workflow nicht gefunden",
+  },
+  "Click to edit workflow name": {
+    de: "Klicken Sie, um den Workflow-Namen zu bearbeiten",
+  },
+  "Delete Workflow": {
+    de: "Workflow löschen",
+  },
+  "Save Workflow": {
+    de: "Workflow speichern",
+  },
+  "Workflow saved successfully": {
+    de: "Workflow erfolgreich gespeichert",
+  },
+  "Workflow name updated": {
+    de: "Workflow-Name aktualisiert",
+  },
+  "Workflow deleted successfully": {
+    de: "Workflow erfolgreich gelöscht",
+  },
+  "Are you sure you want to delete this workflow? This action cannot be undone.": {
+    de: "Sind Sie sicher, dass Sie diesen Workflow löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+  },
+  'Are you sure you want to delete the workflow "%%"?': {
+    de: 'Sind Sie sicher, dass Sie den Workflow "%%" löschen möchten?',
+  },
 };
 
 export function translate(s: keyof typeof translations) {
