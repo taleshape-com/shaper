@@ -52,20 +52,48 @@ SELECT 'Hello World';`;
 
 const defaultWorkflowQuery = `-- Load data, materialized views, send webhooks, ...`;
 
+// LocalStorage key for storing the app type preference
+const APP_TYPE_STORAGE_KEY = 'shaper-new-app-type';
+
+// Utility functions for localStorage
+const getStoredAppType = (): 'dashboard' | 'workflow' => {
+  try {
+    const stored = localStorage.getItem(APP_TYPE_STORAGE_KEY);
+    return stored === 'workflow' ? 'workflow' : 'dashboard';
+  } catch {
+    return 'dashboard';
+  }
+};
+
+const setStoredAppType = (type: 'dashboard' | 'workflow') => {
+  try {
+    localStorage.setItem(APP_TYPE_STORAGE_KEY, type);
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
+const clearStoredAppType = () => {
+  try {
+    localStorage.removeItem(APP_TYPE_STORAGE_KEY);
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
 export const Route = createFileRoute('/new')({
   validateSearch: z.object({
     vars: varsParamSchema,
-    type: z.enum(['dashboard', 'workflow']).optional(),
   }),
   component: NewDashboard,
 })
 
 function NewDashboard() {
-  const { vars, type } = Route.useSearch()
+  const { vars } = Route.useSearch()
   const auth = useAuth()
   const queryApi = useQueryApi()
   const navigate = useNavigate({ from: '/new' })
-  const appType = type || 'dashboard'
+  const [appType, setAppType] = useState<'dashboard' | 'workflow'>(() => getStoredAppType())
   const [editorQuery, setEditorQuery] = useState(appType === 'workflow' ? defaultWorkflowQuery : defaultQuery)
   const [runningQuery, setRunningQuery] = useState(appType === 'workflow' ? defaultWorkflowQuery : defaultQuery)
   const [creating, setCreating] = useState(false)
@@ -156,12 +184,9 @@ function NewDashboard() {
   }, [editorQuery, runningQuery, previewDashboard, runWorkflow, isPreviewLoading, appType])
 
   const handleTypeChange = useCallback((newType: string) => {
-    navigate({
-      search: (old: any) => ({
-        ...old,
-        type: newType === 'dashboard' ? undefined : newType,
-      }),
-    })
+    const type = newType as 'dashboard' | 'workflow'
+    setAppType(type)
+    setStoredAppType(type)
 
     // Clear results when switching types
     setPreviewData(undefined)
@@ -169,10 +194,10 @@ function NewDashboard() {
     setPreviewError(null)
 
     // Auto-run dashboard when switching to it
-    if (newType === 'dashboard') {
+    if (type === 'dashboard') {
       setTimeout(() => previewDashboard(), 0)
     }
-  }, [navigate, previewDashboard])
+  }, [previewDashboard])
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || ''
@@ -203,6 +228,7 @@ function NewDashboard() {
       })
       // Clear localStorage after successful save
       editorStorage.clearChanges('new')
+      clearStoredAppType() // Reset the app type preference
 
       // Navigate to the edit page of the new dashboard
       navigate({
