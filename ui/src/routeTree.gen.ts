@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as WorkflowsWorkflowIdRouteImport } from './routes/workflows.$workflowId'
 import { Route as DashboardsDashboardIdRouteImport } from './routes/dashboards.$dashboardId'
 import { Route as AdminSecurityRouteImport } from './routes/admin.security'
 import { Route as AdminKeysRouteImport } from './routes/admin.keys'
@@ -50,6 +51,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const WorkflowsWorkflowIdRoute = WorkflowsWorkflowIdRouteImport.update({
+  id: '/workflows/$workflowId',
+  path: '/workflows/$workflowId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardsDashboardIdRoute = DashboardsDashboardIdRouteImport.update({
   id: '/dashboards/$dashboardId',
   path: '/dashboards/$dashboardId',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/workflows/$workflowId': typeof WorkflowsWorkflowIdRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/workflows/$workflowId': typeof WorkflowsWorkflowIdRoute
   '/admin': typeof AdminIndexRoute
   '/dashboards/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
   '/dashboards/$dashboardId': typeof DashboardsDashboardIdRoute
+  '/workflows/$workflowId': typeof WorkflowsWorkflowIdRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboards_/$dashboardId/edit': typeof DashboardsDashboardIdEditRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/security'
     | '/dashboards/$dashboardId'
+    | '/workflows/$workflowId'
     | '/admin/'
     | '/dashboards/$dashboardId/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/security'
     | '/dashboards/$dashboardId'
+    | '/workflows/$workflowId'
     | '/admin'
     | '/dashboards/$dashboardId/edit'
   id:
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/security'
     | '/dashboards/$dashboardId'
+    | '/workflows/$workflowId'
     | '/admin/'
     | '/dashboards_/$dashboardId/edit'
   fileRoutesById: FileRoutesById
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   NewRoute: typeof NewRoute
   SignupRoute: typeof SignupRoute
   DashboardsDashboardIdRoute: typeof DashboardsDashboardIdRoute
+  WorkflowsWorkflowIdRoute: typeof WorkflowsWorkflowIdRoute
   DashboardsDashboardIdEditRoute: typeof DashboardsDashboardIdEditRoute
 }
 
@@ -199,6 +212,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/workflows/$workflowId': {
+      id: '/workflows/$workflowId'
+      path: '/workflows/$workflowId'
+      fullPath: '/workflows/$workflowId'
+      preLoaderRoute: typeof WorkflowsWorkflowIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboards/$dashboardId': {
       id: '/dashboards/$dashboardId'
@@ -252,6 +272,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewRoute: NewRoute,
   SignupRoute: SignupRoute,
   DashboardsDashboardIdRoute: DashboardsDashboardIdRoute,
+  WorkflowsWorkflowIdRoute: WorkflowsWorkflowIdRoute,
   DashboardsDashboardIdEditRoute: DashboardsDashboardIdEditRoute,
 }
 export const routeTree = rootRouteImport
