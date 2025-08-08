@@ -51,13 +51,10 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-ctext2 dark:text-dtext2">
           <span className={`px-2 py-1 rounded text-sm font-medium ${data.success
-            ? 'bg-cprimary text-ctexti dark:bg-dprimary dark:text-dtexti'
+            ? 'text-cprimary dark:text-dprimary'
             : 'bg-cerra text-cerr dark:bg-derra dark:text-derr'
             }`}>
             {data.success ? translate('Success') : translate('Failed')}
-          </span>
-          <span>
-            {translate('Started at')}: {new Date(data.startTime).toLocaleString()}
           </span>
         </div>
         <div className="text-xs text-ctext2 dark:text-dtext2 mr-4">

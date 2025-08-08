@@ -435,9 +435,6 @@ const translations = {
   "Click Run to execute the workflow": {
     de: "Klicken Sie auf Ausführen, um den Workflow zu starten",
   },
-  "Started at": {
-    de: "Gestartet um",
-  },
   "Failed": {
     de: "Fehlgeschlagen",
   },
