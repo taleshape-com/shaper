@@ -48,7 +48,6 @@ function WorkflowEdit() {
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null)
   const [loading, setLoading] = useState(true)
   const [editorQuery, setEditorQuery] = useState('')
-  const [runningQuery, setRunningQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [workflowData, setWorkflowData] = useState<WorkflowResult | undefined>(undefined)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -66,7 +65,6 @@ function WorkflowEdit() {
       setWorkflow(data)
       setName(data.name)
       setEditorQuery(data.content)
-      setRunningQuery(data.content)
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options)
@@ -92,18 +90,17 @@ function WorkflowEdit() {
     const unsavedContent = editorStorage.getChanges(id)
     if (unsavedContent && unsavedContent !== workflow.content) {
       setEditorQuery(unsavedContent)
-      setRunningQuery(unsavedContent)
     }
   }, [workflow, id])
 
-  const runWorkflow = useCallback(async () => {
+  const handleRun = useCallback(async () => {
     setPreviewError(null)
     setIsPreviewLoading(true)
     try {
       const data = await queryApi('run/workflow', {
         method: 'POST',
         body: {
-          content: runningQuery,
+          content: editorQuery,
         },
       })
       setWorkflowData(data)
@@ -115,18 +112,7 @@ function WorkflowEdit() {
     } finally {
       setIsPreviewLoading(false)
     }
-  }, [queryApi, runningQuery, navigate])
-
-  const handleRun = useCallback(() => {
-    if (isPreviewLoading) {
-      return;
-    }
-    if (editorQuery !== runningQuery) {
-      setRunningQuery(editorQuery)
-    } else {
-      runWorkflow()
-    }
-  }, [editorQuery, runningQuery, runWorkflow, isPreviewLoading])
+  }, [queryApi, editorQuery, navigate])
 
   const handleQueryChange = useCallback((value: string | undefined) => {
     const newQuery = value || ''
