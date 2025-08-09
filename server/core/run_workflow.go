@@ -11,22 +11,22 @@ import (
 )
 
 type WorkflowQueryResult struct {
-	SQL      string         `json:"sql"`
-	Duration int64          `json:"duration"`
-	Error    *string        `json:"error,omitempty"`
-	Result   interface{}    `json:"result,omitempty"`
+	SQL      string  `json:"sql"`
+	Duration int64   `json:"duration"`
+	Error    *string `json:"error,omitempty"`
+	Result   any     `json:"result,omitempty"`
 }
 
 type WorkflowResult struct {
-	StartTime time.Time             `json:"startTime"`
-	Success   bool                  `json:"success"`
-	Queries   []WorkflowQueryResult `json:"queries"`
+	StartTime    time.Time             `json:"startTime"`
+	Success      bool                  `json:"success"`
+	TotalQueries int                   `json:"totalQueries"`
+	Queries      []WorkflowQueryResult `json:"queries"`
 }
 
 func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult, error) {
 	result := WorkflowResult{
 		StartTime: time.Now(),
-		Success:   false,
 		Queries:   []WorkflowQueryResult{},
 	}
 
@@ -35,6 +35,7 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 	if err != nil {
 		return result, err
 	}
+	result.TotalQueries = len(sqls)
 
 	conn, err := app.DB.Connx(ctx)
 	if err != nil {
@@ -71,8 +72,8 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 			result.Queries = append(result.Queries, queryResult)
 			break // Stop executing remaining queries on error
 		} else {
-			var rowData []map[string]interface{}
-			
+			var rowData []map[string]any
+
 			if rows != nil {
 				columns, err := rows.Columns()
 				if err != nil {
@@ -85,8 +86,8 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 				}
 
 				for rows.Next() {
-					values := make([]interface{}, len(columns))
-					valuePtrs := make([]interface{}, len(columns))
+					values := make([]any, len(columns))
+					valuePtrs := make([]any, len(columns))
 					for i := range values {
 						valuePtrs[i] = &values[i]
 					}
@@ -100,7 +101,7 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 						break
 					}
 
-					rowMap := make(map[string]interface{})
+					rowMap := make(map[string]any)
 					for i, col := range columns {
 						if values[i] != nil {
 							if b, ok := values[i].([]byte); ok {
@@ -122,6 +123,20 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 			}
 
 			queryResult.Result = rowData
+
+			// Check for early termination: single row, single column, boolean false
+			if len(rowData) == 1 && len(rowData[0]) == 1 {
+				for _, value := range rowData[0] {
+					if boolVal, ok := value.(bool); ok && !boolVal {
+						success = false
+						result.Queries = append(result.Queries, queryResult)
+						break
+					}
+				}
+				if !success {
+					break
+				}
+			}
 		}
 
 		result.Queries = append(result.Queries, queryResult)

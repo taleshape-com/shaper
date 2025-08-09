@@ -14,6 +14,7 @@ export interface WorkflowQueryResult {
 export interface WorkflowResult {
   startTime: string
   success: boolean
+  totalQueries: number
   queries: WorkflowQueryResult[]
 }
 
@@ -52,7 +53,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
         <div className="flex items-center gap-2 text-sm text-ctext2 dark:text-dtext2">
           <span className={`px-2 py-1 rounded text-sm font-medium ${data.success
             ? 'text-cprimary dark:text-dprimary'
-            : 'bg-cerra text-cerr dark:bg-derra dark:text-derr'
+            : 'bg-cerr text-ctexti dark:bg-derra dark:text-dtexti'
             }`}>
             {data.success ? translate('Success') : translate('Failed')}
           </span>
@@ -68,7 +69,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
           <div className="space-y-3 p-4">
             <div className="flex items-start justify-between">
               <h3 className="text-sm font-medium text-ctext dark:text-dtext">
-                {translate('Query')} {index + 1}
+                {translate('Query')} {index + 1}/{data.totalQueries}
               </h3>
               <div className="flex items-center gap-2 text-xs text-ctext2 dark:text-dtext2">
                 <span>{query.duration}ms</span>
