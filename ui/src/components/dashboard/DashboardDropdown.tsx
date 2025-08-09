@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/dashboard";
+import { Column, Result } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import {
   Select,

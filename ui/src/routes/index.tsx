@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
-import { IApp } from "../lib/dashboard";
+import { IApp } from "../lib/types";
 import {
   Table,
   TableBody,

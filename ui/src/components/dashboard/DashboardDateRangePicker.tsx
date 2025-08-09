@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/dashboard";
+import { Column, Result } from "../../lib/types";
 import { DateRangePicker } from "../tremor/DatePicker"
 import { Label } from "../tremor/Label"
 import { cx } from "../../lib/utils";

@@ -11,7 +11,7 @@ import { VarsParamSchema, varsParamSchema } from "../lib/utils";
 import { useAuth } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
-import { Result } from "../lib/dashboard";
+import { Result } from "../lib/types";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { VariablesMenu } from "../components/VariablesMenu";

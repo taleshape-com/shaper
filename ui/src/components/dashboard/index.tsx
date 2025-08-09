@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Result } from "../../lib/dashboard";
+import { Result } from "../../lib/types";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";

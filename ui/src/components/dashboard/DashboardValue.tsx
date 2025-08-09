@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/dashboard";
+import { Column, Result } from "../../lib/types";
 
 import { formatValue, isJSONType } from "../../lib/render";
 import { cx, getNameIfSet } from "../../lib/utils";

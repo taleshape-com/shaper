@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React from 'react';
-import { Column } from '../lib/dashboard';
+import { Column } from '../lib/types';
 
 // Coordinate to display cursor across charts when hovering
 export const ChartHoverContext = React.createContext<{

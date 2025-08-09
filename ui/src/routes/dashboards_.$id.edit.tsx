@@ -15,7 +15,7 @@ import {
 } from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
-import { IDashboard, Result } from "../lib/dashboard";
+import { IDashboard, Result } from "../lib/types";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";

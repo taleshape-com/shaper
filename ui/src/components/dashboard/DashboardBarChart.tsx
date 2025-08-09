@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, isTimeType, Result } from "../../lib/dashboard";
+import { Column, isTimeType, Result } from "../../lib/types";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 import { BarChart } from "../charts/BarChart";
