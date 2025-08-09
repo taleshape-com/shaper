@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/tremor/Dialog'
+import { RiCodeSSlashFill, RiBarChart2Line } from "@remixicon/react";
 import { Input } from '../components/tremor/Input'
 import { VariablesMenu } from '../components/VariablesMenu'
 import { SqlEditor } from "../components/SqlEditor";
@@ -234,8 +235,8 @@ function NewDashboard() {
         // Navigate to the workflow edit page
         navigate({
           replace: true,
-          to: '/workflows/$workflowId',
-          params: { workflowId: id },
+          to: '/workflows/$id',
+          params: { id },
         })
       } else {
         const { id } = await queryApi('dashboards', {
@@ -252,8 +253,8 @@ function NewDashboard() {
         // Navigate to the dashboard edit page
         navigate({
           replace: true,
-          to: '/dashboards/$dashboardId/edit',
-          params: { dashboardId: id },
+          to: '/dashboards/$id/edit',
+          params: { id },
           search: () => ({ vars }),
         })
       }
@@ -305,12 +306,24 @@ function NewDashboard() {
                 {translate('New')}
               </h1>
               <Select value={appType} onValueChange={handleTypeChange}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-36">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dashboard">{translate('Dashboard')}</SelectItem>
-                  <SelectItem value="workflow">{translate('Workflow')}</SelectItem>
+                  <SelectItem value="dashboard">
+                    <RiBarChart2Line
+                      className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
+                      aria-hidden={true}
+                    />
+                    {translate('Dashboard')}
+                  </SelectItem>
+                  <SelectItem value="workflow">
+                    <RiCodeSSlashFill
+                      className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
+                      aria-hidden={true}
+                    />
+                    {translate('Workflow')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

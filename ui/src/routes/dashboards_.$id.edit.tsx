@@ -36,7 +36,7 @@ import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 
-export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
+export const Route = createFileRoute("/dashboards_/$id/edit")({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
@@ -44,12 +44,12 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
     return match.cause === "enter";
   },
   loader: async ({
-    params: { dashboardId },
+    params: { id },
     context: {
       queryApi,
     },
   }) => {
-    const data = await queryApi(`dashboards/${dashboardId}/query`);
+    const data = await queryApi(`dashboards/${id}/query`);
     return data as IDashboard;
   },
   component: DashboardEditor,
@@ -62,7 +62,7 @@ function DashboardEditor() {
   const router = useRouter();
   const auth = useAuth();
   const queryApi = useQueryApi();
-  const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
+  const navigate = useNavigate({ from: "/dashboards/$id/edit" });
   const [editorQuery, setEditorQuery] = useState(dashboard.content);
   const [runningQuery, setRunningQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
@@ -80,12 +80,12 @@ function DashboardEditor() {
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
-    const savedContent = editorStorage.getChanges(params.dashboardId);
+    const savedContent = editorStorage.getChanges(params.id);
     if (savedContent && savedContent !== dashboard.content) {
       setUnsavedContent(savedContent);
       setShowRestoreDialog(true);
     }
-  }, [params.dashboardId, dashboard.content]);
+  }, [params.id, dashboard.content]);
 
   const previewDashboard = useCallback(async () => {
     setPreviewError(null);
@@ -95,7 +95,7 @@ function DashboardEditor() {
       const data = await queryApi(`run/dashboard?${searchParams}`, {
         method: "POST",
         body: {
-          dashboardId: params.dashboardId,
+          dashboardId: params.id,
           content: runningQuery,
         },
       });
@@ -124,7 +124,7 @@ function DashboardEditor() {
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
     // Save to localStorage
-    editorStorage.saveChanges(params.dashboardId, newQuery);
+    editorStorage.saveChanges(params.id, newQuery);
     setEditorQuery(newQuery);
   };
 
@@ -132,14 +132,14 @@ function DashboardEditor() {
     setSaving(true);
     try {
       await queryApi(
-        `dashboards/${params.dashboardId}/query`,
+        `dashboards/${params.id}/query`,
         {
           method: "POST",
           body: { content: editorQuery },
         },
       );
       // Clear localStorage after successful save
-      editorStorage.clearChanges(params.dashboardId);
+      editorStorage.clearChanges(params.id);
       dashboard.content = editorQuery;
       router.invalidate();
     } catch (err) {
@@ -157,7 +157,7 @@ function DashboardEditor() {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.dashboardId, editorQuery, dashboard, navigate, toast, router]);
+  }, [queryApi, params.id, editorQuery, dashboard, navigate, toast, router]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -180,7 +180,7 @@ function DashboardEditor() {
     setSavingName(true);
     try {
       await queryApi(
-        `dashboards/${params.dashboardId}/name`,
+        `dashboards/${params.id}/name`,
         {
           method: "POST",
           body: { name: newName },
@@ -210,7 +210,7 @@ function DashboardEditor() {
 
   const handleDelete = async () => {
     try {
-      await queryApi(`dashboards/${params.dashboardId}`, {
+      await queryApi(`dashboards/${params.id}`, {
         method: "DELETE",
       });
       // Navigate back to dashboard list
@@ -237,7 +237,7 @@ function DashboardEditor() {
   const handleVisibilityChange = async () => {
     try {
       await queryApi(
-        `dashboards/${params.dashboardId}/visibility`,
+        `dashboards/${params.id}/visibility`,
         {
           method: "POST",
           body: { visibility: dashboard.visibility === 'public' ? 'private' : 'public' },
@@ -273,7 +273,7 @@ function DashboardEditor() {
   };
 
   const handleDiscardUnsavedChanges = () => {
-    editorStorage.clearChanges(params.dashboardId);
+    editorStorage.clearChanges(params.id);
     setShowRestoreDialog(false);
   };
 
@@ -306,7 +306,7 @@ function DashboardEditor() {
                     <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
                   </Button>
                   {dashboard.visibility === 'public' && (
-                    <PublicLink href={`../../view/${params.dashboardId}`} />
+                    <PublicLink href={`../../view/${params.id}`} />
                   )}
                 </div>
               )}
@@ -385,8 +385,8 @@ function DashboardEditor() {
             )}
 
             <Link
-              to="/dashboards/$dashboardId"
-              params={{ dashboardId: params.dashboardId }}
+              to="/dashboards/$id"
+              params={{ id: params.id }}
               search={() => ({ vars })}
               className="text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200 flex-grow sm:grow-0"
             >

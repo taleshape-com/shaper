@@ -3,19 +3,19 @@
 const STORAGE_PREFIX = "shaper-dashboard-editor-";
 
 export const editorStorage = {
-  saveChanges(dashboardId: string, content: string) {
-    localStorage.setItem(`${STORAGE_PREFIX}${dashboardId}`, content);
+  saveChanges(id: string, content: string) {
+    localStorage.setItem(`${STORAGE_PREFIX}${id}`, content);
   },
 
-  getChanges(dashboardId: string) {
-    return localStorage.getItem(`${STORAGE_PREFIX}${dashboardId}`);
+  getChanges(id: string) {
+    return localStorage.getItem(`${STORAGE_PREFIX}${id}`);
   },
 
-  clearChanges(dashboardId: string) {
-    localStorage.removeItem(`${STORAGE_PREFIX}${dashboardId}`);
+  clearChanges(id: string) {
+    localStorage.removeItem(`${STORAGE_PREFIX}${id}`);
   },
 
-  hasUnsavedChanges(dashboardId: string) {
-    return !!this.getChanges(dashboardId);
+  hasUnsavedChanges(id: string) {
+    return !!this.getChanges(id);
   },
 };

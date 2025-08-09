@@ -17,7 +17,7 @@ import { MenuTrigger } from "../components/MenuTrigger";
 import { VariablesMenu } from "../components/VariablesMenu";
 import { PublicLink } from "../components/PublicLink";
 
-export const Route = createFileRoute("/dashboards/$dashboardId")({
+export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
@@ -46,7 +46,7 @@ function DashboardViewComponent() {
   const { vars } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
-  const navigate = useNavigate({ from: "/dashboards/$dashboardId" });
+  const navigate = useNavigate({ from: "/dashboards/$id" });
   const [title, setTitle] = useState("Dashboard");
   const [visibility, setVisibility] = useState<Result["visibility"]>(undefined);
 
@@ -72,8 +72,8 @@ function DashboardViewComponent() {
   const MenuButton = (
     <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={title}>
       <Link
-        to="/dashboards/$dashboardId/edit"
-        params={{ dashboardId: params.dashboardId }}
+        to="/dashboards/$id/edit"
+        params={{ id: params.id }}
         search={() => ({ vars })}
         className="block px-4 py-2 hover:underline"
       >
@@ -83,7 +83,7 @@ function DashboardViewComponent() {
       <VariablesMenu />
       {visibility === 'public' && (
         <div className="my-2 px-4">
-          <PublicLink href={`../view/${params.dashboardId}`} />
+          <PublicLink href={`../view/${params.id}`} />
         </div>
       )}
     </MenuTrigger>
@@ -103,7 +103,7 @@ function DashboardViewComponent() {
 
       <div className="h-dvh">
         <Dashboard
-          id={params.dashboardId}
+          id={params.id}
           vars={vars}
           hash={auth.hash}
           getJwt={auth.getJwt}
