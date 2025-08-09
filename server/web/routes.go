@@ -89,7 +89,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
 	e.GET("/api/public/:id/status", handler.GetPublicStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
-	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
+	apiWithAuth.GET("/apps", handler.ListApps(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))

@@ -36,15 +36,15 @@ interface WorkflowData {
   content: string
 }
 
-export const Route = createFileRoute('/workflows/$workflowId')({
+export const Route = createFileRoute('/workflows/$id')({
   component: WorkflowEdit,
 })
 
 function WorkflowEdit() {
-  const { workflowId } = Route.useParams()
+  const { id } = Route.useParams()
   const queryApi = useQueryApi()
   const navigate = useNavigate()
-  
+
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null)
   const [loading, setLoading] = useState(true)
   const [editorQuery, setEditorQuery] = useState('')
@@ -62,7 +62,7 @@ function WorkflowEdit() {
   const loadWorkflow = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await queryApi(`workflows/${workflowId}`)
+      const data = await queryApi(`workflows/${id}`)
       setWorkflow(data)
       setName(data.name)
       setEditorQuery(data.content)
@@ -79,7 +79,7 @@ function WorkflowEdit() {
     } finally {
       setLoading(false)
     }
-  }, [queryApi, workflowId, navigate, toast])
+  }, [queryApi, id, navigate, toast])
 
   useEffect(() => {
     loadWorkflow()
@@ -88,13 +88,13 @@ function WorkflowEdit() {
   // Check for unsaved changes when component mounts
   useEffect(() => {
     if (!workflow) return
-    
-    const unsavedContent = editorStorage.getChanges(workflowId)
+
+    const unsavedContent = editorStorage.getChanges(id)
     if (unsavedContent && unsavedContent !== workflow.content) {
       setEditorQuery(unsavedContent)
       setRunningQuery(unsavedContent)
     }
-  }, [workflow, workflowId])
+  }, [workflow, id])
 
   const runWorkflow = useCallback(async () => {
     setPreviewError(null)
@@ -130,34 +130,34 @@ function WorkflowEdit() {
 
   const handleQueryChange = useCallback((value: string | undefined) => {
     const newQuery = value || ''
-    
+
     // Save to localStorage
     if (workflow && newQuery !== workflow.content && newQuery.trim() !== '') {
-      editorStorage.saveChanges(workflowId, newQuery)
+      editorStorage.saveChanges(id, newQuery)
     } else {
-      editorStorage.clearChanges(workflowId)
+      editorStorage.clearChanges(id)
     }
     setEditorQuery(newQuery)
-  }, [workflow, workflowId])
+  }, [workflow, id])
 
   const handleSave = useCallback(async () => {
     if (!workflow) return
-    
+
     setSaving(true)
     try {
-      await queryApi(`workflows/${workflowId}/content`, {
+      await queryApi(`workflows/${id}/content`, {
         method: 'POST',
         body: {
           content: editorQuery,
         },
       })
-      
+
       // Clear localStorage after successful save
-      editorStorage.clearChanges(workflowId)
-      
+      editorStorage.clearChanges(id)
+
       // Update local state
       setWorkflow(prev => prev ? { ...prev, content: editorQuery } : null)
-      
+
       toast({
         title: translate('Success'),
         description: translate('Workflow saved successfully'),
@@ -175,7 +175,7 @@ function WorkflowEdit() {
     } finally {
       setSaving(false)
     }
-  }, [queryApi, workflowId, editorQuery, workflow, navigate, toast])
+  }, [queryApi, id, editorQuery, workflow, navigate, toast])
 
   const handleSaveName = async (newName: string) => {
     if (!workflow || newName === workflow.name) {
@@ -184,7 +184,7 @@ function WorkflowEdit() {
     }
     setSavingName(true);
     try {
-      await queryApi(`workflows/${workflowId}/name`, {
+      await queryApi(`workflows/${id}/name`, {
         method: 'POST',
         body: { name: newName },
       });
@@ -209,7 +209,7 @@ function WorkflowEdit() {
 
   const handleDelete = async () => {
     try {
-      await queryApi(`workflows/${workflowId}`, {
+      await queryApi(`workflows/${id}`, {
         method: 'DELETE',
       });
       // Navigate back to workflow list

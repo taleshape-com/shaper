@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
-import { IDashboard } from "../lib/dashboard";
+import { IApp } from "../lib/dashboard";
 import {
   Table,
   TableBody,
@@ -20,7 +20,16 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
-import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc, RiGlobalLine } from "@remixicon/react";
+import {
+  RiAddFill,
+  RiLayoutFill,
+  RiSortAsc,
+  RiSortDesc,
+  RiGlobalLine,
+  RiCodeSSlashFill,
+  RiFile3Fill,
+  RiBarChart2Line,
+} from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
@@ -39,7 +48,7 @@ import {
 import { useToast } from "../hooks/useToast";
 
 type DashboardListResponse = {
-  dashboards: IDashboard[];
+  apps: IApp[];
 };
 
 export const Route = createFileRoute("/")({
@@ -55,7 +64,7 @@ export const Route = createFileRoute("/")({
     context: { queryApi },
     deps: { sort = "updated", order = "desc" },
   }) => {
-    return queryApi(`dashboards?sort=${sort}&order=${order}`).then(
+    return queryApi(`apps?sort=${sort}&order=${order}`).then(
       (fetchedData: DashboardListResponse) => {
         return fetchedData;
       },
@@ -76,7 +85,7 @@ function Index() {
   const queryApi = useQueryApi();
   const router = useRouter();
   const { toast } = useToast();
-  const [deleteDashboardDialog, setDeleteDashboardDialog] = useState<IDashboard | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<IApp | null>(null);
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -91,8 +100,8 @@ function Index() {
     navigate({
       search: (prev) => ({
         ...prev,
-        sort: field === "name" ? undefined : field,
-        order: field === "name" && newOrder === "asc" ? undefined : newOrder,
+        sort: field === "updated" ? undefined : field,
+        order: field === "updated" && newOrder === "desc" ? undefined : newOrder,
       }),
     });
   };
@@ -106,16 +115,16 @@ function Index() {
     );
   };
 
-  const handleDelete = async (dashboard: IDashboard) => {
+  const handleDelete = async (app: IApp) => {
     try {
-      await queryApi(`dashboards/${dashboard.id}`, {
+      await queryApi(`${app.type === 'dashboard' ? 'dashboards' : 'workflows'}/${app.id}`, {
         method: "DELETE",
       });
       // Reload the page to refresh the list
       router.invalidate();
       toast({
         title: translate("Success"),
-        description: translate("Dashboard deleted successfully"),
+        description: translate(app.type === "dashboard" ? "Dashboard deleted successfully" : "Workflow deleted successfully"),
       });
     } catch (err) {
       if (isRedirect(err)) {
@@ -130,14 +139,14 @@ function Index() {
   };
 
   if (!data) {
-    return <div className="p-2">Loading dashboards...</div>;
+    return <div className="p-2">Loading...</div>;
   }
 
   return (
     <MenuProvider isHome>
       <Helmet>
         <title>{translate("Home")}</title>
-        <meta name="description" content="Show a list of all dashboards" />
+        <meta name="description" content="Show a list of all dashboards and workflows" />
       </Helmet>
 
       <div className="px-4 pb-4 min-h-dvh flex flex-col">
@@ -148,26 +157,26 @@ function Index() {
               className="size-5 inline mr-1 -mt-1"
               aria-hidden={true}
             />
-            {translate("Dashboards")}
+            {translate("Overview")}
           </h1>
         </div>
 
         <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow p-6">
-          {data.dashboards.length === 0 ? (
+          {data.apps.length === 0 ? (
             <div className="my-4 flex flex-col items-center justify-center flex-grow">
               <RiLayoutFill
-                className="mx-auto size-9 text-ctext dark:text-dtext"
+                className="mx-auto size-9 fill-ctext dark:fill-dtext"
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                No dashboards yet
+                {translate("No dashboards or workflows yet")}
               </p>
               <Link
                 to="/new"
               >
                 <Button>
                   <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />
-                  {translate("New Dashboard")}
+                  {translate("New")}
                 </Button>
               </Link>
             </div>
@@ -176,6 +185,18 @@ function Index() {
               <Table>
                 <TableHead>
                   <TableRow>
+                    <TableHeaderCell
+                    >
+                      <Tooltip
+                        showArrow={false}
+                        content={translate("Type")}
+                      >
+                        <RiFile3Fill
+                          className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 cursor-default"
+                          aria-hidden={true}
+                        />
+                      </Tooltip>
+                    </TableHeaderCell>
                     <TableHeaderCell
                       onClick={() => handleSort("name" as const)}
                       className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
@@ -200,19 +221,43 @@ function Index() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.dashboards.map((dashboard) => (
+                  {data.apps.map((app) => (
                     <TableRow
-                      key={dashboard.id}
+                      key={app.id}
                       className="group transition-colors duration-200"
                     >
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
                         <Link
-                          to="/dashboards/$dashboardId"
-                          params={{ dashboardId: dashboard.id }}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          params={{ id: app.id }}
                           className="p-4 block"
                         >
-                          {dashboard.name}
-                          {dashboard.visibility === "public" && (
+                          <Tooltip
+                            showArrow={false}
+                            content={<span className="capitalize">{app.type}</span>}
+                          >
+                            {app.type === "dashboard" ? (
+                              <RiBarChart2Line
+                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                aria-hidden={true}
+                              />
+                            ) : (
+                              <RiCodeSSlashFill
+                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                aria-hidden={true}
+                              />
+                            )}
+                          </Tooltip>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                        <Link
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          params={{ id: app.id }}
+                          className="p-4 block"
+                        >
+                          {app.name}
+                          {app.visibility === "public" && (
                             <Tooltip
                               showArrow={false}
                               content={translate("This dashboard is public")}
@@ -224,44 +269,44 @@ function Index() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to="/dashboards/$dashboardId"
-                          params={{ dashboardId: dashboard.id }}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          params={{ id: app.id }}
                           className="block p-4"
                         >
                           <Tooltip
                             showArrow={false}
-                            content={new Date(dashboard.createdAt).toLocaleString()}
+                            content={new Date(app.createdAt).toLocaleString()}
                           >
-                            {new Date(dashboard.createdAt).toLocaleDateString()}
+                            {new Date(app.createdAt).toLocaleDateString()}
                           </Tooltip>
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to="/dashboards/$dashboardId"
-                          params={{ dashboardId: dashboard.id }}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          params={{ id: app.id }}
                           className="block p-4"
                         >
                           <Tooltip
                             showArrow={false}
-                            content={new Date(dashboard.updatedAt).toLocaleString()}
+                            content={new Date(app.updatedAt).toLocaleString()}
                           >
-                            {new Date(dashboard.updatedAt).toLocaleDateString()}
+                            {new Date(app.updatedAt).toLocaleDateString()}
                           </Tooltip>
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex gap-4">
                           <Link
-                            to="/dashboards/$dashboardId/edit"
-                            params={{ dashboardId: dashboard.id }}
+                            to={app.type === 'dashboard' ? "/dashboards/$id/edit" : "/workflows/$id"}
+                            params={{ id: app.id }}
                             className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
                           >
                             {translate("Edit")}
                           </Link>
                           <button
                             onClick={() => {
-                              setDeleteDashboardDialog(dashboard);
+                              setDeleteDialog(app);
                             }}
                             className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                           >
@@ -277,27 +322,31 @@ function Index() {
           )}
         </div>
 
-        <Dialog open={deleteDashboardDialog !== null} onOpenChange={(open) => !open && setDeleteDashboardDialog(null)}>
+        <Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
               <DialogDescription>
-                {deleteDashboardDialog && translate('Are you sure you want to delete the dashboard "%%"?').replace(
+                {deleteDialog && translate(
+                  deleteDialog.type === 'dashboard'
+                    ? 'Are you sure you want to delete the dashboard "%%"?'
+                    : 'Are you sure you want to delete the workflow "%%"?'
+                ).replace(
                   "%%",
-                  deleteDashboardDialog.name,
+                  deleteDialog.name,
                 )}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => setDeleteDashboardDialog(null)} variant="secondary">
+              <Button onClick={() => setDeleteDialog(null)} variant="secondary">
                 {translate("Cancel")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => {
-                  if (deleteDashboardDialog) {
-                    handleDelete(deleteDashboardDialog);
-                    setDeleteDashboardDialog(null);
+                  if (deleteDialog) {
+                    handleDelete(deleteDialog);
+                    setDeleteDialog(null);
                   }
                 }}
               >

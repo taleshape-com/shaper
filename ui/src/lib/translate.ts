@@ -8,6 +8,9 @@ const translations = {
   "An error occurred": {
     de: "Ein Fehler ist aufgetreten",
   },
+  Overview: {
+    de: "Übersicht",
+  },
   Logout: {
     de: "Abmelden",
   },
@@ -227,9 +230,6 @@ const translations = {
   },
   "User Management": {
     de: "Benutzerverwaltung",
-  },
-  Dashboards: {
-    de: "Dashboards",
   },
   "Loading users...": {
     de: "Benutzer werden geladen...",
@@ -486,6 +486,12 @@ const translations = {
   'Are you sure you want to delete the workflow "%%"?': {
     de: 'Sind Sie sicher, dass Sie den Workflow "%%" löschen möchten?',
   },
+  "No dashboards or workflows yet": {
+    de: "Noch keine Dashboards oder Workflows",
+  },
+  Type: {
+    de: "Typ",
+  }
 };
 
 export function translate(s: keyof typeof translations) {

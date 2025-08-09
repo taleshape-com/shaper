@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-export interface IDashboard {
+export interface IApp {
   id: string;
   name: string;
   path: string;
@@ -10,7 +10,10 @@ export interface IDashboard {
   createdBy?: string;
   updatedBy?: string;
   visibility?: 'public' | 'private';
+  type: 'dashboard' | 'workflow';
 }
+
+export type IDashboard = Omit<IApp, 'type'>;
 
 export type Column = {
   name: string;
