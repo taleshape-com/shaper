@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React, { useCallback, useRef } from "react";
-import { Column, GaugeCategory, Result } from "../../lib/dashboard";
+import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
 import * as echarts from 'echarts';
 import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';

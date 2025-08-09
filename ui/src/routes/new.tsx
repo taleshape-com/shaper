@@ -21,7 +21,7 @@ import { Button } from '../components/tremor/Button'
 import { useQueryApi } from '../hooks/useQueryApi'
 import { MenuProvider } from '../components/providers/MenuProvider'
 import { MenuTrigger } from '../components/MenuTrigger'
-import { Result } from '../lib/dashboard'
+import { Result } from '../lib/types'
 import { useToast } from '../hooks/useToast'
 import { Tooltip } from '../components/tremor/Tooltip'
 import {
