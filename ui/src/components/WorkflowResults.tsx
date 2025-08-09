@@ -3,12 +3,14 @@
 import { translate } from '../lib/translate'
 import { Card } from './tremor/Card'
 import { Table } from './tremor/Table'
+import { Callout } from "./tremor/Callout";
 
 export interface WorkflowQueryResult {
   sql: string
   duration: number
   error?: string
   result?: Record<string, any>[]
+  stopExecution?: boolean
 }
 
 export interface WorkflowResult {
@@ -80,6 +82,16 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
                 )}
               </div>
             </div>
+
+            {query.stopExecution && (
+              <Callout
+                className="mb-4"
+                title={translate('Query stopped script execution')}
+                variant="neutral"
+              >
+                {translate('The query returned the single boolean `false` which signals that the script should stop executing further queries.')}
+              </Callout>
+            )}
 
             <pre className="text-xs bg-cbgs dark:bg-dbgs p-2 rounded border border-cb dark:border-db overflow-x-auto">
               <code>{query.sql}</code>

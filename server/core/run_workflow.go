@@ -11,10 +11,11 @@ import (
 )
 
 type WorkflowQueryResult struct {
-	SQL      string  `json:"sql"`
-	Duration int64   `json:"duration"`
-	Error    *string `json:"error,omitempty"`
-	Result   any     `json:"result,omitempty"`
+	SQL           string  `json:"sql"`
+	Duration      int64   `json:"duration"`
+	Error         *string `json:"error,omitempty"`
+	StopExecution bool    `json:"stopExecution,omitempty"`
+	Result        any     `json:"result,omitempty"`
 }
 
 type WorkflowResult struct {
@@ -128,12 +129,12 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 			if len(rowData) == 1 && len(rowData[0]) == 1 {
 				for _, value := range rowData[0] {
 					if boolVal, ok := value.(bool); ok && !boolVal {
-						success = false
+						queryResult.StopExecution = true
 						result.Queries = append(result.Queries, queryResult)
 						break
 					}
 				}
-				if !success {
+				if !success || queryResult.StopExecution {
 					break
 				}
 			}
