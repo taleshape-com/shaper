@@ -68,6 +68,7 @@ type Config struct {
 	Favicon                string
 	JWTExp                 time.Duration
 	NoPublicSharing        bool
+	NoWorkflows            bool
 	NatsServers            string
 	NatsHost               string
 	NatsPort               int
@@ -111,6 +112,7 @@ func loadConfig() Config {
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
+	noWorkflows := flags.BoolLong("no-workflows", "Disable workflow functionality")
 	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
@@ -209,6 +211,7 @@ func loadConfig() Config {
 		SessionExp:             *sessionExp,
 		InviteExp:              *inviteExp,
 		NoPublicSharing:        *noPublicSharing,
+		NoWorkflows:            *noWorkflows,
 		NatsServers:            *natsServers,
 		NatsHost:               *natsHost,
 		NatsPort:               *natsPort,
@@ -330,6 +333,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.SessionExp,
 		cfg.InviteExp,
 		cfg.NoPublicSharing,
+		cfg.NoWorkflows,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,

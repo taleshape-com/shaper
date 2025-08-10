@@ -31,6 +31,7 @@ import {
   RiBarChart2Line,
 } from "@remixicon/react";
 import { translate } from "../lib/translate";
+import { getSystemConfig } from "../lib/system";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
@@ -169,7 +170,7 @@ function Index() {
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                {translate("No dashboards or workflows yet")}
+                {translate("Create the first dashboard")} ...
               </p>
               <Link
                 to="/new"
@@ -185,18 +186,20 @@ function Index() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableHeaderCell
-                    >
-                      <Tooltip
-                        showArrow={false}
-                        content={translate("Type")}
+                    {getSystemConfig().workflowsEnabled && (
+                      <TableHeaderCell
                       >
-                        <RiFile3Fill
-                          className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 cursor-default"
-                          aria-hidden={true}
-                        />
-                      </Tooltip>
-                    </TableHeaderCell>
+                        <Tooltip
+                          showArrow={false}
+                          content={translate("Type")}
+                        >
+                          <RiFile3Fill
+                            className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 cursor-default"
+                            aria-hidden={true}
+                          />
+                        </Tooltip>
+                      </TableHeaderCell>
+                    )}
                     <TableHeaderCell
                       onClick={() => handleSort("name" as const)}
                       className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
@@ -226,30 +229,32 @@ function Index() {
                       key={app.id}
                       className="group transition-colors duration-200"
                     >
-                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
-                        <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
-                          params={{ id: app.id }}
-                          className="p-4 block"
-                        >
-                          <Tooltip
-                            showArrow={false}
-                            content={<span className="capitalize">{app.type}</span>}
+                      {getSystemConfig().workflowsEnabled && (
+                        <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                          <Link
+                            to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                            params={{ id: app.id }}
+                            className="p-4 block"
                           >
-                            {app.type === "dashboard" ? (
-                              <RiBarChart2Line
-                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
-                                aria-hidden={true}
-                              />
-                            ) : (
-                              <RiCodeSSlashFill
-                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
-                                aria-hidden={true}
-                              />
-                            )}
-                          </Tooltip>
-                        </Link>
-                      </TableCell>
+                            <Tooltip
+                              showArrow={false}
+                              content={<span className="capitalize">{app.type}</span>}
+                            >
+                              {app.type === "dashboard" ? (
+                                <RiBarChart2Line
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                  aria-hidden={true}
+                                />
+                              ) : (
+                                <RiCodeSSlashFill
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                  aria-hidden={true}
+                                />
+                              )}
+                            </Tooltip>
+                          </Link>
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
                         <Link
                           to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}

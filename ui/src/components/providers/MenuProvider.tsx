@@ -10,11 +10,12 @@ import {
   RiLogoutBoxRLine,
   RiBook2Line,
 } from "@remixicon/react";
-import { useAuth, logout } from "../../lib/auth";
+import { logout, getJwt } from "../../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { translate } from "../../lib/translate";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
+import { getSystemConfig } from "../../lib/system";
 
 const isLg = () => window.innerWidth >= 1024;
 
@@ -29,7 +30,6 @@ export function MenuProvider({
   isAdmin?: boolean;
   isNewPage?: boolean;
 }) {
-  const { getJwt, loginRequired } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(isLg())
@@ -49,7 +49,7 @@ export function MenuProvider({
       }
       console.error("Failed to fetch username:", error);
     }
-  }, [getJwt, navigate]);
+  }, [navigate]);
 
   useEffect(() => {
     fetchUserName();
@@ -138,7 +138,7 @@ export function MenuProvider({
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
             {translate("Admin")}
           </Link>
-          {loginRequired && (
+          {getSystemConfig().loginRequired && (
             <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
               <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                 {userName}

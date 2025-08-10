@@ -2,24 +2,25 @@
 
 import { z } from "zod";
 import * as React from "react";
-import { goToLoginPage } from "./utils";
+import { goToLoginPage, parseJwt } from "./utils";
+import {
+  loadSystemConfig,
+  getSystemConfig,
+  reloadSystemConfig,
+} from "./system";
 
 export interface IAuthContext {
-  getJwt: () => Promise<string>;
   login: (
     email: string,
     password: string,
     variables?: Variables,
   ) => Promise<boolean>;
-  testLogin: () => Promise<boolean>;
   hash: string;
-  loginRequired: boolean;
-  setLoginRequired: (required: boolean) => void;
   variables: Variables;
   updateVariables: (text: string) => Promise<boolean>;
 }
 
-export const zVariables = z.record(
+const zVariables = z.record(
   z.string().min(1),
   z.union([z.string(), z.array(z.string())]),
 );
@@ -28,7 +29,6 @@ export type Variables = (typeof zVariables)["_type"];
 export const localStorageTokenKey = "shaper-session-token";
 export const localStorageJwtKey = "shaper-jwt";
 export const localStorageVariablesKey = "shaper-variables";
-export const localStorageLoginRequiredKey = "shaper-login-required";
 
 export const AuthContext = React.createContext<IAuthContext | null>(null);
 
@@ -52,29 +52,76 @@ export async function logout() {
     })
   }
   localStorage.clear();
+  loadSystemConfig();
   return goToLoginPage();
 }
 
-export const checkLoginRequiredWithoutCache = async (): Promise<boolean> => {
-  const response = await fetch(`${window.shaper.defaultBaseUrl}api/login/enabled`);
-  if (!response.ok) {
-    // Assume auth is required if we can't determine the status
-    return true;
-  }
-  const data = await response.json() as { enabled: boolean };
-  return data.enabled;
+export const getVariablesString = () => {
+  return localStorage.getItem(localStorageVariablesKey) ?? "{}";
+};
+export const getVariables = (s: string): Variables => {
+  return zVariables.parse(JSON.parse(s));
 };
 
-// Check if login is required using the auth status endpoint.
-// We call this before even starting the React app to avoid glitching behavior when loading.
-export const checkLoginRequired = async (): Promise<boolean> => {
-  const storedVal = localStorage.getItem(localStorageLoginRequiredKey)
-  if (storedVal === "true") {
+export const refreshJwt = async (token: string, vars: Variables) => {
+  return fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      token: token === "" ? undefined : token,
+      variables: Object.keys(vars).length > 0 ? vars : undefined,
+    }),
+  }).then(async (response) => {
+    if (response.status !== 200) {
+      return null;
+    }
+    const res = await response.json();
+    localStorage.setItem(localStorageJwtKey, res.jwt);
+    return res.jwt;
+  });
+};
+
+
+export const getJwt = async () => {
+  const jwt = localStorage.getItem(localStorageJwtKey);
+  if (jwt != null) {
+    const claims = parseJwt(jwt);
+    if (Date.now() / 1000 < claims.exp) {
+      return jwt;
+    }
+  }
+  if (!getSystemConfig().loginRequired) {
+    const vars = getVariables(getVariablesString());
+    return refreshJwt("", vars) ?? "";
+  }
+  const token = localStorage.getItem(localStorageTokenKey);
+  if (token == null) {
+    throw goToLoginPage();
+  }
+  const vars = getVariables(getVariablesString());
+  const newJwt = await refreshJwt(token, vars);
+  if (newJwt == null) {
+    throw goToLoginPage();
+  }
+  return newJwt;
+};
+
+export const testLogin = async () => {
+  await reloadSystemConfig();
+  if (!getSystemConfig().loginRequired) {
     return true;
   }
-  if (storedVal === "false") {
+  const token = localStorage.getItem(localStorageTokenKey);
+  if (token == null || token === "") {
     return false;
   }
-  return checkLoginRequiredWithoutCache();
+  const response = await fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  return response.status === 200;
 };
 

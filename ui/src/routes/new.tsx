@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { useAuth } from '../lib/auth'
+import { useAuth, getJwt } from '../lib/auth'
 import { Dashboard } from '../components/dashboard'
 import {
   getSearchParamString,
@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from '../components/tremor/Select'
 import "../lib/editorInit";
+import { getSystemConfig } from '../lib/system'
 
 const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
 
@@ -301,32 +302,34 @@ function NewDashboard() {
               )}
             </MenuTrigger>
 
-            <div className="flex items-center gap-3 flex-grow">
-              <h1 className="text-xl font-semibold font-display">
-                {translate('New')}
-              </h1>
-              <Select value={appType} onValueChange={handleTypeChange}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dashboard">
-                    <RiBarChart2Line
-                      className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
-                      aria-hidden={true}
-                    />
-                    {translate('Dashboard')}
-                  </SelectItem>
-                  <SelectItem value="workflow">
-                    <RiCodeSSlashFill
-                      className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
-                      aria-hidden={true}
-                    />
-                    {translate('Workflow')}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <h1 className="flex items-center gap-3 flex-grow text-xl font-semibold font-display">
+              {translate('New')}
+              {getSystemConfig().workflowsEnabled ? (
+                <Select value={appType} onValueChange={handleTypeChange}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dashboard">
+                      <RiBarChart2Line
+                        className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
+                        aria-hidden={true}
+                      />
+                      {translate('Dashboard')}
+                    </SelectItem>
+                    <SelectItem value="workflow">
+                      <RiCodeSSlashFill
+                        className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
+                        aria-hidden={true}
+                      />
+                      {translate('Workflow')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                " " + translate("Dashboard")
+              )}
+            </h1>
 
             <div className="space-x-2">
               <Tooltip showArrow={false} asChild content={`Create ${appType === 'workflow' ? 'Workflow' : 'Dashboard'}`}>
@@ -371,7 +374,7 @@ function NewDashboard() {
             <Dashboard
               vars={vars}
               hash={auth.hash}
-              getJwt={auth.getJwt}
+              getJwt={getJwt}
               onVarsChanged={handleVarsChanged}
               data={previewData}
               loading={isPreviewLoading}

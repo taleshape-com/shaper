@@ -77,14 +77,6 @@ func validateVariables(mixedMap map[string]any) error {
 	return nil
 }
 
-func LoginEnabled(app *core.App) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]bool{
-			"enabled": app.LoginRequired,
-		})
-	}
-}
-
 func TokenAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body

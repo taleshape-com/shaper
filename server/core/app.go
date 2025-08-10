@@ -29,6 +29,7 @@ type App struct {
 	SessionExp          time.Duration
 	InviteExp           time.Duration
 	NoPublicSharing     bool
+	NoWorkflows         bool
 	StateConsumeCtx     jetstream.ConsumeContext
 	JetStream           jetstream.JetStream
 	ConfigKV            jetstream.KeyValue
@@ -51,6 +52,7 @@ func New(
 	sessionExp time.Duration,
 	inviteExp time.Duration,
 	noPublicSharing bool,
+	noWorkflows bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
@@ -74,6 +76,10 @@ func New(
 		logger.Info("Publicly sharing dashboards is disabled.")
 	}
 
+	if noWorkflows {
+		logger.Info("Workflows functionality disabled.")
+	}
+
 	app := &App{
 		Name:                name,
 		DB:                  db,
@@ -85,6 +91,7 @@ func New(
 		SessionExp:          sessionExp,
 		InviteExp:           inviteExp,
 		NoPublicSharing:     noPublicSharing,
+		NoWorkflows:         noWorkflows,
 		IngestSubjectPrefix: ingestSubjectPrefix,
 		StateSubjectPrefix:  stateSubjectPrefix,
 		StateStreamName:     stateStreamName,
