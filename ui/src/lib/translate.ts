@@ -486,8 +486,8 @@ const translations = {
   'Are you sure you want to delete the workflow "%%"?': {
     de: 'Sind Sie sicher, dass Sie den Workflow "%%" löschen möchten?',
   },
-  "No dashboards or workflows yet": {
-    de: "Noch keine Dashboards oder Workflows",
+  "Create the first dashboard": {
+    de: "Erstelle ein erstes Dashboard",
   },
   Type: {
     de: "Typ",

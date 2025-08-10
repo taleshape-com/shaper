@@ -8,7 +8,7 @@ import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 import { VarsParamSchema, varsParamSchema } from "../lib/utils";
-import { useAuth } from "../lib/auth";
+import { useAuth, getJwt } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
 import { Result } from "../lib/types";
@@ -106,7 +106,7 @@ function DashboardViewComponent() {
           id={params.id}
           vars={vars}
           hash={auth.hash}
-          getJwt={auth.getJwt}
+          getJwt={getJwt}
           menuButton={MenuButton}
           onVarsChanged={handleVarsChanged}
           onError={handleRedirectError}

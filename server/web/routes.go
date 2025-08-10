@@ -79,7 +79,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
 
 	// API routes - no caching
-	e.GET("/api/login/enabled", handler.LoginEnabled(app))
+	e.GET("/api/system/config", handler.GetSystemConfig(app))
 	e.POST("/api/login", handler.Login(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
 	e.POST("/api/auth/public", handler.PublicAuth(app))
@@ -98,13 +98,15 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.POST("/workflows", handler.CreateWorkflow(app))
-	apiWithAuth.GET("/workflows/:id", handler.GetWorkflow(app))
-	apiWithAuth.DELETE("/workflows/:id", handler.DeleteWorkflow(app))
-	apiWithAuth.POST("/workflows/:id/content", handler.SaveWorkflowContent(app))
-	apiWithAuth.POST("/workflows/:id/name", handler.SaveWorkflowName(app))
 	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
-	apiWithAuth.POST("/run/workflow", handler.RunWorkflow(app))
+	if !app.NoWorkflows {
+		apiWithAuth.POST("/workflows", handler.CreateWorkflow(app))
+		apiWithAuth.GET("/workflows/:id", handler.GetWorkflow(app))
+		apiWithAuth.DELETE("/workflows/:id", handler.DeleteWorkflow(app))
+		apiWithAuth.POST("/workflows/:id/content", handler.SaveWorkflowContent(app))
+		apiWithAuth.POST("/workflows/:id/name", handler.SaveWorkflowName(app))
+		apiWithAuth.POST("/run/workflow", handler.RunWorkflow(app))
+	}
 	apiWithAuth.GET("/users", handler.ListUsers(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
 	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { useAuth } from '../lib/auth'
+import { getJwt } from '../lib/auth'
 import { useCallback } from "react";
 import { goToLoginPage } from "../lib/utils";
 
@@ -8,9 +8,8 @@ export type QueryApiFunc = (url: string, options?: { method?: 'POST' | 'DELETE';
 
 // Use to call API with JWT authentication and redirect to login page on 401
 export const useQueryApi = (): QueryApiFunc => {
-  const auth = useAuth();
   return useCallback((async (url, options = {}) => {
-    const jwt = await auth.getJwt();
+    const jwt = await getJwt();
     const response = await fetch(`${window.shaper.defaultBaseUrl}api/${url}`, {
       headers: {
         "Content-Type": "application/json",
@@ -30,5 +29,5 @@ export const useQueryApi = (): QueryApiFunc => {
         });
     }
     return response.json();
-  }) as QueryApiFunc, [auth]);
+  }) as QueryApiFunc, []);
 };

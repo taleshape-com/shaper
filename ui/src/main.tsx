@@ -11,7 +11,7 @@ import { App } from "./App";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "@tanstack/react-router";
-import { checkLoginRequired } from "./lib/auth";
+import { loadSystemConfig } from "./lib/system";
 import "./lib/globals";
 
 // Polyfill container queries
@@ -47,10 +47,11 @@ declare module "@tanstack/react-router" {
 (async () => {
   const rootElement = document.getElementById("root")!;
   if (!rootElement.innerHTML) {
+    await loadSystemConfig();
     const root = ReactDOM.createRoot(rootElement);
     root.render(
       <StrictMode>
-        <AuthProvider initialLoginRequired={await checkLoginRequired()}>
+        <AuthProvider>
           <App router={router} />
         </AuthProvider>
       </StrictMode>,

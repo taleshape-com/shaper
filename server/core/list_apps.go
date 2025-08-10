@@ -40,10 +40,15 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 	}
 
 	apps := []AppRecord{}
+	optionalFilter := ""
+	if app.NoWorkflows {
+		optionalFilter = "WHERE type = 'dashboard'"
+	}
 	err := app.DB.SelectContext(ctx, &apps,
 		fmt.Sprintf(`SELECT *
 		 FROM %s.apps
-		 ORDER BY %s %s`, app.Schema, orderBy, order))
+		 %s
+		 ORDER BY %s %s`, app.Schema, optionalFilter, orderBy, order))
 	if err != nil {
 		err = fmt.Errorf("error listing apps: %w", err)
 	}
