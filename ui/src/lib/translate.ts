@@ -497,7 +497,13 @@ const translations = {
   },
   "The query returned the single boolean `false` which signals that the script should stop executing further queries.": {
     de: "Die Abfrage hat den einzelnen booleschen Wert `false` zurückgegeben, was signalisiert, dass das Skript die Ausführung weiterer Abfragen stoppen soll.",
-  }
+  },
+  "Run time": {
+    de: "Ausgeführungszeit",
+  },
+  "Scheduled for": {
+    de: "Geplant für",
+  },
 };
 
 export function translate(s: keyof typeof translations) {

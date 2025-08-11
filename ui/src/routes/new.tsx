@@ -150,7 +150,7 @@ function NewDashboard() {
       const data = await queryApi('run/workflow', {
         method: 'POST',
         body: {
-          content: runningQuery,
+          content: editorQuery,
         },
       })
       setWorkflowData(data)
@@ -162,7 +162,7 @@ function NewDashboard() {
     } finally {
       setIsPreviewLoading(false)
     }
-  }, [queryApi, runningQuery, navigate])
+  }, [queryApi, editorQuery, navigate])
 
   useEffect(() => {
     if (appType === 'dashboard') {
@@ -171,14 +171,14 @@ function NewDashboard() {
   }, [previewDashboard, appType])
 
   const handleRun = useCallback(() => {
-    if (isPreviewLoading) {
-      return;
-    }
-    if (editorQuery !== runningQuery) {
-      setRunningQuery(editorQuery)
+    if (appType === 'workflow') {
+      runWorkflow()
     } else {
-      if (appType === 'workflow') {
-        runWorkflow()
+      if (isPreviewLoading) {
+        return;
+      }
+      if (editorQuery !== runningQuery) {
+        setRunningQuery(editorQuery)
       } else {
         previewDashboard()
       }

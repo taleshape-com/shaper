@@ -4,30 +4,42 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"shaper/server/util"
 	"strings"
 	"time"
+
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 type WorkflowQueryResult struct {
-	SQL           string  `json:"sql"`
-	Duration      int64   `json:"duration"`
-	Error         *string `json:"error,omitempty"`
-	StopExecution bool    `json:"stopExecution,omitempty"`
-	Result        any     `json:"result,omitempty"`
+	SQL           string   `json:"sql"`
+	Duration      int64    `json:"duration"`
+	Error         *string  `json:"error,omitempty"`
+	StopExecution bool     `json:"stopExecution,omitempty"`
+	ResultColumns []string `json:"resultColumns"`
+	ResultRows    [][]any  `json:"resultRows"`
 }
 
 type WorkflowResult struct {
-	StartTime    time.Time             `json:"startTime"`
+	StartedAt    int64                 `json:"startedAt"`
+	ReloadAt     int64                 `json:"reloadAt,omitempty"`
 	Success      bool                  `json:"success"`
 	TotalQueries int                   `json:"totalQueries"`
 	Queries      []WorkflowQueryResult `json:"queries"`
 }
 
-func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult, error) {
+type UpdateWorkflowRunPayload struct {
+	ID        string         `json:"id"`
+	UpdatedBy string         `json:"updatedBy"`
+	RunResult WorkflowResult `json:"lastRunResult"`
+}
+
+func RunWorkflow(app *App, ctx context.Context, content string, workflowID string) (WorkflowResult, error) {
 	result := WorkflowResult{
-		StartTime: time.Now(),
+		StartedAt: time.Now().UnixMilli(),
 		Queries:   []WorkflowQueryResult{},
 	}
 
@@ -57,12 +69,14 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 		}
 
 		queryResult := WorkflowQueryResult{
-			SQL: sqlString,
+			SQL:           sqlString,
+			ResultColumns: []string{},
+			ResultRows:    [][]any{},
 		}
 
 		start := time.Now()
 
-		rows, err := tx.QueryContext(ctx, sqlString)
+		rows, err := tx.QueryxContext(ctx, sqlString)
 		duration := time.Since(start).Milliseconds()
 		queryResult.Duration = duration
 
@@ -72,75 +86,59 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 			success = false
 			result.Queries = append(result.Queries, queryResult)
 			break // Stop executing remaining queries on error
-		} else {
-			var rowData []map[string]any
-
-			if rows != nil {
-				columns, err := rows.Columns()
-				if err != nil {
-					errorMessage := err.Error()
-					queryResult.Error = &errorMessage
-					success = false
-					result.Queries = append(result.Queries, queryResult)
-					rows.Close()
-					break
-				}
-
-				for rows.Next() {
-					values := make([]any, len(columns))
-					valuePtrs := make([]any, len(columns))
-					for i := range values {
-						valuePtrs[i] = &values[i]
-					}
-
-					if err := rows.Scan(valuePtrs...); err != nil {
-						errorMessage := err.Error()
-						queryResult.Error = &errorMessage
-						success = false
-						result.Queries = append(result.Queries, queryResult)
-						rows.Close()
-						break
-					}
-
-					rowMap := make(map[string]any)
-					for i, col := range columns {
-						if values[i] != nil {
-							if b, ok := values[i].([]byte); ok {
-								rowMap[col] = string(b)
-							} else {
-								rowMap[col] = values[i]
-							}
-						} else {
-							rowMap[col] = nil
-						}
-					}
-					rowData = append(rowData, rowMap)
-				}
-				rows.Close()
-
-				if !success {
-					break
-				}
-			}
-
-			queryResult.Result = rowData
-
-			// Check for early termination: single row, single column, boolean false
-			if len(rowData) == 1 && len(rowData[0]) == 1 {
-				for _, value := range rowData[0] {
-					if boolVal, ok := value.(bool); ok && !boolVal {
-						queryResult.StopExecution = true
-						result.Queries = append(result.Queries, queryResult)
-						break
-					}
-				}
-				if !success || queryResult.StopExecution {
-					break
-				}
-			}
 		}
 
-		result.Queries = append(result.Queries, queryResult)
+		colTypes, err := rows.ColumnTypes()
+		if err != nil {
+			errorMessage := err.Error()
+			queryResult.Error = &errorMessage
+			success = false
+			result.Queries = append(result.Queries, queryResult)
+			rows.Close()
+			break
+		}
+
+		for _, col := range colTypes {
+			queryResult.ResultColumns = append(queryResult.ResultColumns, col.Name())
+		}
+
+		for rows.Next() {
+			row, err := rows.SliceScan()
+			if err != nil {
+				errorMessage := err.Error()
+				queryResult.Error = &errorMessage
+				success = false
+				break
+			}
+			queryResult.ResultRows = append(queryResult.ResultRows, row)
+		}
+		rows.Close()
+
+		if isReload(colTypes, queryResult.ResultRows) {
+			if result.ReloadAt != 0 {
+				errMsg := "Multiple RELOAD queries in workflow"
+				queryResult.Error = &errMsg
+				success = false
+				result.Queries = append(result.Queries, queryResult)
+			} else {
+				result.ReloadAt = getReloadValue(queryResult.ResultRows)
+				result.TotalQueries = len(sqls) - 1
+			}
+		} else {
+			result.Queries = append(result.Queries, queryResult)
+		}
+
+		if !success {
+			break
+		}
+
+		// Check for early termination: single row, single column, boolean false
+		if len(queryResult.ResultRows) == 1 && len(queryResult.ResultRows[0]) == 1 {
+			if boolVal, ok := queryResult.ResultRows[0][0].(bool); ok && !boolVal {
+				queryResult.StopExecution = true
+				break
+			}
+		}
 	}
 
 	if success {
@@ -155,5 +153,76 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 		result.Success = false
 	}
 
+	if workflowID != "" {
+		actor := ActorFromContext(ctx)
+		if actor == nil {
+			app.Logger.ErrorContext(ctx, "no actor in context")
+		} else {
+			err = app.SubmitState(ctx, "update_workflow_run", UpdateWorkflowRunPayload{
+				ID:        workflowID,
+				UpdatedBy: actor.String(),
+				RunResult: result,
+			})
+			if err != nil {
+				app.Logger.ErrorContext(ctx, "failed to update workflow run", slog.Any("error", err))
+			}
+		}
+	}
+
 	return result, nil
+}
+
+func HandleUpdateWorkflowRun(app *App, data []byte) bool {
+	var payload UpdateWorkflowRunPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal update workflow run payload", slog.Any("error", err))
+		return false
+	}
+	resultJSON, err := json.Marshal(payload.RunResult)
+	if err != nil {
+		app.Logger.Error("failed to marshal workflow run result", slog.Any("error", err))
+		return false
+	}
+	lastRunAt := time.UnixMilli(payload.RunResult.StartedAt)
+	var nextRunAt *time.Time
+	if payload.RunResult.ReloadAt != 0 {
+		t := time.UnixMilli(payload.RunResult.ReloadAt)
+		nextRunAt = &t
+	}
+	_, err = app.DB.Exec(
+		`INSERT INTO `+app.Schema+`.workflow_runs
+			(workflow_id, last_run_at, last_run_by, last_run_result, next_run_at)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT DO UPDATE
+		 	SET last_run_at = $2, last_run_by = $3, last_run_result = $4, next_run_at = $5`,
+		payload.ID,
+		lastRunAt,
+		payload.UpdatedBy,
+		resultJSON,
+		nextRunAt,
+	)
+	if err != nil {
+		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
+		return false
+	}
+	// cancel previous timer
+	unscheduleWorkflow(app, payload.ID)
+	// schedule for later
+	if nextRunAt != nil {
+		app.Logger.Info("Scheduled workflow", slog.String("workflow", payload.ID), slog.Time("run_time", *nextRunAt))
+		t := time.AfterFunc(time.Until(*nextRunAt), func() {
+			app.Logger.Info("Dispatching job", slog.String("workflow", payload.ID))
+			// Send message to NATS
+			ctx := context.Background()
+			subject := app.JobsSubjectPrefix + payload.ID
+			msgID := fmt.Sprintf("%s-%d", payload.ID, nextRunAt.UnixMilli())
+			_, err := app.JetStream.Publish(ctx, subject, []byte{}, jetstream.WithMsgID(msgID))
+			if err != nil {
+				app.Logger.Error("failed to publish workflow run message", slog.Any("error", err), slog.String("subject", subject))
+			}
+		})
+		app.WorkflowTimers[payload.ID] = t
+	}
+	return true
 }
