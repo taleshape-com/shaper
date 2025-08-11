@@ -215,6 +215,7 @@ func HandleDeleteWorkflow(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal delete workflow payload", slog.Any("error", err))
 		return false
 	}
+	unscheduleWorkflow(app, payload.ID)
 	_, err = app.DB.Exec(
 		`DELETE FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'workflow'`, payload.ID)
 	if err != nil {

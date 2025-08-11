@@ -113,6 +113,20 @@ func initDB(db *sqlx.DB, schema string) error {
 		return fmt.Errorf("error creating invites table: %w", err)
 	}
 
+	// Create workflow_runs table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + ` .workflow_runs (
+			workflow_id VARCHAR PRIMARY KEY NOT NULL,
+			last_run_at TIMESTAMP NOT NULL,
+			last_run_by VARCHAR,
+			last_run_result JSON,
+			next_run_at TIMESTAMP,
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating invites table: %w", err)
+	}
+
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(db, t.Name, t.Definition); err != nil {

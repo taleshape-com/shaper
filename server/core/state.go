@@ -45,6 +45,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleUpdateWorkflowName
 	case "delete_workflow":
 		handler = HandleDeleteWorkflow
+	case "update_workflow_run":
+		handler = HandleUpdateWorkflowRun
 	case "create_api_key":
 		handler = HandleCreateAPIKey
 	case "delete_api_key":

@@ -17,29 +17,34 @@ const (
 	RECREATE_STREAM_AND_CONSUMER_DELAY = 60 * time.Second
 )
 
+// TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
-	Name                string
-	DB                  *sqlx.DB
-	Logger              *slog.Logger
-	LoginRequired       bool
-	BasePath            string
-	Schema              string
-	JWTSecret           []byte
-	JWTExp              time.Duration
-	SessionExp          time.Duration
-	InviteExp           time.Duration
-	NoPublicSharing     bool
-	NoWorkflows         bool
-	StateConsumeCtx     jetstream.ConsumeContext
-	JetStream           jetstream.JetStream
-	ConfigKV            jetstream.KeyValue
-	NATSConn            *nats.Conn
-	StateSubjectPrefix  string
-	IngestSubjectPrefix string
-	StateStreamName     string
-	StateStreamMaxAge   time.Duration
-	StateConsumerName   string
-	ConfigKVBucketName  string
+	Name                 string
+	DB                   *sqlx.DB
+	Logger               *slog.Logger
+	LoginRequired        bool
+	BasePath             string
+	Schema               string
+	JWTSecret            []byte
+	JWTExp               time.Duration
+	SessionExp           time.Duration
+	InviteExp            time.Duration
+	NoPublicSharing      bool
+	NoWorkflows          bool
+	StateConsumeCtx      jetstream.ConsumeContext
+	JetStream            jetstream.JetStream
+	ConfigKV             jetstream.KeyValue
+	NATSConn             *nats.Conn
+	StateSubjectPrefix   string
+	IngestSubjectPrefix  string
+	StateStreamName      string
+	StateStreamMaxAge    time.Duration
+	StateConsumerName    string
+	ConfigKVBucketName   string
+	JobsStreamName       string
+	JobsSubjectPrefix    string
+	JobQueueConsumerName string
+	WorkflowTimers       map[string]*time.Timer
 }
 
 func New(
@@ -59,6 +64,9 @@ func New(
 	stateStreamMaxAge time.Duration,
 	stateConsumerName string,
 	configKVBucketName string,
+	jobsStreamName string,
+	jobsSubjectPrefix string,
+	jobQueueConsumerName string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -81,23 +89,27 @@ func New(
 	}
 
 	app := &App{
-		Name:                name,
-		DB:                  db,
-		Logger:              logger,
-		LoginRequired:       loginRequired,
-		BasePath:            baseURL,
-		Schema:              schema,
-		JWTExp:              jwtExp,
-		SessionExp:          sessionExp,
-		InviteExp:           inviteExp,
-		NoPublicSharing:     noPublicSharing,
-		NoWorkflows:         noWorkflows,
-		IngestSubjectPrefix: ingestSubjectPrefix,
-		StateSubjectPrefix:  stateSubjectPrefix,
-		StateStreamName:     stateStreamName,
-		StateStreamMaxAge:   stateStreamMaxAge,
-		StateConsumerName:   stateConsumerName,
-		ConfigKVBucketName:  configKVBucketName,
+		Name:                 name,
+		DB:                   db,
+		Logger:               logger,
+		LoginRequired:        loginRequired,
+		BasePath:             baseURL,
+		Schema:               schema,
+		JWTExp:               jwtExp,
+		SessionExp:           sessionExp,
+		InviteExp:            inviteExp,
+		NoPublicSharing:      noPublicSharing,
+		NoWorkflows:          noWorkflows,
+		IngestSubjectPrefix:  ingestSubjectPrefix,
+		StateSubjectPrefix:   stateSubjectPrefix,
+		StateStreamName:      stateStreamName,
+		StateStreamMaxAge:    stateStreamMaxAge,
+		StateConsumerName:    stateConsumerName,
+		ConfigKVBucketName:   configKVBucketName,
+		JobsStreamName:       jobsStreamName,
+		JobsSubjectPrefix:    jobsSubjectPrefix,
+		JobQueueConsumerName: jobQueueConsumerName,
+		WorkflowTimers:       make(map[string]*time.Timer),
 	}
 	return app, nil
 }
@@ -151,6 +163,25 @@ func (app *App) setupStreamAndConsumer() error {
 		return err
 	}
 	app.ConfigKV = configKV
+
+	if !app.NoWorkflows {
+		jobsStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+			Name:      app.JobsStreamName,
+			Subjects:  []string{app.JobsSubjectPrefix + ">"},
+			Storage:   jetstream.FileStorage,
+			Retention: jetstream.WorkQueuePolicy,
+		})
+		if err != nil {
+			return err
+		}
+		jobConsumer, err := jobsStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
+			Durable: app.JobQueueConsumerName,
+		})
+		if err != nil {
+			return err
+		}
+		jobConsumer.Consume(app.HandleJob)
+	}
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)
 	if err != nil {

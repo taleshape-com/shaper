@@ -6,23 +6,25 @@ import { Table } from './tremor/Table'
 import { Callout } from "./tremor/Callout";
 
 export interface WorkflowQueryResult {
-  sql: string
-  duration: number
-  error?: string
-  result?: Record<string, any>[]
-  stopExecution?: boolean
+  sql: string;
+  duration: number;
+  error?: string;
+  resultColumns: string[];
+  resultRows: any[][];
+  stopExecution?: boolean;
 }
 
 export interface WorkflowResult {
-  startTime: string
-  success: boolean
-  totalQueries: number
-  queries: WorkflowQueryResult[]
+  startedAt: number;
+  reloadAt: number;
+  success: boolean;
+  totalQueries: number;
+  queries: WorkflowQueryResult[];
 }
 
 interface WorkflowResultsProps {
-  data?: WorkflowResult
-  loading?: boolean
+  data?: WorkflowResult;
+  loading?: boolean;
 }
 
 export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
@@ -59,6 +61,14 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
             }`}>
             {data.success ? translate('Success') : translate('Failed')}
           </span>
+          <span>
+            {translate('Run time')}: {new Date(data.startedAt).toLocaleString()}
+          </span>
+          {data.reloadAt && data.reloadAt != 0 && (
+            <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti px-2 py-1 rounded">
+              {translate('Scheduled for')}: {new Date(data.reloadAt).toLocaleString()}
+            </span>
+          )}
         </div>
         <div className="text-xs text-ctext2 dark:text-dtext2 mr-4">
           {translate('Total Duration')}:
@@ -76,7 +86,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
               <div className="flex items-center gap-2 text-xs text-ctext2 dark:text-dtext2">
                 <span>{query.duration}ms</span>
                 {query.error && (
-                  <span className="px-2 py-1 bg-cerra text-cerr dark:bg-derra dark:text-derr rounded">
+                  <span className="px-2 py-1 bg-cerr text-ctexti dark:bg-derr dark:text-dtexti rounded">
                     {translate('Error')}
                   </span>
                 )}
@@ -97,55 +107,53 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
               <code>{query.sql}</code>
             </pre>
 
-            {query.error && (
-              <div className="p-2 bg-cerra dark:bg-derra border border-cerr dark:border-derr rounded">
-                <p className="text-sm text-cerr dark:text-derr">
+            {query.error ? (
+              <div className="p-2 bg-cerr dark:bg-derr rounded">
+                <p className="text-sm text-ctexti dark:text-dtexti">
                   <strong>{translate('Error')}:</strong> {query.error}
                 </p>
               </div>
-            )}
-
-            {query.result && query.result.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium mb-2 text-ctext dark:text-dtext">
-                  {translate('Result')} ({query.result.length} {query.result.length === 1 ? translate('row') : translate('rows')})
-                </h4>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <thead>
-                      <tr>
-                        {Object.keys(query.result[0]).map((column) => (
-                          <th key={column} className="py-2 text-left text-xs font-medium text-ctext2 dark:text-dtext2 uppercase tracking-wider">
-                            {column}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {query.result.map((row, rowIndex) => (
-                        <tr key={rowIndex} className="border-t border-cb dark:border-db">
-                          {Object.values(row).map((value, colIndex) => (
-                            <td key={colIndex} className="py-2 text-sm">
-                              {value === null ? (
-                                <span className="text-ctext2 dark:text-dtext2 italic">null</span>
-                              ) : (
-                                <code className="text-ctext dark:text-dtext">{JSON.stringify(value, null, 2)}</code>
-                              )}
-                            </td>
+            ) :
+              query.resultRows.length > 0 ? (
+                <div>
+                  <h4 className="text-sm font-medium mb-2 text-ctext dark:text-dtext">
+                    {translate('Result')} ({query.resultRows.length} {query.resultRows.length === 1 ? translate('row') : translate('rows')})
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <thead>
+                        <tr>
+                          {query.resultColumns.map((column) => (
+                            <th key={column} className="py-2 text-left text-xs font-medium text-ctext2 dark:text-dtext2 uppercase tracking-wider">
+                              {column}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                      </thead>
+                      <tbody>
+                        {query.resultRows.map((row, rowIndex) => (
+                          <tr key={rowIndex} className="border-t border-cb dark:border-db">
+                            {row.map((value, colIndex) => (
+                              <td key={colIndex} className="py-2 text-sm">
+                                {value === null ? (
+                                  <span className="text-ctext2 dark:text-dtext2 italic">null</span>
+                                ) : (
+                                  <code className="text-ctext dark:text-dtext">{JSON.stringify(value, null, 2)}</code>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {query.result && query.result.length === 0 && (
-              <p className="text-sm text-ctext2 dark:text-dtext2">
-                {translate('No rows returned')}
-              </p>
-            )}
+              ) : (
+                <p className="text-sm text-ctext2 dark:text-dtext2">
+                  {translate('No rows returned')}
+                </p>
+              )
+            }
           </div>
         </Card>
       ))}

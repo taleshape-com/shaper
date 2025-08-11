@@ -85,6 +85,9 @@ type Config struct {
 	StateConsumerNameFile  string
 	IngestSubjectPrefix    string
 	StateSubjectPrefix     string
+	JobsStreamName         string
+	JobsSubjectPrefix      string
+	JobQeueConsumerName    string
 	DuckDB                 string
 	DuckDBExtDir           string
 	InitSQL                string
@@ -131,13 +134,16 @@ func loadConfig() Config {
 	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
 	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
+	jobsStream := flags.StringLong("jobs-stream", "shaper-jobs", "NATS stream name for scheduled workflow execution")
 	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
 	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
 	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
 	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
+	jobQueueConsumerName := flags.StringLong("job-queue-consumer-name", "shaper-job-queue-consumer", "Name for the job queue consumer")
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
+	jobsSubjectPrefix := flags.StringLong("jobs-subject-prefix", "shaper.jobs.", "prefix for jobs NATS subjects")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -228,6 +234,9 @@ func loadConfig() Config {
 		StateConsumerNameFile:  *stateConsumerNameFile,
 		IngestSubjectPrefix:    *subjectPrefix + *ingestSubjectPrefix,
 		StateSubjectPrefix:     *subjectPrefix + *stateSubjectPrefix,
+		JobsStreamName:         *streamPrefix + *jobsStream,
+		JobsSubjectPrefix:      *subjectPrefix + *jobsSubjectPrefix,
+		JobQeueConsumerName:    *jobQueueConsumerName,
 		DuckDB:                 *duckdb,
 		DuckDBExtDir:           *duckdbExtDir,
 		InitSQL:                *initSQL,
@@ -340,6 +349,9 @@ func Run(cfg Config) func(context.Context) {
 		cfg.StateStreamMaxAge,
 		stateConsumerName,
 		cfg.ConfigKVBucketName,
+		cfg.JobsStreamName,
+		cfg.JobsSubjectPrefix,
+		cfg.JobQeueConsumerName,
 	)
 	if err != nil {
 		panic(err)
