@@ -105,8 +105,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		apiWithAuth.DELETE("/workflows/:id", handler.DeleteWorkflow(app))
 		apiWithAuth.POST("/workflows/:id/content", handler.SaveWorkflowContent(app))
 		apiWithAuth.POST("/workflows/:id/name", handler.SaveWorkflowName(app))
-		apiWithAuth.POST("/workflows/:id/run", handler.RunSavedWorkflow(app))
-		apiWithAuth.POST("/run/workflow", handler.RunNewWorkflow(app))
+		apiWithAuth.POST("/run/workflow", handler.RunWorkflow(app))
 	}
 	apiWithAuth.GET("/users", handler.ListUsers(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))

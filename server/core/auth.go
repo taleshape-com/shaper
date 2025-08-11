@@ -57,6 +57,22 @@ func ActorFromContext(ctx context.Context) *Actor {
 	return nil
 }
 
+func ActorFromString(s string) *Actor {
+	if s == "" {
+		return nil
+	}
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) == 1 {
+		return &Actor{
+			Type: ActorType(parts[0]),
+		}
+	}
+	return &Actor{
+		Type: ActorType(parts[0]),
+		ID:   parts[1],
+	}
+}
+
 func ContextWithActor(ctx context.Context, actor *Actor) context.Context {
 	return context.WithValue(ctx, ACTOR_CONTEXT_KEY, actor)
 }

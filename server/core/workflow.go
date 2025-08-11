@@ -91,8 +91,10 @@ func HandleCreateWorkflow(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create workflow payload", slog.Any("error", err))
 		return false
 	}
+	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
 	// Insert into DB
-	_, err = app.DB.Exec(
+	_, err = app.DB.ExecContext(
+		ctx,
 		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
 			id, path, name, content, created_at, updated_at, created_by, updated_by, type
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'workflow')`,
@@ -102,6 +104,7 @@ func HandleCreateWorkflow(app *App, data []byte) bool {
 		app.Logger.Error("failed to insert workflow into DB", slog.Any("error", err))
 		return false
 	}
+	scheduleWorkflow(app, ctx, payload.ID, payload.Content)
 	return true
 }
 
@@ -134,7 +137,9 @@ func HandleUpdateWorkflowContent(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update workflow content payload", slog.Any("error", err))
 		return false
 	}
-	_, err = app.DB.Exec(
+	ctx := ContextWithActor(context.Background(), ActorFromString(payload.UpdatedBy))
+	_, err = app.DB.ExecContext(
+		ctx,
 		`UPDATE `+app.Schema+`.apps
 		 SET content = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'workflow'`,
@@ -143,6 +148,7 @@ func HandleUpdateWorkflowContent(app *App, data []byte) bool {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false
 	}
+	scheduleWorkflow(app, ctx, payload.ID, payload.Content)
 	return true
 }
 

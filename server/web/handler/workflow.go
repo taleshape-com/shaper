@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func RunNewWorkflow(app *core.App) echo.HandlerFunc {
+func RunWorkflow(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var request struct {
 			Content string `json:"content"`
@@ -27,36 +27,7 @@ func RunNewWorkflow(app *core.App) echo.HandlerFunc {
 			}{Error: "Unauthorized"}, "  ")
 		}
 
-		result, err := core.RunWorkflow(app, c.Request().Context(), request.Content, "")
-
-		if err != nil {
-			return c.JSONPretty(http.StatusBadRequest, struct {
-				Error string `json:"error"`
-			}{Error: err.Error()}, "  ")
-		}
-
-		return c.JSONPretty(http.StatusOK, result, "  ")
-	}
-}
-
-func RunSavedWorkflow(app *core.App) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		var request struct {
-			Content string `json:"content"`
-		}
-		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
-		}
-
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
-		}
-
-		idParam := c.Param("id")
-		result, err := core.RunWorkflow(app, c.Request().Context(), request.Content, idParam)
+		result, err := core.RunWorkflow(app, c.Request().Context(), request.Content)
 
 		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct {

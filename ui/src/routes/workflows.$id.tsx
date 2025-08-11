@@ -97,7 +97,7 @@ function WorkflowEdit() {
     setPreviewError(null)
     setIsPreviewLoading(true)
     try {
-      const data = await queryApi(`workflows/${id}/run`, {
+      const data = await queryApi('run/workflow', {
         method: 'POST',
         body: {
           content: editorQuery,

@@ -4,14 +4,11 @@ package core
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
 	"fmt"
-	"log/slog"
 	"shaper/server/util"
 	"strings"
 	"time"
-
-	"github.com/nats-io/nats.go/jetstream"
 )
 
 type WorkflowQueryResult struct {
@@ -31,13 +28,15 @@ type WorkflowResult struct {
 	Queries      []WorkflowQueryResult `json:"queries"`
 }
 
-type UpdateWorkflowRunPayload struct {
-	ID        string         `json:"id"`
-	UpdatedBy string         `json:"updatedBy"`
-	RunResult WorkflowResult `json:"lastRunResult"`
+func isSchedule(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "SCHEDULE")
+	if col == nil {
+		return false
+	}
+	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
-func RunWorkflow(app *App, ctx context.Context, content string, workflowID string) (WorkflowResult, error) {
+func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult, error) {
 	result := WorkflowResult{
 		StartedAt: time.Now().UnixMilli(),
 		Queries:   []WorkflowQueryResult{},
@@ -62,7 +61,7 @@ func RunWorkflow(app *App, ctx context.Context, content string, workflowID strin
 	}
 
 	success := true
-	for _, sqlString := range sqls {
+	for sqlIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
 			continue
@@ -113,10 +112,15 @@ func RunWorkflow(app *App, ctx context.Context, content string, workflowID strin
 			queryResult.ResultRows = append(queryResult.ResultRows, row)
 		}
 		rows.Close()
+		if err := rows.Err(); err != nil {
+			errorMessage := err.Error()
+			queryResult.Error = &errorMessage
+			success = false
+		}
 
-		if isReload(colTypes, queryResult.ResultRows) {
+		if isSchedule(colTypes, queryResult.ResultRows) {
 			if result.ReloadAt != 0 {
-				errMsg := "Multiple RELOAD queries in workflow"
+				errMsg := "Multiple SCHEDULE queries in workflow"
 				queryResult.Error = &errMsg
 				success = false
 				result.Queries = append(result.Queries, queryResult)
@@ -125,6 +129,11 @@ func RunWorkflow(app *App, ctx context.Context, content string, workflowID strin
 				result.TotalQueries = len(sqls) - 1
 			}
 		} else {
+			if sqlIndex == 0 {
+				errMsg := "First query in workflow must define the schedule, for example:\nSELECT NULL::SCHEDULE;"
+				queryResult.Error = &errMsg
+				success = false
+			}
 			result.Queries = append(result.Queries, queryResult)
 		}
 
@@ -153,76 +162,5 @@ func RunWorkflow(app *App, ctx context.Context, content string, workflowID strin
 		result.Success = false
 	}
 
-	if workflowID != "" {
-		actor := ActorFromContext(ctx)
-		if actor == nil {
-			app.Logger.ErrorContext(ctx, "no actor in context")
-		} else {
-			err = app.SubmitState(ctx, "update_workflow_run", UpdateWorkflowRunPayload{
-				ID:        workflowID,
-				UpdatedBy: actor.String(),
-				RunResult: result,
-			})
-			if err != nil {
-				app.Logger.ErrorContext(ctx, "failed to update workflow run", slog.Any("error", err))
-			}
-		}
-	}
-
 	return result, nil
-}
-
-func HandleUpdateWorkflowRun(app *App, data []byte) bool {
-	var payload UpdateWorkflowRunPayload
-	err := json.Unmarshal(data, &payload)
-	if err != nil {
-		app.Logger.Error("failed to unmarshal update workflow run payload", slog.Any("error", err))
-		return false
-	}
-	resultJSON, err := json.Marshal(payload.RunResult)
-	if err != nil {
-		app.Logger.Error("failed to marshal workflow run result", slog.Any("error", err))
-		return false
-	}
-	lastRunAt := time.UnixMilli(payload.RunResult.StartedAt)
-	var nextRunAt *time.Time
-	if payload.RunResult.ReloadAt != 0 {
-		t := time.UnixMilli(payload.RunResult.ReloadAt)
-		nextRunAt = &t
-	}
-	_, err = app.DB.Exec(
-		`INSERT INTO `+app.Schema+`.workflow_runs
-			(workflow_id, last_run_at, last_run_by, last_run_result, next_run_at)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT DO UPDATE
-		 	SET last_run_at = $2, last_run_by = $3, last_run_result = $4, next_run_at = $5`,
-		payload.ID,
-		lastRunAt,
-		payload.UpdatedBy,
-		resultJSON,
-		nextRunAt,
-	)
-	if err != nil {
-		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
-		return false
-	}
-	// cancel previous timer
-	unscheduleWorkflow(app, payload.ID)
-	// schedule for later
-	if nextRunAt != nil {
-		app.Logger.Info("Scheduled workflow", slog.String("workflow", payload.ID), slog.Time("run_time", *nextRunAt))
-		t := time.AfterFunc(time.Until(*nextRunAt), func() {
-			app.Logger.Info("Dispatching job", slog.String("workflow", payload.ID))
-			// Send message to NATS
-			ctx := context.Background()
-			subject := app.JobsSubjectPrefix + payload.ID
-			msgID := fmt.Sprintf("%s-%d", payload.ID, nextRunAt.UnixMilli())
-			_, err := app.JetStream.Publish(ctx, subject, []byte{}, jetstream.WithMsgID(msgID))
-			if err != nil {
-				app.Logger.Error("failed to publish workflow run message", slog.Any("error", err), slog.String("subject", subject))
-			}
-		})
-		app.WorkflowTimers[payload.ID] = t
-	}
-	return true
 }

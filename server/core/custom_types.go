@@ -44,6 +44,7 @@ var dbTypes = []struct {
 	{"PLACEHOLDER", "UNION(_shaper_placeholder_varchar VARCHAR)", "string"},
 	{"PERCENT", "UNION(_shaper_percent_double DOUBLE)", "percent"},
 	{"RELOAD", "UNION(_shaper_reload_timestamp TIMESTAMP, _shaper_reload_timestamptz TIMESTAMPTZ, _shaper_reload_interval INTERVAL)", "timestamp"},
+	{"SCHEDULE", "UNION(_shaper_schedule_timestamp TIMESTAMP, _shaper_schedule_timestamptz TIMESTAMPTZ, _shaper_schedule_interval INTERVAL)", "timestamp"},
 	{"GAUGE", "UNION(_shaper_gauge_interval INTERVAL, _shaper_gauge_double DOUBLE)", "chart"},
 	{"GAUGE_PERCENT", "UNION(_shaper_gauge_percent DOUBLE)", "percent"},
 	{"RANGE", "UNION(_shaper_range_interval INTERVAL[], _shaper_range_double DOUBLE[])", "array"},
