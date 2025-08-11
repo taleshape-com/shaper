@@ -117,7 +117,7 @@ func initDB(db *sqlx.DB, schema string) error {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS ` + schema + ` .workflow_runs (
 			workflow_id VARCHAR PRIMARY KEY NOT NULL,
-			last_run_at TIMESTAMP NOT NULL,
+			last_run_at TIMESTAMP,
 			last_run_by VARCHAR,
 			last_run_result JSON,
 			next_run_at TIMESTAMP,

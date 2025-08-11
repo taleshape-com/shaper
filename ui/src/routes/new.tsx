@@ -50,9 +50,32 @@ import { getSystemConfig } from '../lib/system'
 const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
 
 SELECT 'Label'::LABEL;
-SELECT 'Hello World';`;
+SELECT 'Hello World';
 
-const defaultWorkflowQuery = `-- Load data, materialized views, send webhooks, ...`;
+SELECT
+  col0::XAXIS,
+  col1::BARCHART,
+FROM (
+  VALUES
+  (1, 10),
+  (2, 20),
+  (3, 30),
+);`;
+
+const defaultWorkflowQuery = `-- Schedule workflows to automate data loading, data processing, sending data to webhooks, and more.
+-- Workflows must start with a SCHEDULE statement that defines when the workflow runs.
+-- Here are some examples to pick from:
+
+-- Never run automatically:
+SELECT NULL::SCHEDULE;
+-- Every 5 minutes:
+SELECT (INTERVAL '5 minutes')::SCHEDULE;
+-- Every hour:
+SELECT (INTERVAL '1h')::SCHEDULE;
+-- Every day at 1am:
+SELECT (date_trunc('day', now()) + INTERVAL '25h')::SCHEDULE;
+-- Every week on Monday at 1am:
+SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;`;
 
 // LocalStorage key for storing the app type preference
 const APP_TYPE_STORAGE_KEY = 'shaper-new-app-type';

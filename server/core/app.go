@@ -130,7 +130,17 @@ func (app *App) Init(nc *nats.Conn) error {
 	// Start message processing
 	go app.processStateMessages()
 
-	return LoadJWTSecret(app)
+	if err := LoadJWTSecret(app); err != nil {
+		return err
+	}
+
+	if !app.NoWorkflows {
+		if err := scheduleExistingWorkflows(app, context.Background()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // TODO: allow setting MaxMsg, MaxBytes per stream
