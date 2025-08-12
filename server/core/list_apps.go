@@ -18,8 +18,10 @@ type AppRecord struct {
 	CreatedBy  *string   `db:"created_by" json:"createdBy,omitempty"`
 	UpdatedBy  *string   `db:"updated_by" json:"updatedBy,omitempty"`
 	Visibility *string   `db:"visibility" json:"visibility,omitempty"`
+	TaskInfo   any       `db:"task_info" json:"taskInfo,omitempty"`
 	Type       string    `db:"type" json:"type"`
 }
+
 type AppListResponse struct {
 	Apps []AppRecord `json:"apps"`
 }
@@ -45,10 +47,19 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 		optionalFilter = "WHERE type = 'dashboard'"
 	}
 	err := app.DB.SelectContext(ctx, &apps,
-		fmt.Sprintf(`SELECT *
-		 FROM %s.apps
-		 %s
-		 ORDER BY %s %s`, app.Schema, optionalFilter, orderBy, order))
+		fmt.Sprintf(`SELECT a.*,
+			CASE WHEN a.type = 'task' THEN
+				{
+					'lastRunAt': epoch_ms(t.last_run_at),
+					'lastRunSuccess': t.last_run_success,
+					'lastRunDuration': round(epoch(t.last_run_duration) * 1000),
+					'nextRunAt': epoch_ms(t.next_run_at),
+				}
+			END AS task_info
+			FROM %s.apps a
+			LEFT JOIN %s.task_runs t ON t.task_id = a.id AND a.type = 'task'
+			%s
+			ORDER BY %s %s`, app.Schema, app.Schema, optionalFilter, orderBy, order))
 	if err != nil {
 		err = fmt.Errorf("error listing apps: %w", err)
 	}

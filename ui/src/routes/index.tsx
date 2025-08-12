@@ -47,6 +47,7 @@ import {
   DialogTitle,
 } from "../components/tremor/Dialog";
 import { useToast } from "../hooks/useToast";
+import { RelativeDate } from "../components/RelativeDate";
 
 type DashboardListResponse = {
   apps: IApp[];
@@ -255,21 +256,45 @@ function Index() {
                           </Link>
                         </TableCell>
                       )}
-                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
                         <Link
                           to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="p-4 block"
                         >
-                          {app.name}
-                          {app.visibility === "public" && (
-                            <Tooltip
-                              showArrow={false}
-                              content={translate("This dashboard is public")}
-                            >
-                              <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
-                            </Tooltip>
-                          )}
+                          <span className="group-hover:underline">{app.name}</span>
+                          {app.type === 'task'
+                            ?
+                            app.taskInfo && (
+                              !(app.taskInfo.lastRunSuccess ?? true)
+                                ? (
+                                  <LastRunTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                  >
+                                    <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2">
+                                      {translate("Task Error")}
+                                    </span>
+                                  </LastRunTooltip>
+                                )
+                                : app.taskInfo.nextRunAt != null && (
+                                  <LastRunTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                  >
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2">
+                                      {translate("Next Run")}: <RelativeDate date={new Date(app.taskInfo.nextRunAt)} />
+                                    </span>
+                                  </LastRunTooltip>
+                                )
+                            )
+                            : app.visibility === "public" && (
+                              <Tooltip
+                                showArrow={false}
+                                content={translate("This dashboard is public")}
+                              >
+                                <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                              </Tooltip>
+                            )
+                          }
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
@@ -361,6 +386,18 @@ function Index() {
           </DialogContent>
         </Dialog>
       </div>
-    </MenuProvider>
+    </MenuProvider >
+  );
+}
+
+function LastRunTooltip({ lastRunAt, children }: { lastRunAt?: number, children?: React.ReactNode }) {
+  if (lastRunAt == null) return children;
+  return (
+    <Tooltip
+      showArrow={false}
+      content={<span>{translate("Last Run")}: <RelativeDate date={new Date(lastRunAt)} /></span>}
+    >
+      {children}
+    </Tooltip>
   );
 }
