@@ -66,16 +66,17 @@ const defaultTaskQuery = `-- Schedule tasks to automate data loading, data proce
 -- Tasks must start with a SCHEDULE statement that defines when the task runs.
 -- Here are some examples to pick from:
 
--- Never run automatically:
-SELECT NULL::SCHEDULE;
--- Every 5 minutes:
-SELECT (INTERVAL '5 minutes')::SCHEDULE;
--- Every hour:
+-- Every hour
 SELECT (INTERVAL '1h')::SCHEDULE;
--- Every day at 1am:
+
+-- Every day at 1am
 SELECT (date_trunc('day', now()) + INTERVAL '25h')::SCHEDULE;
--- Every week on Monday at 1am:
-SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;`;
+
+-- Every Monday at 1am
+SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;
+
+-- Never run automatically
+SELECT NULL::SCHEDULE;`;
 
 // LocalStorage key for storing the app type preference
 const APP_TYPE_STORAGE_KEY = 'shaper-new-app-type';

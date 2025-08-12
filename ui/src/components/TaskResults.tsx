@@ -4,6 +4,7 @@ import { translate } from '../lib/translate'
 import { Card } from './tremor/Card'
 import { Table } from './tremor/Table'
 import { Callout } from "./tremor/Callout";
+import { RelativeDate } from './RelativeDate';
 
 export interface TaskQueryResult {
   sql: string;
@@ -41,10 +42,10 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
 
   if (!data) {
     return (
-      <div className="p-8 flex items-center justify-center">
+      <div className="p-8 flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-ctext2 dark:text-dtext2 text-lg">
-            {translate('Click Run to execute the task')}
+            {translate("Click Run to execute the task now. Task is scheduled when you save it.")}
           </p>
         </div>
       </div>
@@ -52,7 +53,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 flex flex-col h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-ctext2 dark:text-dtext2">
           <span className={`px-2 py-1 rounded text-sm font-medium ${data.success
@@ -61,12 +62,9 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
             }`}>
             {data.success ? translate('Success') : translate('Failed')}
           </span>
-          <span>
-            {translate('Run time')}: {new Date(data.startedAt).toLocaleString()}
-          </span>
           {data.reloadAt && data.reloadAt != 0 && (
             <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti px-2 py-1 rounded">
-              {translate('Scheduled for')}: {new Date(data.reloadAt).toLocaleString()}
+              {translate("If task is saved, next run")} <RelativeDate date={new Date(data.reloadAt)} />
             </span>
           )}
         </div>
@@ -76,7 +74,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
         </div>
       </div>
 
-      {data.queries.map((query, index) => (
+      {data.queries.length ? data.queries.map((query, index) => (
         <Card key={index}>
           <div className="space-y-3 p-4">
             <div className="flex items-start justify-between">
@@ -156,7 +154,11 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
             }
           </div>
         </Card>
-      ))}
+      )) : (
+        <p className="text-ctext2 dark:text-dtext2 p-4 bg-cbgs dark:bg-dbgs rounded flex-grow flex items-center justify-center">
+          {translate("Task empty. Add some queries to see results here.")}
+        </p>
+      )}
     </div>
   )
 }
