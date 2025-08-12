@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type WorkflowQueryResult struct {
+type TaskQueryResult struct {
 	SQL           string   `json:"sql"`
 	Duration      int64    `json:"duration"`
 	Error         *string  `json:"error,omitempty"`
@@ -20,12 +20,12 @@ type WorkflowQueryResult struct {
 	ResultRows    [][]any  `json:"resultRows"`
 }
 
-type WorkflowResult struct {
-	StartedAt    int64                 `json:"startedAt"`
-	ReloadAt     int64                 `json:"reloadAt,omitempty"`
-	Success      bool                  `json:"success"`
-	TotalQueries int                   `json:"totalQueries"`
-	Queries      []WorkflowQueryResult `json:"queries"`
+type TaskResult struct {
+	StartedAt    int64             `json:"startedAt"`
+	ReloadAt     int64             `json:"reloadAt,omitempty"`
+	Success      bool              `json:"success"`
+	TotalQueries int               `json:"totalQueries"`
+	Queries      []TaskQueryResult `json:"queries"`
 }
 
 func isSchedule(columns []*sql.ColumnType, rows Rows) bool {
@@ -36,10 +36,10 @@ func isSchedule(columns []*sql.ColumnType, rows Rows) bool {
 	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
-func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult, error) {
-	result := WorkflowResult{
+func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
+	result := TaskResult{
 		StartedAt: time.Now().UnixMilli(),
-		Queries:   []WorkflowQueryResult{},
+		Queries:   []TaskQueryResult{},
 	}
 
 	cleanContent := util.StripSQLComments(content)
@@ -67,7 +67,7 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 			continue
 		}
 
-		queryResult := WorkflowQueryResult{
+		queryResult := TaskQueryResult{
 			SQL:           sqlString,
 			ResultColumns: []string{},
 			ResultRows:    [][]any{},
@@ -120,7 +120,7 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 
 		if isSchedule(colTypes, queryResult.ResultRows) {
 			if result.ReloadAt != 0 {
-				errMsg := "Multiple SCHEDULE queries in workflow"
+				errMsg := "Multiple SCHEDULE queries in task"
 				queryResult.Error = &errMsg
 				success = false
 				result.Queries = append(result.Queries, queryResult)
@@ -130,7 +130,7 @@ func RunWorkflow(app *App, ctx context.Context, content string) (WorkflowResult,
 			}
 		} else {
 			if sqlIndex == 0 {
-				errMsg := "First query in workflow must define the schedule, for example:\nSELECT NULL::SCHEDULE;"
+				errMsg := "First query in task must define the schedule, for example:\nSELECT NULL::SCHEDULE;"
 				queryResult.Error = &errMsg
 				success = false
 			}

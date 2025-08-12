@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 package core
 
 import (
@@ -11,7 +13,7 @@ import (
 	"github.com/nrednav/cuid2"
 )
 
-type Workflow struct {
+type Task struct {
 	ID        string    `db:"id" json:"id"`
 	Path      string    `db:"path" json:"path"`
 	Name      string    `db:"name" json:"name"`
@@ -22,7 +24,7 @@ type Workflow struct {
 	UpdatedBy *string   `db:"updated_by" json:"updatedBy,omitempty"`
 }
 
-type CreateWorkflowPayload struct {
+type CreateTaskPayload struct {
 	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
 	Path      string    `json:"path"`
@@ -31,38 +33,38 @@ type CreateWorkflowPayload struct {
 	CreatedBy string    `json:"createdBy"`
 }
 
-type UpdateWorkflowContentPayload struct {
+type UpdateTaskContentPayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
 	Content   string    `json:"content"`
 	UpdatedBy string    `json:"updatedBy"`
 }
 
-type UpdateWorkflowNamePayload struct {
+type UpdateTaskNamePayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
 	Name      string    `json:"name"`
 	UpdatedBy string    `json:"updatedBy"`
 }
 
-type DeleteWorkflowPayload struct {
+type DeleteTaskPayload struct {
 	ID        string    `json:"id"`
 	TimeStamp time.Time `json:"timestamp"`
 	// NOTE: Not used, but might want to log this in the future
 	DeletedBy string `json:"deletedBy"`
 }
 
-func GetWorkflow(app *App, ctx context.Context, id string) (Workflow, error) {
-	var workflow Workflow
-	err := app.DB.GetContext(ctx, &workflow,
-		`SELECT * EXCLUDE (type, visibility) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'workflow'`, id)
+func GetTask(app *App, ctx context.Context, id string) (Task, error) {
+	var task Task
+	err := app.DB.GetContext(ctx, &task,
+		`SELECT * EXCLUDE (type, visibility) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
-		return workflow, fmt.Errorf("failed to get workflow: %w", err)
+		return task, fmt.Errorf("failed to get task: %w", err)
 	}
-	return workflow, nil
+	return task, nil
 }
 
-func CreateWorkflow(app *App, ctx context.Context, name string, content string) (string, error) {
+func CreateTask(app *App, ctx context.Context, name string, content string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -70,10 +72,10 @@ func CreateWorkflow(app *App, ctx context.Context, name string, content string) 
 	// Validate name
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", fmt.Errorf("workflow name cannot be empty")
+		return "", fmt.Errorf("task name cannot be empty")
 	}
 	id := cuid2.Generate()
-	err := app.SubmitState(ctx, "create_workflow", CreateWorkflowPayload{
+	err := app.SubmitState(ctx, "create_task", CreateTaskPayload{
 		ID:        id,
 		Timestamp: time.Now(),
 		Path:      "/",
@@ -84,11 +86,11 @@ func CreateWorkflow(app *App, ctx context.Context, name string, content string) 
 	return id, err
 }
 
-func HandleCreateWorkflow(app *App, data []byte) bool {
-	var payload CreateWorkflowPayload
+func HandleCreateTask(app *App, data []byte) bool {
+	var payload CreateTaskPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal create workflow payload", slog.Any("error", err))
+		app.Logger.Error("failed to unmarshal create task payload", slog.Any("error", err))
 		return false
 	}
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
@@ -97,31 +99,31 @@ func HandleCreateWorkflow(app *App, data []byte) bool {
 		ctx,
 		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
 			id, path, name, content, created_at, updated_at, created_by, updated_by, type
-		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'workflow')`,
+		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'task')`,
 		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
-		app.Logger.Error("failed to insert workflow into DB", slog.Any("error", err))
+		app.Logger.Error("failed to insert task into DB", slog.Any("error", err))
 		return false
 	}
-	scheduleWorkflow(app, ctx, payload.ID, payload.Content)
+	scheduleTask(app, ctx, payload.ID, payload.Content)
 	return true
 }
 
-func SaveWorkflowContent(app *App, ctx context.Context, id string, content string) error {
+func SaveTaskContent(app *App, ctx context.Context, id string, content string) error {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'workflow'`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
-		return fmt.Errorf("failed to load workflow: %w", err)
+		return fmt.Errorf("failed to load task: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("workflow not found")
+		return fmt.Errorf("task not found")
 	}
-	err = app.SubmitState(ctx, "update_workflow_content", UpdateWorkflowContentPayload{
+	err = app.SubmitState(ctx, "update_task_content", UpdateTaskContentPayload{
 		ID:        id,
 		TimeStamp: time.Now(),
 		Content:   content,
@@ -130,11 +132,11 @@ func SaveWorkflowContent(app *App, ctx context.Context, id string, content strin
 	return err
 }
 
-func HandleUpdateWorkflowContent(app *App, data []byte) bool {
-	var payload UpdateWorkflowContentPayload
+func HandleUpdateTaskContent(app *App, data []byte) bool {
+	var payload UpdateTaskContentPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal update workflow content payload", slog.Any("error", err))
+		app.Logger.Error("failed to unmarshal update task content payload", slog.Any("error", err))
 		return false
 	}
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.UpdatedBy))
@@ -142,30 +144,30 @@ func HandleUpdateWorkflowContent(app *App, data []byte) bool {
 		ctx,
 		`UPDATE `+app.Schema+`.apps
 		 SET content = $1, updated_at = $2, updated_by = $3
-		 WHERE id = $4 AND type = 'workflow'`,
+		 WHERE id = $4 AND type = 'task'`,
 		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false
 	}
-	scheduleWorkflow(app, ctx, payload.ID, payload.Content)
+	scheduleTask(app, ctx, payload.ID, payload.Content)
 	return true
 }
 
-func SaveWorkflowName(app *App, ctx context.Context, id string, name string) error {
+func SaveTaskName(app *App, ctx context.Context, id string, name string) error {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'workflow'`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
-		return fmt.Errorf("failed to query workflow: %w", err)
+		return fmt.Errorf("failed to query task: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("workflow not found")
+		return fmt.Errorf("task not found")
 	}
-	err = app.SubmitState(ctx, "update_workflow_name", UpdateWorkflowNamePayload{
+	err = app.SubmitState(ctx, "update_task_name", UpdateTaskNamePayload{
 		ID:        id,
 		TimeStamp: time.Now(),
 		Name:      name,
@@ -174,17 +176,17 @@ func SaveWorkflowName(app *App, ctx context.Context, id string, name string) err
 	return err
 }
 
-func HandleUpdateWorkflowName(app *App, data []byte) bool {
-	var payload UpdateWorkflowNamePayload
+func HandleUpdateTaskName(app *App, data []byte) bool {
+	var payload UpdateTaskNamePayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal update workflow name payload", slog.Any("error", err))
+		app.Logger.Error("failed to unmarshal update task name payload", slog.Any("error", err))
 		return false
 	}
 	_, err = app.DB.Exec(
 		`UPDATE `+app.Schema+`.apps
 		 SET name = $1, updated_at = $2, updated_by = $3
-		 WHERE id = $4 AND type = 'workflow'`,
+		 WHERE id = $4 AND type = 'task'`,
 		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
@@ -193,20 +195,20 @@ func HandleUpdateWorkflowName(app *App, data []byte) bool {
 	return true
 }
 
-func DeleteWorkflow(app *App, ctx context.Context, id string) error {
+func DeleteTask(app *App, ctx context.Context, id string) error {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'workflow'`, id)
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
-		return fmt.Errorf("failed to load workflow: %w", err)
+		return fmt.Errorf("failed to load task: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("workflow not found")
+		return fmt.Errorf("task not found")
 	}
-	err = app.SubmitState(ctx, "delete_workflow", DeleteWorkflowPayload{
+	err = app.SubmitState(ctx, "delete_task", DeleteTaskPayload{
 		ID:        id,
 		TimeStamp: time.Now(),
 		DeletedBy: actor.String(),
@@ -214,16 +216,16 @@ func DeleteWorkflow(app *App, ctx context.Context, id string) error {
 	return err
 }
 
-func HandleDeleteWorkflow(app *App, data []byte) bool {
-	var payload DeleteWorkflowPayload
+func HandleDeleteTask(app *App, data []byte) bool {
+	var payload DeleteTaskPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal delete workflow payload", slog.Any("error", err))
+		app.Logger.Error("failed to unmarshal delete task payload", slog.Any("error", err))
 		return false
 	}
-	unscheduleWorkflow(app, payload.ID)
+	unscheduleTask(app, payload.ID)
 	_, err = app.DB.Exec(
-		`DELETE FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'workflow'`, payload.ID)
+		`DELETE FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute DELETE statement", slog.Any("error", err))
 		return false

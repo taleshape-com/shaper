@@ -12,8 +12,8 @@ import (
 func GetSystemConfig(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]bool{
-			"loginRequired":    app.LoginRequired,
-			"workflowsEnabled": !app.NoWorkflows,
+			"loginRequired": app.LoginRequired,
+			"tasksEnabled":  !app.NoTasks,
 		})
 	}
 }

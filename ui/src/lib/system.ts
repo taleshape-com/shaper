@@ -4,7 +4,7 @@ import { localStorageJwtKey } from "./auth";
 
 export interface ISystemConfig {
   loginRequired: boolean;
-  workflowsEnabled: boolean;
+  tasksEnabled: boolean;
 }
 
 export const localStorageSystemConfigKey = "shaper-system-config";
@@ -44,7 +44,7 @@ export const fetchSystemConfig = async () => {
 const configChanged = (existingSystemConfig: ISystemConfig) => {
   const refreshedSystemConfig = getSystemConfig();
   return existingSystemConfig.loginRequired !== refreshedSystemConfig.loginRequired ||
-    existingSystemConfig.workflowsEnabled !== refreshedSystemConfig.workflowsEnabled
+    existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled
 }
 
 export const reloadSystemConfig = async () => {

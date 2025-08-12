@@ -19,32 +19,32 @@ const (
 
 // TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
-	Name                 string
-	DB                   *sqlx.DB
-	Logger               *slog.Logger
-	LoginRequired        bool
-	BasePath             string
-	Schema               string
-	JWTSecret            []byte
-	JWTExp               time.Duration
-	SessionExp           time.Duration
-	InviteExp            time.Duration
-	NoPublicSharing      bool
-	NoWorkflows          bool
-	StateConsumeCtx      jetstream.ConsumeContext
-	JetStream            jetstream.JetStream
-	ConfigKV             jetstream.KeyValue
-	NATSConn             *nats.Conn
-	StateSubjectPrefix   string
-	IngestSubjectPrefix  string
-	StateStreamName      string
-	StateStreamMaxAge    time.Duration
-	StateConsumerName    string
-	ConfigKVBucketName   string
-	JobsStreamName       string
-	JobsSubjectPrefix    string
-	JobQueueConsumerName string
-	WorkflowTimers       map[string]*time.Timer
+	Name                  string
+	DB                    *sqlx.DB
+	Logger                *slog.Logger
+	LoginRequired         bool
+	BasePath              string
+	Schema                string
+	JWTSecret             []byte
+	JWTExp                time.Duration
+	SessionExp            time.Duration
+	InviteExp             time.Duration
+	NoPublicSharing       bool
+	NoTasks               bool
+	StateConsumeCtx       jetstream.ConsumeContext
+	JetStream             jetstream.JetStream
+	ConfigKV              jetstream.KeyValue
+	NATSConn              *nats.Conn
+	StateSubjectPrefix    string
+	IngestSubjectPrefix   string
+	StateStreamName       string
+	StateStreamMaxAge     time.Duration
+	StateConsumerName     string
+	ConfigKVBucketName    string
+	TasksStreamName       string
+	TasksSubjectPrefix    string
+	TaskQueueConsumerName string
+	TaskTimers            map[string]*time.Timer
 }
 
 func New(
@@ -57,16 +57,16 @@ func New(
 	sessionExp time.Duration,
 	inviteExp time.Duration,
 	noPublicSharing bool,
-	noWorkflows bool,
+	noTasks bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
 	stateStreamMaxAge time.Duration,
 	stateConsumerName string,
 	configKVBucketName string,
-	jobsStreamName string,
-	jobsSubjectPrefix string,
-	jobQueueConsumerName string,
+	tasksStreamName string,
+	tasksSubjectPrefix string,
+	taskQueueConsumerName string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -84,32 +84,32 @@ func New(
 		logger.Info("Publicly sharing dashboards is disabled.")
 	}
 
-	if noWorkflows {
-		logger.Info("Workflows functionality disabled.")
+	if noTasks {
+		logger.Info("Tasks functionality disabled.")
 	}
 
 	app := &App{
-		Name:                 name,
-		DB:                   db,
-		Logger:               logger,
-		LoginRequired:        loginRequired,
-		BasePath:             baseURL,
-		Schema:               schema,
-		JWTExp:               jwtExp,
-		SessionExp:           sessionExp,
-		InviteExp:            inviteExp,
-		NoPublicSharing:      noPublicSharing,
-		NoWorkflows:          noWorkflows,
-		IngestSubjectPrefix:  ingestSubjectPrefix,
-		StateSubjectPrefix:   stateSubjectPrefix,
-		StateStreamName:      stateStreamName,
-		StateStreamMaxAge:    stateStreamMaxAge,
-		StateConsumerName:    stateConsumerName,
-		ConfigKVBucketName:   configKVBucketName,
-		JobsStreamName:       jobsStreamName,
-		JobsSubjectPrefix:    jobsSubjectPrefix,
-		JobQueueConsumerName: jobQueueConsumerName,
-		WorkflowTimers:       make(map[string]*time.Timer),
+		Name:                  name,
+		DB:                    db,
+		Logger:                logger,
+		LoginRequired:         loginRequired,
+		BasePath:              baseURL,
+		Schema:                schema,
+		JWTExp:                jwtExp,
+		SessionExp:            sessionExp,
+		InviteExp:             inviteExp,
+		NoPublicSharing:       noPublicSharing,
+		NoTasks:               noTasks,
+		IngestSubjectPrefix:   ingestSubjectPrefix,
+		StateSubjectPrefix:    stateSubjectPrefix,
+		StateStreamName:       stateStreamName,
+		StateStreamMaxAge:     stateStreamMaxAge,
+		StateConsumerName:     stateConsumerName,
+		ConfigKVBucketName:    configKVBucketName,
+		TasksStreamName:       tasksStreamName,
+		TasksSubjectPrefix:    tasksSubjectPrefix,
+		TaskQueueConsumerName: taskQueueConsumerName,
+		TaskTimers:            make(map[string]*time.Timer),
 	}
 	return app, nil
 }
@@ -134,8 +134,8 @@ func (app *App) Init(nc *nats.Conn) error {
 		return err
 	}
 
-	if !app.NoWorkflows {
-		if err := scheduleExistingWorkflows(app, context.Background()); err != nil {
+	if !app.NoTasks {
+		if err := scheduleExistingTasks(app, context.Background()); err != nil {
 			return err
 		}
 	}
@@ -174,23 +174,23 @@ func (app *App) setupStreamAndConsumer() error {
 	}
 	app.ConfigKV = configKV
 
-	if !app.NoWorkflows {
-		jobsStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
-			Name:      app.JobsStreamName,
-			Subjects:  []string{app.JobsSubjectPrefix + ">"},
+	if !app.NoTasks {
+		tasksStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+			Name:      app.TasksStreamName,
+			Subjects:  []string{app.TasksSubjectPrefix + ">"},
 			Storage:   jetstream.FileStorage,
 			Retention: jetstream.WorkQueuePolicy,
 		})
 		if err != nil {
 			return err
 		}
-		jobConsumer, err := jobsStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
-			Durable: app.JobQueueConsumerName,
+		taskConsumer, err := tasksStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
+			Durable: app.TaskQueueConsumerName,
 		})
 		if err != nil {
 			return err
 		}
-		jobConsumer.Consume(app.HandleJob)
+		taskConsumer.Consume(app.HandleTask)
 	}
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)

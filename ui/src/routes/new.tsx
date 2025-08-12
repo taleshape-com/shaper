@@ -36,7 +36,7 @@ import { Input } from '../components/tremor/Input'
 import { VariablesMenu } from '../components/VariablesMenu'
 import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
-import { WorkflowResults, WorkflowResult } from "../components/WorkflowResults";
+import { TaskResults, TaskResult } from "../components/TaskResults";
 import {
   Select,
   SelectContent,
@@ -62,8 +62,8 @@ FROM (
   (3, 30),
 );`;
 
-const defaultWorkflowQuery = `-- Schedule workflows to automate data loading, data processing, sending data to webhooks, and more.
--- Workflows must start with a SCHEDULE statement that defines when the workflow runs.
+const defaultTaskQuery = `-- Schedule tasks to automate data loading, data processing, sending data to webhooks, and more.
+-- Tasks must start with a SCHEDULE statement that defines when the task runs.
 -- Here are some examples to pick from:
 
 -- Never run automatically:
@@ -81,16 +81,16 @@ SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;`;
 const APP_TYPE_STORAGE_KEY = 'shaper-new-app-type';
 
 // Utility functions for localStorage
-const getStoredAppType = (): 'dashboard' | 'workflow' => {
+const getStoredAppType = (): 'dashboard' | 'task' => {
   try {
     const stored = localStorage.getItem(APP_TYPE_STORAGE_KEY);
-    return stored === 'workflow' ? 'workflow' : 'dashboard';
+    return stored === 'task' ? 'task' : 'dashboard';
   } catch {
     return 'dashboard';
   }
 };
 
-const setStoredAppType = (type: 'dashboard' | 'workflow') => {
+const setStoredAppType = (type: 'dashboard' | 'task') => {
   try {
     localStorage.setItem(APP_TYPE_STORAGE_KEY, type);
   } catch {
@@ -118,12 +118,12 @@ function NewDashboard() {
   const auth = useAuth()
   const queryApi = useQueryApi()
   const navigate = useNavigate({ from: '/new' })
-  const [appType, setAppType] = useState<'dashboard' | 'workflow'>(() => getStoredAppType())
-  const [editorQuery, setEditorQuery] = useState(appType === 'workflow' ? defaultWorkflowQuery : defaultQuery)
-  const [runningQuery, setRunningQuery] = useState(appType === 'workflow' ? defaultWorkflowQuery : defaultQuery)
+  const [appType, setAppType] = useState<'dashboard' | 'task'>(() => getStoredAppType())
+  const [editorQuery, setEditorQuery] = useState(appType === 'task' ? defaultTaskQuery : defaultQuery)
+  const [runningQuery, setRunningQuery] = useState(appType === 'task' ? defaultTaskQuery : defaultQuery)
   const [creating, setCreating] = useState(false)
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined)
-  const [workflowData, setWorkflowData] = useState<WorkflowResult | undefined>(undefined)
+  const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -138,7 +138,7 @@ function NewDashboard() {
       setRunningQuery(unsavedContent)
     } else {
       // Set default content based on app type
-      const defaultContent = appType === 'workflow' ? defaultWorkflowQuery : defaultQuery
+      const defaultContent = appType === 'task' ? defaultTaskQuery : defaultQuery
       setEditorQuery(defaultContent)
       setRunningQuery(defaultContent)
     }
@@ -166,17 +166,17 @@ function NewDashboard() {
     }
   }, [queryApi, vars, runningQuery, navigate])
 
-  const runWorkflow = useCallback(async () => {
+  const runTask = useCallback(async () => {
     setPreviewError(null)
     setIsPreviewLoading(true)
     try {
-      const data = await queryApi('run/workflow', {
+      const data = await queryApi('run/task', {
         method: 'POST',
         body: {
           content: editorQuery,
         },
       })
-      setWorkflowData(data)
+      setTaskData(data)
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options)
@@ -194,8 +194,8 @@ function NewDashboard() {
   }, [previewDashboard, appType])
 
   const handleRun = useCallback(() => {
-    if (appType === 'workflow') {
-      runWorkflow()
+    if (appType === 'task') {
+      runTask()
     } else {
       if (isPreviewLoading) {
         return;
@@ -206,16 +206,16 @@ function NewDashboard() {
         previewDashboard()
       }
     }
-  }, [editorQuery, runningQuery, previewDashboard, runWorkflow, isPreviewLoading, appType])
+  }, [editorQuery, runningQuery, previewDashboard, runTask, isPreviewLoading, appType])
 
   const handleTypeChange = useCallback((newType: string) => {
-    const type = newType as 'dashboard' | 'workflow'
+    const type = newType as 'dashboard' | 'task'
     setAppType(type)
     setStoredAppType(type)
 
     // Clear results when switching types
     setPreviewData(undefined)
-    setWorkflowData(undefined)
+    setTaskData(undefined)
     setPreviewError(null)
 
     // Auto-run dashboard when switching to it
@@ -226,7 +226,7 @@ function NewDashboard() {
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || ''
-    const currentDefaultQuery = appType === 'workflow' ? defaultWorkflowQuery : defaultQuery
+    const currentDefaultQuery = appType === 'task' ? defaultTaskQuery : defaultQuery
 
     // Save to localStorage
     if (newQuery !== currentDefaultQuery && newQuery.trim() !== '') {
@@ -244,8 +244,8 @@ function NewDashboard() {
 
     setCreating(true)
     try {
-      if (appType === 'workflow') {
-        const { id } = await queryApi('workflows', {
+      if (appType === 'task') {
+        const { id } = await queryApi('tasks', {
           method: 'POST',
           body: {
             name: dashboardName,
@@ -256,10 +256,10 @@ function NewDashboard() {
         editorStorage.clearChanges('new')
         clearStoredAppType() // Reset the app type preference
 
-        // Navigate to the workflow edit page
+        // Navigate to the task edit page
         navigate({
           replace: true,
-          to: '/workflows/$id',
+          to: '/tasks/$id',
           params: { id },
         })
       } else {
@@ -313,7 +313,7 @@ function NewDashboard() {
   return (
     <MenuProvider isNewPage>
       <Helmet>
-        <title>{appType === 'workflow' ? 'New Workflow' : 'New Dashboard'}</title>
+        <title>{appType === 'task' ? 'New Task' : 'New Dashboard'}</title>
       </Helmet>
 
       <div className="h-dvh flex flex-col">
@@ -327,7 +327,7 @@ function NewDashboard() {
 
             <h1 className="flex items-center gap-3 flex-grow text-xl font-semibold font-display">
               {translate('New')}
-              {getSystemConfig().workflowsEnabled ? (
+              {getSystemConfig().tasksEnabled ? (
                 <Select value={appType} onValueChange={handleTypeChange}>
                   <SelectTrigger className="w-36">
                     <SelectValue />
@@ -340,12 +340,12 @@ function NewDashboard() {
                       />
                       {translate('Dashboard')}
                     </SelectItem>
-                    <SelectItem value="workflow">
+                    <SelectItem value="task">
                       <RiCodeSSlashFill
                         className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
                         aria-hidden={true}
                       />
-                      {translate('Workflow')}
+                      {translate('Task')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -355,7 +355,7 @@ function NewDashboard() {
             </h1>
 
             <div className="space-x-2">
-              <Tooltip showArrow={false} asChild content={`Create ${appType === 'workflow' ? 'Workflow' : 'Dashboard'}`}>
+              <Tooltip showArrow={false} asChild content={`Create ${appType === 'task' ? 'Task' : 'Dashboard'}`}>
                 <Button
                   onClick={() => setShowCreateDialog(true)}
                   disabled={creating}
@@ -403,8 +403,8 @@ function NewDashboard() {
               loading={isPreviewLoading}
             />
           ) : (
-            <WorkflowResults
-              data={workflowData}
+            <TaskResults
+              data={taskData}
               loading={isPreviewLoading}
             />
           )}
@@ -415,7 +415,7 @@ function NewDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {translate(`Create ${appType === 'workflow' ? 'Workflow' : 'Dashboard'}`)}
+              {translate(`Create ${appType === 'task' ? 'Task' : 'Dashboard'}`)}
             </DialogTitle>
           </DialogHeader>
           <form
@@ -430,7 +430,7 @@ function NewDashboard() {
                 id="dashboardName"
                 value={dashboardName}
                 onChange={(e) => setDashboardName(e.target.value)}
-                placeholder={translate(`Enter a name for the ${appType === 'workflow' ? 'workflow' : 'dashboard'}`)}
+                placeholder={translate(`Enter a name for the ${appType === 'task' ? 'task' : 'dashboard'}`)}
                 autoFocus
                 required
               />

@@ -99,13 +99,13 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
-	if !app.NoWorkflows {
-		apiWithAuth.POST("/workflows", handler.CreateWorkflow(app))
-		apiWithAuth.GET("/workflows/:id", handler.GetWorkflow(app))
-		apiWithAuth.DELETE("/workflows/:id", handler.DeleteWorkflow(app))
-		apiWithAuth.POST("/workflows/:id/content", handler.SaveWorkflowContent(app))
-		apiWithAuth.POST("/workflows/:id/name", handler.SaveWorkflowName(app))
-		apiWithAuth.POST("/run/workflow", handler.RunWorkflow(app))
+	if !app.NoTasks {
+		apiWithAuth.POST("/tasks", handler.CreateTask(app))
+		apiWithAuth.GET("/tasks/:id", handler.GetTask(app))
+		apiWithAuth.DELETE("/tasks/:id", handler.DeleteTask(app))
+		apiWithAuth.POST("/tasks/:id/content", handler.SaveTaskContent(app))
+		apiWithAuth.POST("/tasks/:id/name", handler.SaveTaskName(app))
+		apiWithAuth.POST("/run/task", handler.RunTask(app))
 	}
 	apiWithAuth.GET("/users", handler.ListUsers(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
