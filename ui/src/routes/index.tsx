@@ -122,7 +122,6 @@ function Index() {
       await queryApi(`${app.type === 'dashboard' ? 'dashboards' : 'tasks'}/${app.id}`, {
         method: "DELETE",
       });
-      // Reload the page to refresh the list
       router.invalidate();
       toast({
         title: translate("Success"),
@@ -282,7 +281,7 @@ function Index() {
                                     lastRunAt={app.taskInfo.lastRunAt}
                                   >
                                     <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                      {translate("Next Run")}: <RelativeDate date={new Date(app.taskInfo.nextRunAt)} />
+                                      {translate("Next Run")}: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
                                     </span>
                                   </RuntimeTooltip>
                                 )
@@ -399,11 +398,11 @@ function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
   if (lastRunAt == null) return children;
   const tooltipContent = (
     <>
-      {translate("Last Run")}: <RelativeDate date={new Date(lastRunAt)} />
+      {translate("Last Run")}: <RelativeDate refresh date={new Date(lastRunAt)} />
       {nextRunAt != null && (
         <>
           <br />
-          {translate("Next Run")}: <RelativeDate date={new Date(nextRunAt)} />
+          {translate("Next Run")}: <RelativeDate refresh date={new Date(nextRunAt)} />
         </>
       )}
     </>

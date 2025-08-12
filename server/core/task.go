@@ -22,6 +22,10 @@ type Task struct {
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
 	UpdatedBy *string   `db:"updated_by" json:"updatedBy,omitempty"`
+	NextRunAt *int64 `db:"next_run_at" json:"nextRunAt,omitempty"`
+	LastRunAt *int64 `db:"last_run_at" json:"lastRunAt,omitempty"`
+	LastRunSuccess *bool `db:"last_run_success" json:"lastRunSuccess,omitempty"`
+	LastRunDuration *int64 `db:"last_run_duration" json:"lastRunDuration,omitempty"`
 }
 
 type CreateTaskPayload struct {
@@ -57,7 +61,14 @@ type DeleteTaskPayload struct {
 func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	var task Task
 	err := app.DB.GetContext(ctx, &task,
-		`SELECT * EXCLUDE (type, visibility) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+		`SELECT a.* EXCLUDE (type, visibility), 
+		        epoch_ms(tr.next_run_at) AS next_run_at, 
+		        epoch_ms(tr.last_run_at) AS last_run_at, 
+		        tr.last_run_success, 
+		        round(epoch(tr.last_run_duration) * 1000) AS last_run_duration
+		 FROM `+app.Schema+`.apps a
+		 LEFT JOIN `+app.Schema+`.task_runs tr ON tr.task_id = a.id
+		 WHERE a.id = $1 AND a.type = 'task'`, id)
 	if err != nil {
 		return task, fmt.Errorf("failed to get task: %w", err)
 	}

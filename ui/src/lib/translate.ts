@@ -78,13 +78,13 @@ const translations = {
     de: "Vorschau laden",
   },
   "Enter a name for the dashboard": {
-    de: "Geben Sie einen Namen für das Dashboard ein",
+    de: "Gebe einen Namen für das Dashboard ein",
   },
   'Are you sure you want to delete the dashboard "%%"?': {
-    de: 'Sind Sie sicher, dass Sie das Dashboard "%%" löschen möchten?',
+    de: 'Sicher, dass das Dashboard "%%" gelöscht werden soll?',
   },
   "There are unsaved previous edits. Do you want to restore them?": {
-    de: "Es gibt ungespeicherte Änderungen. Möchten Sie diese wiederherstellen?",
+    de: "Es gibt ungespeicherte Änderungen. Sollen diese wiederhergestellt werden?",
   },
   "No Data": {
     de: "Keine Daten",
@@ -135,7 +135,7 @@ const translations = {
     de: "Sicherheitseinstellungen",
   },
   "Reset the JWT secret to invalidate all existing tokens.": {
-    de: "Setzen Sie das JWT-Secret zurück, um alle vorhandenen Token ungültig zu machen.",
+    de: "Setze das JWT-Secret zurück, um alle vorhandenen Token ungültig zu machen.",
   },
   "JWT secret reset successfully": {
     de: "JWT-Secret erfolgreich zurückgesetzt",
@@ -165,7 +165,7 @@ const translations = {
     de: "API-Key wurde in die Zwischenablage kopiert",
   },
   "Make sure to copy the key. You won't be able to see it again.": {
-    de: "Kopieren Sie den Schlüssel. Sie werden ihn nicht nochmal sehen können.",
+    de: "Kopiere den Schlüssel. Er wird nicht nochmal angezeigt.",
   },
   "Key name": {
     de: "Name",
@@ -177,7 +177,7 @@ const translations = {
     de: "Kopieren",
   },
   'Are you sure you want to delete this API key "%%"?': {
-    de: 'Sind Sie sicher, dass Sie den API-Key "%%" löschen möchten?',
+    de: 'Sicher, dass der API-Key "%%" gelöscht werden soll?',
   },
   "API key deleted successfully": {
     de: "API-Key erfolgreich gelöscht",
@@ -190,7 +190,7 @@ const translations = {
   },
   "Create a first user account to enable authentication and secure the system":
   {
-    de: "Erstellen Sie ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
+    de: "Erstelle ein erstes Benutzerkonto, um die Authentifizierung zu aktivieren und das System zu sichern",
   },
   "Create User": {
     de: "Benutzer erstellen",
@@ -199,7 +199,7 @@ const translations = {
     de: "Ersten Benutzer erstellen",
   },
   "Enter the details for the first administrative user": {
-    de: "Geben Sie die Details für den ersten Administrator ein",
+    de: "Gebe die Info für den ersten Administrator ein",
   },
   Email: {
     de: "E-Mail",
@@ -427,13 +427,13 @@ const translations = {
     de: "Task erstellen",
   },
   "Enter a name for the task": {
-    de: "Geben Sie einen Namen für den Task ein",
+    de: "Gebe einen Namen für den Task ein",
   },
   "Running task...": {
     de: "Task wird ausgeführt...",
   },
-  "Click Run to execute the task": {
-    de: "Klicken Sie auf Ausführen, um den Task zu starten",
+  "Click Run to execute the task now. Task is scheduled when you save it.": {
+    de: "Klicke auf Ausführen, um den Task jetzt auszuführen. Der Task wird geplant, sobald er gespeichert ist.",
   },
   "Failed": {
     de: "Fehlgeschlagen",
@@ -463,7 +463,7 @@ const translations = {
     de: "Task nicht gefunden",
   },
   "Click to edit task name": {
-    de: "Klicken Sie, um den Task-Namen zu bearbeiten",
+    de: "Klicke, um den Task-Namen zu bearbeiten",
   },
   "Delete Task": {
     de: "Task löschen",
@@ -481,10 +481,10 @@ const translations = {
     de: "Task erfolgreich gelöscht",
   },
   "Are you sure you want to delete this task? This action cannot be undone.": {
-    de: "Sind Sie sicher, dass Sie diesen Task löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    de: "Sicher, dass der Task gelöscht werden soll? Diese Aktion kann nicht rückgängig gemacht werden.",
   },
   'Are you sure you want to delete the task "%%"?': {
-    de: 'Sind Sie sicher, dass Sie den Task "%%" löschen möchten?',
+    de: 'Sicher, dass der Task "%%" gelöscht werden soll?',
   },
   "Create the first dashboard": {
     de: "Erstelle ein erstes Dashboard",
@@ -498,11 +498,11 @@ const translations = {
   "The query returned the single boolean `false` which signals that the script should stop executing further queries.": {
     de: "Die Abfrage hat den einzelnen booleschen Wert `false` zurückgegeben, was signalisiert, dass das Skript die Ausführung weiterer Abfragen stoppen soll.",
   },
-  "Run time": {
-    de: "Ausgeführungszeit",
+  "If task is saved, next run": {
+    de: "Wenn der Task gespeichert ist, nächste Ausführung",
   },
-  "Scheduled for": {
-    de: "Geplant für",
+  "Task empty. Add some queries to see results here.": {
+    de: "Task ist leer. Füge Abfragen hinzu, um hier Ergebnisse zu sehen.",
   },
   "in %% seconds": {
     de: "in %% Sekunden",
