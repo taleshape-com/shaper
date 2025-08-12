@@ -11,6 +11,14 @@ export interface IApp {
   updatedBy?: string;
   visibility?: 'public' | 'private';
   type: 'dashboard' | 'task';
+  taskInfo?: ITaskInfo;
+}
+
+interface ITaskInfo {
+  lastRunAt?: number; // epoch_ms
+  lastRunSuccess?: boolean;
+  lastRunDuration?: number; // in milliseconds
+  nextRunAt?: number; // epoch_ms
 }
 
 export type IDashboard = Omit<IApp, 'type'>;

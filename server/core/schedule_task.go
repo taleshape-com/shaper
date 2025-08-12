@@ -193,9 +193,9 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 	// Load scheduled task runs from database
 	rows, err := app.DB.QueryxContext(
 		ctx,
-		`SELECT w.task_id, w.next_run_at, a.content
-			FROM `+app.Schema+`.task_runs w
-			JOIN `+app.Schema+`.apps a ON w.task_id = a.id
+		`SELECT t.task_id, t.next_run_at, a.content
+			FROM `+app.Schema+`.task_runs t
+			JOIN `+app.Schema+`.apps a ON t.task_id = a.id
 			WHERE next_run_at IS NOT NULL`,
 	)
 	if err != nil {

@@ -504,6 +504,39 @@ const translations = {
   "Scheduled for": {
     de: "Geplant für",
   },
+  "in %% seconds": {
+    de: "in %% Sekunden",
+  },
+  "in %% minutes": {
+    de: "in %% Minuten",
+  },
+  "in %% hours": {
+    de: "in %% Stunden",
+  },
+  "in %% days": {
+    de: "in %% Tagen",
+  },
+  "%% seconds ago": {
+    de: "vor %% Sekunden",
+  },
+  "%% minutes ago": {
+    de: "vor %% Minuten",
+  },
+  "%% hours ago": {
+    de: "vor %% Stunden",
+  },
+  "%% days ago": {
+    de: "vor %% Tagen",
+  },
+  "Task Error": {
+    de: "Task-Fehler",
+  },
+  "Next Run": {
+    de: "Nächste Ausführung",
+  },
+  "Last Run": {
+    de: "Letzte Ausführung",
+  },
 };
 
 export function translate(s: keyof typeof translations) {
