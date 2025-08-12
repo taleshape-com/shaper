@@ -118,13 +118,13 @@ func initDB(db *sqlx.DB, schema string) error {
 		CREATE TABLE IF NOT EXISTS ` + schema + ` .task_runs (
 			task_id VARCHAR PRIMARY KEY NOT NULL,
 			last_run_at TIMESTAMP,
-			last_run_by VARCHAR,
-			last_run_result JSON,
+			last_run_success BOOLEAN,
+			last_run_duration INTERVAL,
 			next_run_at TIMESTAMP,
 		)
 	`)
 	if err != nil {
-		return fmt.Errorf("error creating invites table: %w", err)
+		return fmt.Errorf("error creating task_runs table: %w", err)
 	}
 
 	// Create custom types

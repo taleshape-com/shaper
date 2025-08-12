@@ -13,7 +13,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-func scheduleTask(app *App, ctx context.Context, taskID, content string) {
+func scheduleTask(app *App, ctx context.Context, taskID, content string) *time.Time {
 	// cancel previous timer
 	unscheduleTask(app, taskID)
 	// Run first query
@@ -21,37 +21,32 @@ func scheduleTask(app *App, ctx context.Context, taskID, content string) {
 	sqls, err := splitSQLQueries(cleanContent)
 	if err != nil {
 		app.Logger.Error("Error splitting SQL queries", slog.Any("error", err), slog.String("task", taskID))
-		return
+		return nil
 	}
 	if len(sqls) == 0 {
 		app.Logger.Error("No SQL queries found in task content", slog.String("task", taskID))
-		return
+		return nil
 	}
 	conn, err := app.DB.Connx(ctx)
 	if err != nil {
 		app.Logger.Error("Error getting database connection", slog.Any("error", err), slog.String("task", taskID))
-		return
+		return nil
 	}
 	defer conn.Close()
-	tx, err := conn.BeginTxx(ctx, nil)
-	if err != nil {
-		app.Logger.Error("Error starting transaction", slog.Any("error", err), slog.String("task", taskID))
-		return
-	}
 	sqlString := strings.TrimSpace(sqls[0])
 	if sqlString == "" {
 		app.Logger.Error("First SQL query is empty", slog.String("task", taskID))
-		return
+		return nil
 	}
-	rows, err := tx.QueryxContext(ctx, sqlString)
+	rows, err := conn.QueryxContext(ctx, sqlString)
 	if err != nil {
 		app.Logger.Error("Error executing first SQL query", slog.Any("error", err), slog.String("task", taskID), slog.String("query", sqlString))
-		return
+		return nil
 	}
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
 		app.Logger.Error("Error getting column types", slog.Any("error", err), slog.String("task", taskID))
-		return
+		return nil
 	}
 	result := [][]any{}
 	for rows.Next() {
@@ -59,30 +54,36 @@ func scheduleTask(app *App, ctx context.Context, taskID, content string) {
 		if err != nil {
 			app.Logger.Error("Error scanning row", slog.Any("error", err), slog.String("task", taskID))
 			rows.Close()
-			tx.Rollback()
-			return
+			return nil
 		}
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
 		app.Logger.Error("Error iterating over rows", slog.Any("error", err), slog.String("task", taskID))
-		tx.Rollback()
-		return
+		return nil
 	}
 	if !isSchedule(colTypes, result) {
 		app.Logger.Error("First SQL query is not a SCHEDULE query", slog.String("task", taskID), slog.String("query", sqlString))
-		tx.Rollback()
-		return
+		return nil
 	}
 	reloadValue := getReloadValue(result)
 	if reloadValue <= 0 {
 		app.Logger.Info("Task SCHEDULE set to NULL, skipping scheduling", slog.String("task", taskID))
-		tx.Rollback()
-		return
+		return nil
 	}
 	nextRunAt := time.UnixMilli(reloadValue)
+	// schedule for later
+	runTaskAt(app, ctx, taskID, nextRunAt)
+	return &nextRunAt
+}
+
+func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, content string) {
+	nextRunAt := scheduleTask(app, ctx, taskID, content)
+	if nextRunAt == nil {
+		return
+	}
 	// set next_run_at in DB
-	_, err = tx.ExecContext(
+	_, err := app.DB.ExecContext(
 		ctx,
 		`INSERT INTO `+app.Schema+`.task_runs
 		(task_id, next_run_at)
@@ -92,28 +93,24 @@ func scheduleTask(app *App, ctx context.Context, taskID, content string) {
 		nextRunAt,
 	)
 	if err != nil {
-		app.Logger.Error("Error inserting next run time into DB", slog.Any("error", err), slog.String("taskID", taskID))
-		tx.Rollback()
+		app.Logger.Error("Error inserting next run time into DB", slog.Any("error", err), slog.String("task", taskID))
 		return
 	}
-	// schedule for later
-	t := time.AfterFunc(time.Until(nextRunAt), func() {
-		app.Logger.Info("Dispatching job", slog.String("task", taskID))
+	app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", *nextRunAt))
+}
+
+func runTaskAt(app *App, ctx context.Context, taskID string, runAt time.Time) {
+	t := time.AfterFunc(time.Until(runAt), func() {
+		app.Logger.Info("Dispatching task", slog.String("task", taskID))
+		subject := app.TasksSubjectPrefix + taskID
+		msgID := fmt.Sprintf("%s-%d", taskID, runAt.UnixMilli())
 		// Send message to NATS
-		subject := app.JobsSubjectPrefix + taskID
-		msgID := fmt.Sprintf("%s-%d", taskID, nextRunAt.UnixMilli())
 		_, err := app.JetStream.Publish(ctx, subject, []byte{}, jetstream.WithMsgID(msgID))
 		if err != nil {
 			app.Logger.Error("failed to publish task run message", slog.Any("error", err), slog.String("subject", subject))
 		}
 	})
 	app.TaskTimers[taskID] = t
-	err = tx.Commit()
-	if err != nil {
-		app.Logger.Error("Error committing transaction", slog.Any("error", err), slog.String("taskID", taskID))
-		return
-	}
-	app.Logger.Info("Scheduling task", slog.String("task", taskID), slog.Time("next", nextRunAt))
 }
 
 func unscheduleTask(app *App, taskID string) {
@@ -123,10 +120,10 @@ func unscheduleTask(app *App, taskID string) {
 	}
 }
 
-func (app *App) HandleJob(msg jetstream.Msg) {
-	taskID := strings.TrimPrefix(msg.Subject(), app.JobsSubjectPrefix)
-	app.Logger.Info("Handling job", slog.String("task", taskID))
-	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorJob})
+func (app *App) HandleTask(msg jetstream.Msg) {
+	taskID := strings.TrimPrefix(msg.Subject(), app.TasksSubjectPrefix)
+	app.Logger.Info("Running task", slog.String("task", taskID))
+	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
 	task, err := GetTask(app, ctx, taskID)
 	if err != nil {
 		app.Logger.Error("Error getting task", slog.String("task", taskID), slog.Any("error", err))
@@ -135,8 +132,7 @@ func (app *App) HandleJob(msg jetstream.Msg) {
 		}
 		return
 	}
-	_, err = RunTask(app, ctx, task.Content)
-	scheduleTask(app, ctx, taskID, task.Content)
+	runResult, err := RunTask(app, ctx, task.Content)
 	if err != nil {
 		app.Logger.Error("Error running task", slog.String("task", taskID), slog.Any("error", err))
 		if err := msg.Nak(); err != nil {
@@ -149,7 +145,47 @@ func (app *App) HandleJob(msg jetstream.Msg) {
 		app.Logger.Error("Error acking message", slog.Any("error", err))
 		return
 	}
-	app.Logger.Info("Task run completed", slog.String("taskID", taskID))
+	// TODO: Not sure if we need to call schedule Task here or just call runTaskAt with runResult.NextRunAt. The difference is if the runAt time is calulated before or after the task ran.
+	nextRunAt := scheduleTask(app, ctx, taskID, task.Content)
+	trackTaskRun(app, ctx, taskID, runResult, nextRunAt)
+}
+
+func trackTaskRun(app *App, ctx context.Context, taskID string, result TaskResult, nextRunAt *time.Time) {
+	var totalDurationMs int64
+	for _, queryResult := range result.Queries {
+		totalDurationMs += queryResult.Duration
+	}
+	var nextRunSlogAttr slog.Attr
+	if nextRunAt != nil {
+		nextRunSlogAttr = slog.Time("next_run", *nextRunAt)
+	}
+	app.Logger.Info(
+		"Task completed",
+		slog.String("task", taskID),
+		slog.Time("started_at", time.UnixMilli(result.StartedAt)),
+		slog.Bool("success", result.Success),
+		slog.Duration("duration", time.Duration(totalDurationMs)*time.Millisecond),
+		nextRunSlogAttr,
+	)
+	_, err := app.DB.ExecContext(
+		ctx,
+		`INSERT INTO `+app.Schema+`.task_runs
+			(task_id, last_run_at, last_run_success, last_run_duration, next_run_at)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT DO UPDATE SET
+				last_run_at = $2,
+				last_run_success = $3,
+				last_run_duration = $4,
+				next_run_at = $5`,
+		taskID,
+		time.UnixMilli(result.StartedAt),
+		result.Success,
+		fmt.Sprintf("%dms", totalDurationMs),
+		nextRunAt,
+	)
+	if err != nil {
+		app.Logger.Error("Error tracking task run", slog.Any("error", err), slog.String("task", taskID))
+	}
 }
 
 func scheduleExistingTasks(app *App, ctx context.Context) error {
@@ -174,11 +210,12 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 			rows.Close()
 			return fmt.Errorf("failed to scan scheduled task: %w", err)
 		}
-		scheduleTask(app, ctx, taskID, content)
+		runTaskAt(app, ctx, taskID, nextRunAt)
+		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", nextRunAt))
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("error iterating over scheduled tasks: %w", err)
 	}
-	app.Logger.Info("Scheduled tasks loaded successfully")
+	app.Logger.Info("All tasks scheduled")
 	return nil
 }

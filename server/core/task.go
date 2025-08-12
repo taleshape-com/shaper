@@ -106,7 +106,7 @@ func HandleCreateTask(app *App, data []byte) bool {
 		app.Logger.Error("failed to insert task into DB", slog.Any("error", err))
 		return false
 	}
-	scheduleTask(app, ctx, payload.ID, payload.Content)
+	scheduleAndTrackNextTaskRun(app, ctx, payload.ID, payload.Content)
 	return true
 }
 
@@ -150,7 +150,7 @@ func HandleUpdateTaskContent(app *App, data []byte) bool {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false
 	}
-	scheduleTask(app, ctx, payload.ID, payload.Content)
+	scheduleAndTrackNextTaskRun(app, ctx, payload.ID, payload.Content)
 	return true
 }
 
