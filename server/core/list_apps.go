@@ -41,7 +41,7 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 
 	apps := []AppRecord{}
 	optionalFilter := ""
-	if app.NoWorkflows {
+	if app.NoTasks {
 		optionalFilter = "WHERE type = 'dashboard'"
 	}
 	err := app.DB.SelectContext(ctx, &apps,

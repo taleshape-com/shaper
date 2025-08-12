@@ -118,14 +118,14 @@ function Index() {
 
   const handleDelete = async (app: IApp) => {
     try {
-      await queryApi(`${app.type === 'dashboard' ? 'dashboards' : 'workflows'}/${app.id}`, {
+      await queryApi(`${app.type === 'dashboard' ? 'dashboards' : 'tasks'}/${app.id}`, {
         method: "DELETE",
       });
       // Reload the page to refresh the list
       router.invalidate();
       toast({
         title: translate("Success"),
-        description: translate(app.type === "dashboard" ? "Dashboard deleted successfully" : "Workflow deleted successfully"),
+        description: translate(app.type === "dashboard" ? "Dashboard deleted successfully" : "Task deleted successfully"),
       });
     } catch (err) {
       if (isRedirect(err)) {
@@ -147,7 +147,7 @@ function Index() {
     <MenuProvider isHome>
       <Helmet>
         <title>{translate("Home")}</title>
-        <meta name="description" content="Show a list of all dashboards and workflows" />
+        <meta name="description" content="Show a list of all dashboards and tasks" />
       </Helmet>
 
       <div className="px-4 pb-4 min-h-dvh flex flex-col">
@@ -186,7 +186,7 @@ function Index() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    {getSystemConfig().workflowsEnabled && (
+                    {getSystemConfig().tasksEnabled && (
                       <TableHeaderCell
                       >
                         <Tooltip
@@ -229,10 +229,10 @@ function Index() {
                       key={app.id}
                       className="group transition-colors duration-200"
                     >
-                      {getSystemConfig().workflowsEnabled && (
+                      {getSystemConfig().tasksEnabled && (
                         <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
                           <Link
-                            to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                            to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
                             params={{ id: app.id }}
                             className="p-4 block"
                           >
@@ -257,7 +257,7 @@ function Index() {
                       )}
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
                         <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="p-4 block"
                         >
@@ -274,7 +274,7 @@ function Index() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="block p-4"
                         >
@@ -288,7 +288,7 @@ function Index() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/workflows/$id"}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="block p-4"
                         >
@@ -303,7 +303,7 @@ function Index() {
                       <TableCell className="hidden md:table-cell">
                         <div className="flex gap-4">
                           <Link
-                            to={app.type === 'dashboard' ? "/dashboards/$id/edit" : "/workflows/$id"}
+                            to={app.type === 'dashboard' ? "/dashboards/$id/edit" : "/tasks/$id"}
                             params={{ id: app.id }}
                             className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
                           >
@@ -335,7 +335,7 @@ function Index() {
                 {deleteDialog && translate(
                   deleteDialog.type === 'dashboard'
                     ? 'Are you sure you want to delete the dashboard "%%"?'
-                    : 'Are you sure you want to delete the workflow "%%"?'
+                    : 'Are you sure you want to delete the task "%%"?'
                 ).replace(
                   "%%",
                   deleteDialog.name,

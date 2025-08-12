@@ -15,7 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as WorkflowsIdRouteImport } from './routes/workflows.$id'
+import { Route as TasksIdRouteImport } from './routes/tasks.$id'
 import { Route as DashboardsIdRouteImport } from './routes/dashboards.$id'
 import { Route as AdminSecurityRouteImport } from './routes/admin.security'
 import { Route as AdminKeysRouteImport } from './routes/admin.keys'
@@ -51,9 +51,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const WorkflowsIdRoute = WorkflowsIdRouteImport.update({
-  id: '/workflows/$id',
-  path: '/workflows/$id',
+const TasksIdRoute = TasksIdRouteImport.update({
+  id: '/tasks/$id',
+  path: '/tasks/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardsIdRoute = DashboardsIdRouteImport.update({
@@ -86,7 +86,7 @@ export interface FileRoutesByFullPath {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
   '/dashboards/$id': typeof DashboardsIdRoute
-  '/workflows/$id': typeof WorkflowsIdRoute
+  '/tasks/$id': typeof TasksIdRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboards/$id/edit': typeof DashboardsIdEditRoute
 }
@@ -98,7 +98,7 @@ export interface FileRoutesByTo {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
   '/dashboards/$id': typeof DashboardsIdRoute
-  '/workflows/$id': typeof WorkflowsIdRoute
+  '/tasks/$id': typeof TasksIdRoute
   '/admin': typeof AdminIndexRoute
   '/dashboards/$id/edit': typeof DashboardsIdEditRoute
 }
@@ -112,7 +112,7 @@ export interface FileRoutesById {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
   '/dashboards/$id': typeof DashboardsIdRoute
-  '/workflows/$id': typeof WorkflowsIdRoute
+  '/tasks/$id': typeof TasksIdRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboards_/$id/edit': typeof DashboardsIdEditRoute
 }
@@ -127,7 +127,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/security'
     | '/dashboards/$id'
-    | '/workflows/$id'
+    | '/tasks/$id'
     | '/admin/'
     | '/dashboards/$id/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -139,7 +139,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/security'
     | '/dashboards/$id'
-    | '/workflows/$id'
+    | '/tasks/$id'
     | '/admin'
     | '/dashboards/$id/edit'
   id:
@@ -152,7 +152,7 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/security'
     | '/dashboards/$id'
-    | '/workflows/$id'
+    | '/tasks/$id'
     | '/admin/'
     | '/dashboards_/$id/edit'
   fileRoutesById: FileRoutesById
@@ -164,7 +164,7 @@ export interface RootRouteChildren {
   NewRoute: typeof NewRoute
   SignupRoute: typeof SignupRoute
   DashboardsIdRoute: typeof DashboardsIdRoute
-  WorkflowsIdRoute: typeof WorkflowsIdRoute
+  TasksIdRoute: typeof TasksIdRoute
   DashboardsIdEditRoute: typeof DashboardsIdEditRoute
 }
 
@@ -212,11 +212,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/workflows/$id': {
-      id: '/workflows/$id'
-      path: '/workflows/$id'
-      fullPath: '/workflows/$id'
-      preLoaderRoute: typeof WorkflowsIdRouteImport
+    '/tasks/$id': {
+      id: '/tasks/$id'
+      path: '/tasks/$id'
+      fullPath: '/tasks/$id'
+      preLoaderRoute: typeof TasksIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboards/$id': {
@@ -271,7 +271,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewRoute: NewRoute,
   SignupRoute: SignupRoute,
   DashboardsIdRoute: DashboardsIdRoute,
-  WorkflowsIdRoute: WorkflowsIdRoute,
+  TasksIdRoute: TasksIdRoute,
   DashboardsIdEditRoute: DashboardsIdEditRoute,
 }
 export const routeTree = rootRouteImport

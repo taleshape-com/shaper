@@ -5,7 +5,7 @@ import { Card } from './tremor/Card'
 import { Table } from './tremor/Table'
 import { Callout } from "./tremor/Callout";
 
-export interface WorkflowQueryResult {
+export interface TaskQueryResult {
   sql: string;
   duration: number;
   error?: string;
@@ -14,26 +14,26 @@ export interface WorkflowQueryResult {
   stopExecution?: boolean;
 }
 
-export interface WorkflowResult {
+export interface TaskResult {
   startedAt: number;
   reloadAt: number;
   success: boolean;
   totalQueries: number;
-  queries: WorkflowQueryResult[];
+  queries: TaskQueryResult[];
 }
 
-interface WorkflowResultsProps {
-  data?: WorkflowResult;
+interface TaskResultsProps {
+  data?: TaskResult;
   loading?: boolean;
 }
 
-export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
+export function TaskResults({ data, loading }: TaskResultsProps) {
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-2 border-cb dark:border-db border-t-cprimary dark:border-t-dprimary rounded-full mx-auto mb-4"></div>
-          <p className="text-ctext2 dark:text-dtext2">{translate('Running workflow...')}</p>
+          <p className="text-ctext2 dark:text-dtext2">{translate('Running task...')}</p>
         </div>
       </div>
     )
@@ -44,7 +44,7 @@ export function WorkflowResults({ data, loading }: WorkflowResultsProps) {
       <div className="p-8 flex items-center justify-center">
         <div className="text-center">
           <p className="text-ctext2 dark:text-dtext2 text-lg">
-            {translate('Click Run to execute the workflow')}
+            {translate('Click Run to execute the task')}
           </p>
         </div>
       </div>

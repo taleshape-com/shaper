@@ -10,7 +10,7 @@ export interface IApp {
   createdBy?: string;
   updatedBy?: string;
   visibility?: 'public' | 'private';
-  type: 'dashboard' | 'workflow';
+  type: 'dashboard' | 'task';
 }
 
 export type IDashboard = Omit<IApp, 'type'>;

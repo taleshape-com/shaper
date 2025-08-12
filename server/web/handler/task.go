@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func RunWorkflow(app *core.App) echo.HandlerFunc {
+func RunTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var request struct {
 			Content string `json:"content"`
@@ -27,7 +27,7 @@ func RunWorkflow(app *core.App) echo.HandlerFunc {
 			}{Error: "Unauthorized"}, "  ")
 		}
 
-		result, err := core.RunWorkflow(app, c.Request().Context(), request.Content)
+		result, err := core.RunTask(app, c.Request().Context(), request.Content)
 
 		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct {
@@ -39,7 +39,7 @@ func RunWorkflow(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func GetWorkflow(app *core.App) echo.HandlerFunc {
+func GetTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		idParam := c.Param("id")
@@ -48,9 +48,9 @@ func GetWorkflow(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
-		result, err := core.GetWorkflow(app, c.Request().Context(), idParam)
+		result, err := core.GetTask(app, c.Request().Context(), idParam)
 		if err != nil {
-			c.Logger().Error("error getting workflow:", slog.Any("error", err))
+			c.Logger().Error("error getting task:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: err.Error()}, "  ")
@@ -59,7 +59,7 @@ func GetWorkflow(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func CreateWorkflow(app *core.App) echo.HandlerFunc {
+func CreateTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
@@ -80,17 +80,17 @@ func CreateWorkflow(app *core.App) echo.HandlerFunc {
 				}{Error: "Invalid request"}, "  ")
 		}
 
-		// Validate workflow name
+		// Validate task name
 		if request.Name == "" {
 			return c.JSONPretty(http.StatusBadRequest,
 				struct {
 					Error string `json:"error"`
-				}{Error: "Workflow name is required"}, "  ")
+				}{Error: "Task name is required"}, "  ")
 		}
 
-		id, err := core.CreateWorkflow(app, c.Request().Context(), request.Name, request.Content)
+		id, err := core.CreateTask(app, c.Request().Context(), request.Name, request.Content)
 		if err != nil {
-			c.Logger().Error("error creating workflow:", slog.Any("error", err))
+			c.Logger().Error("error creating task:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
 				struct {
 					Error string `json:"error"`
@@ -105,7 +105,7 @@ func CreateWorkflow(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func SaveWorkflowContent(app *core.App) echo.HandlerFunc {
+func SaveTaskContent(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
@@ -121,9 +121,9 @@ func SaveWorkflowContent(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Invalid request"}, "  ")
 		}
-		err := core.SaveWorkflowContent(app, c.Request().Context(), c.Param("id"), request.Content)
+		err := core.SaveTaskContent(app, c.Request().Context(), c.Param("id"), request.Content)
 		if err != nil {
-			c.Logger().Error("error saving workflow query:", slog.Any("error", err))
+			c.Logger().Error("error saving task query:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: err.Error()}, "  ")
@@ -132,7 +132,7 @@ func SaveWorkflowContent(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func SaveWorkflowName(app *core.App) echo.HandlerFunc {
+func SaveTaskName(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
@@ -151,11 +151,11 @@ func SaveWorkflowName(app *core.App) echo.HandlerFunc {
 		if request.Name == "" {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
-			}{Error: "Workflow name is required"}, "  ")
+			}{Error: "Task name is required"}, "  ")
 		}
-		err := core.SaveWorkflowName(app, c.Request().Context(), c.Param("id"), request.Name)
+		err := core.SaveTaskName(app, c.Request().Context(), c.Param("id"), request.Name)
 		if err != nil {
-			c.Logger().Error("error saving workflow name:", slog.Any("error", err))
+			c.Logger().Error("error saving task name:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: err.Error()}, "  ")
@@ -164,7 +164,7 @@ func SaveWorkflowName(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func DeleteWorkflow(app *core.App) echo.HandlerFunc {
+func DeleteTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
@@ -173,9 +173,9 @@ func DeleteWorkflow(app *core.App) echo.HandlerFunc {
 					Error string `json:"error"`
 				}{Error: "Unauthorized"}, "  ")
 		}
-		err := core.DeleteWorkflow(app, c.Request().Context(), c.Param("id"))
+		err := core.DeleteTask(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
-			c.Logger().Error("error deleting workflow:", slog.Any("error", err))
+			c.Logger().Error("error deleting task:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
 				struct {
 					Error string `json:"error"`

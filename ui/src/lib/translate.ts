@@ -417,23 +417,23 @@ const translations = {
   "Dashboard": {
     de: "Dashboard",
   },
-  "Workflow": {
-    de: "Workflow",
+  "Task": {
+    de: "Task",
   },
-  "New Workflow": {
-    de: "Neuer Workflow",
+  "New Task": {
+    de: "Neuer Task",
   },
-  "Create Workflow": {
-    de: "Workflow erstellen",
+  "Create Task": {
+    de: "Task erstellen",
   },
-  "Enter a name for the workflow": {
-    de: "Geben Sie einen Namen für den Workflow ein",
+  "Enter a name for the task": {
+    de: "Geben Sie einen Namen für den Task ein",
   },
-  "Running workflow...": {
-    de: "Workflow wird ausgeführt...",
+  "Running task...": {
+    de: "Task wird ausgeführt...",
   },
-  "Click Run to execute the workflow": {
-    de: "Klicken Sie auf Ausführen, um den Workflow zu starten",
+  "Click Run to execute the task": {
+    de: "Klicken Sie auf Ausführen, um den Task zu starten",
   },
   "Failed": {
     de: "Fehlgeschlagen",
@@ -456,35 +456,35 @@ const translations = {
   "Total Duration": {
     de: "Gesamtdauer",
   },
-  "Loading workflow...": {
-    de: "Workflow wird geladen...",
+  "Loading task...": {
+    de: "Task wird geladen...",
   },
-  "Workflow not found": {
-    de: "Workflow nicht gefunden",
+  "Task not found": {
+    de: "Task nicht gefunden",
   },
-  "Click to edit workflow name": {
-    de: "Klicken Sie, um den Workflow-Namen zu bearbeiten",
+  "Click to edit task name": {
+    de: "Klicken Sie, um den Task-Namen zu bearbeiten",
   },
-  "Delete Workflow": {
-    de: "Workflow löschen",
+  "Delete Task": {
+    de: "Task löschen",
   },
-  "Save Workflow": {
-    de: "Workflow speichern",
+  "Save Task": {
+    de: "Task speichern",
   },
-  "Workflow saved successfully": {
-    de: "Workflow erfolgreich gespeichert",
+  "Task saved successfully": {
+    de: "Task erfolgreich gespeichert",
   },
-  "Workflow name updated": {
-    de: "Workflow-Name aktualisiert",
+  "Task name updated": {
+    de: "Task-Name aktualisiert",
   },
-  "Workflow deleted successfully": {
-    de: "Workflow erfolgreich gelöscht",
+  "Task deleted successfully": {
+    de: "Task erfolgreich gelöscht",
   },
-  "Are you sure you want to delete this workflow? This action cannot be undone.": {
-    de: "Sind Sie sicher, dass Sie diesen Workflow löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+  "Are you sure you want to delete this task? This action cannot be undone.": {
+    de: "Sind Sie sicher, dass Sie diesen Task löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
   },
-  'Are you sure you want to delete the workflow "%%"?': {
-    de: 'Sind Sie sicher, dass Sie den Workflow "%%" löschen möchten?',
+  'Are you sure you want to delete the task "%%"?': {
+    de: 'Sind Sie sicher, dass Sie den Task "%%" löschen möchten?',
   },
   "Create the first dashboard": {
     de: "Erstelle ein erstes Dashboard",
