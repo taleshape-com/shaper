@@ -13,38 +13,43 @@ import (
 )
 
 const (
-	CONFIG_KEY_JWT_SECRET              = "jwt-secret"
-	RECREATE_STREAM_AND_CONSUMER_DELAY = 60 * time.Second
+	CONFIG_KEY_JWT_SECRET = "jwt-secret"
 )
 
 // TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
-	Name                  string
-	DB                    *sqlx.DB
-	Logger                *slog.Logger
-	LoginRequired         bool
-	BasePath              string
-	Schema                string
-	JWTSecret             []byte
-	JWTExp                time.Duration
-	SessionExp            time.Duration
-	InviteExp             time.Duration
-	NoPublicSharing       bool
-	NoTasks               bool
-	StateConsumeCtx       jetstream.ConsumeContext
-	JetStream             jetstream.JetStream
-	ConfigKV              jetstream.KeyValue
-	NATSConn              *nats.Conn
-	StateSubjectPrefix    string
-	IngestSubjectPrefix   string
-	StateStreamName       string
-	StateStreamMaxAge     time.Duration
-	StateConsumerName     string
-	ConfigKVBucketName    string
-	TasksStreamName       string
-	TasksSubjectPrefix    string
-	TaskQueueConsumerName string
-	TaskTimers            map[string]*time.Timer
+	Name                     string
+	DB                       *sqlx.DB
+	Logger                   *slog.Logger
+	LoginRequired            bool
+	BasePath                 string
+	Schema                   string
+	JWTSecret                []byte
+	JWTExp                   time.Duration
+	SessionExp               time.Duration
+	InviteExp                time.Duration
+	NoPublicSharing          bool
+	NoTasks                  bool
+	StateConsumeCtx          jetstream.ConsumeContext
+	TaskConsumeCtx           jetstream.ConsumeContext
+	TaskResultConsumeCtx     jetstream.ConsumeContext
+	JetStream                jetstream.JetStream
+	ConfigKV                 jetstream.KeyValue
+	NATSConn                 *nats.Conn
+	StateSubjectPrefix       string
+	IngestSubjectPrefix      string
+	StateStreamName          string
+	StateStreamMaxAge        time.Duration
+	StateConsumerName        string
+	ConfigKVBucketName       string
+	TasksStreamName          string
+	TasksSubjectPrefix       string
+	TaskQueueConsumerName    string
+	TaskResultsStreamName    string
+	TaskResultsSubjectPrefix string
+	TaskResultsStreamMaxAge  time.Duration
+	TaskResultConsumerName   string
+	TaskTimers               map[string]*time.Timer
 }
 
 func New(
@@ -67,6 +72,10 @@ func New(
 	tasksStreamName string,
 	tasksSubjectPrefix string,
 	taskQueueConsumerName string,
+	taskResultsStreamName string,
+	taskResultsSubjectPrefix string,
+	taskResultsStreamMaxAge time.Duration,
+	taskResultConsumerName string,
 ) (*App, error) {
 	if err := initDB(db, schema); err != nil {
 		return nil, err
@@ -89,27 +98,31 @@ func New(
 	}
 
 	app := &App{
-		Name:                  name,
-		DB:                    db,
-		Logger:                logger,
-		LoginRequired:         loginRequired,
-		BasePath:              baseURL,
-		Schema:                schema,
-		JWTExp:                jwtExp,
-		SessionExp:            sessionExp,
-		InviteExp:             inviteExp,
-		NoPublicSharing:       noPublicSharing,
-		NoTasks:               noTasks,
-		IngestSubjectPrefix:   ingestSubjectPrefix,
-		StateSubjectPrefix:    stateSubjectPrefix,
-		StateStreamName:       stateStreamName,
-		StateStreamMaxAge:     stateStreamMaxAge,
-		StateConsumerName:     stateConsumerName,
-		ConfigKVBucketName:    configKVBucketName,
-		TasksStreamName:       tasksStreamName,
-		TasksSubjectPrefix:    tasksSubjectPrefix,
-		TaskQueueConsumerName: taskQueueConsumerName,
-		TaskTimers:            make(map[string]*time.Timer),
+		Name:                     name,
+		DB:                       db,
+		Logger:                   logger,
+		LoginRequired:            loginRequired,
+		BasePath:                 baseURL,
+		Schema:                   schema,
+		JWTExp:                   jwtExp,
+		SessionExp:               sessionExp,
+		InviteExp:                inviteExp,
+		NoPublicSharing:          noPublicSharing,
+		NoTasks:                  noTasks,
+		IngestSubjectPrefix:      ingestSubjectPrefix,
+		StateSubjectPrefix:       stateSubjectPrefix,
+		StateStreamName:          stateStreamName,
+		StateStreamMaxAge:        stateStreamMaxAge,
+		StateConsumerName:        stateConsumerName,
+		ConfigKVBucketName:       configKVBucketName,
+		TasksStreamName:          tasksStreamName,
+		TasksSubjectPrefix:       tasksSubjectPrefix,
+		TaskQueueConsumerName:    taskQueueConsumerName,
+		TaskResultsStreamName:    taskResultsStreamName,
+		TaskResultsSubjectPrefix: taskResultsSubjectPrefix,
+		TaskResultsStreamMaxAge:  taskResultsStreamMaxAge,
+		TaskResultConsumerName:   taskResultConsumerName,
+		TaskTimers:               make(map[string]*time.Timer),
 	}
 	return app, nil
 }
@@ -126,9 +139,6 @@ func (app *App) Init(nc *nats.Conn) error {
 	if err := app.setupStreamAndConsumer(); err != nil {
 		return err
 	}
-
-	// Start message processing
-	go app.processStateMessages()
 
 	if err := LoadJWTSecret(app); err != nil {
 		return err
@@ -190,7 +200,32 @@ func (app *App) setupStreamAndConsumer() error {
 		if err != nil {
 			return err
 		}
-		taskConsumer.Consume(app.HandleTask)
+		taskConsumeCtx, err := taskConsumer.Consume(app.HandleTask)
+		if err != nil {
+			return err
+		}
+		app.TaskConsumeCtx = taskConsumeCtx
+
+		taskResultsStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+			Name:     app.TaskResultsStreamName,
+			Subjects: []string{app.TaskResultsSubjectPrefix + ">"},
+			Storage:  jetstream.FileStorage,
+			MaxAge:   app.TaskResultsStreamMaxAge,
+		})
+		if err != nil {
+			return err
+		}
+		taskResultConsumer, err := taskResultsStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
+			Durable: app.TaskResultConsumerName,
+		})
+		if err != nil {
+			return err
+		}
+		taskResultConsumeCtx, err := taskResultConsumer.Consume(app.HandleTaskResult)
+		if err != nil {
+			return err
+		}
+		app.TaskResultConsumeCtx = taskResultConsumeCtx
 	}
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)
@@ -202,28 +237,18 @@ func (app *App) setupStreamAndConsumer() error {
 	return nil
 }
 
-func (app *App) processStateMessages() {
-	const sleepOnError = 60 * time.Second
-
-	for {
-		select {
-		case <-app.StateConsumeCtx.Closed():
-			app.Logger.Info("State consumer context done, attempting to recreate")
-			time.Sleep(RECREATE_STREAM_AND_CONSUMER_DELAY)
-			if err := app.setupStreamAndConsumer(); err != nil {
-				app.Logger.Error("Failed to recreate stream/consumer", slog.Any("error", err))
-				time.Sleep(sleepOnError)
-				continue
-			}
-			app.Logger.Info("Successfully recreated state stream and consumer")
-		}
-	}
-}
-
 func (app *App) Close() {
 	if app.StateConsumeCtx != nil {
 		app.StateConsumeCtx.Drain()
 		<-app.StateConsumeCtx.Closed()
+	}
+	if app.TaskConsumeCtx != nil {
+		app.TaskConsumeCtx.Drain()
+		<-app.TaskConsumeCtx.Closed()
+	}
+	if app.TaskResultConsumeCtx != nil {
+		app.TaskResultConsumeCtx.Drain()
+		<-app.TaskResultConsumeCtx.Closed()
 	}
 }
 

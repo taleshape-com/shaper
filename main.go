@@ -57,41 +57,45 @@ const USAGE = `Version: {{.Version}}
 `
 
 type Config struct {
-	SessionExp             time.Duration
-	InviteExp              time.Duration
-	Address                string
-	DataDir                string
-	Schema                 string
-	ExecutableModTime      time.Time
-	BasePath               string
-	CustomCSS              string
-	Favicon                string
-	JWTExp                 time.Duration
-	NoPublicSharing        bool
-	NoTasks                bool
-	NatsServers            string
-	NatsHost               string
-	NatsPort               int
-	NatsToken              string
-	NatsJSDir              string
-	NatsJSKey              string
-	NatsMaxStore           int64 // in bytes
-	StateStreamName        string
-	IngestStreamName       string
-	ConfigKVBucketName     string
-	IngestStreamMaxAge     time.Duration
-	StateStreamMaxAge      time.Duration
-	IngestConsumerNameFile string
-	StateConsumerNameFile  string
-	IngestSubjectPrefix    string
-	StateSubjectPrefix     string
-	TasksStreamName        string
-	TasksSubjectPrefix     string
-	TaskQeueConsumerName   string
-	DuckDB                 string
-	DuckDBExtDir           string
-	InitSQL                string
-	InitSQLFile            string
+	SessionExp               time.Duration
+	InviteExp                time.Duration
+	Address                  string
+	DataDir                  string
+	Schema                   string
+	ExecutableModTime        time.Time
+	BasePath                 string
+	CustomCSS                string
+	Favicon                  string
+	JWTExp                   time.Duration
+	NoPublicSharing          bool
+	NoTasks                  bool
+	NatsServers              string
+	NatsHost                 string
+	NatsPort                 int
+	NatsToken                string
+	NatsJSDir                string
+	NatsJSKey                string
+	NatsMaxStore             int64 // in bytes
+	StateStreamName          string
+	IngestStreamName         string
+	ConfigKVBucketName       string
+	IngestStreamMaxAge       time.Duration
+	StateStreamMaxAge        time.Duration
+	IngestConsumerNameFile   string
+	StateConsumerNameFile    string
+	IngestSubjectPrefix      string
+	StateSubjectPrefix       string
+	TasksStreamName          string
+	TasksSubjectPrefix       string
+	TaskQeueConsumerName     string
+	TaskResultsStreamName    string
+	TaskResultsSubjectPrefix string
+	TaskResultsStreamMaxAge  time.Duration
+	TaskResultConsumerName   string
+	DuckDB                   string
+	DuckDBExtDir             string
+	InitSQL                  string
+	InitSQLFile              string
 }
 
 func main() {
@@ -135,15 +139,19 @@ func loadConfig() Config {
 	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
 	tasksStream := flags.StringLong("tasks-stream", "shaper-tasks", "NATS stream name for scheduled task execution")
+	taskResultsStream := flags.StringLong("task-results-stream", "shaper-task-results", "NATS stream name for task results")
 	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
 	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
+	taskResultsStreamMaxAge := flags.DurationLong("task-results-max-age", time.Hour*24*30, "Maximum age of messages in the task-results stream. Set to 0 for indefinite retention")
 	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
 	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
 	taskQueueConsumerName := flags.StringLong("task-queue-consumer-name", "shaper-task-queue-consumer", "Name for the task queue consumer")
+	taskResultConsumerName := flags.StringLong("task-result-consumer-name", "shaper-task-result-consumer", "Name for the task result consumer")
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
 	tasksSubjectPrefix := flags.StringLong("tasks-subject-prefix", "shaper.tasks.", "prefix for tasks NATS subjects")
+	taskResultsSubjectPrefix := flags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -206,41 +214,45 @@ func loadConfig() Config {
 	}
 
 	config := Config{
-		Address:                *addr,
-		DataDir:                *dataDir,
-		Schema:                 *schema,
-		ExecutableModTime:      executableModTime,
-		BasePath:               bpath,
-		CustomCSS:              *customCSS,
-		Favicon:                *favicon,
-		JWTExp:                 *jwtExp,
-		SessionExp:             *sessionExp,
-		InviteExp:              *inviteExp,
-		NoPublicSharing:        *noPublicSharing,
-		NoTasks:                *noTasks,
-		NatsServers:            *natsServers,
-		NatsHost:               *natsHost,
-		NatsPort:               *natsPort,
-		NatsToken:              *natsToken,
-		NatsJSDir:              natsDir,
-		NatsJSKey:              *natsJSKey,
-		NatsMaxStore:           maxStore,
-		StateStreamName:        *streamPrefix + *stateStream,
-		IngestStreamName:       *streamPrefix + *ingestStream,
-		ConfigKVBucketName:     *streamPrefix + *configKVBucket,
-		IngestStreamMaxAge:     *ingestStreamMaxAge,
-		StateStreamMaxAge:      *stateStreamMaxAge,
-		IngestConsumerNameFile: *ingestConsumerNameFile,
-		StateConsumerNameFile:  *stateConsumerNameFile,
-		IngestSubjectPrefix:    *subjectPrefix + *ingestSubjectPrefix,
-		StateSubjectPrefix:     *subjectPrefix + *stateSubjectPrefix,
-		TasksStreamName:        *streamPrefix + *tasksStream,
-		TasksSubjectPrefix:     *subjectPrefix + *tasksSubjectPrefix,
-		TaskQeueConsumerName:   *taskQueueConsumerName,
-		DuckDB:                 *duckdb,
-		DuckDBExtDir:           *duckdbExtDir,
-		InitSQL:                *initSQL,
-		InitSQLFile:            initSQLFilePath,
+		Address:                  *addr,
+		DataDir:                  *dataDir,
+		Schema:                   *schema,
+		ExecutableModTime:        executableModTime,
+		BasePath:                 bpath,
+		CustomCSS:                *customCSS,
+		Favicon:                  *favicon,
+		JWTExp:                   *jwtExp,
+		SessionExp:               *sessionExp,
+		InviteExp:                *inviteExp,
+		NoPublicSharing:          *noPublicSharing,
+		NoTasks:                  *noTasks,
+		NatsServers:              *natsServers,
+		NatsHost:                 *natsHost,
+		NatsPort:                 *natsPort,
+		NatsToken:                *natsToken,
+		NatsJSDir:                natsDir,
+		NatsJSKey:                *natsJSKey,
+		NatsMaxStore:             maxStore,
+		StateStreamName:          *streamPrefix + *stateStream,
+		IngestStreamName:         *streamPrefix + *ingestStream,
+		ConfigKVBucketName:       *streamPrefix + *configKVBucket,
+		IngestStreamMaxAge:       *ingestStreamMaxAge,
+		StateStreamMaxAge:        *stateStreamMaxAge,
+		IngestConsumerNameFile:   *ingestConsumerNameFile,
+		StateConsumerNameFile:    *stateConsumerNameFile,
+		IngestSubjectPrefix:      *subjectPrefix + *ingestSubjectPrefix,
+		StateSubjectPrefix:       *subjectPrefix + *stateSubjectPrefix,
+		TasksStreamName:          *streamPrefix + *tasksStream,
+		TasksSubjectPrefix:       *subjectPrefix + *tasksSubjectPrefix,
+		TaskQeueConsumerName:     *taskQueueConsumerName,
+		TaskResultsStreamName:    *streamPrefix + *taskResultsStream,
+		TaskResultsSubjectPrefix: *subjectPrefix + *taskResultsSubjectPrefix,
+		TaskResultsStreamMaxAge:  *taskResultsStreamMaxAge,
+		TaskResultConsumerName:   *taskResultConsumerName,
+		DuckDB:                   *duckdb,
+		DuckDBExtDir:             *duckdbExtDir,
+		InitSQL:                  *initSQL,
+		InitSQLFile:              initSQLFilePath,
 	}
 	return config
 }
@@ -352,6 +364,10 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TasksStreamName,
 		cfg.TasksSubjectPrefix,
 		cfg.TaskQeueConsumerName,
+		cfg.TaskResultsStreamName,
+		cfg.TaskResultsSubjectPrefix,
+		cfg.TaskResultsStreamMaxAge,
+		cfg.TaskResultConsumerName,
 	)
 	if err != nil {
 		panic(err)

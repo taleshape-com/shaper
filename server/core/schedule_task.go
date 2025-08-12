@@ -4,6 +4,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"shaper/server/util"
@@ -13,9 +14,15 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-func scheduleTask(app *App, ctx context.Context, taskID, content string) *time.Time {
-	// cancel previous timer
-	unscheduleTask(app, taskID)
+type TaskResultPayload struct {
+	TaskID        string        `json:"taskId"`
+	StartedAt     time.Time     `json:"startedAt"`
+	Success       bool          `json:"success"`
+	TotalDuration time.Duration `json:"totalDurationMs"`
+	NextRunAt     *time.Time    `json:"nextRunAt,omitempty"`
+}
+
+func getNextTaskRun(app *App, ctx context.Context, taskID, content string) *time.Time {
 	// Run first query
 	cleanContent := util.StripSQLComments(content)
 	sqls, err := splitSQLQueries(cleanContent)
@@ -72,16 +79,17 @@ func scheduleTask(app *App, ctx context.Context, taskID, content string) *time.T
 		return nil
 	}
 	nextRunAt := time.UnixMilli(reloadValue)
-	// schedule for later
-	runTaskAt(app, ctx, taskID, nextRunAt)
 	return &nextRunAt
 }
 
 func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, content string) {
-	nextRunAt := scheduleTask(app, ctx, taskID, content)
+	unscheduleTask(app, taskID)
+	nextRunAt := getNextTaskRun(app, ctx, taskID, content)
 	if nextRunAt == nil {
 		return
 	}
+	// schedule task
+	scheduleTask(app, ctx, taskID, *nextRunAt)
 	// set next_run_at in DB
 	_, err := app.DB.ExecContext(
 		ctx,
@@ -99,7 +107,7 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 	app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", *nextRunAt))
 }
 
-func runTaskAt(app *App, ctx context.Context, taskID string, runAt time.Time) {
+func scheduleTask(app *App, ctx context.Context, taskID string, runAt time.Time) {
 	t := time.AfterFunc(time.Until(runAt), func() {
 		app.Logger.Info("Dispatching task", slog.String("task", taskID))
 		subject := app.TasksSubjectPrefix + taskID
@@ -145,26 +153,47 @@ func (app *App) HandleTask(msg jetstream.Msg) {
 		app.Logger.Error("Error acking message", slog.Any("error", err))
 		return
 	}
-	// TODO: Not sure if we need to call schedule Task here or just call runTaskAt with runResult.NextRunAt. The difference is if the runAt time is calulated before or after the task ran.
-	nextRunAt := scheduleTask(app, ctx, taskID, task.Content)
-	trackTaskRun(app, ctx, taskID, runResult, nextRunAt)
+	nextRunAt := getNextTaskRun(app, ctx, taskID, task.Content)
+	var totalDuration time.Duration
+	for _, queryResult := range runResult.Queries {
+		totalDuration += time.Duration(queryResult.Duration) * time.Millisecond
+	}
+	err = publishTaskRunResult(app, ctx, TaskResultPayload{
+		TaskID:        taskID,
+		StartedAt:     time.UnixMilli(runResult.StartedAt),
+		Success:       runResult.Success,
+		TotalDuration: totalDuration,
+		NextRunAt:     nextRunAt,
+	})
+	if err != nil {
+		app.Logger.Error("Error publishing task run result", slog.Any("error", err), slog.String("task", taskID))
+		return
+	}
 }
 
-func trackTaskRun(app *App, ctx context.Context, taskID string, result TaskResult, nextRunAt *time.Time) {
-	var totalDurationMs int64
-	for _, queryResult := range result.Queries {
-		totalDurationMs += queryResult.Duration
+func publishTaskRunResult(app *App, ctx context.Context, result TaskResultPayload) error {
+	payload, err := json.Marshal(result)
+	if err != nil {
+		return err
 	}
+	_, err = app.JetStream.Publish(ctx, app.TaskResultsSubjectPrefix+result.TaskID, payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 	var nextRunSlogAttr slog.Attr
-	if nextRunAt != nil {
-		nextRunSlogAttr = slog.Time("next_run", *nextRunAt)
+	if payload.NextRunAt != nil {
+		nextRunSlogAttr = slog.Time("next_run", *payload.NextRunAt)
 	}
 	app.Logger.Info(
 		"Task completed",
-		slog.String("task", taskID),
-		slog.Time("started_at", time.UnixMilli(result.StartedAt)),
-		slog.Bool("success", result.Success),
-		slog.Duration("duration", time.Duration(totalDurationMs)*time.Millisecond),
+		slog.String("task", payload.TaskID),
+		slog.Time("started_at", payload.StartedAt),
+		slog.Bool("success", payload.Success),
+		slog.Duration("duration", payload.TotalDuration),
 		nextRunSlogAttr,
 	)
 	_, err := app.DB.ExecContext(
@@ -177,14 +206,14 @@ func trackTaskRun(app *App, ctx context.Context, taskID string, result TaskResul
 				last_run_success = $3,
 				last_run_duration = $4,
 				next_run_at = $5`,
-		taskID,
-		time.UnixMilli(result.StartedAt),
-		result.Success,
-		fmt.Sprintf("%dms", totalDurationMs),
-		nextRunAt,
+		payload.TaskID,
+		payload.StartedAt,
+		payload.Success,
+		fmt.Sprintf("%dms", payload.TotalDuration.Milliseconds()),
+		payload.NextRunAt,
 	)
 	if err != nil {
-		app.Logger.Error("Error tracking task run", slog.Any("error", err), slog.String("task", taskID))
+		app.Logger.Error("Error saving task run", slog.Any("error", err), slog.String("task", payload.TaskID))
 	}
 }
 
@@ -210,7 +239,7 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 			rows.Close()
 			return fmt.Errorf("failed to scan scheduled task: %w", err)
 		}
-		runTaskAt(app, ctx, taskID, nextRunAt)
+		scheduleTask(app, ctx, taskID, nextRunAt)
 		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", nextRunAt))
 	}
 	if err := rows.Err(); err != nil {
@@ -218,4 +247,26 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 	}
 	app.Logger.Info("All tasks scheduled")
 	return nil
+}
+
+func (app *App) HandleTaskResult(msg jetstream.Msg) {
+	var payload TaskResultPayload
+	err := json.Unmarshal(msg.Data(), &payload)
+	if err != nil {
+		app.Logger.Error("Error unmarshalling task result", slog.Any("error", err), slog.String("subject", msg.Subject()))
+		if err := msg.Nak(); err != nil {
+			app.Logger.Error("Error nack message", slog.Any("error", err))
+		}
+		return
+	}
+	unscheduleTask(app, payload.TaskID)
+	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
+	if payload.NextRunAt != nil {
+		scheduleTask(app, ctx, payload.TaskID, *payload.NextRunAt)
+	}
+	trackTaskRun(app, ctx, payload)
+	if err := msg.Ack(); err != nil {
+		app.Logger.Error("Error acking message", slog.Any("error", err), slog.String("subject", msg.Subject()))
+		return
+	}
 }

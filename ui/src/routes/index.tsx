@@ -268,22 +268,23 @@ function Index() {
                             app.taskInfo && (
                               !(app.taskInfo.lastRunSuccess ?? true)
                                 ? (
-                                  <LastRunTooltip
+                                  <RuntimeTooltip
                                     lastRunAt={app.taskInfo.lastRunAt}
+                                    nextRunAt={app.taskInfo.nextRunAt}
                                   >
-                                    <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2">
+                                    <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                       {translate("Task Error")}
                                     </span>
-                                  </LastRunTooltip>
+                                  </RuntimeTooltip>
                                 )
                                 : app.taskInfo.nextRunAt != null && (
-                                  <LastRunTooltip
+                                  <RuntimeTooltip
                                     lastRunAt={app.taskInfo.lastRunAt}
                                   >
-                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2">
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                       {translate("Next Run")}: <RelativeDate date={new Date(app.taskInfo.nextRunAt)} />
                                     </span>
-                                  </LastRunTooltip>
+                                  </RuntimeTooltip>
                                 )
                             )
                             : app.visibility === "public" && (
@@ -390,12 +391,27 @@ function Index() {
   );
 }
 
-function LastRunTooltip({ lastRunAt, children }: { lastRunAt?: number, children?: React.ReactNode }) {
+function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
+  lastRunAt?: number;
+  nextRunAt?: number;
+  children?: React.ReactNode;
+}) {
   if (lastRunAt == null) return children;
+  const tooltipContent = (
+    <>
+      {translate("Last Run")}: <RelativeDate date={new Date(lastRunAt)} />
+      {nextRunAt != null && (
+        <>
+          <br />
+          {translate("Next Run")}: <RelativeDate date={new Date(nextRunAt)} />
+        </>
+      )}
+    </>
+  )
   return (
     <Tooltip
       showArrow={false}
-      content={<span>{translate("Last Run")}: <RelativeDate date={new Date(lastRunAt)} /></span>}
+      content={tooltipContent}
     >
       {children}
     </Tooltip>
