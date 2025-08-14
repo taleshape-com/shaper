@@ -17,7 +17,7 @@ export interface TaskQueryResult {
 
 export interface TaskResult {
   startedAt: number;
-  reloadAt: number;
+  nextRunAt: number;
   success: boolean;
   totalQueries: number;
   queries: TaskQueryResult[];
@@ -62,9 +62,9 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
             }`}>
             {data.success ? translate('Success') : translate('Failed')}
           </span>
-          {data.reloadAt && data.reloadAt != 0 && (
+          {data.nextRunAt && data.nextRunAt != 0 && (
             <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti px-2 py-1 rounded">
-              {translate("If task is saved, next run")} <RelativeDate date={new Date(data.reloadAt)} />
+              {translate("If task is saved, next run")} <RelativeDate date={new Date(data.nextRunAt)} />
             </span>
           )}
         </div>

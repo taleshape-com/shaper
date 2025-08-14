@@ -121,6 +121,7 @@ func initDB(db *sqlx.DB, schema string) error {
 			last_run_success BOOLEAN,
 			last_run_duration INTERVAL,
 			next_run_at TIMESTAMP,
+			next_run_type VARCHAR NOT NULL DEFAULT 'single',
 		)
 	`)
 	if err != nil {
