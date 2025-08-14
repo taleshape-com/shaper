@@ -135,7 +135,10 @@ func scheduleTask(app *App, ctx context.Context, taskID string, runAt time.Time,
 		// Send message to NATS
 		_, err := app.JetStream.Publish(ctx, subject, []byte{}, jetstream.WithMsgID(msgID))
 		if err != nil {
-			app.Logger.Error("failed to publish task run message", slog.Any("error", err), slog.String("subject", subject))
+			// Expected message dedup error
+			if !strings.Contains(err.Error(), "code=503 err_code=10077") {
+				app.Logger.Error("failed to publish task run message", slog.Any("error", err), slog.String("subject", subject))
+			}
 		}
 	})
 	app.TaskTimers[taskID] = t
