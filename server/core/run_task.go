@@ -22,18 +22,24 @@ type TaskQueryResult struct {
 
 type TaskResult struct {
 	StartedAt    int64             `json:"startedAt"`
-	ReloadAt     int64             `json:"reloadAt,omitempty"`
+	NextRunAt    int64             `json:"nextRunAt,omitempty"`
 	Success      bool              `json:"success"`
 	TotalQueries int               `json:"totalQueries"`
+	ScheduleType string            `json:"scheduleType,omitempty"`
 	Queries      []TaskQueryResult `json:"queries"`
 }
 
-func isSchedule(columns []*sql.ColumnType, rows Rows) bool {
+func getScheduleColumn(columns []*sql.ColumnType, rows Rows) (string, bool) {
+	scheduleType := "single"
 	col, _ := findColumnByTag(columns, "SCHEDULE")
 	if col == nil {
-		return false
+		col, _ = findColumnByTag(columns, "SCHEDULE_ALL")
+		if col == nil {
+			return "", false
+		}
+		scheduleType = "all"
 	}
-	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
+	return scheduleType, (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
 func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
@@ -118,14 +124,15 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			success = false
 		}
 
-		if isSchedule(colTypes, queryResult.ResultRows) {
-			if result.ReloadAt != 0 {
+		if scheduleType, isSchedule := getScheduleColumn(colTypes, queryResult.ResultRows); isSchedule {
+			if result.NextRunAt != 0 {
 				errMsg := "Multiple SCHEDULE queries in task"
 				queryResult.Error = &errMsg
 				success = false
 				result.Queries = append(result.Queries, queryResult)
 			} else {
-				result.ReloadAt = getReloadValue(queryResult.ResultRows)
+				result.NextRunAt = getReloadValue(queryResult.ResultRows)
+				result.ScheduleType = scheduleType
 				result.TotalQueries = len(sqls) - 1
 			}
 		} else {

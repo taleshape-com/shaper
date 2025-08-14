@@ -27,7 +27,13 @@ func RunTask(app *core.App) echo.HandlerFunc {
 			}{Error: "Unauthorized"}, "  ")
 		}
 
-		result, err := core.RunTask(app, c.Request().Context(), request.Content)
+		ctx := c.Request().Context()
+
+		result, err := core.RunTask(app, ctx, request.Content)
+
+		if result.ScheduleType == "all" {
+			app.BroadcastManualTask(ctx, request.Content)
+		}
 
 		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct {
