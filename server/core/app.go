@@ -202,10 +202,13 @@ func (app *App) setupStreamAndConsumer() error {
 
 		// Task invocations are coordinate via this NATS work queue stream to ensure that tasks only run on one node in a Shaper cluster.
 		tasksStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
-			Name:      app.TasksStreamName,
-			Subjects:  []string{app.TasksSubjectPrefix + ">"},
-			Storage:   jetstream.FileStorage,
-			Retention: jetstream.WorkQueuePolicy,
+			Name:                 app.TasksStreamName,
+			Subjects:             []string{app.TasksSubjectPrefix + ">"},
+			Storage:              jetstream.FileStorage,
+			DiscardNewPerSubject: true,
+			Discard:              jetstream.DiscardNew,
+			MaxMsgsPerSubject:    1,
+			Retention:            jetstream.WorkQueuePolicy,
 		})
 		if err != nil {
 			return err
