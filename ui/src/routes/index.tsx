@@ -150,19 +150,19 @@ function Index() {
         <meta name="description" content="Show a list of all dashboards and tasks" />
       </Helmet>
 
-      <div className="px-4 pb-4 min-h-dvh flex flex-col">
-        <div className="flex">
+      <div className="md:px-4 pb-4 min-h-dvh flex flex-col">
+        <div className="flex px-4 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <h1 className="text-2xl font-semibold font-display flex-grow pb-2 pt-2.5">
+          <h1 className="text-2xl font-semibold font-display flex-grow text-right md:text-left pb-2 pt-2.5">
             <RiLayoutFill
-              className="size-5 inline mr-1 -mt-1"
+              className="size-5 inline hidden md:inline mr-1 -mt-1"
               aria-hidden={true}
             />
             {translate("Overview")}
           </h1>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow p-6">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-6">
           {data.apps.length === 0 ? (
             <div className="my-4 flex flex-col items-center justify-center flex-grow">
               <RiLayoutFill

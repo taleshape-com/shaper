@@ -48,9 +48,9 @@ const configChanged = (existingSystemConfig: ISystemConfig) => {
 }
 
 export const reloadSystemConfig = async () => {
-  const existingSystemConfig = getSystemConfig();
+  const previousConfig = getSystemConfig();
   await fetchSystemConfig();
-  if (configChanged(existingSystemConfig)) {
+  if (configChanged(previousConfig)) {
     console.warn("System config has changed, reloading...");
     localStorage.removeItem(localStorageJwtKey);
     window.location.reload();

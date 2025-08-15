@@ -29,77 +29,70 @@ type BroadCastPayload struct {
 	Content string `json:"content"`
 }
 
-func getNextTaskRun(app *App, ctx context.Context, taskID, content string) (*time.Time, string) {
+func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, string, error) {
 	// Run first query
 	cleanContent := util.StripSQLComments(content)
 	sqls, err := splitSQLQueries(cleanContent)
 	if err != nil {
-		app.Logger.Error("Error splitting SQL queries", slog.Any("error", err), slog.String("task", taskID))
-		return nil, ""
+		return nil, "", fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 	if len(sqls) == 0 {
-		app.Logger.Error("No SQL queries found in task content", slog.String("task", taskID))
-		return nil, ""
+		return nil, "", fmt.Errorf("no SQL queries found in task content")
 	}
 	conn, err := app.DB.Connx(ctx)
 	if err != nil {
-		app.Logger.Error("Error getting database connection", slog.Any("error", err), slog.String("task", taskID))
-		return nil, ""
+		return nil, "", fmt.Errorf("failed to get database connection: %w", err)
 	}
 	defer conn.Close()
 	sqlString := strings.TrimSpace(sqls[0])
 	if sqlString == "" {
-		app.Logger.Error("First SQL query is empty", slog.String("task", taskID))
-		return nil, ""
+		return nil, "", fmt.Errorf("first SQL query is empty")
 	}
 	rows, err := conn.QueryxContext(ctx, sqlString)
 	if err != nil {
-		app.Logger.Error("Error executing first SQL query", slog.Any("error", err), slog.String("task", taskID), slog.String("query", sqlString))
-		return nil, ""
+		return nil, "", fmt.Errorf("failed to execute first SQL query: %w", err)
 	}
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
-		app.Logger.Error("Error getting column types", slog.Any("error", err), slog.String("task", taskID))
-		return nil, ""
+		return nil, "", fmt.Errorf("failed to get column types: %w", err)
 	}
 	result := [][]any{}
 	for rows.Next() {
 		row, err := rows.SliceScan()
 		if err != nil {
-			app.Logger.Error("Error scanning row", slog.Any("error", err), slog.String("task", taskID))
 			rows.Close()
-			return nil, ""
+			return nil, "", fmt.Errorf("failed to scan row: %w", err)
 		}
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
-		app.Logger.Error("Error iterating over rows", slog.Any("error", err), slog.String("task", taskID))
-		return nil, ""
+		return nil, "", fmt.Errorf("error iterating over rows: %w", err)
 	}
 	scheduleType, isSchedule := getScheduleColumn(colTypes, result)
 	if !isSchedule {
-		app.Logger.Error("First SQL query is not a SCHEDULE query", slog.String("task", taskID), slog.String("query", sqlString))
-		return nil, ""
+		return nil, "", fmt.Errorf("first SQL query is not a SCHEDULE query")
 	}
 	reloadValue := getReloadValue(result)
 	if reloadValue <= 0 {
-		app.Logger.Info("Task SCHEDULE set to NULL, skipping scheduling", slog.String("task", taskID))
-		return nil, ""
+		return nil, scheduleType, nil
 	}
 	nextRunAt := time.UnixMilli(reloadValue)
-	return &nextRunAt, scheduleType
+	return &nextRunAt, scheduleType, nil
 }
 
 func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, content string) {
 	unscheduleTask(app, taskID)
-	nextRunAt, scheduleType := getNextTaskRun(app, ctx, taskID, content)
+	nextRunAt, scheduleType, err := getNextTaskRun(app, ctx, content)
+	if err != nil {
+		app.Logger.Error("Error getting next task run", slog.Any("error", err), slog.String("task", taskID))
+	}
 	if nextRunAt == nil {
 		return
 	}
 	// schedule task
 	scheduleTask(app, ctx, taskID, *nextRunAt, scheduleType)
 	// set next_run_at in DB
-	_, err := app.DB.ExecContext(
+	_, err = app.DB.ExecContext(
 		ctx,
 		`INSERT INTO `+app.Schema+`.task_runs
 		(task_id, next_run_at, next_run_type)
@@ -174,7 +167,10 @@ func (app *App) HandleTask(msg jetstream.Msg) {
 		app.Logger.Error("Error acking message", slog.Any("error", err))
 		return
 	}
-	nextRunAt, scheduleType := getNextTaskRun(app, ctx, taskID, task.Content)
+	nextRunAt, scheduleType, err := getNextTaskRun(app, ctx, task.Content)
+	if err != nil {
+		app.Logger.Error("Error getting next task run", slog.String("task", taskID), slog.Any("error", err))
+	}
 	var totalDuration time.Duration
 	for _, queryResult := range runResult.Queries {
 		totalDuration += time.Duration(queryResult.Duration) * time.Millisecond
@@ -207,7 +203,10 @@ func runAll(app *App, taskID string, runTime time.Time) {
 		app.Logger.Error("Error running task", slog.String("task", taskID), slog.Any("error", err))
 		return
 	}
-	nextRunAt, scheduleType := getNextTaskRun(app, ctx, taskID, task.Content)
+	nextRunAt, scheduleType, err := getNextTaskRun(app, ctx, task.Content)
+	if err != nil {
+		app.Logger.Error("Error getting next task run", slog.String("task", taskID), slog.Any("error", err))
+	}
 	var totalDuration time.Duration
 	for _, queryResult := range runResult.Queries {
 		totalDuration += time.Duration(queryResult.Duration) * time.Millisecond
@@ -245,7 +244,7 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 		nextRunTypeSlogAttr = slog.String("next_run_type", payload.NextRunType)
 	}
 	app.Logger.Info(
-		"Task completed",
+		"Task Result",
 		slog.String("task", payload.TaskID),
 		slog.Time("started_at", payload.StartedAt),
 		slog.Bool("success", payload.Success),
@@ -329,7 +328,18 @@ func (app *App) HandleTaskResult(msg jetstream.Msg) {
 	}
 }
 
-func (app *App) BroadcastManualTask(ctx context.Context, content string) {
+func ManualTaskRun(app *App, ctx context.Context, content string) (TaskResult, error) {
+	_, scheduleType, err := getNextTaskRun(app, ctx, content)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("failed to get next task run: %w", err)
+	}
+	if scheduleType == "all" {
+		broadcastManualTask(app, ctx, content)
+	}
+	return RunTask(app, ctx, content)
+}
+
+func broadcastManualTask(app *App, ctx context.Context, content string) {
 	payload, err := json.Marshal(BroadCastPayload{
 		// The ID is used to identify the current node but we regenerate it every time the node restarts. This is fine since broadcasts are not presistent.
 		NodeID:  app.NodeID,
