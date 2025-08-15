@@ -167,11 +167,8 @@ func (app *App) HandleTask(msg jetstream.Msg) {
 	runResult, err := RunTask(app, ctx, task.Content)
 	if err != nil {
 		app.Logger.Error("Error running task", slog.String("task", taskID), slog.Any("error", err))
-		if err := msg.Nak(); err != nil {
-			app.Logger.Error("Error nack message", slog.Any("error", err))
-		}
-		return
 	}
+	// Ack even on error. Trying again next run.
 	err = msg.Ack()
 	if err != nil {
 		app.Logger.Error("Error acking message", slog.Any("error", err))
