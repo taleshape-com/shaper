@@ -69,6 +69,7 @@ type Config struct {
 	JWTExp                     time.Duration
 	NoPublicSharing            bool
 	NoTasks                    bool
+	NodeIDFile                 string
 	NatsServers                string
 	NatsHost                   string
 	NatsPort                   int
@@ -136,6 +137,7 @@ func loadConfig() Config {
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
 	streamPrefix := flags.StringLong("stream-prefix", "", "Prefix for NATS stream and KV bucket names. Must be a valid NATS subject name")
+	nodeIDFile := flags.StringLong("node-id-file", "", "File to store and lookup node ID (default: [--dir]/node-id.txt)")
 	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
 	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
@@ -228,6 +230,7 @@ func loadConfig() Config {
 		InviteExp:                  *inviteExp,
 		NoPublicSharing:            *noPublicSharing,
 		NoTasks:                    *noTasks,
+		NodeIDFile:                 *nodeIDFile,
 		NatsServers:                *natsServers,
 		NatsHost:                   *natsHost,
 		NatsPort:                   *natsPort,
@@ -343,13 +346,14 @@ func Run(cfg Config) func(context.Context) {
 		}
 	}
 
-	// Get or generate consumer names
-	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-")
-	stateConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.StateConsumerNameFile, "state-consumer-name.txt", "shaper-state-consumer-")
-	taskResultConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.TaskResultConsumerNameFile, "task-result-consumer-name.txt", "shaper-task-result-consumer-")
+	nodeID := getOrGenerateNodeID(cfg.DataDir, cfg.NodeIDFile, "node-id.txt")
+	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-", nodeID)
+	stateConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.StateConsumerNameFile, "state-consumer-name.txt", "shaper-state-consumer-", nodeID)
+	taskResultConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.TaskResultConsumerNameFile, "task-result-consumer-name.txt", "shaper-task-result-consumer-", nodeID)
 
 	app, err := core.New(
 		APP_NAME,
+		nodeID,
 		db,
 		logger,
 		cfg.BasePath,
@@ -442,15 +446,14 @@ func getExecutableModTime() (time.Time, error) {
 	return stat.ModTime(), err
 }
 
-// Consumer name is a CUID2 with a prefix and it's stored in the given file
-// Binding consumer names to the local file system means they reset when the file system is reset.
+// Node ID is a CUID2 and it's stored in the given file.
+// Binding the Node ID to the local file system means it resets when the file system is reset.
 // This works well together with Docker containers.
-func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName string, prefix string) string {
+func getOrGenerateNodeID(dataDir, nameFile, defaultFileName string) string {
 	fileName := nameFile
 	if fileName == "" {
 		fileName = path.Join(dataDir, defaultFileName)
 	}
-
 	name := ""
 	if _, err := os.Stat(fileName); err == nil {
 		content, err := os.ReadFile(fileName)
@@ -459,11 +462,33 @@ func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName string, prefix
 		}
 		name = strings.TrimSpace(string(content))
 	} else {
-		name = prefix + cuid2.Generate()
+		name = cuid2.Generate()
 		err := os.WriteFile(fileName, []byte(name), 0644)
 		if err != nil {
 			panic(err)
 		}
+	}
+	return name
+}
+
+// Consumer name defaults to the Node ID with a prefix.
+// Consumer names can also be read from a file to set them explicitly. This is for backwards compatibility from before the concept of Node IDs was introduced.
+// Binding consumer names to the local file system means they reset when the file system is reset.
+// This works well together with Docker containers.
+func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName, prefix, nodeID string) string {
+	fileName := nameFile
+	if fileName == "" {
+		fileName = path.Join(dataDir, defaultFileName)
+	}
+	name := ""
+	if _, err := os.Stat(fileName); err == nil {
+		content, err := os.ReadFile(fileName)
+		if err != nil {
+			panic(err)
+		}
+		name = strings.TrimSpace(string(content))
+	} else {
+		name = prefix + nodeID
 	}
 	return name
 }

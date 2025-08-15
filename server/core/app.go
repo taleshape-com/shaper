@@ -10,7 +10,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/nrednav/cuid2"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 // TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
 	Name                      string
-	ProcessID                 string
+	NodeID                    string
 	DB                        *sqlx.DB
 	Logger                    *slog.Logger
 	LoginRequired             bool
@@ -58,6 +57,7 @@ type App struct {
 
 func New(
 	name string,
+	nodeID string,
 	db *sqlx.DB,
 	logger *slog.Logger,
 	baseURL string,
@@ -104,7 +104,7 @@ func New(
 
 	app := &App{
 		Name:                     name,
-		ProcessID:                cuid2.Generate(),
+		NodeID:                   nodeID,
 		DB:                       db,
 		Logger:                   logger,
 		LoginRequired:            loginRequired,
