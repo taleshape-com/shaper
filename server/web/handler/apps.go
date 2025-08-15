@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 package handler
 
 import (
@@ -21,7 +23,7 @@ func ListApps(app *core.App) echo.HandlerFunc {
 		order := c.QueryParam("order")
 		result, err := core.ListApps(app, c.Request().Context(), sort, order)
 		if err != nil {
-			c.Logger().Error("error listing apss:", slog.Any("error", err))
+			c.Logger().Error("error listing apps:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: err.Error()}, "  ")

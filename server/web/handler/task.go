@@ -29,12 +29,7 @@ func RunTask(app *core.App) echo.HandlerFunc {
 
 		ctx := c.Request().Context()
 
-		result, err := core.RunTask(app, ctx, request.Content)
-
-		if result.ScheduleType == "all" {
-			app.BroadcastManualTask(ctx, request.Content)
-		}
-
+		result, err := core.ManualTaskRun(app, ctx, request.Content)
 		if err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
