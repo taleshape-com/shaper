@@ -335,7 +335,7 @@ func (app *App) HandleTaskResult(msg jetstream.Msg) {
 func (app *App) BroadcastManualTask(ctx context.Context, content string) {
 	payload, err := json.Marshal(BroadCastPayload{
 		// The ID is used to identify the current node but we regenerate it every time the node restarts. This is fine since broadcasts are not presistent.
-		NodeID:  app.ProcessID,
+		NodeID:  app.NodeID,
 		Content: content,
 	})
 	if err != nil {
@@ -356,7 +356,7 @@ func (app *App) HandleTaskBroadcast(msg *nats.Msg) {
 		app.Logger.Error("Error unmarshalling task broadcast", slog.Any("error", err), slog.String("subject", msg.Subject))
 		return
 	}
-	if payload.NodeID == app.ProcessID {
+	if payload.NodeID == app.NodeID {
 		return
 	}
 	app.Logger.Info("Running broadcasted task", slog.String("origin", payload.NodeID))
