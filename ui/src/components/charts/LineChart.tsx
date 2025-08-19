@@ -134,7 +134,7 @@ const LineChart = (props: LineChartProps) => {
               color: referenceLineColor,
             },
             data: [
-              { xAxis: hoveredIndex },
+              { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
             ],
           },
         };

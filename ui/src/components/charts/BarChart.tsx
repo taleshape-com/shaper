@@ -140,8 +140,8 @@ const BarChart = (props: BarChartProps) => {
             },
             data: [
               layout === "horizontal"
-                ? { xAxis: hoveredIndex }
-                : { yAxis: hoveredIndex },
+                ? { xAxis: isTimestampData && data.length >= timeTypeThreshold ? hoveredIndex : dataCopy.findIndex(item => item[index] === hoveredIndex) }
+                : { yAxis: isTimestampData && data.length >= timeTypeThreshold ? hoveredIndex : dataCopy.findIndex(item => item[index] === hoveredIndex) },
             ],
           },
         };
@@ -503,6 +503,7 @@ const BarChart = (props: BarChartProps) => {
         }
 
         if (indexValue !== undefined) {
+          console.log({ indexValue, chartId, indexType });
           setHoverState(indexValue, chartId, indexType);
         }
       },

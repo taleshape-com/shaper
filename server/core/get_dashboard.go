@@ -34,6 +34,18 @@ var sideEffectSQLStatements = [][]string{
 	{"CREATE", "OR", "REPLACE", "TEMPORARY", "VIEW"},
 	{"CREATE", "OR", "REPLACE", "TEMP", "TABLE"},
 	{"CREATE", "OR", "REPLACE", "TEMP", "VIEW"},
+	{"CREATE", "TEMP", "MACRO"},
+	{"CREATE", "TEMP", "FUNCTION"},
+	{"CREATE", "TEMPORARY", "MACRO"},
+	{"CREATE", "TEMPORARY", "FUNCTION"},
+	{"CREATE", "TEMP", "MACRO", "IF", "NOT", "EXISTS"},
+	{"CREATE", "TEMP", "FUNCTION", "IF", "NOT", "EXISTS"},
+	{"CREATE", "TEMPORARY", "MACRO", "IF", "NOT", "EXISTS"},
+	{"CREATE", "TEMPORARY", "FUNCTION", "IF", "NOT", "EXISTS"},
+	{"CREATE", "OR", "REPLACE", "TEMP", "MACRO"},
+	{"CREATE", "OR", "REPLACE", "TEMP", "FUNCTION"},
+	{"CREATE", "OR", "REPLACE", "TEMPORARY", "MACRO"},
+	{"CREATE", "OR", "REPLACE", "TEMPORARY", "FUNCTION"},
 }
 
 type DashboardQuery struct {

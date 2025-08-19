@@ -38,50 +38,51 @@ const DashboardBarChart = ({
   const indexAxisHeader = headers[indexAxisIndex];
   // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
-  const dataByIndexAxis = data.reduce(
-    (acc, row) => {
-      let key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
-      if (key === null) {
-        key = '';
-      }
-      if (!acc[key]) {
-        acc[key] = {
-          [indexAxisHeader.name]:
-            isTimeType(indexAxisHeader.type) ?
-              (new Date(key)).getTime() : key,
-        };
-      }
-      row.forEach((cell, i) => {
-        if (i === indexAxisIndex) {
-          return;
-        }
-        if (i === categoryIndex) {
-          return;
-        }
-        const c = formatCellValue(cell)
-        if (i === valueAxisIndex) {
-          if (categoryIndex === -1) {
-            acc[key][valueAxisName] = c;
-            return;
-          }
-          const category = (row[categoryIndex] ?? '').toString();
-          categories.add(category);
-          acc[key][category] = c;
-          return;
-        }
-        const extraData = extraDataByIndexAxis[key]
-        const header = headers[i]
-        if (extraData != null) {
-          extraData[header.name] = [c, header.type];
-        } else {
-          extraDataByIndexAxis[key] = { [header.name]: [c, header.type] };
-        }
+  const dataByIndexAxis = new Map<string | number, Record<string, string | number>>();
+  data.forEach((row) => {
+    let key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
+    if (key === null) {
+      key = '';
+    }
+    if (!dataByIndexAxis.get(key)) {
+      dataByIndexAxis.set(key, {
+        [indexAxisHeader.name]:
+          isTimeType(indexAxisHeader.type) ?
+            (new Date(key)).getTime() : key,
       });
-      return acc;
-    },
-    {} as Record<string, Record<string, string | number>>,
-  );
-  const chartdata = Object.values(dataByIndexAxis);
+    }
+    const v = dataByIndexAxis.get(key);
+    if (v == null) {
+      return;
+    }
+    row.forEach((cell, i) => {
+      if (i === indexAxisIndex) {
+        return;
+      }
+      if (i === categoryIndex) {
+        return;
+      }
+      const c = formatCellValue(cell)
+      if (i === valueAxisIndex) {
+        if (categoryIndex === -1) {
+          v[valueAxisName] = c;
+          return;
+        }
+        const category = (row[categoryIndex] ?? '').toString();
+        categories.add(category);
+        v[category] = c;
+        return;
+      }
+      const extraData = extraDataByIndexAxis[key]
+      const header = headers[i]
+      if (extraData != null) {
+        extraData[header.name] = [c, header.type];
+      } else {
+        extraDataByIndexAxis[key] = { [header.name]: [c, header.type] };
+      }
+    });
+    return dataByIndexAxis;
+  });
   const indexType = indexAxisHeader.type;
 
   return (
@@ -89,7 +90,7 @@ const DashboardBarChart = ({
       chartId={chartId}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
-      data={chartdata}
+      data={Array.from(dataByIndexAxis.values())}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
       indexType={indexType}
