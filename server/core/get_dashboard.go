@@ -373,6 +373,9 @@ func mapTag(index int, rInfo renderInfo) string {
 		if rInfo.CategoryIndex != nil && index == *rInfo.CategoryIndex {
 			return "category"
 		}
+		if rInfo.ColorIndex != nil && index == *rInfo.ColorIndex {
+			return "color"
+		}
 	}
 	if rInfo.Type == "dropdown" || rInfo.Type == "dropdownMulti" {
 		if rInfo.ValueIndex != nil && index == *rInfo.ValueIndex {
@@ -605,6 +608,10 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 		if lineCat == nil {
 			lineCat, lineCatIndex = findColumnByTag(columns, "CATEGORY")
 		}
+		lineColor, lineColorIndex := findColumnByTag(columns, "LINECHART_COLOR")
+		if lineColor == nil {
+			lineColor, lineColorIndex = findColumnByTag(columns, "COLOR")
+		}
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "linechart",
@@ -613,6 +620,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 		}
 		if lineCat != nil {
 			r.CategoryIndex = &lineCatIndex
+		}
+		if lineColor != nil {
+			r.ColorIndex = &lineColorIndex
 		}
 		return r
 	}
@@ -625,6 +635,10 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 	if barCat == nil {
 		barCat, barCatIndex = findColumnByTag(columns, "CATEGORY")
 	}
+	barColor, barColorIndex := findColumnByTag(columns, "BARCHART_COLOR")
+	if barColor == nil {
+		barColor, barColorIndex = findColumnByTag(columns, "COLOR")
+	}
 	if barchart != nil && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
@@ -634,6 +648,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 		}
 		if barCat != nil {
 			r.CategoryIndex = &barCatIndex
+		}
+		if barColor != nil {
+			r.ColorIndex = &barColorIndex
 		}
 		return r
 	}
@@ -653,6 +670,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
 		}
+		if barColor != nil {
+			r.ColorIndex = &barColorIndex
+		}
 		return r
 	}
 
@@ -667,6 +687,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 		if barCat != nil {
 			r.CategoryIndex = &barCatIndex
 		}
+		if barColor != nil {
+			r.ColorIndex = &barColorIndex
+		}
 		return r
 	}
 	if barchartStacked != nil && yaxis != nil && barCat != nil {
@@ -676,6 +699,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
+		}
+		if barColor != nil {
+			r.ColorIndex = &barColorIndex
 		}
 		return r
 	}

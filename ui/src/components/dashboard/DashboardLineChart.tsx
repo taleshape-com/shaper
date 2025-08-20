@@ -23,10 +23,12 @@ const DashboardLineChart = ({
   if (valueAxisIndex === -1) {
     throw new Error("No  header with tag 'value'");
   }
+  const colorIndex = headers.findIndex((c) => c.tag === "color");
   const valueAxisHeader = headers[valueAxisIndex];
   const valueAxisName = valueAxisHeader.name;
   const categoryIndex = headers.findIndex((c) => c.tag === "category");
   const categories = new Set<string>();
+  const colorsByCategory = {} as Record<string, string>;
   if (categoryIndex === -1) {
     categories.add(valueAxisName);
   }
@@ -56,6 +58,18 @@ const DashboardLineChart = ({
         return;
       }
       if (i === categoryIndex) {
+        return;
+      }
+      if (i === colorIndex) {
+        const color = (cell ?? '').toString();
+        if (color.length > 0) {
+          if (categoryIndex === -1) {
+            colorsByCategory[valueAxisName] = color;
+          } else {
+            const category = (row[categoryIndex] ?? '').toString();
+            colorsByCategory[category] = color;
+          }
+        }
         return;
       }
       const c = formatCellValue(cell)
@@ -90,6 +104,7 @@ const DashboardLineChart = ({
       indexType={indexType}
       valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
+      colorsByCategory={colorsByCategory}
       valueFormatter={(n: number, shortFormat?: boolean) => {
         return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}

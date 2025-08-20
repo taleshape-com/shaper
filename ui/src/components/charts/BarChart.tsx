@@ -3,9 +3,7 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {
-  AvailableEChartsColors,
-  constructEChartsCategoryColors,
-  getEChartsColor,
+  constructCategoryColors,
   getThemeColors,
   getChartFont,
 } from "../../lib/chartUtils";
@@ -25,6 +23,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
+  colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean) => string;
   indexFormatter: (value: number, shortFormat?: boolean) => string;
   showLegend?: boolean;
@@ -39,6 +38,7 @@ const BarChart = (props: BarChartProps) => {
     data,
     extraDataByIndexAxis,
     categories,
+    colorsByCategory,
     index,
     indexType,
     valueType,
@@ -68,14 +68,12 @@ const BarChart = (props: BarChartProps) => {
     hoveredChartIdRef.current = hoveredChartId;
   }, [hoveredChartId]);
 
-  const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
-
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
-    const isDark = isDarkMode;
     const chartFont = getChartFont();
+    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     // Check if we're dealing with timestamps
     // TODO: I am still not completely sure why we need to handle time as timestamp as well
@@ -107,11 +105,11 @@ const BarChart = (props: BarChartProps) => {
           ? dataCopy.map((item) => [item[index], item[category]])
           : dataCopy.map((item) => item[category]),
         itemStyle: {
-          color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          color: categoryColors.get(category),
         },
         emphasis: {
           itemStyle: {
-            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            color: categoryColors.get(category),
             opacity: dataCopy.length > 1 ? 0.8 : 1,
           },
         },
@@ -454,7 +452,6 @@ const BarChart = (props: BarChartProps) => {
     showLegend,
     layout,
     type,
-    categoryColors,
     xAxisLabel,
     yAxisLabel,
     extraDataByIndexAxis,
@@ -503,7 +500,6 @@ const BarChart = (props: BarChartProps) => {
         }
 
         if (indexValue !== undefined) {
-          console.log({ indexValue, chartId, indexType });
           setHoverState(indexValue, chartId, indexType);
         }
       },

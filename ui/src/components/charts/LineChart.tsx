@@ -3,9 +3,7 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {
-  AvailableEChartsColors,
-  constructEChartsCategoryColors,
-  getEChartsColor,
+  constructCategoryColors,
   getThemeColors,
   getChartFont,
 } from "../../lib/chartUtils";
@@ -24,6 +22,7 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
+  colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean) => string;
   indexFormatter: (value: number, shortFormat?: boolean) => string;
   showLegend?: boolean;
@@ -36,6 +35,7 @@ const LineChart = (props: LineChartProps) => {
     data,
     extraDataByIndexAxis,
     categories,
+    colorsByCategory,
     index,
     indexType,
     valueType,
@@ -58,8 +58,6 @@ const LineChart = (props: LineChartProps) => {
 
   const { isDarkMode } = React.useContext(DarkModeContext);
 
-  const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
-
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
     hoveredChartIdRef.current = hoveredChartId;
@@ -69,8 +67,8 @@ const LineChart = (props: LineChartProps) => {
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
-    const isDark = isDarkMode;
     const chartFont = getChartFont();
+    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     // Check if we're dealing with timestamps
     // TODO: I am still not completely sure why we need to handle time as timestamp as well
@@ -90,10 +88,10 @@ const LineChart = (props: LineChartProps) => {
         symbolSize: 6,
         emphasis: {
           itemStyle: {
-            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            color: categoryColors.get(category),
             borderWidth: 0,
             shadowBlur: 0,
-            shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            shadowColor: categoryColors.get(category),
             opacity: 1,
           },
           lineStyle: {
@@ -101,11 +99,11 @@ const LineChart = (props: LineChartProps) => {
           },
         },
         lineStyle: {
-          color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          color: categoryColors.get(category),
           width: 2,
         },
         itemStyle: {
-          color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          color: categoryColors.get(category),
           borderWidth: 0,
           // always show dots when there are not too many data points and we only have a single line
           opacity: categories.length > 1 || (data.length / (chartWidth) > 0.05) ? 0 : 1,
@@ -404,7 +402,6 @@ const LineChart = (props: LineChartProps) => {
     showLegend,
     xAxisLabel,
     yAxisLabel,
-    categoryColors,
     extraDataByIndexAxis,
     hoveredIndex,
     hoveredChartId,
