@@ -25,7 +25,8 @@ func initDB(db *sqlx.DB, schema string) error {
 			updated_at TIMESTAMP NOT NULL,
 			created_by VARCHAR,
 			updated_by VARCHAR,
-			visibility VARCHAR
+			visibility VARCHAR,
+			type VARCHAR NOT NULL,
 		)
 	`)
 	if err != nil {
@@ -38,6 +39,16 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error adding visibility column to apps table: %w", err)
+	}
+
+	// TODO: Remove once ran for all active users
+	_, err = db.Exec(`
+		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS type VARCHAR;
+		UPDATE ` + schema + `.apps SET type = 'dashboard' WHERE type IS NULL;
+		ALTER TABLE ` + schema + `.apps ALTER COLUMN type SET NOT NULL;
+	`)
+	if err != nil {
+		return fmt.Errorf("error adding type column to apps table: %w", err)
 	}
 
 	// Create api_keys table
@@ -100,6 +111,21 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating invites table: %w", err)
+	}
+
+	// Create task_runs table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ` + schema + ` .task_runs (
+			task_id VARCHAR PRIMARY KEY NOT NULL,
+			last_run_at TIMESTAMP,
+			last_run_success BOOLEAN,
+			last_run_duration INTERVAL,
+			next_run_at TIMESTAMP,
+			next_run_type VARCHAR NOT NULL DEFAULT 'single',
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating task_runs table: %w", err)
 	}
 
 	// Create custom types

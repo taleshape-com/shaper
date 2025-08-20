@@ -11,7 +11,7 @@ import { z } from "zod";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { Input } from "../components/tremor/Input";
 import { Helmet } from "react-helmet";
-import { useAuth } from "../lib/auth";
+import { useAuth, testLogin } from "../lib/auth";
 import { Button } from "../components/tremor/Button";
 
 export const Route = createFileRoute("/login")({
@@ -23,9 +23,6 @@ export const Route = createFileRoute("/login")({
   }),
   loader: async ({
     deps: { redirectUrl },
-    context: {
-      auth: { testLogin },
-    },
   }) => {
     if (await testLogin()) {
       throw redirect({

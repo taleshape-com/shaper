@@ -9,12 +9,14 @@ import {
   RiAdminLine,
   RiLogoutBoxRLine,
   RiBook2Line,
+  RiExternalLinkLine,
 } from "@remixicon/react";
-import { useAuth, logout } from "../../lib/auth";
+import { logout, getJwt } from "../../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { translate } from "../../lib/translate";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
+import { getSystemConfig } from "../../lib/system";
 
 const isLg = () => window.innerWidth >= 1024;
 
@@ -29,7 +31,6 @@ export function MenuProvider({
   isAdmin?: boolean;
   isNewPage?: boolean;
 }) {
-  const { getJwt, loginRequired } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(isLg())
@@ -49,7 +50,7 @@ export function MenuProvider({
       }
       console.error("Failed to fetch username:", error);
     }
-  }, [getJwt, navigate]);
+  }, [navigate]);
 
   useEffect(() => {
     fetchUserName();
@@ -100,45 +101,46 @@ export function MenuProvider({
           <Link
             to="/"
             disabled={isHome}
-            className={cx("block px-4 py-4", {
+            className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <RiHomeLine className="size-4 inline mr-2 mb-1" />
+            <RiHomeLine className="size-4 inline mr-1.5 mb-1" />
             {translate("Home")}
           </Link>
           <Link
             to="/new"
             disabled={isNewPage}
-            className={cx("block px-4 py-4", {
+            className={cx("block px-4 py-3", {
               "hover:underline": !isNewPage,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isNewPage,
             })}
           >
-            <RiFileAddLine className="size-4 inline mr-2 mb-1" />
+            <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
             {translate("New")}
           </Link>
           {extraContent}
         </div>
 
-        <div className="mt-auto pt-4 pb-4 space-y-3">
+        <div className="mt-auto pt-4 pb-4 space-y-2">
           <a
             href="https://taleshape.com/shaper/docs"
-            className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2"
+            className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2 group hover:underline"
             target="shaper-docs"
           >
             <RiBook2Line className="size-4 inline mr-1.5 mb-1" />
             {translate("Docs")}
+            <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
           <Link to="/admin" disabled={isAdmin} className={cx(
-            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm",
+            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
             { "text-ctext2 dark:text-dtext2": !isAdmin }
           )}>
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
             {translate("Admin")}
           </Link>
-          {loginRequired && (
+          {getSystemConfig().loginRequired && (
             <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
               <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                 {userName}

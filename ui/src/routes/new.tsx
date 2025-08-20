@@ -1,23 +1,17 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Editor } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
 import { z } from 'zod'
 import {
   createFileRoute,
   isRedirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState, useContext } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { useAuth } from '../lib/auth'
+import { useAuth, getJwt } from '../lib/auth'
 import { Dashboard } from '../components/dashboard'
-import { useDebouncedCallback } from 'use-debounce'
 import {
-  cx,
-  focusRing,
   getSearchParamString,
-  hasErrorInput,
   isMac,
   varsParamSchema,
 } from '../lib/utils'
@@ -27,10 +21,9 @@ import { Button } from '../components/tremor/Button'
 import { useQueryApi } from '../hooks/useQueryApi'
 import { MenuProvider } from '../components/providers/MenuProvider'
 import { MenuTrigger } from '../components/MenuTrigger'
-import { Result } from '../lib/dashboard'
+import { Result } from '../lib/types'
 import { useToast } from '../hooks/useToast'
 import { Tooltip } from '../components/tremor/Tooltip'
-import { DarkModeContext } from '../contexts/DarkModeContext'
 import {
   Dialog,
   DialogContent,
@@ -38,10 +31,79 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/tremor/Dialog'
+import { RiCodeSSlashFill, RiBarChart2Line } from "@remixicon/react";
 import { Input } from '../components/tremor/Input'
+import { VariablesMenu } from '../components/VariablesMenu'
+import { SqlEditor } from "../components/SqlEditor";
+import { PreviewError } from "../components/PreviewError";
+import { TaskResults, TaskResult } from "../components/TaskResults";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/tremor/Select'
 import "../lib/editorInit";
+import { getSystemConfig } from '../lib/system'
 
-const defaultQuery = '-- Enter your SQL query here'
+const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
+
+SELECT 'Label'::LABEL;
+SELECT 'Hello World';
+
+SELECT
+  col0::XAXIS,
+  col1::BARCHART,
+FROM (
+  VALUES
+  (1, 10),
+  (2, 20),
+  (3, 30),
+);`;
+
+const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that defines when the task runs. Examples:
+
+-- Every hour
+SELECT (INTERVAL '1h')::SCHEDULE;
+
+-- Every day at 1am
+SELECT (date_trunc('day', now()) + INTERVAL '25h')::SCHEDULE;
+
+-- Every Monday at 1am
+SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;
+
+-- Never run automatically
+SELECT NULL::SCHEDULE;`;
+
+// LocalStorage key for storing the app type preference
+const APP_TYPE_STORAGE_KEY = 'shaper-new-app-type';
+
+// Utility functions for localStorage
+const getStoredAppType = (): 'dashboard' | 'task' => {
+  try {
+    const stored = localStorage.getItem(APP_TYPE_STORAGE_KEY);
+    return stored === 'task' ? 'task' : 'dashboard';
+  } catch {
+    return 'dashboard';
+  }
+};
+
+const setStoredAppType = (type: 'dashboard' | 'task') => {
+  try {
+    localStorage.setItem(APP_TYPE_STORAGE_KEY, type);
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
+const clearStoredAppType = () => {
+  try {
+    localStorage.removeItem(APP_TYPE_STORAGE_KEY);
+  } catch {
+    // Ignore localStorage errors
+  }
+};
 
 export const Route = createFileRoute('/new')({
   validateSearch: z.object({
@@ -55,33 +117,38 @@ function NewDashboard() {
   const auth = useAuth()
   const queryApi = useQueryApi()
   const navigate = useNavigate({ from: '/new' })
-  const [editorQuery, setEditorQuery] = useState(defaultQuery)
-  const [runningQuery, setRunningQuery] = useState(defaultQuery)
+  const [appType, setAppType] = useState<'dashboard' | 'task'>(() => getStoredAppType())
+  const [editorQuery, setEditorQuery] = useState(appType === 'task' ? defaultTaskQuery : defaultQuery)
+  const [runningQuery, setRunningQuery] = useState(appType === 'task' ? defaultTaskQuery : defaultQuery)
   const [creating, setCreating] = useState(false)
-  const [hasVariableError, setHasVariableError] = useState(false)
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined)
+  const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [dashboardName, setDashboardName] = useState('')
   const { toast } = useToast()
-  const { isDarkMode } = useContext(DarkModeContext)
 
-  // Check for unsaved changes when component mounts
+  // Check for unsaved changes when component mounts or type changes
   useEffect(() => {
     const unsavedContent = editorStorage.getChanges('new')
     if (unsavedContent) {
       setEditorQuery(unsavedContent)
       setRunningQuery(unsavedContent)
+    } else {
+      // Set default content based on app type
+      const defaultContent = appType === 'task' ? defaultTaskQuery : defaultQuery
+      setEditorQuery(defaultContent)
+      setRunningQuery(defaultContent)
     }
-  }, [])
+  }, [appType])
 
   const previewDashboard = useCallback(async () => {
     setPreviewError(null)
     setIsPreviewLoading(true)
     try {
       const searchParams = getSearchParamString(vars)
-      const data = await queryApi(`query/dashboard?${searchParams}`, {
+      const data = await queryApi(`run/dashboard?${searchParams}`, {
         method: 'POST',
         body: {
           content: runningQuery,
@@ -98,45 +165,70 @@ function NewDashboard() {
     }
   }, [queryApi, vars, runningQuery, navigate])
 
-  useEffect(() => {
-    previewDashboard()
-  }, [previewDashboard])
-
-  const handleRun = useCallback(() => {
-    if (isPreviewLoading) {
-      return;
+  const runTask = useCallback(async () => {
+    setPreviewError(null)
+    setIsPreviewLoading(true)
+    try {
+      const data = await queryApi('run/task', {
+        method: 'POST',
+        body: {
+          content: editorQuery,
+        },
+      })
+      setTaskData(data)
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options)
+      }
+      setPreviewError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setIsPreviewLoading(false)
     }
-    if (editorQuery !== runningQuery) {
-      setRunningQuery(editorQuery)
-    } else {
+  }, [queryApi, editorQuery, navigate])
+
+  useEffect(() => {
+    if (appType === 'dashboard') {
       previewDashboard()
     }
-  }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading])
+  }, [previewDashboard, appType])
 
-  const handleRunRef = useRef(handleRun)
-
-  useEffect(() => {
-    handleRunRef.current = handleRun
-  }, [handleRun])
-
-  // We handle this command in monac and outside
-  // so even if the editor is not focused the shortcut works
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+Enter or Cmd+Enter (Mac)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault()
-        handleRun()
+  const handleRun = useCallback(() => {
+    if (appType === 'task') {
+      runTask()
+    } else {
+      if (isPreviewLoading) {
+        return;
+      }
+      if (editorQuery !== runningQuery) {
+        setRunningQuery(editorQuery)
+      } else {
+        previewDashboard()
       }
     }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleRun])
+  }, [editorQuery, runningQuery, previewDashboard, runTask, isPreviewLoading, appType])
+
+  const handleTypeChange = useCallback((newType: string) => {
+    const type = newType as 'dashboard' | 'task'
+    setAppType(type)
+    setStoredAppType(type)
+
+    // Clear results when switching types
+    setPreviewData(undefined)
+    setTaskData(undefined)
+    setPreviewError(null)
+
+    // Auto-run dashboard when switching to it
+    if (type === 'dashboard') {
+      setTimeout(() => previewDashboard(), 0)
+    }
+  }, [previewDashboard])
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || ''
+    const currentDefaultQuery = appType === 'task' ? defaultTaskQuery : defaultQuery
+
     // Save to localStorage
-    if (newQuery !== defaultQuery && newQuery.trim() !== '') {
+    if (newQuery !== currentDefaultQuery && newQuery.trim() !== '') {
       editorStorage.saveChanges('new', newQuery)
     } else {
       editorStorage.clearChanges('new')
@@ -151,23 +243,44 @@ function NewDashboard() {
 
     setCreating(true)
     try {
-      const { id } = await queryApi('dashboards', {
-        method: 'POST',
-        body: {
-          name: dashboardName,
-          content: editorQuery,
-        },
-      })
-      // Clear localStorage after successful save
-      editorStorage.clearChanges('new')
+      if (appType === 'task') {
+        const { id } = await queryApi('tasks', {
+          method: 'POST',
+          body: {
+            name: dashboardName,
+            content: editorQuery,
+          },
+        })
+        // Clear localStorage after successful save
+        editorStorage.clearChanges('new')
+        clearStoredAppType() // Reset the app type preference
 
-      // Navigate to the edit page of the new dashboard
-      navigate({
-        replace: true,
-        to: '/dashboards/$dashboardId/edit',
-        params: { dashboardId: id },
-        search: () => ({ vars }),
-      })
+        // Navigate to the task edit page
+        navigate({
+          replace: true,
+          to: '/tasks/$id',
+          params: { id },
+        })
+      } else {
+        const { id } = await queryApi('dashboards', {
+          method: 'POST',
+          body: {
+            name: dashboardName,
+            content: editorQuery,
+          },
+        })
+        // Clear localStorage after successful save
+        editorStorage.clearChanges('new')
+        clearStoredAppType() // Reset the app type preference
+
+        // Navigate to the dashboard edit page
+        navigate({
+          replace: true,
+          to: '/dashboards/$id/edit',
+          params: { id },
+          search: () => ({ vars }),
+        })
+      }
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options)
@@ -181,7 +294,7 @@ function NewDashboard() {
       setCreating(false)
       setShowCreateDialog(false)
     }
-  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName])
+  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName, appType])
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -195,57 +308,53 @@ function NewDashboard() {
     [navigate],
   )
 
-  const onVariablesEdit = useDebouncedCallback((value) => {
-    auth.updateVariables(value).then(
-      (ok) => {
-        setHasVariableError(!ok)
-        if (ok) {
-          // Refresh preview when variables change
-          previewDashboard()
-        }
-      },
-      () => {
-        setHasVariableError(true)
-      },
-    )
-  }, 500)
 
   return (
     <MenuProvider isNewPage>
       <Helmet>
-        <title>New Dashboard</title>
+        <title>{appType === 'task' ? 'New Task' : 'New Dashboard'}</title>
       </Helmet>
 
       <div className="h-dvh flex flex-col">
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
           <div className="flex items-center p-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
-              <div className="mt-6 px-4 w-full">
-                <label>
-                  <span className="text-lg font-medium font-display ml-1 mb-2 block">
-                    {translate('Variables')}
-                  </span>
-                  <textarea
-                    className={cx(
-                      'w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none h-28',
-                      focusRing,
-                      hasVariableError && hasErrorInput,
-                    )}
-                    onChange={(event) => {
-                      onVariablesEdit(event.target.value)
-                    }}
-                    defaultValue={JSON.stringify(auth.variables, null, 2)}
-                  ></textarea>
-                </label>
-              </div>
+              {appType === 'dashboard' && (
+                <VariablesMenu onVariablesChange={previewDashboard} />
+              )}
             </MenuTrigger>
 
-            <h1 className="text-xl font-semibold font-display flex-grow">
-              {translate('New Dashboard')}
+            <h1 className="flex items-center gap-3 flex-grow text-xl font-semibold font-display">
+              {translate('New')}
+              {getSystemConfig().tasksEnabled ? (
+                <Select value={appType} onValueChange={handleTypeChange}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dashboard">
+                      <RiBarChart2Line
+                        className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
+                        aria-hidden={true}
+                      />
+                      {translate('Dashboard')}
+                    </SelectItem>
+                    <SelectItem value="task">
+                      <RiCodeSSlashFill
+                        className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
+                        aria-hidden={true}
+                      />
+                      {translate('Task')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                " " + translate("Dashboard")
+              )}
             </h1>
 
             <div className="space-x-2">
-              <Tooltip showArrow={false} asChild content="Create Dashboard">
+              <Tooltip showArrow={false} asChild content={`Create ${appType === 'task' ? 'Task' : 'Dashboard'}`}>
                 <Button
                   onClick={() => setShowCreateDialog(true)}
                   disabled={creating}
@@ -271,61 +380,42 @@ function NewDashboard() {
           </div>
 
           <div className="flex-grow">
-            <Editor
-              height="100%"
-              defaultLanguage="sql"
-              value={editorQuery}
+            <SqlEditor
               onChange={handleQueryChange}
-              theme={isDarkMode ? 'vs-dark' : 'light'}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                automaticLayout: true,
-                formatOnPaste: true,
-                formatOnType: true,
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: true,
-                tabSize: 2,
-                bracketPairColorization: { enabled: true },
-              }}
-              onMount={(editor) => {
-                editor.addCommand(
-                  monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                  () => {
-                    handleRunRef.current()
-                  },
-                )
-              }}
+              onRun={handleRun}
+              content={editorQuery}
             />
           </div>
         </div>
 
-        <div className="flex-grow overflow-scroll relative pt-1">
+        <div className="flex-grow overflow-y-auto relative">
           {previewError && (
-            <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
-              <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
-                {previewError}
-              </div>
-            </div>
+            <PreviewError>{previewError}</PreviewError>
           )}
-          <Dashboard
-            vars={vars}
-            hash={auth.hash}
-            getJwt={auth.getJwt}
-            onVarsChanged={handleVarsChanged}
-            data={previewData} // Pass preview data directly to Dashboard
-            loading={isPreviewLoading}
-          />
+          {appType === 'dashboard' ? (
+            <Dashboard
+              vars={vars}
+              hash={auth.hash}
+              getJwt={getJwt}
+              onVarsChanged={handleVarsChanged}
+              data={previewData}
+              loading={isPreviewLoading}
+            />
+          ) : (
+            <TaskResults
+              data={taskData}
+              loading={isPreviewLoading}
+            />
+          )}
         </div>
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate('Create Dashboard')}</DialogTitle>
+            <DialogTitle>
+              {translate(`Create ${appType === 'task' ? 'Task' : 'Dashboard'}`)}
+            </DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -339,7 +429,7 @@ function NewDashboard() {
                 id="dashboardName"
                 value={dashboardName}
                 onChange={(e) => setDashboardName(e.target.value)}
-                placeholder={translate('Enter a name for the dashboard')}
+                placeholder={translate(`Enter a name for the ${appType === 'task' ? 'task' : 'dashboard'}`)}
                 autoFocus
                 required
               />

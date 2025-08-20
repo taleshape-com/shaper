@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Result } from "../../lib/dashboard";
+import { Result } from "../../lib/types";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";
@@ -17,6 +17,7 @@ import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
+import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 
 export interface DashboardProps {
   id?: string;
@@ -320,12 +321,14 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
+            const isChartQuery = query.render.type === 'linechart' || query.render.type === 'gauge' || query.render.type.startsWith('barchart');
             return (
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 min-h-[320px] h-[calc(50dvh-3.15rem)] bg-cbgs dark:bg-dbgs border-none shadow-sm",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
+                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
                     "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
                     "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
                     "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
@@ -337,16 +340,20 @@ const DataView = ({
                     <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
                   </div>
                 )}
+                {isChartQuery && (
+                  <ChartDownloadButton
+                    chartId={`${sectionIndex}-${queryIndex}`}
+                    label={query.render.label}
+                    className="absolute top-2 right-2 z-40"
+                  />
+                )}
                 {query.render.label ? (
-                  <h2 className="text-md py-4 text-center font-semibold font-display">
+                  <h2 className="text-md pt-4 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
                 ) : null}
                 <div
-                  className={cx("pb-5 mx-4", {
-                    "h-[calc(100%-3rem)]": query.render.label,
-                    "h-full pt-4": !query.render.label,
-                  })}
+                  className="m-4 flex-1 relative overflow-auto"
                 >
                   {renderContent(
                     query,
@@ -354,6 +361,7 @@ const DataView = ({
                     queryIndex,
                     data.minTimeValue,
                     data.maxTimeValue,
+                    numQueriesInSection,
                   )}
                 </div>
               </Card>
@@ -362,18 +370,20 @@ const DataView = ({
         </section>
       );
     })}
-    {numContentSections === 0 ? (
-      <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
-        <RiLayoutFill
-          className="mx-auto size-9"
-          aria-hidden={true}
-        />
-        <p className="mt-3 font-medium">
-          {translate("Nothing to show yet")}
-        </p>
-      </div>
-    ) : null}
-  </ChartHoverProvider>)
+    {
+      numContentSections === 0 ? (
+        <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
+          <RiLayoutFill
+            className="mx-auto size-9"
+            aria-hidden={true}
+          />
+          <p className="mt-3 font-medium">
+            {translate("Nothing to show yet")}
+          </p>
+        </div>
+      ) : null
+    }
+  </ChartHoverProvider >)
 }
 
 const renderContent = (
@@ -382,6 +392,7 @@ const renderContent = (
   queryIndex: number,
   minTimeValue: number,
   maxTimeValue: number,
+  numQueriesInSection: number,
 ) => {
   if (query.rows.length === 0) {
     return (
@@ -406,7 +417,6 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
-        label={query.render.label}
       />
     );
   }
@@ -442,12 +452,11 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
-        label={query.render.label}
       />
     );
   }
   if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} />;
+    return <DashboardValue headers={query.columns} data={query.rows} yScroll={numQueriesInSection > 1} />;
   }
   return <DashboardTable headers={query.columns} data={query.rows} />;
 };

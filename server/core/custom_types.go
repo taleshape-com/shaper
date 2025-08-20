@@ -8,7 +8,6 @@ import "github.com/jmoiron/sqlx"
 // Internally they are all UNION types so we can identify them in the query result,
 // and so that they work transparently with other SQL types.
 //
-// TODO: Consider making _shaper_ prefix configurable
 // TODO: Support DATE, INTERVAL and potential other types in axis
 // TODO: Support DATE, TIME, INTERVAL, DOUBLE in CATEGORY
 var dbTypes = []struct {
@@ -44,11 +43,16 @@ var dbTypes = []struct {
 	{"PLACEHOLDER", "UNION(_shaper_placeholder_varchar VARCHAR)", "string"},
 	{"PERCENT", "UNION(_shaper_percent_double DOUBLE)", "percent"},
 	{"RELOAD", "UNION(_shaper_reload_timestamp TIMESTAMP, _shaper_reload_timestamptz TIMESTAMPTZ, _shaper_reload_interval INTERVAL)", "timestamp"},
+	{"SCHEDULE", "UNION(_shaper_schedule_timestamp TIMESTAMP, _shaper_schedule_timestamptz TIMESTAMPTZ, _shaper_schedule_interval INTERVAL)", "timestamp"},
+	{"SCHEDULE_ALL", "UNION(_shaper_schedule_all_timestamp TIMESTAMP, _shaper_schedule_all_timestamptz TIMESTAMPTZ, _shaper_schedule_all_interval INTERVAL)", "timestamp"},
 	{"GAUGE", "UNION(_shaper_gauge_interval INTERVAL, _shaper_gauge_double DOUBLE)", "chart"},
 	{"GAUGE_PERCENT", "UNION(_shaper_gauge_percent DOUBLE)", "percent"},
 	{"RANGE", "UNION(_shaper_range_interval INTERVAL[], _shaper_range_double DOUBLE[])", "array"},
 	{"LABELS", "UNION(_shaper_labels_varchar VARCHAR[])", "array"},
 	{"COLORS", "UNION(_shaper_colors_varchar VARCHAR[])", "array"},
+	{"COLOR", "UNION(_shaper_color_varchar VARCHAR)", "string"},
+	{"LINECHART_COLOR", "UNION(_shaper_linechart_color_varchar VARCHAR)", "string"},
+	{"BARCHART_COLOR", "UNION(_shaper_barchart_color_varchar VARCHAR)", "string"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

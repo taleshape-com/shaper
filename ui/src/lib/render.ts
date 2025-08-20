@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column } from "./dashboard";
+import { Column } from "./types";
 
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.

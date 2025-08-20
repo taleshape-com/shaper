@@ -1,33 +1,27 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Editor } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
-
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState, useContext } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiExternalLinkLine } from "@remixicon/react";
-import { useAuth } from "../lib/auth";
+import { RiPencilLine, RiCloseLine, RiArrowDownSLine } from "@remixicon/react";
+import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
-import { useDebouncedCallback } from "use-debounce";
 import {
   cx,
   focusRing,
   getSearchParamString,
-  hasErrorInput,
   varsParamSchema,
 } from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
-import { IDashboard, Result } from "../lib/dashboard";
+import { IDashboard, Result } from "../lib/types";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
-import { DarkModeContext } from "../contexts/DarkModeContext";
 import {
   Dialog,
   DialogContent,
@@ -36,9 +30,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/tremor/Dialog";
+import { VariablesMenu } from "../components/VariablesMenu";
+import { PublicLink } from "../components/PublicLink";
+import { SqlEditor } from "../components/SqlEditor";
+import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 
-export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
+export const Route = createFileRoute("/dashboards_/$id/edit")({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
@@ -46,12 +44,12 @@ export const Route = createFileRoute("/dashboards_/$dashboardId/edit")({
     return match.cause === "enter";
   },
   loader: async ({
-    params: { dashboardId },
+    params: { id },
     context: {
       queryApi,
     },
   }) => {
-    const data = await queryApi(`dashboards/${dashboardId}/query`);
+    const data = await queryApi(`dashboards/${id}/query`);
     return data as IDashboard;
   },
   component: DashboardEditor,
@@ -64,42 +62,43 @@ function DashboardEditor() {
   const router = useRouter();
   const auth = useAuth();
   const queryApi = useQueryApi();
-  const navigate = useNavigate({ from: "/dashboards/$dashboardId/edit" });
+  const navigate = useNavigate({ from: "/dashboards/$id/edit" });
   const [editorQuery, setEditorQuery] = useState(dashboard.content);
   const [runningQuery, setRunningQuery] = useState(dashboard.content);
   const [saving, setSaving] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(dashboard.name);
   const [savingName, setSavingName] = useState(false);
-  const [hasVariableError, setHasVariableError] = useState(false);
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [loadDuration, setLoadDuration] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isDarkMode } = useContext(DarkModeContext);
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
-    const savedContent = editorStorage.getChanges(params.dashboardId);
+    const savedContent = editorStorage.getChanges(params.id);
     if (savedContent && savedContent !== dashboard.content) {
       setUnsavedContent(savedContent);
       setShowRestoreDialog(true);
     }
-  }, [params.dashboardId, dashboard.content]);
+  }, [params.id, dashboard.content]);
 
   const previewDashboard = useCallback(async () => {
     setPreviewError(null);
     setIsPreviewLoading(true);
+    setLoadDuration(null); // Reset previous duration
+    const startTime = Date.now();
     try {
       const searchParams = getSearchParamString(vars);
-      const data = await queryApi(`query/dashboard?${searchParams}`, {
+      const data = await queryApi(`run/dashboard?${searchParams}`, {
         method: "POST",
         body: {
-          dashboardId: params.dashboardId,
+          dashboardId: params.id,
           content: runningQuery,
         },
       });
@@ -110,6 +109,8 @@ function DashboardEditor() {
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
     } finally {
+      const duration = startTime ? Date.now() - startTime : null;
+      setLoadDuration(duration);
       setIsPreviewLoading(false);
     }
   }, [queryApi, params, vars, runningQuery, navigate]);
@@ -125,32 +126,10 @@ function DashboardEditor() {
     }
   }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading]);
 
-  const handleRunRef = useRef(handleRun);
-
-  useEffect(() => {
-    handleRunRef.current = handleRun;
-  }, [handleRun]);
-
-  // We handle this command in monac and outside
-  // so even if the editor is not focused the shortcut works
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+Enter or Cmd+Enter (Mac)
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        handleRun();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleRun]);
-
-
-  // Update textarea onChange handler
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
     // Save to localStorage
-    editorStorage.saveChanges(params.dashboardId, newQuery);
+    editorStorage.saveChanges(params.id, newQuery);
     setEditorQuery(newQuery);
   };
 
@@ -158,14 +137,14 @@ function DashboardEditor() {
     setSaving(true);
     try {
       await queryApi(
-        `dashboards/${params.dashboardId}/query`,
+        `dashboards/${params.id}/query`,
         {
           method: "POST",
           body: { content: editorQuery },
         },
       );
       // Clear localStorage after successful save
-      editorStorage.clearChanges(params.dashboardId);
+      editorStorage.clearChanges(params.id);
       dashboard.content = editorQuery;
       router.invalidate();
     } catch (err) {
@@ -183,7 +162,7 @@ function DashboardEditor() {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.dashboardId, editorQuery, dashboard, navigate, toast, router]);
+  }, [queryApi, params.id, editorQuery, dashboard, navigate, toast, router]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -197,20 +176,6 @@ function DashboardEditor() {
     [navigate],
   );
 
-  const onVariablesEdit = useDebouncedCallback((value) => {
-    auth.updateVariables(value).then(
-      (ok) => {
-        setHasVariableError(!ok);
-        if (ok) {
-          // Refresh preview when variables change
-          previewDashboard();
-        }
-      },
-      () => {
-        setHasVariableError(true);
-      },
-    );
-  }, 500);
 
   const handleSaveName = async (newName: string) => {
     if (newName === dashboard.name) {
@@ -220,7 +185,7 @@ function DashboardEditor() {
     setSavingName(true);
     try {
       await queryApi(
-        `dashboards/${params.dashboardId}/name`,
+        `dashboards/${params.id}/name`,
         {
           method: "POST",
           body: { name: newName },
@@ -250,7 +215,7 @@ function DashboardEditor() {
 
   const handleDelete = async () => {
     try {
-      await queryApi(`dashboards/${params.dashboardId}`, {
+      await queryApi(`dashboards/${params.id}`, {
         method: "DELETE",
       });
       // Navigate back to dashboard list
@@ -277,7 +242,7 @@ function DashboardEditor() {
   const handleVisibilityChange = async () => {
     try {
       await queryApi(
-        `dashboards/${params.dashboardId}/visibility`,
+        `dashboards/${params.id}/visibility`,
         {
           method: "POST",
           body: { visibility: dashboard.visibility === 'public' ? 'private' : 'public' },
@@ -313,7 +278,7 @@ function DashboardEditor() {
   };
 
   const handleDiscardUnsavedChanges = () => {
-    editorStorage.clearChanges(params.dashboardId);
+    editorStorage.clearChanges(params.id);
     setShowRestoreDialog(false);
   };
 
@@ -332,53 +297,38 @@ function DashboardEditor() {
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
           <div className="flex items-center p-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
-              <div className="mt-6 px-4">
-                <label className="block">
-                  <p className="text-lg font-medium font-display ml-1 mb-2">
-                    {translate("Variables")}
-                  </p>
-                  <textarea
-                    className={cx(
-                      "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
-                      focusRing,
-                      hasVariableError && hasErrorInput,
-                    )}
-                    onChange={(event) => {
-                      onVariablesEdit(event.target.value);
-                    }}
-                    defaultValue={JSON.stringify(auth.variables, null, 2)}
-                    rows={4}
-                  ></textarea>
-                </label>
-                {dashboard.visibility && (
-                  <div className="my-2">
-                    <Button
-                      onClick={() => setShowVisibilityDialog(true)}
-                      variant="secondary"
-                      className="mt-4 capitalize"
-                    >
-                      {translate(dashboard.visibility)}
-                      <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
-                    </Button>
-                    {dashboard.visibility === 'public' && (
-                      <a
-                        href={`../../view/${params.dashboardId}`}
-                        target="_blank"
-                        className="py-2 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 inline-block">
-                        {translate("Public Link")}
-                        <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
-                      </a>
-                    )}
-                  </div>
-                )}
-                <Button
-                  onClick={() => setShowDeleteDialog(true)}
-                  variant="destructive"
-                  className="mt-4"
-                >
-                  {translate("Delete Dashboard")}
-                </Button>
-              </div>
+              <VariablesMenu
+                onVariablesChange={previewDashboard}
+              />
+              {dashboard.visibility && (
+                <div className="my-2 px-4">
+                  <Button
+                    onClick={() => setShowVisibilityDialog(true)}
+                    variant="secondary"
+                    className="mt-4 capitalize"
+                  >
+                    {translate(dashboard.visibility)}
+                    <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
+                  </Button>
+                  {dashboard.visibility === 'public' && (
+                    <PublicLink href={`../../view/${params.id}`} />
+                  )}
+                </div>
+              )}
+              <Button
+                onClick={() => setShowDeleteDialog(true)}
+                variant="destructive"
+                className="mt-4 mx-4"
+              >
+                {translate("Delete Dashboard")}
+              </Button>
+              {loadDuration && (
+                <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
+                  <span>
+                    Load time: {loadDuration >= 1000 ? `${(loadDuration / 1000).toFixed(2)}s` : `${loadDuration}ms`}
+                  </span>
+                </div>
+              )}
             </MenuTrigger>
 
             {editingName ? (
@@ -445,8 +395,8 @@ function DashboardEditor() {
             )}
 
             <Link
-              to="/dashboards/$dashboardId"
-              params={{ dashboardId: params.dashboardId }}
+              to="/dashboards/$id"
+              params={{ id: params.id }}
               search={() => ({ vars })}
               className="text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200 flex-grow sm:grow-0"
             >
@@ -486,50 +436,22 @@ function DashboardEditor() {
           </div>
 
           <div className="flex-grow">
-            <Editor
-              height="100%"
-              defaultLanguage="sql"
-              value={editorQuery}
+            <SqlEditor
               onChange={handleQueryChange}
-              theme={isDarkMode ? "vs-dark" : "light"}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: "on",
-                scrollBeyondLastLine: true,
-                wordWrap: "on",
-                automaticLayout: true,
-                formatOnPaste: true,
-                formatOnType: true,
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: true,
-                tabSize: 2,
-                bracketPairColorization: { enabled: true },
-              }}
-              onMount={(editor) => {
-                editor.addCommand(
-                  monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                  () => {
-                    handleRunRef.current();
-                  },
-                );
-              }}
+              onRun={handleRun}
+              content={editorQuery}
             />
           </div>
         </div>
 
         <div className="flex-grow overflow-y-auto relative">
           {previewError && (
-            <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
-              <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
-                {previewError}
-              </div>
-            </div>
+            <PreviewError>{previewError}</PreviewError>
           )}
           <Dashboard
             vars={vars}
             hash={auth.hash}
-            getJwt={auth.getJwt}
+            getJwt={getJwt}
             onVarsChanged={handleVarsChanged}
             data={previewData} // Pass preview data directly to Dashboard
             loading={isPreviewLoading}

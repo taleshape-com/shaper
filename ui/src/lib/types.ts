@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-export interface IDashboard {
+export interface IApp {
   id: string;
   name: string;
   path: string;
@@ -10,13 +10,24 @@ export interface IDashboard {
   createdBy?: string;
   updatedBy?: string;
   visibility?: 'public' | 'private';
+  type: 'dashboard' | 'task';
+  taskInfo?: ITaskInfo;
 }
+
+interface ITaskInfo {
+  lastRunAt?: number; // epoch_ms
+  lastRunSuccess?: boolean;
+  lastRunDuration?: number; // in milliseconds
+  nextRunAt?: number; // epoch_ms
+}
+
+export type IDashboard = Omit<IApp, 'type'>;
 
 export type Column = {
   name: string;
   type: "year" | "month" | "hour" | "date" | "timestamp" | "duration" | "time" | "number" | "string" | "boolean" | "object" | "array" | "percent";
   nullable: boolean;
-  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "defaultFrom" | "defaultTo" | "compare" | "trend" | "";
+  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "defaultFrom" | "defaultTo" | "compare" | "trend" | "color" | "";
 };
 
 export const isTimeType = (t: Column['type']) => {
@@ -49,11 +60,6 @@ export type Result = {
         | "datepicker"
         | "daterangePicker";
         label?: string;
-      })
-      | ({
-        type: "gauge";
-        label?: string;
-        gaugeCategories: GaugeCategory[];
       });
       columns: Column[];
       rows: (string | number | boolean)[][];
@@ -72,7 +78,12 @@ export type Result = {
         | "barchartVertical"
         | "barchartVerticalStacked";
         label?: string;
-      };
+      }
+      | ({
+        type: "gauge";
+        label?: string;
+        gaugeCategories: GaugeCategory[];
+      });
       columns: Column[];
       rows: (string | number | boolean)[][];
     }[];

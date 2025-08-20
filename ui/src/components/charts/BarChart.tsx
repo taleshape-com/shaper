@@ -3,20 +3,17 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {
-  AvailableEChartsColors,
-  constructEChartsCategoryColors,
-  getEChartsColor,
+  constructCategoryColors,
   getThemeColors,
   getChartFont,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType } from "../../lib/dashboard";
+import { Column, isTimeType } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
-import { ChartDownloadButton } from "./ChartDownloadButton";
 
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
@@ -26,6 +23,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
+  colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean) => string;
   indexFormatter: (value: number, shortFormat?: boolean) => string;
   showLegend?: boolean;
@@ -33,7 +31,6 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   yAxisLabel?: string;
   layout: "vertical" | "horizontal";
   type: "default" | "stacked";
-  label?: string;
 }
 
 const BarChart = (props: BarChartProps) => {
@@ -41,6 +38,7 @@ const BarChart = (props: BarChartProps) => {
     data,
     extraDataByIndexAxis,
     categories,
+    colorsByCategory,
     index,
     indexType,
     valueType,
@@ -53,12 +51,12 @@ const BarChart = (props: BarChartProps) => {
     layout,
     type,
     chartId,
-    label,
     ...other
   } = props;
 
   const chartRef = useRef<echarts.ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
+  const [chartWidth, setChartWidth] = React.useState(0);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
@@ -70,14 +68,12 @@ const BarChart = (props: BarChartProps) => {
     hoveredChartIdRef.current = hoveredChartId;
   }, [hoveredChartId]);
 
-  const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
-
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
-    const isDark = isDarkMode;
     const chartFont = getChartFont();
+    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     // Check if we're dealing with timestamps
     // TODO: I am still not completely sure why we need to handle time as timestamp as well
@@ -109,11 +105,11 @@ const BarChart = (props: BarChartProps) => {
           ? dataCopy.map((item) => [item[index], item[category]])
           : dataCopy.map((item) => item[category]),
         itemStyle: {
-          color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          color: categoryColors.get(category),
         },
         emphasis: {
           itemStyle: {
-            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            color: categoryColors.get(category),
             opacity: dataCopy.length > 1 ? 0.8 : 1,
           },
         },
@@ -142,8 +138,8 @@ const BarChart = (props: BarChartProps) => {
             },
             data: [
               layout === "horizontal"
-                ? { xAxis: hoveredIndex }
-                : { yAxis: hoveredIndex },
+                ? { xAxis: isTimestampData && data.length >= timeTypeThreshold ? hoveredIndex : dataCopy.findIndex(item => item[index] === hoveredIndex) }
+                : { yAxis: isTimestampData && data.length >= timeTypeThreshold ? hoveredIndex : dataCopy.findIndex(item => item[index] === hoveredIndex) },
             ],
           },
         };
@@ -151,6 +147,19 @@ const BarChart = (props: BarChartProps) => {
 
       return baseSeries;
     });
+
+    const numLegendItems = categories.filter(c => c.length > 0).length;
+    const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 5.8, 50);
+    const legendPaddingLeft = 5;
+    const legendPaddingRight = 5;
+    const legendItemGap = 10;
+    const legendWidth = chartWidth - legendPaddingLeft - legendPaddingRight;
+    const halfLegendItems = Math.ceil(numLegendItems / 2);
+    const legendItemWidth = numLegendItems === 1
+      ? legendWidth
+      : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
+    const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
 
     return {
       animation: false,
@@ -266,17 +275,19 @@ const BarChart = (props: BarChartProps) => {
       },
       legend: {
         show: showLegend,
-        type: 'scroll',
+        type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
         left: 0,
         top: 7,
-        padding: [5, 25, 5, 5],
+        padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          width: canFitLegendItems ? legendItemWidth : undefined,
+          overflow: 'truncate',
         },
-        itemGap: 12,
+        itemGap: legendItemGap,
         itemHeight: 10,
         itemWidth: 10,
         pageButtonPosition: 'end',
@@ -299,7 +310,7 @@ const BarChart = (props: BarChartProps) => {
       grid: {
         left: yAxisLabel ? 45 : 15,
         right: 15,
-        top: showLegend ? 50 : 20,
+        top: showLegend ? 62 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -441,7 +452,6 @@ const BarChart = (props: BarChartProps) => {
     showLegend,
     layout,
     type,
-    categoryColors,
     xAxisLabel,
     yAxisLabel,
     extraDataByIndexAxis,
@@ -450,6 +460,7 @@ const BarChart = (props: BarChartProps) => {
     hoveredChartId,
     chartId,
     isDarkMode,
+    chartWidth,
   ]);
 
   // Event handlers for the EChart component
@@ -505,25 +516,25 @@ const BarChart = (props: BarChartProps) => {
   // Handle chart instance reference
   const handleChartReady = useCallback((chart: echarts.ECharts) => {
     chartRef.current = chart;
+    setChartWidth(chart.getWidth());
+  }, []);
+
+  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+    setChartWidth(chart.getWidth());
   }, []);
 
   return (
     <div
-      className={cx("h-full w-full relative group select-none", className)}
+      className={cx("h-full w-full relative select-none overflow-hidden", className)}
       {...other}
     >
-      {/* Chart container */}
       <EChart
         className="absolute inset-0"
         option={chartOptions}
         events={chartEvents}
         onChartReady={handleChartReady}
-      />
-      {/* Download button */}
-      <ChartDownloadButton
-        chartRef={chartRef}
-        chartId={chartId}
-        label={label}
+        onResize={handleChartResize}
+        data-chart-id={chartId}
       />
     </div>
   );

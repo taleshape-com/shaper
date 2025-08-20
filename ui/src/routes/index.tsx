@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
-import { IDashboard } from "../lib/dashboard";
+import { IApp } from "../lib/types";
 import {
   Table,
   TableBody,
@@ -20,8 +20,18 @@ import {
   TableRoot,
   TableRow,
 } from "../components/tremor/Table";
-import { RiAddFill, RiLayoutFill, RiSortAsc, RiSortDesc, RiGlobalLine } from "@remixicon/react";
+import {
+  RiAddFill,
+  RiLayoutFill,
+  RiSortAsc,
+  RiSortDesc,
+  RiGlobalLine,
+  RiCodeSSlashFill,
+  RiFile3Fill,
+  RiBarChart2Line,
+} from "@remixicon/react";
 import { translate } from "../lib/translate";
+import { getSystemConfig } from "../lib/system";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
@@ -37,9 +47,11 @@ import {
   DialogTitle,
 } from "../components/tremor/Dialog";
 import { useToast } from "../hooks/useToast";
+import { RelativeDate } from "../components/RelativeDate";
+import { cx } from "../lib/utils";
 
 type DashboardListResponse = {
-  dashboards: IDashboard[];
+  apps: IApp[];
 };
 
 export const Route = createFileRoute("/")({
@@ -55,7 +67,7 @@ export const Route = createFileRoute("/")({
     context: { queryApi },
     deps: { sort = "updated", order = "desc" },
   }) => {
-    return queryApi(`dashboards?sort=${sort}&order=${order}`).then(
+    return queryApi(`apps?sort=${sort}&order=${order}`).then(
       (fetchedData: DashboardListResponse) => {
         return fetchedData;
       },
@@ -76,7 +88,7 @@ function Index() {
   const queryApi = useQueryApi();
   const router = useRouter();
   const { toast } = useToast();
-  const [deleteDashboardDialog, setDeleteDashboardDialog] = useState<IDashboard | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<IApp | null>(null);
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -91,8 +103,8 @@ function Index() {
     navigate({
       search: (prev) => ({
         ...prev,
-        sort: field === "name" ? undefined : field,
-        order: field === "name" && newOrder === "asc" ? undefined : newOrder,
+        sort: field === "updated" ? undefined : field,
+        order: field === "updated" && newOrder === "desc" ? undefined : newOrder,
       }),
     });
   };
@@ -106,16 +118,15 @@ function Index() {
     );
   };
 
-  const handleDelete = async (dashboard: IDashboard) => {
+  const handleDelete = async (app: IApp) => {
     try {
-      await queryApi(`dashboards/${dashboard.id}`, {
+      await queryApi(`${app.type === 'dashboard' ? 'dashboards' : 'tasks'}/${app.id}`, {
         method: "DELETE",
       });
-      // Reload the page to refresh the list
       router.invalidate();
       toast({
         title: translate("Success"),
-        description: translate("Dashboard deleted successfully"),
+        description: translate(app.type === "dashboard" ? "Dashboard deleted successfully" : "Task deleted successfully"),
       });
     } catch (err) {
       if (isRedirect(err)) {
@@ -130,44 +141,44 @@ function Index() {
   };
 
   if (!data) {
-    return <div className="p-2">Loading dashboards...</div>;
+    return <div className="p-2">Loading...</div>;
   }
 
   return (
     <MenuProvider isHome>
       <Helmet>
         <title>{translate("Home")}</title>
-        <meta name="description" content="Show a list of all dashboards" />
+        <meta name="description" content="Show a list of all dashboards and tasks" />
       </Helmet>
 
-      <div className="px-4 pb-4 min-h-dvh flex flex-col">
-        <div className="flex">
+      <div className="md:px-4 pb-4 min-h-dvh flex flex-col">
+        <div className="flex px-4 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <h1 className="text-2xl font-semibold font-display flex-grow pb-2 pt-2.5">
+          <h1 className="text-2xl font-semibold font-display flex-grow text-right md:text-left pb-2 pt-2.5">
             <RiLayoutFill
-              className="size-5 inline mr-1 -mt-1"
+              className="size-5 inline hidden md:inline mr-1 -mt-1"
               aria-hidden={true}
             />
-            {translate("Dashboards")}
+            {translate("Overview")}
           </h1>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-lg shadow flex-grow p-6">
-          {data.dashboards.length === 0 ? (
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-6">
+          {data.apps.length === 0 ? (
             <div className="my-4 flex flex-col items-center justify-center flex-grow">
               <RiLayoutFill
-                className="mx-auto size-9 text-ctext dark:text-dtext"
+                className="mx-auto size-9 fill-ctext dark:fill-dtext"
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                No dashboards yet
+                {translate("Create the first dashboard")} ...
               </p>
               <Link
                 to="/new"
               >
                 <Button>
                   <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />
-                  {translate("New Dashboard")}
+                  {translate("New")}
                 </Button>
               </Link>
             </div>
@@ -176,6 +187,20 @@ function Index() {
               <Table>
                 <TableHead>
                   <TableRow>
+                    {getSystemConfig().tasksEnabled && (
+                      <TableHeaderCell
+                      >
+                        <Tooltip
+                          showArrow={false}
+                          content={translate("Type")}
+                        >
+                          <RiFile3Fill
+                            className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 cursor-default"
+                            aria-hidden={true}
+                          />
+                        </Tooltip>
+                      </TableHeaderCell>
+                    )}
                     <TableHeaderCell
                       onClick={() => handleSort("name" as const)}
                       className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
@@ -200,68 +225,122 @@ function Index() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.dashboards.map((dashboard) => (
+                  {data.apps.map((app) => (
                     <TableRow
-                      key={dashboard.id}
+                      key={app.id}
                       className="group transition-colors duration-200"
                     >
-                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
-                        <Link
-                          to="/dashboards/$dashboardId"
-                          params={{ dashboardId: dashboard.id }}
-                          className="p-4 block"
-                        >
-                          {dashboard.name}
-                          {dashboard.visibility === "public" && (
+                      {getSystemConfig().tasksEnabled && (
+                        <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                          <Link
+                            to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                            params={{ id: app.id }}
+                            className="p-4 block"
+                          >
                             <Tooltip
                               showArrow={false}
-                              content={translate("This dashboard is public")}
+                              content={<span className="capitalize">{app.type}</span>}
                             >
-                              <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                              {app.type === "dashboard" ? (
+                                <RiBarChart2Line
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                  aria-hidden={true}
+                                />
+                              ) : (
+                                <RiCodeSSlashFill
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                  aria-hidden={true}
+                                />
+                              )}
                             </Tooltip>
-                          )}
+                          </Link>
+                        </TableCell>
+                      )}
+                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
+                        <Link
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                          params={{ id: app.id }}
+                          className="p-4 block"
+                        >
+                          <span className="group-hover:underline">{app.name}</span>
+                          {app.type === 'task'
+                            ?
+                            app.taskInfo && (
+                              !(app.taskInfo.lastRunSuccess ?? true)
+                                ? (
+                                  <RuntimeTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                    nextRunAt={app.taskInfo.nextRunAt}
+                                  >
+                                    <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                      {translate("Task Error")}
+                                    </span>
+                                  </RuntimeTooltip>
+                                )
+                                : app.taskInfo.nextRunAt != null && (
+                                  <RuntimeTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                  >
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                      {translate("Next Run")}: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
+                                    </span>
+                                  </RuntimeTooltip>
+                                )
+                            )
+                            : app.visibility === "public" && (
+                              <Tooltip
+                                showArrow={false}
+                                content={translate("This dashboard is public")}
+                              >
+                                <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                              </Tooltip>
+                            )
+                          }
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to="/dashboards/$dashboardId"
-                          params={{ dashboardId: dashboard.id }}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                          params={{ id: app.id }}
                           className="block p-4"
                         >
                           <Tooltip
                             showArrow={false}
-                            content={new Date(dashboard.createdAt).toLocaleString()}
+                            content={new Date(app.createdAt).toLocaleString()}
                           >
-                            {new Date(dashboard.createdAt).toLocaleDateString()}
+                            {new Date(app.createdAt).toLocaleDateString()}
                           </Tooltip>
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to="/dashboards/$dashboardId"
-                          params={{ dashboardId: dashboard.id }}
+                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                          params={{ id: app.id }}
                           className="block p-4"
                         >
                           <Tooltip
                             showArrow={false}
-                            content={new Date(dashboard.updatedAt).toLocaleString()}
+                            content={new Date(app.updatedAt).toLocaleString()}
                           >
-                            {new Date(dashboard.updatedAt).toLocaleDateString()}
+                            {new Date(app.updatedAt).toLocaleDateString()}
                           </Tooltip>
                         </Link>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex gap-4">
                           <Link
-                            to="/dashboards/$dashboardId/edit"
-                            params={{ dashboardId: dashboard.id }}
-                            className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+                            to={app.type === 'dashboard' ? "/dashboards/$id/edit" : "/tasks/$id"}
+                            params={{ id: app.id }}
+                            className={cx(
+                              "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
+                              "hover:underline transition-colors duration-200",
+                            )}
                           >
                             {translate("Edit")}
                           </Link>
                           <button
                             onClick={() => {
-                              setDeleteDashboardDialog(dashboard);
+                              setDeleteDialog(app);
                             }}
                             className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                           >
@@ -277,27 +356,31 @@ function Index() {
           )}
         </div>
 
-        <Dialog open={deleteDashboardDialog !== null} onOpenChange={(open) => !open && setDeleteDashboardDialog(null)}>
+        <Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
               <DialogDescription>
-                {deleteDashboardDialog && translate('Are you sure you want to delete the dashboard "%%"?').replace(
+                {deleteDialog && translate(
+                  deleteDialog.type === 'dashboard'
+                    ? 'Are you sure you want to delete the dashboard "%%"?'
+                    : 'Are you sure you want to delete the task "%%"?'
+                ).replace(
                   "%%",
-                  deleteDashboardDialog.name,
+                  deleteDialog.name,
                 )}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => setDeleteDashboardDialog(null)} variant="secondary">
+              <Button onClick={() => setDeleteDialog(null)} variant="secondary">
                 {translate("Cancel")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => {
-                  if (deleteDashboardDialog) {
-                    handleDelete(deleteDashboardDialog);
-                    setDeleteDashboardDialog(null);
+                  if (deleteDialog) {
+                    handleDelete(deleteDialog);
+                    setDeleteDialog(null);
                   }
                 }}
               >
@@ -307,6 +390,33 @@ function Index() {
           </DialogContent>
         </Dialog>
       </div>
-    </MenuProvider>
+    </MenuProvider >
+  );
+}
+
+function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
+  lastRunAt?: number;
+  nextRunAt?: number;
+  children?: React.ReactNode;
+}) {
+  if (lastRunAt == null) return children;
+  const tooltipContent = (
+    <>
+      {translate("Last Run")}: <RelativeDate refresh date={new Date(lastRunAt)} />
+      {nextRunAt != null && (
+        <>
+          <br />
+          {translate("Next Run")}: <RelativeDate refresh date={new Date(nextRunAt)} />
+        </>
+      )}
+    </>
+  )
+  return (
+    <Tooltip
+      showArrow={false}
+      content={tooltipContent}
+    >
+      {children}
+    </Tooltip>
   );
 }

@@ -3,19 +3,16 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import * as echarts from "echarts";
 import {
-  AvailableEChartsColors,
-  constructEChartsCategoryColors,
-  getEChartsColor,
+  constructCategoryColors,
   getThemeColors,
   getChartFont,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType } from "../../lib/dashboard";
+import { Column, isTimeType } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { EChart } from "./EChart";
-import { ChartDownloadButton } from "./ChartDownloadButton";
 
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
@@ -25,12 +22,12 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column['type'];
   valueType: Column['type'];
   categories: string[];
+  colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean) => string;
   indexFormatter: (value: number, shortFormat?: boolean) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  label?: string;
 }
 
 const LineChart = (props: LineChartProps) => {
@@ -38,6 +35,7 @@ const LineChart = (props: LineChartProps) => {
     data,
     extraDataByIndexAxis,
     categories,
+    colorsByCategory,
     index,
     indexType,
     valueType,
@@ -48,7 +46,6 @@ const LineChart = (props: LineChartProps) => {
     xAxisLabel,
     yAxisLabel,
     chartId,
-    label,
     ...other
   } = props;
 
@@ -61,8 +58,6 @@ const LineChart = (props: LineChartProps) => {
 
   const { isDarkMode } = React.useContext(DarkModeContext);
 
-  const categoryColors = constructEChartsCategoryColors(categories, AvailableEChartsColors);
-
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
     hoveredChartIdRef.current = hoveredChartId;
@@ -72,8 +67,8 @@ const LineChart = (props: LineChartProps) => {
   const chartOptions = React.useMemo((): echarts.EChartsOption => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
-    const isDark = isDarkMode;
     const chartFont = getChartFont();
+    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     // Check if we're dealing with timestamps
     // TODO: I am still not completely sure why we need to handle time as timestamp as well
@@ -93,10 +88,10 @@ const LineChart = (props: LineChartProps) => {
         symbolSize: 6,
         emphasis: {
           itemStyle: {
-            color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            color: categoryColors.get(category),
             borderWidth: 0,
             shadowBlur: 0,
-            shadowColor: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+            shadowColor: categoryColors.get(category),
             opacity: 1,
           },
           lineStyle: {
@@ -104,11 +99,11 @@ const LineChart = (props: LineChartProps) => {
           },
         },
         lineStyle: {
-          color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          color: categoryColors.get(category),
           width: 2,
         },
         itemStyle: {
-          color: getEChartsColor(categoryColors.get(category) || 'primary', isDark),
+          color: categoryColors.get(category),
           borderWidth: 0,
           // always show dots when there are not too many data points and we only have a single line
           opacity: categories.length > 1 || (data.length / (chartWidth) > 0.05) ? 0 : 1,
@@ -137,7 +132,7 @@ const LineChart = (props: LineChartProps) => {
               color: referenceLineColor,
             },
             data: [
-              { xAxis: hoveredIndex },
+              { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
             ],
           },
         };
@@ -145,6 +140,19 @@ const LineChart = (props: LineChartProps) => {
 
       return baseSeries;
     });
+
+    const numLegendItems = categories.filter(c => c.length > 0).length;
+    const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 5.8, 50);
+    const legendPaddingLeft = 5;
+    const legendPaddingRight = 5;
+    const legendItemGap = 10;
+    const legendWidth = chartWidth - legendPaddingLeft - legendPaddingRight;
+    const halfLegendItems = Math.ceil(numLegendItems / 2);
+    const legendItemWidth = numLegendItems === 1
+      ? legendWidth
+      : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
+    const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
 
     return {
       animation: false,
@@ -234,20 +242,23 @@ const LineChart = (props: LineChartProps) => {
       },
       legend: {
         show: showLegend,
-        type: 'scroll',
+        type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
         left: 0,
         top: 7,
-        padding: [5, 25, 5, 5],
+        padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
+          width: canFitLegendItems ? legendItemWidth : undefined,
+          overflow: 'truncate',
         },
         itemStyle: {
           opacity: 1,
           borderWidth: 0,
         },
+        itemGap: legendItemGap,
         itemHeight: 8,
         itemWidth: 16,
         pageButtonPosition: 'end',
@@ -266,11 +277,14 @@ const LineChart = (props: LineChartProps) => {
         pageTextStyle: {
           fontSize: 1,
         },
+        // Enable multi-row layout
+        width: 'auto',
+        height: categories.length > 4 ? 40 : 20, // Allow more height for multi-row
       },
       grid: {
         left: yAxisLabel ? 45 : 15,
         right: 15,
-        top: showLegend ? 50 : 20,
+        top: showLegend ? 62 : 20,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -388,7 +402,6 @@ const LineChart = (props: LineChartProps) => {
     showLegend,
     xAxisLabel,
     yAxisLabel,
-    categoryColors,
     extraDataByIndexAxis,
     hoveredIndex,
     hoveredChartId,
@@ -441,7 +454,7 @@ const LineChart = (props: LineChartProps) => {
 
   return (
     <div
-      className={cx("h-full w-full relative group select-none", className)}
+      className={cx("h-full w-full relative select-none overflow-hidden", className)}
       {...other}
     >
       <EChart
@@ -450,11 +463,7 @@ const LineChart = (props: LineChartProps) => {
         events={chartEvents}
         onChartReady={handleChartReady}
         onResize={handleChartResize}
-      />
-      <ChartDownloadButton
-        chartRef={chartRef}
-        chartId={chartId}
-        label={label}
+        data-chart-id={chartId}
       />
     </div>
   );

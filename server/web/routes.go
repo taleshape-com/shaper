@@ -79,7 +79,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
 
 	// API routes - no caching
-	e.GET("/api/login/enabled", handler.LoginEnabled(app))
+	e.GET("/api/system/config", handler.GetSystemConfig(app))
 	e.POST("/api/login", handler.Login(app))
 	e.POST("/api/auth/token", handler.TokenAuth(app))
 	e.POST("/api/auth/public", handler.PublicAuth(app))
@@ -89,7 +89,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
 	e.GET("/api/public/:id/status", handler.GetPublicStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
-	apiWithAuth.GET("/dashboards", handler.ListDashboards(app))
+	apiWithAuth.GET("/apps", handler.ListApps(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))
@@ -98,7 +98,15 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.POST("/query/dashboard", handler.PreviewDashboardQuery(app))
+	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
+	if !app.NoTasks {
+		apiWithAuth.POST("/tasks", handler.CreateTask(app))
+		apiWithAuth.GET("/tasks/:id", handler.GetTask(app))
+		apiWithAuth.DELETE("/tasks/:id", handler.DeleteTask(app))
+		apiWithAuth.POST("/tasks/:id/content", handler.SaveTaskContent(app))
+		apiWithAuth.POST("/tasks/:id/name", handler.SaveTaskName(app))
+		apiWithAuth.POST("/run/task", handler.RunTask(app))
+	}
 	apiWithAuth.GET("/users", handler.ListUsers(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
 	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))

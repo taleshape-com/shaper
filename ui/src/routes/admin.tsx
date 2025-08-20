@@ -38,7 +38,7 @@ function Admin() {
           </h1>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-lg shadow flex-grow">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow">
           <div className="px-6 pt-6">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>

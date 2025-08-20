@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React, { useCallback, useRef } from "react";
-import { Column, GaugeCategory, Result } from "../../lib/dashboard";
+import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
 import * as echarts from 'echarts';
 import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';
 import { DarkModeContext } from '../../contexts/DarkModeContext';
 import { formatValue } from "../../lib/render";
-import { ChartDownloadButton } from "../charts/ChartDownloadButton";
+
 
 type DashboardGaugeProps = {
   chartId: string;
@@ -224,17 +224,13 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   }, []);
 
   return (
-    <div className="w-full h-full relative group select-none">
+    <div className="w-full h-full relative select-none overflow-hidden">
       <EChart
         className="absolute inset-0"
         option={chartOptions}
         onChartReady={handleChartReady}
         onResize={handleChartResize}
-      />
-      <ChartDownloadButton
-        chartRef={chartRef}
-        chartId={chartId}
-        label={label}
+        data-chart-id={chartId}
       />
     </div>
   );

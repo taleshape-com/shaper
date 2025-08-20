@@ -2,14 +2,16 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/dashboard";
+import { Column, Result } from "../../lib/types";
 
 import { formatValue, isJSONType } from "../../lib/render";
 import { cx, getNameIfSet } from "../../lib/utils";
+import TextWithLinks from "../TextWithLinks";
 
 type ValueProps = {
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows']
+  data: Result['sections'][0]['queries'][0]['rows'];
+  yScroll: boolean;
 };
 
 const getLongestLineLength = (text: string) => {
@@ -21,7 +23,7 @@ const calcFontSize = (width: number, longestLine: number, factor: number, min: n
   return Math.max(min, Math.min(max, Math.floor((width / longestLine) * factor / round) * round));
 };
 
-function DashboardValue({ headers, data }: ValueProps) {
+function DashboardValue({ headers, data, yScroll }: ValueProps) {
   const valueIndex = headers.findIndex(header => header.tag === 'value')
   const valueHeader = headers[valueIndex]
   const value = data[0][valueIndex]
@@ -56,7 +58,10 @@ function DashboardValue({ headers, data }: ValueProps) {
 
   return (
     <div
-      className="items-center h-full w-full flex flex-col justify-center overflow-auto"
+      className={cx(
+        "items-center h-full w-full flex flex-col justify-center py-2 overflow-x-auto overflow-y-hidden",
+        { "overflow-y-auto": yScroll },
+      )}
       ref={containerRef}
     >
       <div
@@ -71,11 +76,11 @@ function DashboardValue({ headers, data }: ValueProps) {
         {typeof formattedValue === 'string' && formattedValue.includes('\n')
           ? formattedValue.split('\n').map((line, idx, arr) => (
             <React.Fragment key={idx}>
-              {line}
+              <TextWithLinks text={line} />
               {idx < arr.length - 1 && <br />}
             </React.Fragment>
           ))
-          : formattedValue}
+          : <TextWithLinks text={formattedValue} />}
       </div>
       {
         hasLabel && getNameIfSet(valueHeader.name) && (

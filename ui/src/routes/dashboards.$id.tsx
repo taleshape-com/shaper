@@ -3,26 +3,21 @@
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { useDebouncedCallback } from "use-debounce";
-import { RiPencilLine, RiExternalLinkLine } from "@remixicon/react";
+import { RiPencilLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  cx,
-  focusRing,
-  hasErrorInput,
-  VarsParamSchema,
-  varsParamSchema,
-} from "../lib/utils";
-import { useAuth } from "../lib/auth";
+import { VarsParamSchema, varsParamSchema } from "../lib/utils";
+import { useAuth, getJwt } from "../lib/auth";
 import { useCallback, useState } from "react";
 import { translate } from "../lib/translate";
-import { Result } from "../lib/dashboard";
+import { Result } from "../lib/types";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
+import { VariablesMenu } from "../components/VariablesMenu";
+import { PublicLink } from "../components/PublicLink";
 
-export const Route = createFileRoute("/dashboards/$dashboardId")({
+export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
     vars: varsParamSchema,
   }),
@@ -51,8 +46,7 @@ function DashboardViewComponent() {
   const { vars } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
-  const navigate = useNavigate({ from: "/dashboards/$dashboardId" });
-  const [hasVariableError, setHasVariableError] = useState(false);
+  const navigate = useNavigate({ from: "/dashboards/$id" });
   const [title, setTitle] = useState("Dashboard");
   const [visibility, setVisibility] = useState<Result["visibility"]>(undefined);
 
@@ -74,54 +68,24 @@ function DashboardViewComponent() {
     [navigate],
   );
 
-  const onVariablesEdit = useDebouncedCallback((event) => {
-    auth.updateVariables(event.target.value).then(
-      (ok) => {
-        setHasVariableError(!ok);
-      },
-      () => {
-        setHasVariableError(true);
-      },
-    );
-  }, 500);
 
   const MenuButton = (
     <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={title}>
       <Link
-        to="/dashboards/$dashboardId/edit"
-        params={{ dashboardId: params.dashboardId }}
+        to="/dashboards/$id/edit"
+        params={{ id: params.id }}
         search={() => ({ vars })}
-        className="block px-4 py-4 hover:underline"
+        className="block px-4 py-3 hover:underline"
       >
-        <RiPencilLine className="size-4 inline mr-2 mb-1" />
+        <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
         {translate("Edit Dashboard")}
       </Link>
-      <div className="mt-6 px-4 w-full">
-        <label>
-          <span className="text-lg font-medium font-display ml-1 mb-2 block">
-            {translate("Variables")}
-          </span>
-          <textarea
-            className={cx(
-              "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",
-              focusRing,
-              hasVariableError && hasErrorInput,
-            )}
-            onChange={onVariablesEdit}
-            defaultValue={JSON.stringify(auth.variables, null, 2)}
-            rows={4}
-          ></textarea>
-        </label>
-        {visibility === 'public' && (
-          <a
-            href={`../view/${params.dashboardId}`}
-            target="_blank"
-            className="py-4 px-2 text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext underline transition-colors duration-200 block">
-            {translate("Public Link")}
-            <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2" />
-          </a>
-        )}
-      </div>
+      <VariablesMenu />
+      {visibility === 'public' && (
+        <div className="my-2 px-4">
+          <PublicLink href={`../view/${params.id}`} />
+        </div>
+      )}
     </MenuTrigger>
   );
 
@@ -139,10 +103,10 @@ function DashboardViewComponent() {
 
       <div className="h-dvh">
         <Dashboard
-          id={params.dashboardId}
+          id={params.id}
           vars={vars}
           hash={auth.hash}
-          getJwt={auth.getJwt}
+          getJwt={getJwt}
           menuButton={MenuButton}
           onVarsChanged={handleVarsChanged}
           onError={handleRedirectError}

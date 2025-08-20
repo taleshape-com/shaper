@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
-import { Column } from "../../lib/dashboard";
+import { Column } from "../../lib/types";
 
 export const ChartHoverProvider = ({
   children,

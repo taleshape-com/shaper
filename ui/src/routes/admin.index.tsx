@@ -22,7 +22,6 @@ import { Button } from "../components/tremor/Button";
 import { useToast } from "../hooks/useToast";
 import { useRouter } from "@tanstack/react-router";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { useAuth } from "../lib/auth";
 import { Callout } from "../components/tremor/Callout";
 import {
   Dialog,
@@ -37,6 +36,7 @@ import {
 import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { Tooltip } from "../components/tremor/Tooltip";
+import { getSystemConfig, fetchSystemConfig } from "../lib/system";
 
 interface IUser {
   id: string;
@@ -117,7 +117,6 @@ const getInviteLink = (code: string) => {
 function UsersManagement() {
   const router = useRouter();
   const data = Route.useLoaderData();
-  const auth = useAuth();
   const { sort, order } = Route.useSearch();
   const navigate = useNavigate({ from: "/admin" });
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -216,7 +215,7 @@ function UsersManagement() {
           <RiGroupLine className="size-4 inline mr-1 -mt-1" />
           {translate("User Management")}
         </h2>
-        {auth.loginRequired && (
+        {getSystemConfig().loginRequired && (
           <Button onClick={() => setShowInviteDialog(true)}>
             <RiUserAddLine className="size-4 inline mr-1 -ml-0.5 -mt-0.5" />
             {translate("Invite User")}
@@ -224,7 +223,7 @@ function UsersManagement() {
         )}
       </div>
 
-      {!auth.loginRequired && (
+      {!getSystemConfig().loginRequired && (
         <div className="mb-6">
           <Callout title={translate("Setup Authentication")}>
             <p className="mb-4">
@@ -282,7 +281,8 @@ function UsersManagement() {
                         title: translate("Success"),
                         description: translate("User created successfully"),
                       });
-                      auth.setLoginRequired(true);
+                      await fetchSystemConfig();
+                      router.invalidate();
                       setTimeout(() => {
                         navigate({
                           to: "/login",
@@ -539,7 +539,7 @@ function UsersManagement() {
         </DialogContent>
       </Dialog>
 
-      {auth.loginRequired && (
+      {getSystemConfig().loginRequired && (
         <>
           {data.invites?.length > 0 && (
             <>

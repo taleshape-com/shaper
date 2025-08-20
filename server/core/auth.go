@@ -32,6 +32,7 @@ const (
 	ActorUser   ActorType = "user"
 	ActorAPIKey ActorType = "api_key"
 	ActorNoAuth ActorType = "no_auth"
+	ActorTask   ActorType = "task"
 )
 
 type Actor struct {
@@ -54,6 +55,22 @@ func ActorFromContext(ctx context.Context) *Actor {
 		return actor
 	}
 	return nil
+}
+
+func ActorFromString(s string) *Actor {
+	if s == "" {
+		return nil
+	}
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) == 1 {
+		return &Actor{
+			Type: ActorType(parts[0]),
+		}
+	}
+	return &Actor{
+		Type: ActorType(parts[0]),
+		ID:   parts[1],
+	}
 }
 
 func ContextWithActor(ctx context.Context, actor *Actor) context.Context {
