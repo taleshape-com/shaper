@@ -495,8 +495,8 @@ const translations = {
   "Query stopped script execution": {
     de: "Abfrage hat die Skriptausführung gestoppt",
   },
-  "The query returned the single boolean `false` which signals that the script should stop executing further queries.": {
-    de: "Die Abfrage hat den einzelnen booleschen Wert `false` zurückgegeben, was signalisiert, dass das Skript die Ausführung weiterer Abfragen stoppen soll.",
+  'The query returned the single boolean "false" which signals that the script should stop executing further queries.': {
+    de: 'Die Abfrage hat den einzelnen booleschen Wert "false" zurückgegeben, was signalisiert, dass das Skript die Ausführung weiterer Abfragen stoppen soll.',
   },
   "If task is saved, next run": {
     de: "Wenn der Task gespeichert ist, nächste Ausführung",

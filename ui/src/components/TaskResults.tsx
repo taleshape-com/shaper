@@ -97,7 +97,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
                 title={translate('Query stopped script execution')}
                 variant="neutral"
               >
-                {translate('The query returned the single boolean `false` which signals that the script should stop executing further queries.')}
+                {translate('The query returned the single boolean "false" which signals that the script should stop executing further queries.')}
               </Callout>
             )}
 

@@ -9,6 +9,7 @@ import {
   RiAdminLine,
   RiLogoutBoxRLine,
   RiBook2Line,
+  RiExternalLinkLine,
 } from "@remixicon/react";
 import { logout, getJwt } from "../../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
@@ -100,7 +101,7 @@ export function MenuProvider({
           <Link
             to="/"
             disabled={isHome}
-            className={cx("block px-4 py-2", {
+            className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
@@ -111,7 +112,7 @@ export function MenuProvider({
           <Link
             to="/new"
             disabled={isNewPage}
-            className={cx("block px-4 py-2", {
+            className={cx("block px-4 py-3", {
               "hover:underline": !isNewPage,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isNewPage,
             })}
@@ -125,14 +126,15 @@ export function MenuProvider({
         <div className="mt-auto pt-4 pb-4 space-y-2">
           <a
             href="https://taleshape.com/shaper/docs"
-            className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2"
+            className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2 group hover:underline"
             target="shaper-docs"
           >
             <RiBook2Line className="size-4 inline mr-1.5 mb-1" />
             {translate("Docs")}
+            <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
           <Link to="/admin" disabled={isAdmin} className={cx(
-            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm",
+            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
             { "text-ctext2 dark:text-dtext2": !isAdmin }
           )}>
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
