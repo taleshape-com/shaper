@@ -75,7 +75,7 @@ function DashboardViewComponent() {
         to="/dashboards/$id/edit"
         params={{ id: params.id }}
         search={() => ({ vars })}
-        className="block px-4 py-2 hover:underline"
+        className="block px-4 py-3 hover:underline"
       >
         <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
         {translate("Edit Dashboard")}
