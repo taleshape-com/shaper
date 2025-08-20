@@ -8,7 +8,6 @@ import "github.com/jmoiron/sqlx"
 // Internally they are all UNION types so we can identify them in the query result,
 // and so that they work transparently with other SQL types.
 //
-// TODO: Consider making _shaper_ prefix configurable
 // TODO: Support DATE, INTERVAL and potential other types in axis
 // TODO: Support DATE, TIME, INTERVAL, DOUBLE in CATEGORY
 var dbTypes = []struct {
@@ -51,6 +50,9 @@ var dbTypes = []struct {
 	{"RANGE", "UNION(_shaper_range_interval INTERVAL[], _shaper_range_double DOUBLE[])", "array"},
 	{"LABELS", "UNION(_shaper_labels_varchar VARCHAR[])", "array"},
 	{"COLORS", "UNION(_shaper_colors_varchar VARCHAR[])", "array"},
+	{"COLOR", "UNION(_shaper_color_varchar VARCHAR)", "string"},
+	{"LINECHART_COLOR", "UNION(_shaper_linechart_color_varchar VARCHAR)", "string"},
+	{"BARCHART_COLOR", "UNION(_shaper_barchart_color_varchar VARCHAR)", "string"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

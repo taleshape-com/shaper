@@ -48,6 +48,7 @@ import {
 } from "../components/tremor/Dialog";
 import { useToast } from "../hooks/useToast";
 import { RelativeDate } from "../components/RelativeDate";
+import { cx } from "../lib/utils";
 
 type DashboardListResponse = {
   apps: IApp[];
@@ -330,7 +331,10 @@ function Index() {
                           <Link
                             to={app.type === 'dashboard' ? "/dashboards/$id/edit" : "/tasks/$id"}
                             params={{ id: app.id }}
-                            className=" text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200"
+                            className={cx(
+                              "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
+                              "hover:underline transition-colors duration-200",
+                            )}
                           >
                             {translate("Edit")}
                           </Link>
