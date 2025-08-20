@@ -62,9 +62,7 @@ FROM (
   (3, 30),
 );`;
 
-const defaultTaskQuery = `-- Schedule tasks to automate data loading, data processing, sending data to webhooks, and more.
--- Tasks must start with a SCHEDULE statement that defines when the task runs.
--- Here are some examples to pick from:
+const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that defines when the task runs. Examples:
 
 -- Every hour
 SELECT (INTERVAL '1h')::SCHEDULE;

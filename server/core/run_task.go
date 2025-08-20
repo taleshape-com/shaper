@@ -9,6 +9,8 @@ import (
 	"shaper/server/util"
 	"strings"
 	"time"
+
+	"github.com/marcboeker/go-duckdb/v2"
 )
 
 type TaskQueryResult struct {
@@ -115,6 +117,19 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 				success = false
 				break
 			}
+			// Convert DuckDB maps to Go maps so they can be JSON serialized
+			for i, val := range row {
+				if duckMap, ok := val.(duckdb.Map); ok {
+					goMap := make(map[string]any, len(duckMap))
+					for k, v := range duckMap {
+						if kStr, ok := k.(string); ok {
+							goMap[kStr] = v
+						}
+					}
+					row[i] = goMap
+				}
+			}
+
 			queryResult.ResultRows = append(queryResult.ResultRows, row)
 		}
 		rows.Close()
@@ -122,6 +137,13 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			errorMessage := err.Error()
 			queryResult.Error = &errorMessage
 			success = false
+		}
+
+		// Check for early termination: single row, single column, boolean false
+		if len(queryResult.ResultRows) == 1 && len(queryResult.ResultRows[0]) == 1 {
+			if boolVal, ok := queryResult.ResultRows[0][0].(bool); ok && !boolVal {
+				queryResult.StopExecution = true
+			}
 		}
 
 		if scheduleType, isSchedule := getScheduleColumn(colTypes, queryResult.ResultRows); isSchedule {
@@ -144,16 +166,8 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			result.Queries = append(result.Queries, queryResult)
 		}
 
-		if !success {
+		if !success || queryResult.StopExecution {
 			break
-		}
-
-		// Check for early termination: single row, single column, boolean false
-		if len(queryResult.ResultRows) == 1 && len(queryResult.ResultRows[0]) == 1 {
-			if boolVal, ok := queryResult.ResultRows[0][0].(bool); ok && !boolVal {
-				queryResult.StopExecution = true
-				break
-			}
 		}
 	}
 

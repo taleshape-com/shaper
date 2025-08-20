@@ -64,7 +64,7 @@ export const downloadChartAsImage = (
 };
 
 // ECharts color utilities
-export const echartsColors = {
+const echartsColors = {
   primary: {
     light: 'var(--shaper-primary-color)',
     dark: 'var(--shaper-dark-mode-primary-color)',
@@ -107,19 +107,31 @@ export const echartsColors = {
   },
 } as const;
 
+const echartsColorKeys = Object.keys(echartsColors) as Array<keyof typeof echartsColors>;
+
 export type EChartsColorKey = keyof typeof echartsColors;
 
 export const AvailableEChartsColors: EChartsColorKey[] = Object.keys(
   echartsColors,
 ) as Array<EChartsColorKey>;
 
-export const constructEChartsCategoryColors = (
+export const constructCategoryColors = (
   categories: string[],
-  colors: EChartsColorKey[],
-): Map<string, EChartsColorKey> => {
-  const categoryColors = new Map<string, EChartsColorKey>();
+  colorsByCategory: Record<string, string>,
+  isDark: boolean,
+): Map<string, string> => {
+  const categoryColors = new Map<string, string>();
+  let customColorCount = 0;
   categories.forEach((category, index) => {
-    categoryColors.set(category, colors[index % colors.length]);
+    let color = colorsByCategory[category];
+    if (!color) {
+      const echartsKey = echartsColors[echartsColorKeys[(index - customColorCount) % echartsColorKeys.length]]
+      const cssVar = echartsKey[isDark ? 'dark' : 'light'];
+      color = getComputedCssValue(cssVar.replace('var(', '').replace(')', ''));
+    } else {
+      customColorCount += 1;
+    }
+    categoryColors.set(category, color);
   });
   return categoryColors;
 };
