@@ -72,7 +72,6 @@ function DashboardEditor() {
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
   const [loadDuration, setLoadDuration] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
@@ -94,7 +93,6 @@ function DashboardEditor() {
     setIsPreviewLoading(true);
     setLoadDuration(null); // Reset previous duration
     const startTime = Date.now();
-    setLoadStartTime(startTime);
     try {
       const searchParams = getSearchParamString(vars);
       const data = await queryApi(`run/dashboard?${searchParams}`, {

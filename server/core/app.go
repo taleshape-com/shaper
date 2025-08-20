@@ -228,10 +228,13 @@ func (app *App) setupStreamAndConsumer() error {
 		// Task run results are published to all nodes in the cluster via this stream to ensure all nodes have task state in the database and schedule tasks.
 		// We are not using the state stream for results since task results have different persistence requirements. Task results potentitally happen more frequently than state changes, but they do not need to be retained after each node processed them.
 		taskResultsStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
-			Name:     app.TaskResultsStreamName,
-			Subjects: []string{app.TaskResultsSubjectPrefix + ">"},
-			Storage:  jetstream.FileStorage,
-			MaxAge:   app.TaskResultsStreamMaxAge,
+			Name:                 app.TaskResultsStreamName,
+			Subjects:             []string{app.TaskResultsSubjectPrefix + ">"},
+			Storage:              jetstream.FileStorage,
+			MaxAge:               app.TaskResultsStreamMaxAge,
+			DiscardNewPerSubject: true,
+			Discard:              jetstream.DiscardNew,
+			MaxMsgsPerSubject:    1,
 		})
 		if err != nil {
 			return err
