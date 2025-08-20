@@ -444,6 +444,7 @@ const BarChart = (props: BarChartProps) => {
   }, [
     data,
     categories,
+    colorsByCategory,
     index,
     indexType,
     valueType,

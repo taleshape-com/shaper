@@ -394,6 +394,7 @@ const LineChart = (props: LineChartProps) => {
   }, [
     data,
     categories,
+    colorsByCategory,
     index,
     indexType,
     valueType,
