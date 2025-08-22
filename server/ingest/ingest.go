@@ -178,7 +178,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			default:
 				msg, err := msgs.Next()
 				if err != nil {
-					if err == context.Canceled {
+					if err == context.Canceled || err.Error() == "nats: messages iterator closed: nats: connection closed" {
 						return
 					}
 					logger.Error("Failed to get next message", slog.Any("error", err))
