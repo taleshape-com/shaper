@@ -20,6 +20,11 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
+const (
+	DEFAULT_HTTP_PORT  = "80"
+	DEFAULT_HTTPS_PORT = "443"
+)
+
 func Start(
 	addr string,
 	app *core.App,
@@ -31,7 +36,7 @@ func Start(
 	tlsEmail,
 	tlsCacheDir,
 	httpsHost string,
-) (*echo.Echo, *http.Server) {
+) *echo.Echo {
 	// Echo instance
 	e := echo.New()
 	e.HideBanner = true
@@ -66,27 +71,25 @@ func Start(
 	routes(e, app, frontendFS, modTime, customCSS, favicon)
 
 	// Configure Let's Encrypt if TLS is enabled
-	var httpRedirectServer *http.Server
 	if tlsDomain != "" {
-		if tlsCacheDir != "" {
-			e.AutoTLSManager.Cache = autocert.DirCache(tlsCacheDir)
-		}
+		e.AutoTLSManager.Prompt = autocert.AcceptTOS
+		e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(tlsDomain)
 		if tlsEmail != "" {
 			e.AutoTLSManager.Email = tlsEmail
 		}
-		httpRedirectServer = &http.Server{
-			Addr:    ":80",
-			Handler: e.AutoTLSManager.HTTPHandler(nil),
+		if tlsCacheDir != "" {
+			e.AutoTLSManager.Cache = autocert.DirCache(tlsCacheDir)
 		}
+		e.Pre(middleware.HTTPSRedirect())
 	}
 
 	// Start server in background
 	go func() {
 		if tlsDomain != "" {
-			if err := httpRedirectServer.ListenAndServe(); err != http.ErrServerClosed {
+			if err := e.Start(httpsHost + ":" + DEFAULT_HTTP_PORT); err != http.ErrServerClosed {
 				e.Logger.Fatal("Error starting HTTP server", err)
 			}
-			if err := e.StartAutoTLS(httpsHost + ":433"); err != nil && err != http.ErrServerClosed {
+			if err := e.StartAutoTLS(httpsHost + ":" + DEFAULT_HTTPS_PORT); err != nil && err != http.ErrServerClosed {
 				e.Logger.Fatal("Error starting HTTPS server", err)
 			}
 		} else {
@@ -96,7 +99,7 @@ func Start(
 		}
 	}()
 	if tlsDomain != "" {
-		app.Logger.Info("Web server listing on ports 80 and 443 with automatic TLS via letsencrypt")
+		app.Logger.Info("Web server listing on ports " + DEFAULT_HTTP_PORT + " and " + DEFAULT_HTTPS_PORT + " with automatic TLS via letsencrypt")
 		app.Logger.Info("Open https://" + tlsDomain + " in your browser")
 	} else {
 		app.Logger.Info("Web server is listening at " + addr + "")
@@ -111,5 +114,5 @@ func Start(
 		}
 	}
 
-	return e, httpRedirectServer
+	return e
 }

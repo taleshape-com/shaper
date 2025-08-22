@@ -129,7 +129,7 @@ func loadConfig() Config {
 	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
-	httpsHost := flags.StringLong("https-port", "0.0.0.0", "Overwrite hostname. Not listening if tls-domain is not set")
+	httpsHost := flags.StringLong("https-port", "0.0.0.0", "Overwrite https hostname to not listen on all interfaces")
 	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
@@ -191,7 +191,7 @@ func loadConfig() Config {
 	}
 
 	if *tlsDomain != "" {
-		if *addr != "localhost:5454" {
+		if *addr != "localhost:5454" && *addr != ":5454" {
 			fmt.Println("Cannot set addr and tls-domain at the same time.")
 			os.Exit(1)
 		}
@@ -447,7 +447,7 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	e, httpRedirectServer := web.Start(
+	e := web.Start(
 		cfg.Address,
 		app,
 		frontendFS,
@@ -463,11 +463,6 @@ func Run(cfg Config) func(context.Context) {
 	return func(ctx context.Context) {
 		logger.Info("Initiating shutdown...")
 		logger.Info("Stopping web server...")
-		if httpRedirectServer != nil {
-			if err := httpRedirectServer.Shutdown(ctx); err != nil {
-				logger.ErrorContext(ctx, "Error stopping HTTP redirect server", slog.Any("error", err))
-			}
-		}
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
 		}
