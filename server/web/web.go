@@ -17,9 +17,21 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	slogecho "github.com/samber/slog-echo"
+	"golang.org/x/crypto/acme/autocert"
 )
 
-func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) *echo.Echo {
+func Start(
+	addr string,
+	app *core.App,
+	frontendFS fs.FS,
+	modTime time.Time,
+	customCSS,
+	favicon,
+	tlsDomain,
+	tlsEmail,
+	tlsCacheDir,
+	httpsHost string,
+) (*echo.Echo, *http.Server) {
 	// Echo instance
 	e := echo.New()
 	e.HideBanner = true
@@ -53,22 +65,51 @@ func Start(addr string, app *core.App, frontendFS fs.FS, modTime time.Time, cust
 	// Routes
 	routes(e, app, frontendFS, modTime, customCSS, favicon)
 
-	// Start server in background
-	go func() {
-		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("error starting server", err)
+	// Configure Let's Encrypt if TLS is enabled
+	var httpRedirectServer *http.Server
+	if tlsDomain != "" {
+		if tlsCacheDir != "" {
+			e.AutoTLSManager.Cache = autocert.DirCache(tlsCacheDir)
 		}
-	}()
-	logPrefix := ""
-	if !strings.HasPrefix(addr, ":") {
-		logPrefix = "http://"
-	}
-	app.Logger.Info("Web server is listening at " + addr + "")
-	if app.BasePath == "/" {
-		app.Logger.Info("Open " + logPrefix + addr + " in your browser")
-	} else {
-		app.Logger.Info("Custom base path set. Opening the app in your browser directly won't work as expected. You are likely using a reverse proxy and need to access the app through it.", slog.Any("basepath", app.BasePath))
+		if tlsEmail != "" {
+			e.AutoTLSManager.Email = tlsEmail
+		}
+		httpRedirectServer = &http.Server{
+			Addr:    ":80",
+			Handler: e.AutoTLSManager.HTTPHandler(nil),
+		}
 	}
 
-	return e
+	// Start server in background
+	go func() {
+		if tlsDomain != "" {
+			if err := httpRedirectServer.ListenAndServe(); err != http.ErrServerClosed {
+				e.Logger.Fatal("Error starting HTTP server", err)
+			}
+			if err := e.StartAutoTLS(httpsHost + ":433"); err != nil && err != http.ErrServerClosed {
+				e.Logger.Fatal("Error starting HTTPS server", err)
+			}
+		} else {
+			if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
+				e.Logger.Fatal("Error starting HTTP server", err)
+			}
+		}
+	}()
+	if tlsDomain != "" {
+		app.Logger.Info("Web server listing on ports 80 and 443 with automatic TLS via letsencrypt")
+		app.Logger.Info("Open https://" + tlsDomain + " in your browser")
+	} else {
+		app.Logger.Info("Web server is listening at " + addr + "")
+		if app.BasePath == "/" {
+			logPrefix := ""
+			if !strings.HasPrefix(addr, ":") {
+				logPrefix = "http://"
+			}
+			app.Logger.Info("Open " + logPrefix + addr + " in your browser")
+		} else {
+			app.Logger.Info("Custom base path set. Opening the app in your browser directly won't work as expected. You are likely using a reverse proxy and need to access the app through it.", slog.Any("basepath", app.BasePath))
+		}
+	}
+
+	return e, httpRedirectServer
 }

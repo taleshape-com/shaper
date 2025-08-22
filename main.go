@@ -70,6 +70,10 @@ type Config struct {
 	NoPublicSharing            bool
 	NoTasks                    bool
 	NodeIDFile                 string
+	TLSDomain                  string
+	TLSEmail                   string
+	TLSCache                   string
+	HTTPSHost                  string
 	NatsServers                string
 	NatsHost                   string
 	NatsPort                   int
@@ -114,7 +118,7 @@ func loadConfig() Config {
 	flags := ff.NewFlagSet(APP_NAME)
 	help := flags.Bool('h', "help", "show help")
 	version := flags.Bool('v', "version", "show version")
-	addr := flags.StringLong("addr", "localhost:5454", "server address")
+	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
@@ -122,6 +126,10 @@ func loadConfig() Config {
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
+	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
+	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
+	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
+	httpsHost := flags.StringLong("https-port", "0.0.0.0", "Overwrite hostname. Not listening if tls-domain is not set")
 	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
@@ -182,6 +190,22 @@ func loadConfig() Config {
 		panic(err)
 	}
 
+	if *tlsDomain != "" {
+		if *addr != "localhost:5454" {
+			fmt.Println("Cannot set addr and tls-domain at the same time.")
+			os.Exit(1)
+		}
+		if *basePath != "/" {
+			fmt.Println("Cannot set basepath and tls-domain at the same time.")
+			os.Exit(1)
+		}
+	}
+
+	tlsCacheDir := *tlsCache
+	if tlsCacheDir == "" {
+		tlsCacheDir = path.Join(*dataDir, "letsencrypt-cache")
+	}
+
 	// Parse natsMaxStore as int64
 	maxStore, err := strconv.ParseInt(*natsMaxStore, 10, 64)
 	if err != nil {
@@ -231,6 +255,10 @@ func loadConfig() Config {
 		NoPublicSharing:            *noPublicSharing,
 		NoTasks:                    *noTasks,
 		NodeIDFile:                 *nodeIDFile,
+		TLSDomain:                  *tlsDomain,
+		TLSEmail:                   *tlsEmail,
+		TLSCache:                   tlsCacheDir,
+		HTTPSHost:                  *httpsHost,
 		NatsServers:                *natsServers,
 		NatsHost:                   *natsHost,
 		NatsPort:                   *natsPort,
@@ -419,11 +447,27 @@ func Run(cfg Config) func(context.Context) {
 		panic(err)
 	}
 
-	e := web.Start(cfg.Address, app, frontendFS, cfg.ExecutableModTime, cfg.CustomCSS, cfg.Favicon)
+	e, httpRedirectServer := web.Start(
+		cfg.Address,
+		app,
+		frontendFS,
+		cfg.ExecutableModTime,
+		cfg.CustomCSS,
+		cfg.Favicon,
+		cfg.TLSDomain,
+		cfg.TLSEmail,
+		cfg.TLSCache,
+		cfg.HTTPSHost,
+	)
 
 	return func(ctx context.Context) {
 		logger.Info("Initiating shutdown...")
 		logger.Info("Stopping web server...")
+		if httpRedirectServer != nil {
+			if err := httpRedirectServer.Shutdown(ctx); err != nil {
+				logger.ErrorContext(ctx, "Error stopping HTTP redirect server", slog.Any("error", err))
+			}
+		}
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
 		}
