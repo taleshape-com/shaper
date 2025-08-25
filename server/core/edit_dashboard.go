@@ -66,7 +66,10 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 		Name:      name,
 		UpdatedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit dashboard name update: %w", err)
+	}
+	return nil
 }
 
 func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibility string) error {
@@ -94,7 +97,10 @@ func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibilit
 		Visibility: visibility,
 		UpdatedBy:  actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit dashboard visibility update: %w", err)
+	}
+	return nil
 }
 
 func SaveDashboardQuery(app *App, ctx context.Context, id string, content string) error {
@@ -116,7 +122,10 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		Content:   content,
 		UpdatedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit dashboard content update: %w", err)
+	}
+	return nil
 }
 
 func HandleUpdateDashboardContent(app *App, data []byte) bool {

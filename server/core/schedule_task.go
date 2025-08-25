@@ -227,11 +227,11 @@ func runAll(app *App, taskID string, runTime time.Time) {
 func publishTaskRunResult(app *App, ctx context.Context, msgID string, result TaskResultPayload) error {
 	payload, err := json.Marshal(result)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal task result payload: %w", err)
 	}
 	_, err = app.JetStream.Publish(ctx, app.TaskResultsSubjectPrefix+result.TaskID, payload, jetstream.WithMsgID(msgID))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to publish task result: %w", err)
 	}
 	return nil
 }

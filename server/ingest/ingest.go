@@ -204,7 +204,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 	for {
 		select {
 		case err := <-errChan:
-			return err
+			return fmt.Errorf("ingest error: %w", err)
 		case msg, ok := <-msgChan:
 			if !ok {
 				// Channel closed, process remaining messages and return
@@ -302,7 +302,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 	// Ensure we're at the beginning of an object
 	t, err := dec.Token()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read JSON token: %w", err)
 	}
 	if t != json.Delim('{') {
 		return fmt.Errorf("expected start of object, got %v", t)
@@ -313,7 +313,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 		// Read the key
 		key, err := dec.Token()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read JSON key token: %w", err)
 		}
 
 		// Keys must be strings
@@ -328,7 +328,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 		// Read the value
 		var value any
 		if err := dec.Decode(&value); err != nil {
-			return err
+			return fmt.Errorf("failed to decode JSON value for key %s: %w", keyStr, err)
 		}
 
 		// Store in the map
@@ -337,7 +337,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 
 	// Ensure we're at the end of an object
 	if _, err := dec.Token(); err != nil {
-		return err
+		return fmt.Errorf("failed to read closing JSON token: %w", err)
 	}
 
 	return nil

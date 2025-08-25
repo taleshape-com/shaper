@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -80,17 +81,17 @@ func (app *App) HandleState(msg jetstream.Msg) {
 func (app *App) SubmitState(ctx context.Context, action string, data any) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal state data: %w", err)
 	}
 	// We listen on the ACK subject for the consumer to know when the message has been processed
 	// We need to subscribe before publishing the message to avoid missing the ACK
 	sub, err := app.NATSConn.SubscribeSync("$JS.ACK." + app.StateStreamName + "." + app.StateConsumerName + ".>")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to subscribe to ACK subject: %w", err)
 	}
 	ack, err := app.JetStream.Publish(ctx, app.StateSubjectPrefix+action, payload)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to publish state message: %w", err)
 	}
 	ackSeq := strconv.FormatUint(ack.Sequence, 10)
 	// Wait for the ACK
@@ -98,7 +99,7 @@ func (app *App) SubmitState(ctx context.Context, action string, data any) error 
 	for {
 		msg, err := sub.NextMsgWithContext(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get next ACK message: %w", err)
 		}
 		// The sequence number is the part of the subject after the container of how many deliveries have been made
 		// We trust the shape of the subject to be correct and panic otherwise

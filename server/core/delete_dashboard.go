@@ -35,7 +35,10 @@ func DeleteDashboard(app *App, ctx context.Context, id string) error {
 		TimeStamp: time.Now(),
 		DeletedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit dashboard deletion: %w", err)
+	}
+	return nil
 }
 
 func HandleDeleteDashboard(app *App, data []byte) bool {

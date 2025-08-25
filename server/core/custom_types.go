@@ -2,7 +2,11 @@
 
 package core
 
-import "github.com/jmoiron/sqlx"
+import (
+	"fmt"
+
+	"github.com/jmoiron/sqlx"
+)
 
 // Custom SQL types Shaper provides that can be used to build rich dashboards.
 // Internally they are all UNION types so we can identify them in the query result,
@@ -59,11 +63,11 @@ func createType(db *sqlx.DB, name string, definition string) error {
 	// drop types first
 	_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to drop type %s: %w", name, err)
 	}
 	_, err = db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
-		return err
+		return fmt.Errorf("failed to create type %s: %w", name, err)
 	}
 	return nil
 }

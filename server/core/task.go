@@ -140,7 +140,10 @@ func SaveTaskContent(app *App, ctx context.Context, id string, content string) e
 		Content:   content,
 		UpdatedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit task content update: %w", err)
+	}
+	return nil
 }
 
 func HandleUpdateTaskContent(app *App, data []byte) bool {
@@ -184,7 +187,10 @@ func SaveTaskName(app *App, ctx context.Context, id string, name string) error {
 		Name:      name,
 		UpdatedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit task name update: %w", err)
+	}
+	return nil
 }
 
 func HandleUpdateTaskName(app *App, data []byte) bool {
@@ -224,7 +230,10 @@ func DeleteTask(app *App, ctx context.Context, id string) error {
 		TimeStamp: time.Now(),
 		DeletedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit task deletion: %w", err)
+	}
+	return nil
 }
 
 func HandleDeleteTask(app *App, data []byte) bool {
