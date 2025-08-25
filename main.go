@@ -130,7 +130,7 @@ func loadConfig() Config {
 	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
-	httpsHost := flags.StringLong("https-port", "0.0.0.0", "Overwrite https hostname to not listen on all interfaces")
+	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
 	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")

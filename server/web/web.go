@@ -83,20 +83,25 @@ func Start(
 	}
 
 	// Start server in background
-	go func() {
-		if tlsDomain != "" {
+	if tlsDomain != "" {
+		go func() {
 			if err := e.Start(httpsHost + ":" + DEFAULT_HTTP_PORT); err != http.ErrServerClosed {
 				e.Logger.Fatal("Error starting HTTP server", err)
 			}
+		}()
+		go func() {
 			if err := e.StartAutoTLS(httpsHost + ":" + DEFAULT_HTTPS_PORT); err != nil && err != http.ErrServerClosed {
 				e.Logger.Fatal("Error starting HTTPS server", err)
 			}
-		} else {
+		}()
+	} else {
+		go func() {
 			if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
 				e.Logger.Fatal("Error starting HTTP server", err)
 			}
-		}
-	}()
+		}()
+	}
+
 	if tlsDomain != "" {
 		app.Logger.Info("Web server listing on ports " + DEFAULT_HTTP_PORT + " and " + DEFAULT_HTTPS_PORT + " with automatic TLS via letsencrypt")
 		app.Logger.Info("Open https://" + tlsDomain + " in your browser")
