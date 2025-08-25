@@ -112,7 +112,8 @@ func main() {
 func loadConfig() Config {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error getting home directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	flags := ff.NewFlagSet(APP_NAME)
@@ -187,7 +188,8 @@ func loadConfig() Config {
 
 	executableModTime, err := getExecutableModTime()
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error getting executable modification time: %v\n", err)
+		os.Exit(1)
 	}
 
 	if *tlsDomain != "" {
@@ -307,10 +309,11 @@ func Run(cfg Config) func(context.Context) {
 	// Make sure data directory exists
 	if _, err := os.Stat(cfg.DataDir); os.IsNotExist(err) {
 		err := os.Mkdir(cfg.DataDir, 0755)
-		logger.Info("Created data directory", slog.Any("path", cfg.DataDir))
 		if err != nil {
-			panic(err)
+			logger.Error("Failed to create data directory", slog.String("path", cfg.DataDir), slog.Any("error", err))
+			os.Exit(1)
 		}
+		logger.Info("Created data directory", slog.Any("path", cfg.DataDir))
 	}
 
 	dbFile := cfg.DuckDB
@@ -321,7 +324,8 @@ func Run(cfg Config) func(context.Context) {
 	// connect to duckdb
 	dbConnector, err := duckdb.NewConnector(dbFile, nil)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to create DuckDB connector", slog.String("file", dbFile), slog.Any("error", err))
+		os.Exit(1)
 	}
 	sqlDB := sql.OpenDB(dbConnector)
 	// This is important to avoid leaking variables or temp tables/views. Must not reuse connections.
@@ -332,7 +336,8 @@ func Run(cfg Config) func(context.Context) {
 	if cfg.DuckDBExtDir != "" {
 		_, err := db.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
 		if err != nil {
-			panic(errors.New("failed to set extension directory: " + err.Error()))
+			logger.Error("Failed to set DuckDB extension directory", slog.String("path", cfg.DuckDBExtDir), slog.Any("error", err))
+			os.Exit(1)
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
@@ -346,7 +351,8 @@ func Run(cfg Config) func(context.Context) {
 		} else {
 			_, err := db.Exec(sql)
 			if err != nil {
-				panic(errors.New("failed to execute init-sql: " + err.Error()))
+				logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
+				os.Exit(1)
 			}
 		}
 	}
@@ -357,7 +363,8 @@ func Run(cfg Config) func(context.Context) {
 			if errors.Is(err, os.ErrNotExist) {
 				logger.Info("init-sql-file does not exist, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
-				panic(errors.New("failed to read init-sql-file: " + err.Error()))
+				logger.Error("Failed to read init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
+				os.Exit(1)
 			}
 		} else {
 			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
@@ -368,7 +375,8 @@ func Run(cfg Config) func(context.Context) {
 				// Substitute environment variables in the SQL file content
 				_, err = db.Exec(sql)
 				if err != nil {
-					panic(errors.New("failed to execute init-sql-file: " + err.Error()))
+					logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
+					os.Exit(1)
 				}
 			}
 		}
@@ -407,7 +415,8 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TaskBroadcastSubject,
 	)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to create application core", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	// TODO: refactor - comms should be part of core
@@ -425,7 +434,8 @@ func Run(cfg Config) func(context.Context) {
 		IngestSubjectPrefix: cfg.IngestSubjectPrefix,
 	})
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to create NATS communication layer", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	ingestConsumer, err := ingest.Start(
@@ -439,12 +449,14 @@ func Run(cfg Config) func(context.Context) {
 		ingestConsumerName,
 	)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to start ingest consumer", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	err = app.Init(c.Conn)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to initialize application", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	e := web.Start(
@@ -497,14 +509,16 @@ func getOrGenerateNodeID(dataDir, nameFile, defaultFileName string) string {
 	if _, err := os.Stat(fileName); err == nil {
 		content, err := os.ReadFile(fileName)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to read node ID file %s: %v\n", fileName, err)
+			os.Exit(1)
 		}
 		name = strings.TrimSpace(string(content))
 	} else {
 		name = cuid2.Generate()
 		err := os.WriteFile(fileName, []byte(name), 0644)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to write node ID file %s: %v\n", fileName, err)
+			os.Exit(1)
 		}
 	}
 	return name
@@ -523,7 +537,8 @@ func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName, prefix, nodeI
 	if _, err := os.Stat(fileName); err == nil {
 		content, err := os.ReadFile(fileName)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to read consumer name file %s: %v\n", fileName, err)
+			os.Exit(1)
 		}
 		name = strings.TrimSpace(string(content))
 	} else {

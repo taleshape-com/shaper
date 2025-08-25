@@ -72,7 +72,6 @@ func Start(
 
 	// Configure Let's Encrypt if TLS is enabled
 	if tlsDomain != "" {
-		e.AutoTLSManager.Prompt = autocert.AcceptTOS
 		e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(tlsDomain)
 		if tlsEmail != "" {
 			e.AutoTLSManager.Email = tlsEmail

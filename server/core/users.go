@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
@@ -106,7 +107,8 @@ func HandleCreateUser(app *App, data []byte) bool {
 		app.LoginRequired = true
 		err := LoadJWTSecret(app)
 		if err != nil {
-			panic(err)
+			app.Logger.Error("Failed to load JWT secret", slog.Any("error", err))
+			return false
 		}
 	}
 	return true
@@ -246,7 +248,10 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 		Timestamp: time.Now(),
 		DeletedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit delete user state: %w", err)
+	}
+	return nil
 }
 
 func HandleDeleteUser(app *App, data []byte) bool {
@@ -423,7 +428,9 @@ func generateInviteCode() string {
 		// Use crypto/rand for secure random numbers
 		randomNum, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
-			panic(err) // This should never happen in practice
+			// This should never happen in practice - indicates a serious system error
+			fmt.Printf("Error generating random string: %v\n", err)
+			os.Exit(1)
 		}
 		b[i] = charset[randomNum.Int64()]
 	}
@@ -481,7 +488,10 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 	}
 
 	err = app.SubmitState(ctx, "claim_invite", payload)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit claim invite state: %w", err)
+	}
+	return nil
 }
 
 func HandleClaimInvite(app *App, data []byte) bool {

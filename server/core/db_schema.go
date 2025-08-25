@@ -131,7 +131,7 @@ func initDB(db *sqlx.DB, schema string) error {
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(db, t.Name, t.Definition); err != nil {
-			return err
+			return fmt.Errorf("failed to create custom type %s: %w", t.Name, err)
 		}
 	}
 	return nil

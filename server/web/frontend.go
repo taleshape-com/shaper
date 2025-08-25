@@ -24,7 +24,8 @@ var viewHTML []byte
 func frontend(frontendFS fs.FS) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error creating frontend filesystem: %v\n", err)
+		os.Exit(1)
 	}
 	assetHandler := http.FileServer(http.FS(fsys))
 	return echo.WrapHandler(http.HandlerFunc(assetHandler.ServeHTTP))
@@ -33,7 +34,8 @@ func frontend(frontendFS fs.FS) echo.HandlerFunc {
 func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error creating favicon filesystem: %v\n", err)
+		os.Exit(1)
 	}
 	return func(c echo.Context) error {
 		var file fs.File
@@ -55,7 +57,8 @@ func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.Hand
 func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error creating embed JS filesystem: %v\n", err)
+		os.Exit(1)
 	}
 	return func(c echo.Context) error {
 		filename := path.Base(c.Request().URL.Path)
@@ -131,22 +134,26 @@ func getRequestURL(r *http.Request) *url.URL {
 func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, basePath string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error creating index HTML filesystem: %v\n", err)
+		os.Exit(1)
 	}
 	indexFile, err := fsys.Open("index.html")
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error opening index.html: %v\n", err)
+		os.Exit(1)
 	}
 	defer indexFile.Close()
 	stat, err := indexFile.Stat()
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error getting index.html stats: %v\n", err)
+		os.Exit(1)
 	}
 	lastModified := modTime.UTC().Format(http.TimeFormat)
 	etag := generateETag(modTime, stat.Size())
 	fileContent, err := io.ReadAll(indexFile)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error reading index.html content: %v\n", err)
+		os.Exit(1)
 	}
 
 	html := string(fileContent)

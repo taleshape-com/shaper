@@ -126,7 +126,10 @@ func DeleteAPIKey(app *App, ctx context.Context, id string) error {
 		TimeStamp: time.Now(),
 		DeletedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit API key deletion: %w", err)
+	}
+	return nil
 }
 
 func HandleDeleteAPIKey(app *App, data []byte) bool {

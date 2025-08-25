@@ -4,6 +4,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -139,21 +140,21 @@ func (app *App) Init(nc *nats.Conn) error {
 	js, err := jetstream.New(nc)
 	app.JetStream = js
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create jetstream: %w", err)
 	}
 
 	// Create stream and consumer
 	if err := app.setupStreamAndConsumer(); err != nil {
-		return err
+		return fmt.Errorf("failed to setup streams and consumers: %w", err)
 	}
 
 	if err := LoadJWTSecret(app); err != nil {
-		return err
+		return fmt.Errorf("failed to load JWT secret: %w", err)
 	}
 
 	if !app.NoTasks {
 		if err := scheduleExistingTasks(app, context.Background()); err != nil {
-			return err
+			return fmt.Errorf("failed to schedule existing tasks: %w", err)
 		}
 	}
 
@@ -173,7 +174,7 @@ func (app *App) setupStreamAndConsumer() error {
 		MaxAge:   app.StateStreamMaxAge,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create or update state stream: %w", err)
 	}
 
 	stateConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
@@ -181,7 +182,7 @@ func (app *App) setupStreamAndConsumer() error {
 		MaxAckPending: 1,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create or update state consumer: %w", err)
 	}
 
 	// For now only the JWT secret is stored in NATS KV. It fits the persistence model nicely since it's fine if it resets.
@@ -189,14 +190,14 @@ func (app *App) setupStreamAndConsumer() error {
 		Bucket: app.ConfigKVBucketName,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create or update config KV: %w", err)
 	}
 	app.ConfigKV = configKV
 
 	if !app.NoTasks {
 		taskBroadcastSub, err := app.NATSConn.Subscribe(app.TaskBroadcastSubject, app.HandleTaskBroadcast)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to subscribe to task broadcast: %w", err)
 		}
 		app.TaskBroadcastSubscription = taskBroadcastSub
 
@@ -211,17 +212,17 @@ func (app *App) setupStreamAndConsumer() error {
 			Retention:            jetstream.WorkQueuePolicy,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create or update tasks stream: %w", err)
 		}
 		taskConsumer, err := tasksStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
 			Durable: app.TaskQueueConsumerName,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create or update task consumer: %w", err)
 		}
 		taskConsumeCtx, err := taskConsumer.Consume(app.HandleTask)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to consume tasks: %w", err)
 		}
 		app.TaskConsumeCtx = taskConsumeCtx
 
@@ -235,24 +236,24 @@ func (app *App) setupStreamAndConsumer() error {
 			MaxMsgsPerSubject: 1,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create or update task results stream: %w", err)
 		}
 		taskResultConsumer, err := taskResultsStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
 			Durable: app.TaskResultConsumerName,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create or update task result consumer: %w", err)
 		}
 		taskResultConsumeCtx, err := taskResultConsumer.Consume(app.HandleTaskResult)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to consume task results: %w", err)
 		}
 		app.TaskResultConsumeCtx = taskResultConsumeCtx
 	}
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to consume state: %w", err)
 	}
 	app.StateConsumeCtx = stateConsumeCtx
 

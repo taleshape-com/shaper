@@ -385,11 +385,11 @@ func LoadJWTSecret(app *App) error {
 	if err == jetstream.ErrKeyNotFound {
 		secret, err := ResetJWTSecret(app, context.Background())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to reset JWT secret: %w", err)
 		}
 		app.JWTSecret = secret
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get JWT secret from config KV: %w", err)
 	} else {
 		app.JWTSecret = entry.Value()
 	}
