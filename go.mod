@@ -14,11 +14,11 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/marcboeker/go-duckdb/v2 v2.3.5
 	github.com/nats-io/nats-server/v2 v2.11.8
-	github.com/nats-io/nats.go v1.44.0
+	github.com/nats-io/nats.go v1.45.0
 	github.com/nrednav/cuid2 v1.1.0
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/samber/slog-echo v1.16.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/xuri/excelize/v2 v2.9.1
 	golang.org/x/crypto v0.41.0
 )
