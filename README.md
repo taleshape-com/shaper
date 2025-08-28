@@ -19,6 +19,8 @@ Then open http://localhost:5454/new in your browser.
 
 For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs/getting-started/).
 
+And to run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
+
 
 ## Get in Touch
 
