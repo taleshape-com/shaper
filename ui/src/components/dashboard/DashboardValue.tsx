@@ -88,7 +88,7 @@ function DashboardValue({ headers, data, yScroll }: ValueProps) {
             className={cx("mt-3 font-medium font-display text-center")}
             style={{ fontSize: `${labelFontSize}px`, lineHeight: 1.2 }}
           >
-            {valueHeader.name}
+            <TextWithLinks text={valueHeader.name} />
           </div>
         )
       }

@@ -27,6 +27,7 @@ func initDB(db *sqlx.DB, schema string) error {
 			updated_by VARCHAR,
 			visibility VARCHAR,
 			type VARCHAR NOT NULL,
+		  password_hash VARCHAR,
 		)
 	`)
 	if err != nil {
@@ -49,6 +50,14 @@ func initDB(db *sqlx.DB, schema string) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error adding type column to apps table: %w", err)
+	}
+
+	// TODO: Remove once ran for all active users
+	_, err = db.Exec(`
+		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS password_hash VARCHAR
+	`)
+	if err != nil {
+		return fmt.Errorf("error adding password_hash column to apps table: %w", err)
 	}
 
 	// Create api_keys table

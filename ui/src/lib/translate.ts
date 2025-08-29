@@ -537,6 +537,30 @@ const translations = {
   "Last Run": {
     de: "Letzte Ausführung",
   },
+  "Password Required": {
+    de: "Passwort erforderlich",
+  },
+  "This dashboard is password protected. Please enter the password to continue.": {
+    de: "Dieses Dashboard ist passwortgeschützt. Bitte geben Sie das Passwort ein, um fortzufahren.",
+  },
+  "Enter password": {
+    de: "Passwort eingeben",
+  },
+  "Access Dashboard": {
+    de: "Dashboard öffnen",
+  },
+  "Invalid password. Please try again.": {
+    de: "Ungültiges Passwort. Bitte versuchen Sie es erneut.",
+  },
+  "Dashboard is not public": {
+    de: "Dashboard ist nicht öffentlich",
+  },
+  "Failed to get JWT for password-protected dashboard": {
+    de: "Fehler beim Laden des JWTs",
+  },
+  "Failed to retrieve JWT for public dashboard": {
+    de: "Fehler beim Laden des JWTs",
+  },
 };
 
 export function translate(s: keyof typeof translations) {

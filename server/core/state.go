@@ -36,6 +36,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleUpdateDashboardName
 	case "update_dashboard_visibility":
 		handler = HandleUpdateDashboardVisibility
+	case "update_dashboard_password":
+		handler = HandleUpdateDashboardPassword
 	case "delete_dashboard":
 		handler = HandleDeleteDashboard
 	case "create_task":

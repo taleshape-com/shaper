@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UpdateDashboardContentPayload struct {
@@ -31,16 +33,26 @@ type UpdateDashboardVisibilityPayload struct {
 	UpdatedBy  string    `json:"updatedBy"`
 }
 
+type UpdateDashboardPasswordPayload struct {
+	ID           string    `json:"id"`
+	TimeStamp    time.Time `json:"timestamp"`
+	PasswordHash string    `json:"passwordHash"`
+	UpdatedBy    string    `json:"updatedBy"`
+}
+
 func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
 	err := app.DB.GetContext(ctx, &dashboard,
-		`SELECT * EXCLUDE (type) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
-	if app.NoPublicSharing {
-		dashboard.Visibility = nil
-	} else if dashboard.Visibility == nil {
+		`SELECT * EXCLUDE (type, password_hash) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	if dashboard.Visibility == nil {
 		dashboard.Visibility = new(string)
 		*dashboard.Visibility = "private"
+	} else if app.NoPublicSharing && *dashboard.Visibility == "public" {
+		dashboard.Visibility = nil
+	} else if app.NoPasswordProtectedSharing && *dashboard.Visibility == "password-protected" {
+		dashboard.Visibility = nil
 	}
+
 	if err != nil {
 		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
 	}
@@ -88,8 +100,14 @@ func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibilit
 	if visibility == "" {
 		visibility = "private"
 	}
-	if visibility != "public" && visibility != "private" {
+	if visibility != "public" && visibility != "private" && visibility != "password-protected" {
 		return fmt.Errorf("invalid visibility value: %s", visibility)
+	}
+	if app.NoPublicSharing && visibility == "public" {
+		return fmt.Errorf("Public dashboard sharing is disabled")
+	}
+	if app.NoPasswordProtectedSharing && visibility == "password-protected" {
+		return fmt.Errorf("Password-protected dashboard sharing is disabled")
 	}
 	err = app.SubmitState(ctx, "update_dashboard_visibility", UpdateDashboardVisibilityPayload{
 		ID:         id,
@@ -126,6 +144,56 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		return fmt.Errorf("failed to submit dashboard content update: %w", err)
 	}
 	return nil
+}
+
+func SaveDashboardPassword(app *App, ctx context.Context, id string, password string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
+	var count int
+	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	if err != nil {
+		return fmt.Errorf("failed to query dashboard: %w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("dashboard not found")
+	}
+	// Hash the password using bcrypt
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+	err = app.SubmitState(ctx, "update_dashboard_password", UpdateDashboardPasswordPayload{
+		ID:           id,
+		TimeStamp:    time.Now(),
+		PasswordHash: string(passwordHash),
+		UpdatedBy:    actor.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to submit dashboard password update: %w", err)
+	}
+	return nil
+}
+
+func VerifyDashboardPassword(app *App, ctx context.Context, id string, password string) (bool, error) {
+	var passwordHash string
+	err := app.DB.GetContext(ctx, &passwordHash,
+		`SELECT password_hash FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard' AND password_hash IS NOT NULL`, id)
+	if err != nil {
+		return false, fmt.Errorf("failed to get dashboard password hash: %w", err)
+	}
+
+	// Compare the provided password with the stored hash
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
+	if err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return false, nil // Invalid password, but not an error
+		}
+		return false, fmt.Errorf("failed to verify password: %w", err)
+	}
+
+	return true, nil
 }
 
 func HandleUpdateDashboardContent(app *App, data []byte) bool {
@@ -176,6 +244,8 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 	visibility := "private"
 	if payload.Visibility == "public" {
 		visibility = "public"
+	} else if payload.Visibility == "password-protected" {
+		visibility = "password-protected"
 	}
 	fmt.Println(visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	_, err = app.DB.Exec(
@@ -183,6 +253,25 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 		 SET visibility = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'dashboard'`,
 		visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
+	if err != nil {
+		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
+		return false
+	}
+	return true
+}
+
+func HandleUpdateDashboardPassword(app *App, data []byte) bool {
+	var payload UpdateDashboardPasswordPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal update dashboard password payload", slog.Any("error", err))
+		return false
+	}
+	_, err = app.DB.Exec(
+		`UPDATE `+app.Schema+`.apps
+		 SET password_hash = $1, updated_at = $2, updated_by = $3
+		 WHERE id = $4 AND type = 'dashboard'`,
+		payload.PasswordHash, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false

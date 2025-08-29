@@ -19,41 +19,42 @@ const (
 
 // TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
-	Name                      string
-	NodeID                    string
-	DB                        *sqlx.DB
-	Logger                    *slog.Logger
-	LoginRequired             bool
-	BasePath                  string
-	Schema                    string
-	JWTSecret                 []byte
-	JWTExp                    time.Duration
-	SessionExp                time.Duration
-	InviteExp                 time.Duration
-	NoPublicSharing           bool
-	NoTasks                   bool
-	StateConsumeCtx           jetstream.ConsumeContext
-	TaskConsumeCtx            jetstream.ConsumeContext
-	TaskResultConsumeCtx      jetstream.ConsumeContext
-	JetStream                 jetstream.JetStream
-	ConfigKV                  jetstream.KeyValue
-	NATSConn                  *nats.Conn
-	StateSubjectPrefix        string
-	IngestSubjectPrefix       string
-	StateStreamName           string
-	StateStreamMaxAge         time.Duration
-	StateConsumerName         string
-	ConfigKVBucketName        string
-	TasksStreamName           string
-	TasksSubjectPrefix        string
-	TaskQueueConsumerName     string
-	TaskResultsStreamName     string
-	TaskResultsSubjectPrefix  string
-	TaskResultsStreamMaxAge   time.Duration
-	TaskResultConsumerName    string
-	TaskBroadcastSubject      string
-	TaskBroadcastSubscription *nats.Subscription
-	TaskTimers                map[string]*time.Timer
+	Name                       string
+	NodeID                     string
+	DB                         *sqlx.DB
+	Logger                     *slog.Logger
+	LoginRequired              bool
+	BasePath                   string
+	Schema                     string
+	JWTSecret                  []byte
+	JWTExp                     time.Duration
+	SessionExp                 time.Duration
+	InviteExp                  time.Duration
+	NoPublicSharing            bool
+	NoPasswordProtectedSharing bool
+	NoTasks                    bool
+	StateConsumeCtx            jetstream.ConsumeContext
+	TaskConsumeCtx             jetstream.ConsumeContext
+	TaskResultConsumeCtx       jetstream.ConsumeContext
+	JetStream                  jetstream.JetStream
+	ConfigKV                   jetstream.KeyValue
+	NATSConn                   *nats.Conn
+	StateSubjectPrefix         string
+	IngestSubjectPrefix        string
+	StateStreamName            string
+	StateStreamMaxAge          time.Duration
+	StateConsumerName          string
+	ConfigKVBucketName         string
+	TasksStreamName            string
+	TasksSubjectPrefix         string
+	TaskQueueConsumerName      string
+	TaskResultsStreamName      string
+	TaskResultsSubjectPrefix   string
+	TaskResultsStreamMaxAge    time.Duration
+	TaskResultConsumerName     string
+	TaskBroadcastSubject       string
+	TaskBroadcastSubscription  *nats.Subscription
+	TaskTimers                 map[string]*time.Timer
 }
 
 func New(
@@ -67,6 +68,7 @@ func New(
 	sessionExp time.Duration,
 	inviteExp time.Duration,
 	noPublicSharing bool,
+	noPasswordProtectedSharing bool,
 	noTasks bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
@@ -98,39 +100,42 @@ func New(
 	if noPublicSharing {
 		logger.Info("Publicly sharing dashboards is disabled.")
 	}
-
+	if noPasswordProtectedSharing {
+		logger.Info("Sharing dashboards protected with a password is disabled.")
+	}
 	if noTasks {
 		logger.Info("Tasks functionality disabled.")
 	}
 
 	app := &App{
-		Name:                     name,
-		NodeID:                   nodeID,
-		DB:                       db,
-		Logger:                   logger,
-		LoginRequired:            loginRequired,
-		BasePath:                 baseURL,
-		Schema:                   schema,
-		JWTExp:                   jwtExp,
-		SessionExp:               sessionExp,
-		InviteExp:                inviteExp,
-		NoPublicSharing:          noPublicSharing,
-		NoTasks:                  noTasks,
-		IngestSubjectPrefix:      ingestSubjectPrefix,
-		StateSubjectPrefix:       stateSubjectPrefix,
-		StateStreamName:          stateStreamName,
-		StateStreamMaxAge:        stateStreamMaxAge,
-		StateConsumerName:        stateConsumerName,
-		ConfigKVBucketName:       configKVBucketName,
-		TasksStreamName:          tasksStreamName,
-		TasksSubjectPrefix:       tasksSubjectPrefix,
-		TaskQueueConsumerName:    taskQueueConsumerName,
-		TaskResultsStreamName:    taskResultsStreamName,
-		TaskResultsSubjectPrefix: taskResultsSubjectPrefix,
-		TaskResultsStreamMaxAge:  taskResultsStreamMaxAge,
-		TaskResultConsumerName:   taskResultConsumerName,
-		TaskBroadcastSubject:     taskBroadcastSubject,
-		TaskTimers:               make(map[string]*time.Timer),
+		Name:                       name,
+		NodeID:                     nodeID,
+		DB:                         db,
+		Logger:                     logger,
+		LoginRequired:              loginRequired,
+		BasePath:                   baseURL,
+		Schema:                     schema,
+		JWTExp:                     jwtExp,
+		SessionExp:                 sessionExp,
+		InviteExp:                  inviteExp,
+		NoPublicSharing:            noPublicSharing,
+		NoPasswordProtectedSharing: noPasswordProtectedSharing,
+		NoTasks:                    noTasks,
+		IngestSubjectPrefix:        ingestSubjectPrefix,
+		StateSubjectPrefix:         stateSubjectPrefix,
+		StateStreamName:            stateStreamName,
+		StateStreamMaxAge:          stateStreamMaxAge,
+		StateConsumerName:          stateConsumerName,
+		ConfigKVBucketName:         configKVBucketName,
+		TasksStreamName:            tasksStreamName,
+		TasksSubjectPrefix:         tasksSubjectPrefix,
+		TaskQueueConsumerName:      taskQueueConsumerName,
+		TaskResultsStreamName:      taskResultsStreamName,
+		TaskResultsSubjectPrefix:   taskResultsSubjectPrefix,
+		TaskResultsStreamMaxAge:    taskResultsStreamMaxAge,
+		TaskResultConsumerName:     taskResultConsumerName,
+		TaskBroadcastSubject:       taskBroadcastSubject,
+		TaskTimers:                 make(map[string]*time.Timer),
 	}
 	return app, nil
 }

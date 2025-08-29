@@ -119,11 +119,6 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 
 func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if app.NoPublicSharing {
-			return c.JSONPretty(http.StatusBadRequest, struct {
-				Error string `json:"error"`
-			}{Error: "Invalid request"}, "  ")
-		}
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -143,6 +138,42 @@ func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 		err := core.SaveDashboardVisibility(app, c.Request().Context(), c.Param("id"), request.Visibility)
 		if err != nil {
 			c.Logger().Error("error saving visibility:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
+func SaveDashboardPassword(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			Password string `json:"password"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request"}, "  ")
+		}
+
+		if request.Password == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Password is required"}, "  ")
+		}
+
+		err := core.SaveDashboardPassword(app, c.Request().Context(), c.Param("id"), request.Password)
+		if err != nil {
+			c.Logger().Error("error saving dashboard password:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: err.Error()}, "  ")
@@ -378,22 +409,19 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 	}
 }
 
-// NOTE: This route exists to check if dashboard is public or password protected. It only makes sense once password-protected links are implemented.
-func GetPublicStatus(app *core.App) echo.HandlerFunc {
+func GetDashboardStatus(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if app.NoPublicSharing {
-			return c.JSONPretty(http.StatusNotFound, struct {
-				Error string `json:"error"`
-			}{Error: "not found"}, "  ")
-		}
 		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
-			c.Logger().Error("error getting public status:", slog.Any("error", err))
+			c.Logger().Error("error getting dashboard status:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
 			}{Error: "not found"}, "  ")
 		}
-		if dashboard.Visibility == nil || *dashboard.Visibility != "public" {
+		if dashboard.Visibility == nil ||
+			(*dashboard.Visibility == "private") ||
+			(app.NoPublicSharing && *dashboard.Visibility == "public") ||
+			(app.NoPasswordProtectedSharing && *dashboard.Visibility == "password-protected") {
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
 			}{Error: "not found"}, "  ")
@@ -401,7 +429,7 @@ func GetPublicStatus(app *core.App) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, struct {
 			Visibility string `json:"visibility"`
 		}{
-			Visibility: "public",
+			Visibility: *dashboard.Visibility,
 		})
 	}
 }

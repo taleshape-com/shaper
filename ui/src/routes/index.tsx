@@ -29,6 +29,7 @@ import {
   RiCodeSSlashFill,
   RiFile3Fill,
   RiBarChart2Line,
+  RiLockLine,
 } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { getSystemConfig } from "../lib/system";
@@ -171,7 +172,7 @@ function Index() {
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                {translate("Create the first dashboard")} ...
+                {"Create a first dashboard"}
               </p>
               <Link
                 to="/new"
@@ -287,12 +288,19 @@ function Index() {
                                   </RuntimeTooltip>
                                 )
                             )
-                            : app.visibility === "public" && (
+                            : app.visibility === "public" ? (
                               <Tooltip
                                 showArrow={false}
                                 content={translate("This dashboard is public")}
                               >
                                 <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                              </Tooltip>
+                            ) : app.visibility === "password-protected" && (
+                              <Tooltip
+                                showArrow={false}
+                                content={"This dashboard has a share link protected with a password"}
+                              >
+                                <RiLockLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
                               </Tooltip>
                             )
                           }

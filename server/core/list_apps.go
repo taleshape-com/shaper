@@ -47,7 +47,7 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 		optionalFilter = "WHERE type = 'dashboard'"
 	}
 	err := app.DB.SelectContext(ctx, &apps,
-		fmt.Sprintf(`SELECT a.*,
+		fmt.Sprintf(`SELECT a.* EXCLUDE (password_hash),
 			CASE WHEN a.type = 'task' THEN
 				{
 					'lastRunAt': epoch_ms(t.last_run_at),
@@ -63,8 +63,11 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 	if err != nil {
 		err = fmt.Errorf("error listing apps: %w", err)
 	}
-	if app.NoPublicSharing {
-		for i := range apps {
+	for i := range apps {
+		if app.NoPublicSharing && apps[i].Visibility != nil && *apps[i].Visibility == "public" {
+			apps[i].Visibility = nil
+		}
+		if app.NoPasswordProtectedSharing && apps[i].Visibility != nil && *apps[i].Visibility == "password-protected" {
 			apps[i].Visibility = nil
 		}
 	}

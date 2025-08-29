@@ -68,6 +68,7 @@ type Config struct {
 	Favicon                    string
 	JWTExp                     time.Duration
 	NoPublicSharing            bool
+	NoPasswordProtectedSharing bool
 	NoTasks                    bool
 	NodeIDFile                 string
 	TLSDomain                  string
@@ -126,6 +127,7 @@ func loadConfig() Config {
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
+	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
 	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
@@ -255,6 +257,7 @@ func loadConfig() Config {
 		SessionExp:                 *sessionExp,
 		InviteExp:                  *inviteExp,
 		NoPublicSharing:            *noPublicSharing,
+		NoPasswordProtectedSharing: *noPasswordProtectedSharing,
 		NoTasks:                    *noTasks,
 		NodeIDFile:                 *nodeIDFile,
 		TLSDomain:                  *tlsDomain,
@@ -398,6 +401,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.SessionExp,
 		cfg.InviteExp,
 		cfg.NoPublicSharing,
+		cfg.NoPasswordProtectedSharing,
 		cfg.NoTasks,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,

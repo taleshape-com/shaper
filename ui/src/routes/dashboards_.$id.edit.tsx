@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { RiPencilLine, RiCloseLine, RiArrowDownSLine } from "@remixicon/react";
+import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiEyeLine, RiEyeOffLine, RiFileCopyLine, RiRefreshLine } from "@remixicon/react";
 import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import {
@@ -12,6 +12,7 @@ import {
   focusRing,
   getSearchParamString,
   varsParamSchema,
+  copyToClipboard,
 } from "../lib/utils";
 import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
@@ -22,6 +23,7 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
+import { generatePassword } from "../lib/passwordUtils";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ import { PublicLink } from "../components/PublicLink";
 import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
+import { getSystemConfig } from "../lib/system";
 
 export const Route = createFileRoute("/dashboards_/$id/edit")({
   validateSearch: z.object({
@@ -77,7 +80,13 @@ function DashboardEditor() {
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
+  const [selectedVisibility, setSelectedVisibility] = useState<string>(dashboard.visibility || 'private');
+  const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [generatingPassword, setGeneratingPassword] = useState(false);
   const { toast } = useToast();
+  const systemConfig = getSystemConfig();
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
@@ -245,14 +254,28 @@ function DashboardEditor() {
         `dashboards/${params.id}/visibility`,
         {
           method: "POST",
-          body: { visibility: dashboard.visibility === 'public' ? 'private' : 'public' },
+          body: { visibility: selectedVisibility },
         },
       );
+
+      // Save password if visibility is password-protected
+      if (selectedVisibility === 'password-protected' && password) {
+        setSavingPassword(true);
+        await queryApi(
+          `dashboards/${params.id}/password`,
+          {
+            method: "POST",
+            body: { password: password },
+          },
+        );
+        setSavingPassword(false);
+      }
+
       toast({
-        title: translate(dashboard.visibility === 'public' ? "Dashboard unshared" : "Dashboard made public"),
-        description: translate(dashboard.visibility === 'public' ? "The dashboard is not publicly accessible anymore." : "Try the link in the sidebar"),
+        title: selectedVisibility === 'public' ? "Dashboard made public" : selectedVisibility === 'password-protected' ? "Dashboard password protected" : "Dashboard made private",
+        description: selectedVisibility === 'public' ? "Try the link in the sidebar" : selectedVisibility === 'password-protected' ? "Share the link and password with others" : "The dashboard is not publicly accessible anymore.",
       });
-      dashboard.visibility = dashboard.visibility === 'public' ? 'private' : 'public';
+      dashboard.visibility = selectedVisibility as 'public' | 'private' | 'password-protected';
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
@@ -268,6 +291,39 @@ function DashboardEditor() {
       });
     }
   };
+
+  const handleGeneratePassword = () => {
+    setGeneratingPassword(true);
+    const newPassword = generatePassword(16);
+    setPassword(newPassword);
+    // Brief animation feedback
+    setTimeout(() => {
+      setGeneratingPassword(false);
+    }, 400);
+  };
+
+  const handleCopyPassword = async () => {
+    const success = await copyToClipboard(password);
+    if (success) {
+      toast({
+        title: "Password copied",
+        description: "Password copied to clipboard",
+      });
+    } else {
+      toast({
+        title: translate("Error"),
+        description: "Failed to copy password",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleOpenVisibilityDialog = () => {
+    setSelectedVisibility(dashboard.visibility || 'private');
+    setPassword('');
+    setShowVisibilityDialog(true);
+  };
+
 
   const handleRestoreUnsavedChanges = () => {
     if (unsavedContent) {
@@ -300,17 +356,17 @@ function DashboardEditor() {
               <VariablesMenu
                 onVariablesChange={previewDashboard}
               />
-              {dashboard.visibility && (
+              {(systemConfig.publicSharingEnabled || systemConfig.passwordProtectedSharingEnabled) && (
                 <div className="my-2 px-4">
                   <Button
-                    onClick={() => setShowVisibilityDialog(true)}
+                    onClick={handleOpenVisibilityDialog}
                     variant="secondary"
                     className="mt-4 capitalize"
                   >
-                    {translate(dashboard.visibility)}
+                    {dashboard.visibility === 'password-protected' ? 'Password Protected' : translate(dashboard.visibility || 'private')}
                     <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
                   </Button>
-                  {dashboard.visibility === 'public' && (
+                  {(dashboard.visibility === 'public' || dashboard.visibility === 'password-protected') && (
                     <PublicLink href={`../../view/${params.id}`} />
                   )}
                 </div>
@@ -488,13 +544,139 @@ function DashboardEditor() {
       </Dialog>
 
       <Dialog open={showVisibilityDialog} onOpenChange={setShowVisibilityDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{translate(dashboard.visibility === 'public' ? "Do you want to unshare the dashboard?" : "Do you want to share the dashboard publicly?")}</DialogTitle>
+            <DialogTitle>Dashboard Visibility</DialogTitle>
             <DialogDescription>
-              {translate(dashboard.visibility === 'public' ? "Are you sure you want to remove public access to the dasboard?" : "Are you sure you want to make the dashboard visible to everyone?")}
+              Choose who can access this dashboard
             </DialogDescription>
           </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="private"
+                  checked={selectedVisibility === 'private'}
+                  onChange={(e) => setSelectedVisibility(e.target.value)}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="font-medium">Private</div>
+                  <div className="text-sm text-ctext2 dark:text-dtext2">
+                    Only you can access this dashboard
+                  </div>
+                </div>
+              </label>
+
+              {systemConfig.passwordProtectedSharingEnabled && (
+                <>
+
+                  <label className="flex items-start space-x-3">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="password-protected"
+                      checked={selectedVisibility === 'password-protected'}
+                      onChange={(e) => setSelectedVisibility(e.target.value)}
+                      className="mt-1"
+                    />
+                    <div className="flex-grow">
+                      <div className="font-medium">Password Protected</div>
+                      <div className="text-sm text-ctext2 dark:text-dtext2">
+                        Anyone with the link and password can access
+                      </div>
+                    </div>
+                  </label>
+
+                  {selectedVisibility === 'password-protected' && (
+                    <div className="ml-6 space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="relative flex-grow">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder={dashboard.visibility === 'password-protected' ? "Set new password" : "Password"}
+                            className={cx(
+                              "w-full px-3 py-2 border rounded-md pr-20",
+                              "bg-cbgs dark:bg-dbgs border-cb dark:border-db",
+                              focusRing
+                            )}
+                            minLength={4}
+                          />
+                          <div className="absolute right-1 top-1 flex space-x-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="p-1.5"
+                            >
+                              {showPassword ? <RiEyeOffLine className="size-4" /> : <RiEyeLine className="size-4" />}
+                            </Button>
+                            {password && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={handleCopyPassword}
+                                className="p-1.5"
+                              >
+                                <RiFileCopyLine className="size-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <Tooltip showArrow={false} content="Generate a secure 16-character password">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleGeneratePassword}
+                            className="px-3.5 py-2.5"
+                            disabled={generatingPassword}
+                          >
+                            <RiRefreshLine className={cx(
+                              "size-5 transition-transform duration-400",
+                              generatingPassword && "animate-spin"
+                            )} />
+                          </Button>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xs text-ctext2 dark:text-dtext2">
+                        Password must be at least 4 characters long
+                      </div>
+                      {password && password.length < 4 && (
+                        <div className="text-xs text-cerr dark:text-derr">
+                          Password is too short
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {systemConfig.publicSharingEnabled && (
+                <label className="flex items-start space-x-3">
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value="public"
+                    checked={selectedVisibility === 'public'}
+                    onChange={(e) => setSelectedVisibility(e.target.value)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="font-medium">Public</div>
+                    <div className="text-sm text-ctext2 dark:text-dtext2">
+                      Anyone with the link can access
+                    </div>
+                  </div>
+                </label>
+              )}
+            </div>
+          </div>
+
           <DialogFooter>
             <Button
               onClick={() => setShowVisibilityDialog(false)}
@@ -508,8 +690,10 @@ function DashboardEditor() {
                 handleVisibilityChange();
                 setShowVisibilityDialog(false);
               }}
+              disabled={selectedVisibility === 'password-protected' && password.length < 4}
+              isLoading={savingPassword}
             >
-              {translate(dashboard.visibility === "public" ? "Unshare" : "Make Public")}
+              {translate("Save")}
             </Button>
           </DialogFooter>
         </DialogContent>

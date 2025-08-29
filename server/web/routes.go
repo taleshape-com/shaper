@@ -87,7 +87,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
-	e.GET("/api/public/:id/status", handler.GetPublicStatus(app))
+	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/apps", handler.ListApps(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
@@ -97,6 +97,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/query", handler.SaveDashboardQuery(app))
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
+	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
 	if !app.NoTasks {

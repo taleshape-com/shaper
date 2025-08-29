@@ -61,7 +61,7 @@ type DeleteTaskPayload struct {
 func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	var task Task
 	err := app.DB.GetContext(ctx, &task,
-		`SELECT a.* EXCLUDE (type, visibility), 
+		`SELECT a.* EXCLUDE (type, visibility, password_hash), 
 		        epoch_ms(tr.next_run_at) AS next_run_at, 
 		        epoch_ms(tr.last_run_at) AS last_run_at, 
 		        tr.last_run_success, 

@@ -9,7 +9,7 @@ export interface IApp {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
-  visibility?: 'public' | 'private';
+  visibility?: 'public' | 'private' | 'password-protected';
   type: 'dashboard' | 'task';
   taskInfo?: ITaskInfo;
 }
@@ -43,7 +43,7 @@ export type GaugeCategory = {
 
 export type Result = {
   name: string;
-  visibility?: 'public' | 'private';
+  visibility?: 'public' | 'private' | 'password-protected';
   minTimeValue: number;
   maxTimeValue: number;
   reloadAt: number;

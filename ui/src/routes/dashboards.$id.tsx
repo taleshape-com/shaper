@@ -81,7 +81,7 @@ function DashboardViewComponent() {
         {translate("Edit Dashboard")}
       </Link>
       <VariablesMenu />
-      {visibility === 'public' && (
+      {(visibility === 'public' || visibility === 'password-protected') && (
         <div className="my-2 px-4">
           <PublicLink href={`../view/${params.id}`} />
         </div>

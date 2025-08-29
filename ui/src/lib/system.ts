@@ -5,6 +5,8 @@ import { localStorageJwtKey } from "./auth";
 export interface ISystemConfig {
   loginRequired: boolean;
   tasksEnabled: boolean;
+  publicSharingEnabled: boolean;
+  passwordProtectedSharingEnabled: boolean;
 }
 
 export const localStorageSystemConfigKey = "shaper-system-config";
@@ -44,7 +46,9 @@ export const fetchSystemConfig = async () => {
 const configChanged = (existingSystemConfig: ISystemConfig) => {
   const refreshedSystemConfig = getSystemConfig();
   return existingSystemConfig.loginRequired !== refreshedSystemConfig.loginRequired ||
-    existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled
+    existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled ||
+    existingSystemConfig.publicSharingEnabled !== refreshedSystemConfig.publicSharingEnabled ||
+    existingSystemConfig.passwordProtectedSharingEnabled !== refreshedSystemConfig.passwordProtectedSharingEnabled;
 }
 
 export const reloadSystemConfig = async () => {
