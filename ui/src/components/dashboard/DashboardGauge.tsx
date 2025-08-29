@@ -3,7 +3,7 @@
 import React, { useCallback, useRef } from "react";
 import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
-import * as echarts from 'echarts';
+import type { ECharts } from 'echarts/core';
 import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';
 import { DarkModeContext } from '../../contexts/DarkModeContext';
 import { formatValue } from "../../lib/render";
@@ -26,12 +26,12 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   gaugeCategories,
   label,
 }) => {
-  const chartRef = useRef<echarts.ECharts | null>(null);
+  const chartRef = useRef<ECharts | null>(null);
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [chartSize, setChartSize] = React.useState<{ width: number, height: number }>({ width: 0, height: 0 });
 
 
-  const chartOptions = React.useMemo((): echarts.EChartsOption => {
+  const chartOptions = React.useMemo(() => {
     const theme = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
 
@@ -214,12 +214,12 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     chartSize,
   ]);
 
-  const handleChartReady = useCallback((chart: echarts.ECharts) => {
+  const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartSize({ width: chart.getWidth(), height: chart.getHeight() });
   }, []);
 
-  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+  const handleChartResize = useCallback((chart: ECharts) => {
     setChartSize({ width: chart.getWidth(), height: chart.getHeight() });
   }, []);
 

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React, { useEffect, useCallback, useRef } from "react";
-import * as echarts from "echarts";
+import type { ECharts } from 'echarts/core';
+import type { LineSeriesOption } from 'echarts/charts';
 import {
   constructCategoryColors,
   getThemeColors,
@@ -49,7 +50,7 @@ const LineChart = (props: LineChartProps) => {
     ...other
   } = props;
 
-  const chartRef = useRef<echarts.ECharts | null>(null);
+  const chartRef = useRef<ECharts | null>(null);
   const [chartWidth, setChartWidth] = React.useState(0);
   const hoveredChartIdRef = useRef<string | null>(null);
 
@@ -64,7 +65,7 @@ const LineChart = (props: LineChartProps) => {
   }, [hoveredChartId]);
 
   // Memoize the chart options to prevent unnecessary re-renders
-  const chartOptions = React.useMemo((): echarts.EChartsOption => {
+  const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
@@ -75,8 +76,8 @@ const LineChart = (props: LineChartProps) => {
     const isTimestampData = isTimeType(indexType) || indexType === "time";
 
     // Set up chart options
-    const series: echarts.LineSeriesOption[] = categories.map((category) => {
-      const baseSeries: echarts.LineSeriesOption = {
+    const series: LineSeriesOption[] = categories.map((category) => {
+      const baseSeries: LineSeriesOption = {
         name: category,
         id: category,
         type: 'line' as const,
@@ -444,12 +445,12 @@ const LineChart = (props: LineChartProps) => {
     };
   }, [indexType, data, index, chartId, setHoverState]);
 
-  const handleChartReady = useCallback((chart: echarts.ECharts) => {
+  const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
   }, []);
 
-  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+  const handleChartResize = useCallback((chart: ECharts) => {
     setChartWidth(chart.getWidth());
   }, []);
 

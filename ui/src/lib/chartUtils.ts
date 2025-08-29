@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import type { ECharts } from 'echarts/core';
+
 // Helper function to get computed CSS value
 export const getComputedCssValue = (cssVar: string): string => {
   const root = document.documentElement;
@@ -38,7 +40,7 @@ export const getThemeColors = (isDark: boolean) => {
 
 // Function to download chart as image
 export const downloadChartAsImage = (
-  chartInstance: echarts.ECharts,
+  chartInstance: ECharts,
   chartId: string,
   label?: string
 ): void => {

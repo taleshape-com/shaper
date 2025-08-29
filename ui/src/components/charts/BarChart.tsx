@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React, { useEffect, useCallback, useRef } from "react";
-import * as echarts from "echarts";
+import type { ECharts } from 'echarts/core';
+import type { BarSeriesOption } from 'echarts/charts';
 import {
   constructCategoryColors,
   getThemeColors,
@@ -56,7 +57,7 @@ const BarChart = (props: BarChartProps) => {
     ...other
   } = props;
 
-  const chartRef = useRef<echarts.ECharts | null>(null);
+  const chartRef = useRef<ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
   const [chartWidth, setChartWidth] = React.useState(0);
 
@@ -71,7 +72,7 @@ const BarChart = (props: BarChartProps) => {
   }, [hoveredChartId]);
 
   // Memoize the chart options to prevent unnecessary re-renders
-  const chartOptions = React.useMemo((): echarts.EChartsOption => {
+  const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
@@ -94,8 +95,8 @@ const BarChart = (props: BarChartProps) => {
     }
 
     // Set up chart options
-    const series: echarts.BarSeriesOption[] = categories.map((category) => {
-      const baseSeries: echarts.BarSeriesOption = {
+    const series: BarSeriesOption[] = categories.map((category) => {
+      const baseSeries: BarSeriesOption = {
         name: category,
         id: category,
         type: 'bar' as const,
@@ -500,12 +501,12 @@ const BarChart = (props: BarChartProps) => {
   }, [data, index, chartId, setHoverState, indexType, layout]);
 
   // Handle chart instance reference
-  const handleChartReady = useCallback((chart: echarts.ECharts) => {
+  const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
   }, []);
 
-  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+  const handleChartResize = useCallback((chart: ECharts) => {
     setChartWidth(chart.getWidth());
   }, []);
 

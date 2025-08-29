@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React from 'react';
-import * as echarts from 'echarts';
+import * as echarts from 'echarts/core';
+import type { ECharts } from 'echarts/core';
 import { RiDownload2Line } from "@remixicon/react";
 import { downloadChartAsImage } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
@@ -19,7 +20,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
   className,
 }) => {
   const handleDownload = React.useCallback(() => {
-    let chart: echarts.ECharts | null = null;
+    let chart: ECharts | null = null;
     const chartElement = document.querySelector(`[data-chart-id="${chartId}"]`) as HTMLElement;
     if (chartElement) {
       const instances = echarts.getInstanceByDom(chartElement);

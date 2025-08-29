@@ -1,17 +1,57 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { useMemo, useRef, useEffect } from 'react';
-import * as echarts from 'echarts';
 import { debounce } from 'lodash';
 
+import * as echarts from 'echarts/core';
+import { BarChart, LineChart, GaugeChart } from 'echarts/charts';
+import {
+  TitleComponent,
+  TooltipComponent,
+  DatasetComponent,
+  TransformComponent,
+  AxisPointerComponent,
+  GraphicComponent,
+  GridComponent,
+  GridSimpleComponent,
+  LegendComponent,
+  LegendPlainComponent,
+  LegendScrollComponent,
+  MarkLineComponent,
+} from 'echarts/components';
+import { LabelLayout, UniversalTransition } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+
 interface EChartProps {
-  option: echarts.EChartsOption;
+  option: echarts.EChartsCoreOption;
   chartSettings?: echarts.EChartsInitOpts;
   events?: Record<string, (param: any) => void>;
   onChartReady?: (chart: echarts.ECharts) => void;
   onResize?: (chart: echarts.ECharts) => void;
   [key: string]: any;
 }
+
+echarts.use([
+  BarChart,
+  LineChart,
+  GaugeChart,
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  DatasetComponent,
+  TransformComponent,
+  AxisPointerComponent,
+  GraphicComponent,
+  GridComponent,
+  GridSimpleComponent,
+  LegendComponent,
+  LegendPlainComponent,
+  LegendScrollComponent,
+  MarkLineComponent,
+  LabelLayout,
+  UniversalTransition,
+  CanvasRenderer
+]);
 
 const optionSettings = {
   replaceMerge: 'series',
