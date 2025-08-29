@@ -15,6 +15,8 @@ import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
+const timeTypeThreshold = 6;
+
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   data: Record<string, any>[];
@@ -79,15 +81,14 @@ const BarChart = (props: BarChartProps) => {
     // TODO: I am still not completely sure why we need to handle time as timestamp as well
     const isTimestampData = isTimeType(indexType) || indexType === "time";
 
-    const timeTypeThreshold = 6;
-
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
     if (isTimestampData && (layout === 'vertical' || data.length < timeTypeThreshold)) {
       dataCopy = data.map((item) => {
         return {
           ...item,
-          [index]: indexFormatter(item[index])
+          // Since we treat index as category, it will be converted to text. Cannot keep date in the original number format.
+          [index]: new Date(item[index]).toISOString(),
         };
       });
     }
@@ -136,11 +137,11 @@ const BarChart = (props: BarChartProps) => {
             lineStyle: {
               color: referenceLineColor,
             },
-            data: [
-              layout === "horizontal"
-                ? { xAxis: isTimestampData && data.length >= timeTypeThreshold ? hoveredIndex : dataCopy.findIndex(item => item[index] === hoveredIndex) }
-                : { yAxis: isTimestampData && data.length >= timeTypeThreshold ? hoveredIndex : dataCopy.findIndex(item => item[index] === hoveredIndex) },
-            ],
+            data: [{
+              [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && data.length >= timeTypeThreshold
+                ? hoveredIndex
+                : dataCopy.findIndex(item => item[index] === hoveredIndex),
+            }],
           },
         };
       }
@@ -190,14 +191,7 @@ const BarChart = (props: BarChartProps) => {
           const indexDim = layout === 'horizontal' ? 'x' : 'y';
           const axisData = params.find((item: any) => item?.axisDim === indexDim);
           const hoverValue = axisData?.axisValue;
-
-          const title = layout === 'horizontal'
-            ? isTimestampData && data.length < timeTypeThreshold
-              ? hoverValue
-              : indexFormatter(hoverValue)
-            : isTimestampData
-              ? hoverValue
-              : indexFormatter(hoverValue);
+          const title = indexFormatter(hoverValue);
 
           let tooltipContent = `<div class="text-sm font-medium">${title}</div>`;
 
@@ -322,9 +316,6 @@ const BarChart = (props: BarChartProps) => {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              if (isTimestampData && data.length < timeTypeThreshold) {
-                return value;
-              }
               return indexFormatter(value, true);
             }
             return valueFormatter(value, true);
@@ -382,9 +373,6 @@ const BarChart = (props: BarChartProps) => {
             if (layout === "horizontal") {
               return valueFormatter(value, true);
             }
-            if (isTimestampData) {
-              return value
-            }
             return indexFormatter(value, true);
           },
           color: textColorSecondary,
@@ -401,9 +389,6 @@ const BarChart = (props: BarChartProps) => {
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
-              }
-              if (isTimestampData) {
-                return params.value;
               }
               return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
