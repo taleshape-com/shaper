@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 export function generatePassword(length: number = 16): string {
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const lowercase = 'abcdefghijklmnopqrstuvwxyz';
