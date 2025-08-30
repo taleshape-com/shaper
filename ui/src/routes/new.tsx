@@ -127,6 +127,7 @@ function NewDashboard() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [dashboardName, setDashboardName] = useState('')
+  const [loadDuration, setLoadDuration] = useState<number | null>(null);
   const { toast } = useToast()
 
   // Check for unsaved changes when component mounts or type changes
@@ -146,6 +147,8 @@ function NewDashboard() {
   const previewDashboard = useCallback(async () => {
     setPreviewError(null)
     setIsPreviewLoading(true)
+    setLoadDuration(null); // Reset previous duration
+    const startTime = Date.now();
     try {
       const searchParams = getSearchParamString(vars)
       const data = await queryApi(`run/dashboard?${searchParams}`, {
@@ -161,6 +164,8 @@ function NewDashboard() {
       }
       setPreviewError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
+      const duration = startTime ? Date.now() - startTime : null;
+      setLoadDuration(duration);
       setIsPreviewLoading(false)
     }
   }, [queryApi, vars, runningQuery, navigate])
@@ -321,6 +326,13 @@ function NewDashboard() {
             <MenuTrigger className="pr-2">
               {appType === 'dashboard' && (
                 <VariablesMenu onVariablesChange={previewDashboard} />
+              )}
+              {appType === 'dashboard' && loadDuration && (
+                <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
+                  <span>
+                    Load time: {loadDuration >= 1000 ? `${(loadDuration / 1000).toFixed(2)}s` : `${loadDuration}ms`}
+                  </span>
+                </div>
               )}
             </MenuTrigger>
 
