@@ -7,6 +7,7 @@ import {
   constructCategoryColors,
   getThemeColors,
   getChartFont,
+  getDisplayFont,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -17,6 +18,7 @@ import { EChart } from "./EChart";
 
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
+  label?: string;
   data: Record<string, any>[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
@@ -47,11 +49,13 @@ const LineChart = (props: LineChartProps) => {
     xAxisLabel,
     yAxisLabel,
     chartId,
+    label,
     ...other
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
   const [chartWidth, setChartWidth] = React.useState(0);
+  const [chartHeight, setChartHeight] = React.useState(0);
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
@@ -69,6 +73,7 @@ const LineChart = (props: LineChartProps) => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
+    const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     // Check if we're dealing with timestamps
@@ -154,16 +159,30 @@ const LineChart = (props: LineChartProps) => {
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
+    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 25 : 48) : 0);
+    const labelTopOffset = label ? 30 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
+    const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
 
     return {
       animation: false,
       // Quality settings for sharper rendering
       progressive: 0, // Disable progressive rendering for better quality
       progressiveThreshold: 0,
-      // Anti-aliasing and rendering quality
-      // renderer: 'canvas',
       useDirtyRect: true,
       cursor: 'default',
+      title: {
+        text: label,
+        textStyle: {
+          fontSize: 16,
+          fontFamily: displayFont,
+          fontWeight: 600,
+          color: textColor,
+          width: chartWidth - 10,
+          overflow: 'break',
+        },
+        textAlign: 'center',
+        left: '50%',
+      },
       tooltip: {
         show: true,
         trigger: 'axis',
@@ -246,7 +265,7 @@ const LineChart = (props: LineChartProps) => {
         type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
         left: 0,
-        top: 7,
+        top: 7 + labelTopOffset,
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
@@ -285,7 +304,7 @@ const LineChart = (props: LineChartProps) => {
       grid: {
         left: yAxisLabel ? 45 : 15,
         right: 15,
-        top: showLegend ? 62 : 20,
+        top: 20 + legendTopOffset + labelTopOffset,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -380,13 +399,15 @@ const LineChart = (props: LineChartProps) => {
         // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
         {
           type: "text",
-          left: 5,
-          top: "center",
           rotation: Math.PI / 2,
+          y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
+          x: 5,
           style: {
             text: yAxisLabel,
             font: `500 14px ${chartFont}`,
             fill: textColor,
+            width: chartHeight,
+            textAlign: "center",
           }
         },
       ],
@@ -411,6 +432,7 @@ const LineChart = (props: LineChartProps) => {
     chartId,
     isDarkMode,
     chartWidth,
+    chartHeight,
   ]);
 
   // Event handlers for the EChart component
@@ -448,10 +470,12 @@ const LineChart = (props: LineChartProps) => {
   const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
+    setChartHeight(chart.getHeight());
   }, []);
 
   const handleChartResize = useCallback((chart: ECharts) => {
     setChartWidth(chart.getWidth());
+    setChartHeight(chart.getHeight());
   }, []);
 
   return (

@@ -7,6 +7,7 @@ import { BarChart } from "../charts/BarChart";
 
 type BarProps = {
   chartId: string;
+  label?: string;
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows']
   // TODO: These are unused. We might not even need to calculate them in the backend at all.
@@ -18,6 +19,7 @@ type BarProps = {
 
 const DashboardBarChart = ({
   chartId,
+  label,
   headers,
   data,
   stacked,
@@ -102,6 +104,7 @@ const DashboardBarChart = ({
   return (
     <BarChart
       chartId={chartId}
+      label={label}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={Array.from(dataByIndexAxis.values())}

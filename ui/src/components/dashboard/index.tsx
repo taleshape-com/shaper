@@ -347,7 +347,7 @@ const DataView = ({
                     className="absolute top-2 right-2 z-40"
                   />
                 )}
-                {query.render.label ? (
+                {query.render.label && !isChartQuery ? (
                   <h2 className="text-md pt-4 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
@@ -413,6 +413,7 @@ const renderContent = (
     return (
       <DashboardLineChart
         chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
         headers={query.columns}
         data={query.rows}
         minTimeValue={minTimeValue}
@@ -440,6 +441,7 @@ const renderContent = (
     return (
       <DashboardBarChart
         chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
         stacked={
           query.render.type === "barchartHorizontalStacked" ||
           query.render.type === "barchartVerticalStacked"

@@ -4,7 +4,7 @@ import React, { useCallback, useRef } from "react";
 import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
 import type { ECharts } from 'echarts/core';
-import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';
+import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor, getDisplayFont } from '../../lib/chartUtils';
 import { DarkModeContext } from '../../contexts/DarkModeContext';
 import { formatValue } from "../../lib/render";
 
@@ -34,6 +34,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   const chartOptions = React.useMemo(() => {
     const theme = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
+    const displayFont = getDisplayFont();
 
     // Find the value column
     const valueIndex = headers.findIndex(h => h.tag === 'value');
@@ -96,6 +97,14 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       return boundaryValues[i] + d / 2;
     });
 
+    const labelTopOffset = label ? 20 + 15 * (Math.ceil(label.length / (0.125 * chartSize.width)) - 1) : 0;
+
+    const radius = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 540 ? 0.55 : 0.40);
+    const centerPx = [
+      0.5 * chartSize.width,
+      chartSize.height * (chartSize.width > chartSize.height ? 0.75 : 0.68),
+    ];
+
     const baseSeries = {
       type: 'gauge' as const,
       min,
@@ -117,22 +126,17 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       ],
       startAngle: 180,
       endAngle: 0,
-      center: ['50%', chartSize.width > chartSize.height ? '75%' : '68%'],
-      radius: chartSize.width > 340 ? '110%' : '86%',
+      center: [centerPx[0], centerPx[1] + labelTopOffset],
+      radius,
     };
-
-    const gaugeRadius = chartSize.width > 340 ? 1.1 : 0.86;
-    const centerY = chartSize.width > chartSize.height ? 0.75 : 0.68;
-    const centerPx = [0.5 * chartSize.width, centerY * Math.min(chartSize.width, chartSize.height)];
-    const r = (Math.min(chartSize.width, chartSize.height) / 2) * gaugeRadius + 9;
 
     // Using custom graphics to draw labels size with axisLabel we cannot control the individual alignment to ensure they don't overlap with the bar
     const graphics = (chartSize.width > 0 && chartSize.height > 0)
       ? centerValues.map((v, i) => {
         const relative = (v - min) / (max - min);
         const angle = Math.PI - (relative) * Math.PI; // 180° to 0°
-        const x = centerPx[0] + r * Math.cos(angle);
-        const y = centerPx[1] - r * Math.sin(angle);
+        const x = centerPx[0] + (radius + 9) * Math.cos(angle);
+        const y = centerPx[1] - (radius + 9) * Math.sin(angle) + labelTopOffset;
         return {
           type: 'text',
           x,
@@ -150,10 +154,23 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       })
       : [];
 
-    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1.1 : 0.86) * -0.5 + barWidth;
+    const pointerOffset = barWidth - radius;
 
     return {
       animation: false,
+      title: {
+        text: label,
+        textStyle: {
+          fontSize: 16,
+          fontFamily: displayFont,
+          fontWeight: 600,
+          color: theme.textColor,
+          width: chartSize.width - 10,
+          overflow: 'break',
+        },
+        textAlign: 'center',
+        left: '50%',
+      },
       series: [
         {
           ...baseSeries,

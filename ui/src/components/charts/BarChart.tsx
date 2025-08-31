@@ -7,6 +7,7 @@ import {
   constructCategoryColors,
   getThemeColors,
   getChartFont,
+  getDisplayFont,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -20,6 +21,7 @@ const timeTypeThreshold = 6;
 
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
+  label?: string;
   data: Record<string, any>[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
@@ -54,12 +56,14 @@ const BarChart = (props: BarChartProps) => {
     layout,
     type,
     chartId,
+    label,
     ...other
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
   const [chartWidth, setChartWidth] = React.useState(0);
+  const [chartHeight, setChartHeight] = React.useState(0);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
@@ -76,6 +80,7 @@ const BarChart = (props: BarChartProps) => {
     // Get computed colors for theme
     const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
+    const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     // Check if we're dealing with timestamps
@@ -162,16 +167,30 @@ const BarChart = (props: BarChartProps) => {
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
+    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 25 : 48) : 0);
+    const labelTopOffset = label ? 30 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
+    const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
 
     return {
       animation: false,
       // Quality settings for sharper rendering
       progressive: 0, // Disable progressive rendering for better quality
       progressiveThreshold: 0,
-      // Anti-aliasing and rendering quality
-      // renderer: 'canvas',
       useDirtyRect: true,
       cursor: 'default',
+      title: {
+        text: label,
+        textStyle: {
+          fontSize: 16,
+          fontFamily: displayFont,
+          fontWeight: 600,
+          color: textColor,
+          width: chartWidth - 10,
+          overflow: 'break',
+        },
+        textAlign: 'center',
+        left: '50%',
+      },
       tooltip: {
         show: true,
         trigger: 'axis',
@@ -273,7 +292,7 @@ const BarChart = (props: BarChartProps) => {
         type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
         left: 0,
-        top: 7,
+        top: 7 + labelTopOffset,
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
@@ -305,7 +324,7 @@ const BarChart = (props: BarChartProps) => {
       grid: {
         left: yAxisLabel ? 45 : 15,
         right: 15,
-        top: showLegend ? 62 : 20,
+        top: 20 + legendTopOffset + labelTopOffset,
         bottom: xAxisLabel ? 35 : 10,
         containLabel: true,
       },
@@ -416,13 +435,15 @@ const BarChart = (props: BarChartProps) => {
         // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
         {
           type: "text",
-          left: 5,
-          top: "center",
           rotation: Math.PI / 2,
+          y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
+          x: 5,
           style: {
             text: yAxisLabel,
             font: `500 14px ${chartFont}`,
             fill: textColor,
+            width: chartHeight,
+            textAlign: "center",
           }
         },
       ],
@@ -448,6 +469,7 @@ const BarChart = (props: BarChartProps) => {
     chartId,
     isDarkMode,
     chartWidth,
+    chartHeight,
   ]);
 
   // Event handlers for the EChart component
@@ -504,10 +526,12 @@ const BarChart = (props: BarChartProps) => {
   const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
+    setChartHeight(chart.getHeight());
   }, []);
 
   const handleChartResize = useCallback((chart: ECharts) => {
     setChartWidth(chart.getWidth());
+    setChartHeight(chart.getHeight());
   }, []);
 
   return (
