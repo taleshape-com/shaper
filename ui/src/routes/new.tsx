@@ -47,7 +47,7 @@ import {
 import "../lib/editorInit";
 import { getSystemConfig } from '../lib/system'
 
-const defaultQuery = `SELECT 'Dashboard Title'::SECTION;
+const defaultDashboardQuery = `SELECT 'Dashboard Title'::SECTION;
 
 SELECT 'Label'::LABEL;
 SELECT 'Hello World';
@@ -118,8 +118,8 @@ function NewDashboard() {
   const queryApi = useQueryApi()
   const navigate = useNavigate({ from: '/new' })
   const [appType, setAppType] = useState<'dashboard' | 'task'>(() => getStoredAppType())
-  const [editorQuery, setEditorQuery] = useState(appType === 'task' ? defaultTaskQuery : defaultQuery)
-  const [runningQuery, setRunningQuery] = useState(appType === 'task' ? defaultTaskQuery : defaultQuery)
+  const [editorQuery, setEditorQuery] = useState('');
+  const [runningQuery, setRunningQuery] = useState('');
   const [creating, setCreating] = useState(false)
   const [previewData, setPreviewData] = useState<Result | undefined>(undefined)
   const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined)
@@ -138,13 +138,16 @@ function NewDashboard() {
       setRunningQuery(unsavedContent)
     } else {
       // Set default content based on app type
-      const defaultContent = appType === 'task' ? defaultTaskQuery : defaultQuery
+      const defaultContent = appType === 'task' ? defaultTaskQuery : defaultDashboardQuery
       setEditorQuery(defaultContent)
       setRunningQuery(defaultContent)
     }
   }, [appType])
 
   const previewDashboard = useCallback(async () => {
+    if (!runningQuery.trim()) {
+      return;
+    }
     setPreviewError(null)
     setIsPreviewLoading(true)
     setLoadDuration(null); // Reset previous duration
@@ -230,7 +233,7 @@ function NewDashboard() {
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || ''
-    const currentDefaultQuery = appType === 'task' ? defaultTaskQuery : defaultQuery
+    const currentDefaultQuery = appType === 'task' ? defaultTaskQuery : defaultDashboardQuery
 
     // Save to localStorage
     if (newQuery !== currentDefaultQuery && newQuery.trim() !== '') {

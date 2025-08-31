@@ -158,6 +158,8 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
 
     return {
       animation: false,
+      progressive: 0, // Disable progressive rendering for better quality
+      progressiveThreshold: 0,
       title: {
         text: label,
         textStyle: {
