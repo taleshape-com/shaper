@@ -18,6 +18,7 @@ import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
 const timeTypeThreshold = 6;
+const chartPadding = 16;
 
 interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
@@ -168,7 +169,7 @@ const BarChart = (props: BarChartProps) => {
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
     const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 25 : 48) : 0);
-    const labelTopOffset = label ? 30 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
+    const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
 
     return {
@@ -185,11 +186,12 @@ const BarChart = (props: BarChartProps) => {
           fontFamily: displayFont,
           fontWeight: 600,
           color: textColor,
-          width: chartWidth - 10,
+          width: chartWidth - 10 - 2 * chartPadding,
           overflow: 'break',
         },
         textAlign: 'center',
         left: '50%',
+        top: chartPadding,
       },
       tooltip: {
         show: true,
@@ -291,8 +293,8 @@ const BarChart = (props: BarChartProps) => {
         show: showLegend,
         type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
-        left: 0,
-        top: 7 + labelTopOffset,
+        left: chartPadding,
+        top: 7 + labelTopOffset + chartPadding,
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
@@ -322,10 +324,10 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       grid: {
-        left: yAxisLabel ? 45 : 15,
-        right: 15,
-        top: 20 + legendTopOffset + labelTopOffset,
-        bottom: xAxisLabel ? 35 : 10,
+        left: (yAxisLabel ? 45 : 15) + chartPadding,
+        right: 15 + chartPadding,
+        top: 20 + legendTopOffset + labelTopOffset + chartPadding,
+        bottom: (xAxisLabel ? 35 : 10) + chartPadding,
         containLabel: true,
       },
       xAxis: {
@@ -437,7 +439,7 @@ const BarChart = (props: BarChartProps) => {
           type: "text",
           rotation: Math.PI / 2,
           y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
-          x: 5,
+          x: 5 + chartPadding,
           style: {
             text: yAxisLabel,
             font: `500 14px ${chartFont}`,

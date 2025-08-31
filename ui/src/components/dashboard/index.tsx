@@ -353,7 +353,7 @@ const DataView = ({
                   </h2>
                 ) : null}
                 <div
-                  className="m-4 flex-1 relative overflow-auto"
+                  className={cx("flex-1 relative overflow-auto", { "m-4": !isChartQuery })}
                 >
                   {renderContent(
                     query,

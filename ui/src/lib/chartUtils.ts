@@ -26,6 +26,7 @@ export const getThemeColors = (isDark: boolean) => {
     return {
       primaryColor: getComputedCssValue('--shaper-dark-mode-primary-color'),
       backgroundColor: getComputedCssValue('--shaper-dark-mode-background-color'),
+      backgroundColorSecondary: getComputedCssValue('--shaper-dark-mode-background-color-secondary'),
       borderColor: getComputedCssValue('--shaper-dark-mode-border-color'),
       textColor: getComputedCssValue('--shaper-dark-mode-text-color'),
       textColorSecondary: getComputedCssValue('--shaper-dark-mode-text-color-secondary'),
@@ -35,6 +36,7 @@ export const getThemeColors = (isDark: boolean) => {
     return {
       primaryColor: getComputedCssValue('--shaper-primary-color'),
       backgroundColor: getComputedCssValue('--shaper-background-color'),
+      backgroundColorSecondary: getComputedCssValue('--shaper-background-color-secondary'),
       borderColor: getComputedCssValue('--shaper-border-color'),
       textColor: getComputedCssValue('--shaper-text-color'),
       textColorSecondary: getComputedCssValue('--shaper-text-color-secondary'),
@@ -46,13 +48,14 @@ export const getThemeColors = (isDark: boolean) => {
 // Function to download chart as image
 export const downloadChartAsImage = (
   chartInstance: ECharts,
+  isDarkMode: boolean,
   chartId: string,
   label?: string
 ): void => {
   const url = chartInstance.getDataURL({
     type: 'png',
     pixelRatio: 2,
-    backgroundColor: getThemeColors(false).backgroundColor,
+    backgroundColor: getThemeColors(isDarkMode).backgroundColorSecondary,
   });
 
   const link = document.createElement('a');

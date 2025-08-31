@@ -18,6 +18,7 @@ type DashboardGaugeProps = {
 };
 
 const barWidth = 42;
+const chartPadding = 16;
 
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   chartId,
@@ -99,10 +100,10 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
 
     const labelTopOffset = label ? 20 + 15 * (Math.ceil(label.length / (0.125 * chartSize.width)) - 1) : 0;
 
-    const radius = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 540 ? 0.55 : 0.40);
+    const radius = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 540 ? 0.52 : 0.40);
     const centerPx = [
-      0.5 * chartSize.width,
-      chartSize.height * (chartSize.width > chartSize.height ? 0.75 : 0.68),
+      chartSize.width / 2,
+      chartSize.height / 2 + radius / 2
     ];
 
     const baseSeries = {
@@ -167,11 +168,12 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           fontFamily: displayFont,
           fontWeight: 600,
           color: theme.textColor,
-          width: chartSize.width - 10,
+          width: chartSize.width - 10 - 2 * chartPadding,
           overflow: 'break',
         },
         textAlign: 'center',
         left: '50%',
+        top: chartPadding,
       },
       series: [
         {

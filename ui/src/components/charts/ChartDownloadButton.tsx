@@ -7,6 +7,7 @@ import { RiDownload2Line } from "@remixicon/react";
 import { downloadChartAsImage } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { translate } from "../../lib/translate";
+import { DarkModeContext } from "../../contexts/DarkModeContext";
 
 interface ChartDownloadButtonProps {
   chartId: string;
@@ -19,6 +20,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
   label,
   className,
 }) => {
+  const { isDarkMode } = React.useContext(DarkModeContext);
   const handleDownload = React.useCallback(() => {
     let chart: ECharts | null = null;
     const chartElement = document.querySelector(`[data-chart-id="${chartId}"]`) as HTMLElement;
@@ -29,11 +31,11 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
       }
     }
     if (chart) {
-      downloadChartAsImage(chart, chartId, label);
+      downloadChartAsImage(chart, isDarkMode, chartId, label);
       return;
     }
     console.warn(`Could not find chart element with id: ${chartId}`);
-  }, [chartId, label]);
+  }, [chartId, label, isDarkMode]);
 
   return (
     <div className="absolute inset-0 pointer-events-none">
