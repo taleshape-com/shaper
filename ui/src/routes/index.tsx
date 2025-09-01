@@ -29,7 +29,7 @@ import {
   RiCodeSSlashFill,
   RiFile3Fill,
   RiBarChart2Line,
-  RiLockLine,
+  RiUserSharedLine,
 } from "@remixicon/react";
 import { translate } from "../lib/translate";
 import { getSystemConfig } from "../lib/system";
@@ -300,7 +300,7 @@ function Index() {
                                 showArrow={false}
                                 content={"This dashboard has a share link protected with a password"}
                               >
-                                <RiLockLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                                <RiUserSharedLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
                               </Tooltip>
                             )
                           }

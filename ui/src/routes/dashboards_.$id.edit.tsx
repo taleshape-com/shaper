@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiEyeLine, RiEyeOffLine, RiFileCopyLine, RiRefreshLine } from "@remixicon/react";
+import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiEyeLine, RiEyeOffLine, RiFileCopyLine, RiRefreshLine, RiExternalLinkLine } from "@remixicon/react";
 import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import {
@@ -79,6 +79,8 @@ function DashboardEditor() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [showPasswordSuccessDialog, setShowPasswordSuccessDialog] = useState(false);
+  const [showSuccessPassword, setShowSuccessPassword] = useState(false);
   const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
   const [selectedVisibility, setSelectedVisibility] = useState<string>(dashboard.visibility || 'private');
   const [password, setPassword] = useState<string>('');
@@ -271,10 +273,16 @@ function DashboardEditor() {
         setSavingPassword(false);
       }
 
-      toast({
-        title: selectedVisibility === 'public' ? "Dashboard made public" : selectedVisibility === 'password-protected' ? "Dashboard password protected" : "Dashboard made private",
-        description: selectedVisibility === 'public' ? "Try the link in the sidebar" : selectedVisibility === 'password-protected' ? "Share the link and password with others" : "The dashboard is not publicly accessible anymore.",
-      });
+      // Show success dialog for password-protected dashboards
+      if (selectedVisibility === 'password-protected') {
+        setShowPasswordSuccessDialog(true);
+      } else {
+        toast({
+          title: selectedVisibility === 'public' ? "Dashboard made public" : "Dashboard made private",
+          description: selectedVisibility === 'public' ? "Try the link in the sidebar" : "The dashboard is not publicly accessible anymore.",
+        });
+      }
+      
       dashboard.visibility = selectedVisibility as 'public' | 'private' | 'password-protected';
       router.invalidate();
     } catch (err) {
@@ -718,6 +726,106 @@ function DashboardEditor() {
               onClick={handleRestoreUnsavedChanges}
             >
               {translate("Restore")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPasswordSuccessDialog} onOpenChange={setShowPasswordSuccessDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dashboard Password Protected</DialogTitle>
+            <DialogDescription>
+              Your dashboard is now password protected. Copy the password now - you won't be able to see it again.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Password</label>
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-grow">
+                  <input
+                    type={showSuccessPassword ? "text" : "password"}
+                    value={password}
+                    readOnly
+                    className={cx(
+                      "w-full px-3 py-2 border rounded-md pr-20 bg-gray-50 dark:bg-gray-800 border-cb dark:border-db",
+                      "font-mono text-sm"
+                    )}
+                  />
+                  <div className="absolute right-1 top-1 flex space-x-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setShowSuccessPassword(!showSuccessPassword)}
+                      className="p-1.5"
+                    >
+                      {showSuccessPassword ? <RiEyeOffLine className="size-4" /> : <RiEyeLine className="size-4" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleCopyPassword}
+                      className="p-1.5"
+                    >
+                      <RiFileCopyLine className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Share Link</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={`${window.location.origin}/view/${params.id}`}
+                  readOnly
+                  className={cx(
+                    "flex-grow px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 border-cb dark:border-db",
+                    "text-sm"
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    copyToClipboard(`${window.location.origin}/view/${params.id}`);
+                    toast({
+                      title: "Link copied",
+                      description: "Share link copied to clipboard",
+                    });
+                  }}
+                  className="px-3"
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => {
+                  window.open(`/view/${params.id}`, '_blank');
+                }}
+                className="w-full"
+              >
+                Open Shared Dashboard
+                <RiExternalLinkLine className="size-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => setShowPasswordSuccessDialog(false)}
+              variant="secondary"
+            >
+              {translate("Close")}
             </Button>
           </DialogFooter>
         </DialogContent>
