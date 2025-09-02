@@ -17,8 +17,8 @@ require (
 	github.com/nats-io/nats.go v1.45.0
 	github.com/nrednav/cuid2 v1.1.0
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
-	github.com/samber/slog-echo v1.16.1
-	github.com/stretchr/testify v1.11.0
+	github.com/samber/slog-echo v1.17.1
+	github.com/stretchr/testify v1.11.1
 	github.com/xuri/excelize/v2 v2.9.1
 	golang.org/x/crypto v0.41.0
 )
