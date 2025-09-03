@@ -57,39 +57,63 @@ export function Dashboard({
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
+  // Track the current AbortController so we can cancel in-flight requests
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   // Function to fetch dashboard data
   const fetchData = useCallback(async () => {
     if (!id) return;
+
+    // Abort any in-flight request before starting a new one
+    if (fetchAbortRef.current) {
+      fetchAbortRef.current.abort();
+    }
+    const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
+
+    // Clear previous reload timer when starting a new fetch
+    if (reloadTimeoutRef.current) {
+      clearTimeout(reloadTimeoutRef.current);
+      reloadTimeoutRef.current = undefined;
+    }
+
     setError(null);
     setIsFetching(true);
     const startTime = Date.now();
+
     try {
-      const d = await fetchDashboard(id, vars, baseUrl, getJwt);
+      const d = await fetchDashboard(id, vars, baseUrl, getJwt, abortController.signal);
       const duration = Date.now() - startTime;
       await new Promise<void>(resolve => {
         setTimeout(() => {
           resolve();
-        }, MIN_SHOW_LOADING - duration);
+        }, Math.max(0, MIN_SHOW_LOADING - duration));
       });
-      setFetchedData(d);
-      if (onDataChange) {
-        onDataChange(d);
+
+      // Only apply the results if this request is still the latest
+      if (fetchAbortRef.current === abortController) {
+        setFetchedData(d);
+        if (onDataChange) {
+          onDataChange(d);
+        }
+        // Set up reload timeout if reloadAt is in the future
+        if (d.reloadAt > Date.now()) {
+          const timeout = Math.max(1000, d.reloadAt - Date.now());
+          reloadTimeoutRef.current = setTimeout(fetchData, timeout);
+        }
       }
-      // Clear any existing reload timeout
-      if (reloadTimeoutRef.current) {
-        clearTimeout(reloadTimeoutRef.current);
+    } catch (err: unknown) {
+      // Swallow abort errors (they are expected when a new request starts)
+      if ((err as any)?.name === 'AbortError') {
+        return;
       }
-      // Set up reload timeout if reloadAt is in the future
-      if (d.reloadAt > Date.now()) {
-        const timeout = Math.max(1000, d.reloadAt - Date.now());
-        reloadTimeoutRef.current = setTimeout(fetchData, timeout);
-      }
-    } catch (err) {
       setError(err as Error);
       onError?.(err as Error);
     } finally {
-      setIsFetching(false);
+      // Only clear fetching state if this is still the latest request
+      if (fetchAbortRef.current === abortController) {
+        setIsFetching(false);
+      }
     }
   }, [id, vars, baseUrl, getJwt, onDataChange, onError]);
 
@@ -100,6 +124,10 @@ export function Dashboard({
       // Clear timeouts on cleanup
       if (reloadTimeoutRef.current) {
         clearTimeout(reloadTimeoutRef.current);
+      }
+      // Abort any in-flight request on unmount
+      if (fetchAbortRef.current) {
+        fetchAbortRef.current.abort();
       }
     };
   }, [fetchData, hash]);
@@ -439,6 +467,7 @@ const fetchDashboard = async (
   vars: VarsParamSchema,
   baseUrl: string,
   getJwt: () => Promise<string>,
+  signal?: AbortSignal,
 ): Promise<Result> => {
   const jwt = await getJwt();
   const searchParams = getSearchParamString(vars);
@@ -447,6 +476,7 @@ const fetchDashboard = async (
       "Content-Type": "application/json",
       Authorization: jwt,
     },
+    signal,
   });
   const json = await res.json();
   if (res.status !== 200) {

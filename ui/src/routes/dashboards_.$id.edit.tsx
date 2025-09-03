@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet";
 import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiEyeLine, RiEyeOffLine, RiFileCopyLine, RiRefreshLine, RiExternalLinkLine } from "@remixicon/react";
 import { useAuth, getJwt } from "../lib/auth";
@@ -92,6 +92,9 @@ function DashboardEditor() {
   const { toast } = useToast();
   const systemConfig = getSystemConfig();
 
+  // Track the current AbortController for preview requests
+  const previewAbortRef = useRef<AbortController | null>(null);
+
   // Check for unsaved changes when component mounts
   useEffect(() => {
     const savedContent = editorStorage.getChanges(params.id);
@@ -102,6 +105,13 @@ function DashboardEditor() {
   }, [params.id, dashboard.content]);
 
   const previewDashboard = useCallback(async () => {
+    // Abort any in-flight preview request
+    if (previewAbortRef.current) {
+      previewAbortRef.current.abort();
+    }
+    const abortController = new AbortController();
+    previewAbortRef.current = abortController;
+
     setPreviewError(null);
     setIsPreviewLoading(true);
     setLoadDuration(null); // Reset previous duration
@@ -114,36 +124,40 @@ function DashboardEditor() {
           dashboardId: params.id,
           content: runningQuery,
         },
+        signal: abortController.signal,
       });
       const duration = Date.now() - startTime;
       await new Promise<void>(resolve => {
         setTimeout(() => {
           resolve();
-        }, MIN_SHOW_LOADING - duration);
+        }, Math.max(0, MIN_SHOW_LOADING - duration));
       });
-      setLoadDuration(duration);
-      setPreviewData(data);
-    } catch (err) {
+
+      // Only apply result if this is the latest request
+      if (previewAbortRef.current === abortController) {
+        setLoadDuration(duration);
+        setPreviewData(data);
+      }
+    } catch (err: unknown) {
+      if ((err as any)?.name === 'AbortError') {
+        return; // ignore aborts
+      }
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
       setLoadDuration(Date.now() - startTime);
     } finally {
-      setIsPreviewLoading(false);
+      if (previewAbortRef.current === abortController) {
+        setIsPreviewLoading(false);
+      }
     }
   }, [queryApi, params, vars, runningQuery, navigate]);
 
   const handleRun = useCallback(() => {
-    if (isPreviewLoading) {
-      return;
-    }
-    if (editorQuery !== runningQuery) {
-      setRunningQuery(editorQuery);
-    } else {
-      previewDashboard();
-    }
-  }, [editorQuery, runningQuery, previewDashboard, isPreviewLoading]);
+    // Trigger preview regardless of current loading state; this will cancel previous
+    previewDashboard();
+  }, [previewDashboard]);
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
@@ -357,6 +371,12 @@ function DashboardEditor() {
   // Load initial preview
   useEffect(() => {
     previewDashboard();
+    return () => {
+      // Abort any pending preview when unmounting
+      if (previewAbortRef.current) {
+        previewAbortRef.current.abort();
+      }
+    };
   }, [previewDashboard]);
 
   return (
