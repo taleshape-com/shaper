@@ -39,6 +39,8 @@ import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
 
+const MIN_SHOW_LOADING = 300;
+
 export const Route = createFileRoute("/dashboards_/$id/edit")({
   validateSearch: z.object({
     vars: varsParamSchema,
@@ -113,15 +115,21 @@ function DashboardEditor() {
           content: runningQuery,
         },
       });
+      const duration = Date.now() - startTime;
+      await new Promise<void>(resolve => {
+        setTimeout(() => {
+          resolve();
+        }, MIN_SHOW_LOADING - duration);
+      });
+      setLoadDuration(duration);
       setPreviewData(data);
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
+      setLoadDuration(Date.now() - startTime);
     } finally {
-      const duration = startTime ? Date.now() - startTime : null;
-      setLoadDuration(duration);
       setIsPreviewLoading(false);
     }
   }, [queryApi, params, vars, runningQuery, navigate]);

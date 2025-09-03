@@ -33,6 +33,8 @@ export interface DashboardProps {
   loading?: boolean;
 }
 
+const MIN_SHOW_LOADING = 300;
+
 export function Dashboard({
   id,
   vars,
@@ -49,22 +51,27 @@ export function Dashboard({
 }: DashboardProps) {
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
-  const [showLoading, setShowLoading] = useState<boolean>(false);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+
   data = data ?? fetchedData;
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
-  const loadingTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Function to fetch dashboard data
   const fetchData = useCallback(async () => {
     if (!id) return;
     setError(null);
     setIsFetching(true);
-
+    const startTime = Date.now();
     try {
       const d = await fetchDashboard(id, vars, baseUrl, getJwt);
+      const duration = Date.now() - startTime;
+      await new Promise<void>(resolve => {
+        setTimeout(() => {
+          resolve();
+        }, MIN_SHOW_LOADING - duration);
+      });
       setFetchedData(d);
       if (onDataChange) {
         onDataChange(d);
@@ -83,43 +90,8 @@ export function Dashboard({
       onError?.(err as Error);
     } finally {
       setIsFetching(false);
-      setShowLoading(false);
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
     }
   }, [id, vars, baseUrl, getJwt, onDataChange, onError]);
-
-  // Handle loading state based on fetch status
-  useEffect(() => {
-    if (!id) return;
-
-    if (isFetching) {
-      // Only show loading immediately if we have no data
-      if (!data) {
-        setShowLoading(true);
-      } else {
-        // Otherwise, wait 1 second before showing loading
-        loadingTimeoutRef.current = setTimeout(() => {
-          // Only show loading if we're still fetching
-          if (isFetching) {
-            setShowLoading(true);
-          }
-        }, 1000);
-      }
-    } else {
-      setShowLoading(false);
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    }
-
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [id, data, isFetching]);
 
   // Initial fetch and cleanup
   useEffect(() => {
@@ -128,9 +100,6 @@ export function Dashboard({
       // Clear timeouts on cleanup
       if (reloadTimeoutRef.current) {
         clearTimeout(reloadTimeoutRef.current);
-      }
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
       }
     };
   }, [fetchData, hash]);
@@ -158,7 +127,7 @@ export function Dashboard({
       vars={vars}
       baseUrl={baseUrl}
       getJwt={getJwt}
-      loading={loading || showLoading}
+      loading={loading || isFetching}
     />
   ) : (
     <ChartHoverProvider>
@@ -335,11 +304,6 @@ const DataView = ({
                   },
                 )}
               >
-                {loading && (
-                  <div className="absolute w-full h-full p-4 z-50 backdrop-blur flex justify-center items-center rounded-md">
-                    <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
-                  </div>
-                )}
                 {isChartQuery && (
                   <ChartDownloadButton
                     chartId={`${sectionIndex}-${queryIndex}`}
@@ -383,6 +347,13 @@ const DataView = ({
         </div>
       ) : null
     }
+    {loading && (
+      <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
+        <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
+          <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
+        </div>
+      </div>
+    )}
   </ChartHoverProvider >)
 }
 
