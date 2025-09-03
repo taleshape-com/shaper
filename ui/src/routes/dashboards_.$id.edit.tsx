@@ -282,7 +282,7 @@ function DashboardEditor() {
           description: selectedVisibility === 'public' ? "Try the link in the sidebar" : "The dashboard is not publicly accessible anymore.",
         });
       }
-      
+
       dashboard.visibility = selectedVisibility as 'public' | 'private' | 'password-protected';
       router.invalidate();
     } catch (err) {
@@ -781,7 +781,7 @@ function DashboardEditor() {
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
-                  value={`${window.location.origin}/view/${params.id}`}
+                  value={`${window.location.origin}${window.shaper.defaultBaseUrl}view/${params.id}`}
                   readOnly
                   className={cx(
                     "flex-grow px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 border-cb dark:border-db",
@@ -792,7 +792,7 @@ function DashboardEditor() {
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    copyToClipboard(`${window.location.origin}/view/${params.id}`);
+                    copyToClipboard(`${window.location.origin}${window.shaper.defaultBaseUrl}view/${params.id}`);
                     toast({
                       title: "Link copied",
                       description: "Share link copied to clipboard",
@@ -806,17 +806,12 @@ function DashboardEditor() {
             </div>
 
             <div className="pt-2">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={() => {
-                  window.open(`/view/${params.id}`, '_blank');
-                }}
-                className="w-full"
-              >
-                Open Shared Dashboard
-                <RiExternalLinkLine className="size-4 ml-2" />
-              </Button>
+              <a href={`../../view/${params.id}`} target="_blank">
+                <Button type="button" variant="primary" className="w-full">
+                  Open Shared Dashboard
+                  <RiExternalLinkLine className="size-4 ml-2" />
+                </Button>
+              </a>
             </div>
           </div>
 
