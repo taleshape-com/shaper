@@ -94,7 +94,7 @@ func HandleCreateUser(app *App, data []byte) bool {
 	}
 
 	_, err = app.Sqlite.Exec(
-		`INSERT INTO users (
+		`INSERT OR IGNORE INTO users (
 			id, email, name, password_hash, created_at, updated_at, created_by, updated_by
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
 		payload.ID, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp, payload.CreatedBy,
@@ -405,7 +405,7 @@ func HandleCreateInvite(app *App, data []byte) bool {
 	}
 
 	_, err = app.Sqlite.Exec(
-		`INSERT INTO invites (
+		`INSERT OR IGNORE INTO invites (
 			code, email, created_at, created_by
 		) VALUES ($1, $2, $3, $4)`,
 		payload.Code, payload.Email, payload.Timestamp, payload.CreatedBy,
@@ -511,7 +511,7 @@ func HandleClaimInvite(app *App, data []byte) bool {
 
 	// Create the user
 	_, err = tx.Exec(
-		`INSERT INTO users (
+		`INSERT OR IGNORE INTO users (
 			id, email, name, password_hash, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $5)`,
 		payload.UserId, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp,

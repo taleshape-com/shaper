@@ -90,7 +90,6 @@ type Config struct {
 	IngestStreamMaxAge         time.Duration
 	StateStreamMaxAge          time.Duration
 	IngestConsumerNameFile     string
-	StateConsumerNameFile      string
 	IngestSubjectPrefix        string
 	StateSubjectPrefix         string
 	TasksStreamName            string
@@ -99,7 +98,6 @@ type Config struct {
 	TaskResultsStreamName      string
 	TaskResultsSubjectPrefix   string
 	TaskResultsStreamMaxAge    time.Duration
-	TaskResultConsumerNameFile string
 	TaskBroadcastSubject       string
 	SQLiteDB                   string
 	DuckDB                     string
@@ -162,9 +160,9 @@ func loadConfig() Config {
 	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
 	taskResultsStreamMaxAge := flags.DurationLong("task-results-max-age", 0, "Maximum age of messages in the task-results stream. Set to 0 for indefinite retention")
 	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
-	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
+	_ = flags.StringLong("state-consumer-name-file", "", "DEPRECATED: Using ephermal consumer and storing sequence in sqlite now")
 	taskQueueConsumerName := flags.StringLong("task-queue-consumer-name", "shaper-task-queue-consumer", "Name for the task queue consumer")
-	taskResultConsumerNameFile := flags.StringLong("task-result-consumer-name-file", "", "File to store and lookup name for task result consumer (default: [--dir]/task-result-consumer-name.txt)")
+	_ = flags.StringLong("task-result-consumer-name-file", "", "DEPRECATED: Now storing cursor in sqlite")
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
@@ -281,7 +279,6 @@ func loadConfig() Config {
 		IngestStreamMaxAge:         *ingestStreamMaxAge,
 		StateStreamMaxAge:          *stateStreamMaxAge,
 		IngestConsumerNameFile:     *ingestConsumerNameFile,
-		StateConsumerNameFile:      *stateConsumerNameFile,
 		IngestSubjectPrefix:        *subjectPrefix + *ingestSubjectPrefix,
 		StateSubjectPrefix:         *subjectPrefix + *stateSubjectPrefix,
 		TasksStreamName:            *streamPrefix + *tasksStream,
@@ -290,7 +287,6 @@ func loadConfig() Config {
 		TaskResultsStreamName:      *streamPrefix + *taskResultsStream,
 		TaskResultsSubjectPrefix:   *subjectPrefix + *taskResultsSubjectPrefix,
 		TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
-		TaskResultConsumerNameFile: *taskResultConsumerNameFile,
 		TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
 		SQLiteDB:                   *sqliteDB,
 		DuckDB:                     *duckdb,
@@ -404,8 +400,6 @@ func Run(cfg Config) func(context.Context) {
 
 	nodeID := getOrGenerateNodeID(cfg.DataDir, cfg.NodeIDFile, "node-id.txt")
 	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-", nodeID)
-	stateConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.StateConsumerNameFile, "state-consumer-name.txt", "shaper-state-consumer-", nodeID)
-	taskResultConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.TaskResultConsumerNameFile, "task-result-consumer-name.txt", "shaper-task-result-consumer-", nodeID)
 
 	app, err := core.New(
 		APP_NAME,
@@ -425,7 +419,6 @@ func Run(cfg Config) func(context.Context) {
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,
 		cfg.StateStreamMaxAge,
-		stateConsumerName,
 		cfg.ConfigKVBucketName,
 		cfg.TasksStreamName,
 		cfg.TasksSubjectPrefix,
@@ -433,7 +426,6 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TaskResultsStreamName,
 		cfg.TaskResultsSubjectPrefix,
 		cfg.TaskResultsStreamMaxAge,
-		taskResultConsumerName,
 		cfg.TaskBroadcastSubject,
 	)
 	if err != nil {

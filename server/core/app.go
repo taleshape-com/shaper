@@ -43,7 +43,7 @@ type App struct {
 	IngestSubjectPrefix        string
 	StateStreamName            string
 	StateStreamMaxAge          time.Duration
-	StateConsumerName          string
+	StateConsumer              jetstream.Consumer
 	ConfigKVBucketName         string
 	TasksStreamName            string
 	TasksSubjectPrefix         string
@@ -51,7 +51,6 @@ type App struct {
 	TaskResultsStreamName      string
 	TaskResultsSubjectPrefix   string
 	TaskResultsStreamMaxAge    time.Duration
-	TaskResultConsumerName     string
 	TaskBroadcastSubject       string
 	TaskBroadcastSubscription  *nats.Subscription
 	TaskTimers                 map[string]*time.Timer
@@ -75,7 +74,6 @@ func New(
 	stateSubjectPrefix string,
 	stateStreamName string,
 	stateStreamMaxAge time.Duration,
-	stateConsumerName string,
 	configKVBucketName string,
 	tasksStreamName string,
 	tasksSubjectPrefix string,
@@ -83,7 +81,6 @@ func New(
 	taskResultsStreamName string,
 	taskResultsSubjectPrefix string,
 	taskResultsStreamMaxAge time.Duration,
-	taskResultConsumerName string,
 	taskBroadcastSubject string,
 ) (*App, error) {
 	if err := initSQLite(sqliteDbx); err != nil {
@@ -135,7 +132,6 @@ func New(
 		StateSubjectPrefix:         stateSubjectPrefix,
 		StateStreamName:            stateStreamName,
 		StateStreamMaxAge:          stateStreamMaxAge,
-		StateConsumerName:          stateConsumerName,
 		ConfigKVBucketName:         configKVBucketName,
 		TasksStreamName:            tasksStreamName,
 		TasksSubjectPrefix:         tasksSubjectPrefix,
@@ -143,7 +139,6 @@ func New(
 		TaskResultsStreamName:      taskResultsStreamName,
 		TaskResultsSubjectPrefix:   taskResultsSubjectPrefix,
 		TaskResultsStreamMaxAge:    taskResultsStreamMaxAge,
-		TaskResultConsumerName:     taskResultConsumerName,
 		TaskBroadcastSubject:       taskBroadcastSubject,
 		TaskTimers:                 make(map[string]*time.Timer),
 	}
@@ -192,13 +187,18 @@ func (app *App) setupStreamAndConsumer() error {
 		return fmt.Errorf("failed to create or update state stream: %w", err)
 	}
 
-	stateConsumer, err := stream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
-		Durable:       app.StateConsumerName,
-		MaxAckPending: 1,
+	startSeq, err := getConsumerStartSeq(initCtx, app, INTERNAL_STATE_CONSUMER_NAME)
+	if err != nil {
+		return fmt.Errorf("failed to get state consumer start sequence: %w", err)
+	}
+	stateConsumer, err := stream.OrderedConsumer(initCtx, jetstream.OrderedConsumerConfig{
+		DeliverPolicy: jetstream.DeliverByStartSequencePolicy,
+		OptStartSeq:   startSeq,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create or update state consumer: %w", err)
 	}
+	app.StateConsumer = stateConsumer
 
 	// For now only the JWT secret is stored in NATS KV. It fits the persistence model nicely since it's fine if it resets.
 	configKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
@@ -253,8 +253,13 @@ func (app *App) setupStreamAndConsumer() error {
 		if err != nil {
 			return fmt.Errorf("failed to create or update task results stream: %w", err)
 		}
-		taskResultConsumer, err := taskResultsStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
-			Durable: app.TaskResultConsumerName,
+		taskResultStatSeq, err := getConsumerStartSeq(initCtx, app, INTERNAL_TASK_RESULTS_CONSUMER_NAME)
+		if err != nil {
+			return fmt.Errorf("failed to get task result consumer start sequence: %w", err)
+		}
+		taskResultConsumer, err := taskResultsStream.OrderedConsumer(initCtx, jetstream.OrderedConsumerConfig{
+			DeliverPolicy: jetstream.DeliverByStartSequencePolicy,
+			OptStartSeq:   taskResultStatSeq,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create or update task result consumer: %w", err)
