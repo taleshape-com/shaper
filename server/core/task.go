@@ -247,7 +247,12 @@ func HandleDeleteTask(app *App, data []byte) bool {
 	_, err = app.Sqlite.Exec(
 		`DELETE FROM apps WHERE id = $1 AND type = 'task'`, payload.ID)
 	if err != nil {
-		app.Logger.Error("failed to execute DELETE statement", slog.Any("error", err))
+		app.Logger.Error("failed to execute DELETE statement for task", slog.Any("error", err))
+		return false
+	}
+	_, err = app.Sqlite.Exec(`DELETE FROM task_runs WHERE task_id = $1`, payload.ID)
+	if err != nil {
+		app.Logger.Error("failed to execute DELETE statement for task_runs", slog.Any("error", err))
 		return false
 	}
 	return true

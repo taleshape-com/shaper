@@ -157,7 +157,7 @@ func HandleCreateSession(app *App, data []byte) bool {
 	}
 
 	_, err = app.Sqlite.Exec(
-		`INSERT INTO sessions (
+		`INSERT OR IGNORE INTO sessions (
 			id, user_id, hash, salt, created_at
 		) VALUES ($1, $2, $3, $4, $5)`,
 		payload.ID, payload.UserID, payload.Hash, payload.Salt, payload.Timestamp,

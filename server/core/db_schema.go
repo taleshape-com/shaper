@@ -119,5 +119,17 @@ func initSQLite(sdb *sqlx.DB) error {
 		return fmt.Errorf("error creating task_runs table: %w", err)
 	}
 
+	// Create state_consumer table
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS consumer_state (
+			name TEXT PRIMARY KEY,
+			last_processed_stream_seq INTEGER,
+			updated_at DATETIME NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating state_consumer table: %w", err)
+	}
+
 	return nil
 }

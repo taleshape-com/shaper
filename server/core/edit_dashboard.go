@@ -249,7 +249,6 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 	} else if payload.Visibility == "password-protected" {
 		visibility = "password-protected"
 	}
-	fmt.Println(visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	_, err = app.Sqlite.Exec(
 		`UPDATE apps
 		 SET visibility = $1, updated_at = $2, updated_by = $3

@@ -151,9 +151,9 @@ func (app *App) HandleTask(msg jetstream.Msg) {
 	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
 	task, err := GetTask(app, ctx, taskID)
 	if err != nil {
-		app.Logger.Error("Error getting task", slog.String("task", taskID), slog.Any("error", err))
-		if err := msg.Nak(); err != nil {
-			app.Logger.Error("Error nack message", slog.Any("error", err))
+		app.Logger.Warn("Cannot get task. Skipping.", slog.String("task", taskID), slog.Any("error", err))
+		if err := msg.Ack(); err != nil {
+			app.Logger.Error("Error ack message", slog.Any("error", err))
 		}
 		return
 	}
@@ -282,7 +282,8 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 		ctx,
 		`SELECT t.task_id, t.next_run_at, t.next_run_type
 			FROM task_runs t
-			WHERE next_run_at IS NOT NULL`,
+			JOIN apps a ON a.id = t.task_id
+			WHERE a.type = 'task' AND t.next_run_at IS NOT NULL`,
 	)
 	if err != nil {
 		rows.Close()
@@ -316,12 +317,24 @@ func (app *App) HandleTaskResult(msg jetstream.Msg) {
 		}
 		return
 	}
+	meta, err := msg.Metadata()
+	if err != nil {
+		app.Logger.Error("Error getting message metadata", slog.Any("error", err))
+		return
+	}
 	unscheduleTask(app, payload.TaskID)
 	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
-	if payload.NextRunAt != nil {
-		scheduleTask(app, ctx, payload.TaskID, *payload.NextRunAt, payload.NextRunType)
+	// Get task just to verify task still exists
+	_, err = GetTask(app, ctx, payload.TaskID)
+	if err != nil {
+		app.Logger.Warn("Task not found. Skipping.", slog.String("task", payload.TaskID), slog.Any("error", err))
+	} else {
+		if payload.NextRunAt != nil {
+			scheduleTask(app, ctx, payload.TaskID, *payload.NextRunAt, payload.NextRunType)
+		}
+		trackTaskRun(app, ctx, payload)
 	}
-	trackTaskRun(app, ctx, payload)
+	err = trackConsumerState(app, INTERNAL_TASK_RESULTS_CONSUMER_NAME, meta.Sequence.Stream)
 	if err := msg.Ack(); err != nil {
 		app.Logger.Error("Error acking message", slog.Any("error", err), slog.String("subject", msg.Subject()))
 		return
@@ -334,12 +347,12 @@ func ManualTaskRun(app *App, ctx context.Context, content string) (TaskResult, e
 		return TaskResult{}, fmt.Errorf("failed to get next task run: %w", err)
 	}
 	if scheduleType == "all" {
-		broadcastManualTask(app, ctx, content)
+		broadcastManualTask(app, content)
 	}
 	return RunTask(app, ctx, content)
 }
 
-func broadcastManualTask(app *App, ctx context.Context, content string) {
+func broadcastManualTask(app *App, content string) {
 	payload, err := json.Marshal(BroadCastPayload{
 		// The ID is used to identify the current node but we regenerate it every time the node restarts. This is fine since broadcasts are not presistent.
 		NodeID:  app.NodeID,
