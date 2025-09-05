@@ -144,7 +144,7 @@ func loadConfig() Config {
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
-	sqliteDB := flags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper.sqlite)")
+	sqliteDB := flags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper_internal.sqlite)")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
@@ -327,7 +327,7 @@ func Run(cfg Config) func(context.Context) {
 	// connect to SQLite
 	sqliteDBxFile := cfg.SQLiteDB
 	if cfg.SQLiteDB == "" {
-		sqliteDBxFile = path.Join(cfg.DataDir, "shaper.sqlite")
+		sqliteDBxFile = path.Join(cfg.DataDir, "shaper_internal.sqlite")
 	}
 	sqliteDbx, err := sqlx.Connect("sqlite", sqliteDBxFile)
 	if err != nil {
