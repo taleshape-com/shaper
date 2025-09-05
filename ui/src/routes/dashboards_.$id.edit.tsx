@@ -155,9 +155,8 @@ function DashboardEditor() {
   }, [queryApi, params, vars, runningQuery, navigate]);
 
   const handleRun = useCallback(() => {
-    // Trigger preview regardless of current loading state; this will cancel previous
-    previewDashboard();
-  }, [previewDashboard]);
+    setRunningQuery(editorQuery);
+  }, [editorQuery]);
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";

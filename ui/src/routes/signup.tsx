@@ -160,7 +160,7 @@ function SignupComponent() {
             {translate("Create Account")}
           </h1>
           <p className="mt-2 text-center text-ctext2 dark:text-dtext2">
-            {translate("Sign up with invite for")} {data?.invite?.email}
+            {translate("Sign up with invite for")} <span className="font-semibold">{data?.invite?.email}</span>
           </p>
         </div>
 
@@ -221,7 +221,8 @@ function SignupComponent() {
 
         <p className="text-center text-sm text-ctext2 dark:text-dtext2">
           {translate("Already have an account?")}{" "}
-          <a href="/login" className="text-cpri dark:text-dpri hover:underline">
+          <br />
+          <a href="/login" className="text-cpri dark:text-dpri underline hover:font-semibold">
             {translate("Sign in")}
           </a>
         </p>
