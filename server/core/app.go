@@ -336,26 +336,27 @@ func migrateSystemData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, deprecatedSchema st
 // We only migrate data if the target table is empty.
 func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprecatedSchema string, logger *slog.Logger) error {
 	duckDbTable := "\"" + deprecatedSchema + "\"." + table
-	var count int
-	err := duckDbx.Get(&count, fmt.Sprintf(`SELECT count(*) FROM %s`, duckDbTable))
+	var duckCount int
+	err := duckDbx.Get(&duckCount, fmt.Sprintf(`SELECT count(*) FROM %s`, duckDbTable))
 	// Skip if table not in DuckDB
 	if err != nil {
 		return nil
 	}
-	if count == 0 {
+	if duckCount == 0 {
 		// DuckDB table has no data, skipping
 		return nil
 	}
 	// Check if table already has data
-	err = sqliteDbx.Get(&count, fmt.Sprintf(`SELECT count(*) FROM %s`, table))
+	var liteCount int
+	err = sqliteDbx.Get(&liteCount, fmt.Sprintf(`SELECT count(*) FROM %s`, table))
 	if err != nil {
 		return fmt.Errorf("failed to count rows in sqlite table %s: %w", table, err)
 	}
-	if count > 0 {
+	if liteCount > 0 {
 		// Table already has data, skip migration
 		return nil
 	}
-	logger.Info("Migrating table to SQLite", slog.String("table", table))
+	logger.Info("Migrating table to SQLite", slog.String("table", table), slog.Int("rows", duckCount))
 	rows, err := duckDbx.Queryx(fmt.Sprintf(`SELECT * FROM %s`, duckDbTable))
 	if err != nil {
 		return fmt.Errorf("failed to query duckdb table %s: %w", duckDbTable, err)

@@ -42,13 +42,13 @@ interface IUser {
   id: string;
   email: string;
   name: string;
-  createdAt: number;
+  createdAt: string;
 }
 
 interface IInvite {
   code: string;
   email: string;
-  createdAt: number;
+  createdAt: string;
 }
 
 type UserListResponse = {
@@ -62,7 +62,7 @@ interface InviteState {
   expiresIn?: string
 }
 
-function getInviteState(createdAt: number, validTimeInSeconds: number): InviteState {
+function getInviteState(createdAt: string, validTimeInSeconds: number): InviteState {
   const createdTime = new Date(createdAt).getTime()
   const expirationTime = createdTime + (validTimeInSeconds * 1000)
   const now = Date.now()

@@ -35,8 +35,8 @@ interface TaskData {
   id: string
   name: string
   content: string
-  nextRunAt?: number
-  lastRunAt?: number
+  nextRunAt?: string
+  lastRunAt?: string
   lastRunSuccess?: boolean
   lastRunDuration?: number
 }

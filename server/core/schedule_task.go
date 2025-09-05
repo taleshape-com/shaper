@@ -266,7 +266,7 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 		payload.TaskID,
 		payload.StartedAt,
 		boolToInt(payload.Success),
-		fmt.Sprintf("%dms", payload.TotalDuration.Milliseconds()),
+		payload.TotalDuration.Milliseconds(),
 		payload.NextRunAt,
 		payload.NextRunType,
 	)
