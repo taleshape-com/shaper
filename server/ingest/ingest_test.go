@@ -1673,8 +1673,7 @@ func TestDirectPublishConnectionClosed(t *testing.T) {
 		JSDir:               tmpDir, // Use the temporary directory
 		JSKey:               "",
 		MaxStore:            0,
-		DB:                  db,
-		Schema:              "_test",
+		Sqlite:              db,
 		IngestSubjectPrefix: subjectPrefix,
 	})
 	require.NoError(t, err, "Failed to start NATS server")

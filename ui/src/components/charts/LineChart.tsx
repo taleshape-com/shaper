@@ -436,6 +436,7 @@ const LineChart = (props: LineChartProps) => {
     isDarkMode,
     chartWidth,
     chartHeight,
+    label,
   ]);
 
   // Event handlers for the EChart component
