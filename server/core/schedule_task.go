@@ -265,7 +265,7 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 				next_run_type = $6`,
 		payload.TaskID,
 		payload.StartedAt,
-		boolToInt(payload.Success),
+		payload.Success,
 		payload.TotalDuration.Milliseconds(),
 		payload.NextRunAt,
 		payload.NextRunType,
@@ -290,19 +290,14 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 	}
 	for rows.Next() {
 		var taskID string
-		var nextRunAt string
+		var nextRunAt time.Time
 		var nextRunType string
 		if err := rows.Scan(&taskID, &nextRunAt, &nextRunType); err != nil {
 			rows.Close()
 			return fmt.Errorf("failed to scan scheduled task: %w", err)
 		}
-		t, err := time.Parse(time.RFC3339, nextRunAt)
-		if err != nil {
-			rows.Close()
-			return fmt.Errorf("Error parsing time: %v", nextRunAt)
-		}
-		scheduleTask(app, ctx, taskID, t, nextRunType)
-		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", t), slog.String("type", nextRunType))
+		scheduleTask(app, ctx, taskID, nextRunAt, nextRunType)
+		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", nextRunAt), slog.String("type", nextRunType))
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("error iterating over scheduled tasks: %w", err)

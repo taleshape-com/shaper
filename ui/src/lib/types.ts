@@ -15,10 +15,10 @@ export interface IApp {
 }
 
 interface ITaskInfo {
-  lastRunAt?: number; // epoch_ms
+  lastRunAt?: string;
   lastRunSuccess?: boolean;
   lastRunDuration?: number; // in milliseconds
-  nextRunAt?: number; // epoch_ms
+  nextRunAt?: string;
 }
 
 export type IDashboard = Omit<IApp, 'type'>;
