@@ -76,8 +76,8 @@ github.com/marcboeker/go-duckdb/arrowmapping v0.0.10 h1:G1W+GVnUefR8uy7jHdNO+CRM
 github.com/marcboeker/go-duckdb/arrowmapping v0.0.10/go.mod h1:jccUb8TYD0p5TsEEeN4SXuslNJHo23QaKOqKD+U6uFU=
 github.com/marcboeker/go-duckdb/mapping v0.0.11 h1:fusN1b1l7Myxafifp596I6dNLNhN5Uv/rw31qAqBwqw=
 github.com/marcboeker/go-duckdb/mapping v0.0.11/go.mod h1:aYBjFLgfKO0aJIbDtXPiaL5/avRQISveX/j9tMf9JhU=
-github.com/marcboeker/go-duckdb/v2 v2.3.5 h1:dpLZdPppUPdwd37/kDEE025iVgQoRw2Q4qXFtXroNIo=
-github.com/marcboeker/go-duckdb/v2 v2.3.5/go.mod h1:8adNrftF4Ye29XMrpIl5NYNosTVsZu1mz3C82WdVvrk=
+github.com/marcboeker/go-duckdb/v2 v2.3.6 h1:JRZUqdV0xXpkKdwukDqTMiNmVqJVaYmV2PWIe3TmOIw=
+github.com/marcboeker/go-duckdb/v2 v2.3.6/go.mod h1:8adNrftF4Ye29XMrpIl5NYNosTVsZu1mz3C82WdVvrk=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
@@ -134,10 +134,10 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/samber/lo v1.51.0 h1:kysRYLbHy/MB7kQZf5DSN50JHmMsNEdeY24VzJFu7wI=
 github.com/samber/lo v1.51.0/go.mod h1:4+MXEGsJzbKGaUEQFKBq2xtfuznW9oz/WrgyzMzRoM0=
-github.com/samber/slog-echo v1.16.1 h1:5Q5IUROkFqKcu/qJM/13AP1d3gd1RS+Q/4EvKQU1fuo=
-github.com/samber/slog-echo v1.16.1/go.mod h1:f+B3WR06saRXcaGRZ/I/UPCECDPqTUqadRIf7TmyRhI=
-github.com/stretchr/testify v1.11.0 h1:ib4sjIrwZKxE5u/Japgo/7SJV3PvgjGiRNAvTVGqQl8=
-github.com/stretchr/testify v1.11.0/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
+github.com/samber/slog-echo v1.17.1 h1:ItGQGNf4jz8UIMRK7DVwp/HVr2q3EM52DkaIWGpmYrY=
+github.com/samber/slog-echo v1.17.1/go.mod h1:4diugqPTk6iQdL7gZFJIyf6zGMLVMaGnCmNm+DBSMRU=
+github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
+github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tiendc/go-deepcopy v1.6.1 h1:uVRTItFeNHkMcLueHS7OCsxgxT9P8MzGB/taUa2Y4Tk=
 github.com/tiendc/go-deepcopy v1.6.1/go.mod h1:toXoeQoUqXOOS/X4sKuiAoSk6elIdqc0pN7MTgOOo2I=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
