@@ -472,6 +472,7 @@ const BarChart = (props: BarChartProps) => {
     isDarkMode,
     chartWidth,
     chartHeight,
+    label,
   ]);
 
   // Event handlers for the EChart component

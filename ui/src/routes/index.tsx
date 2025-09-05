@@ -403,8 +403,8 @@ function Index() {
 }
 
 function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
-  lastRunAt?: number;
-  nextRunAt?: number;
+  lastRunAt?: number | string;
+  nextRunAt?: number | string;
   children?: React.ReactNode;
 }) {
   if (lastRunAt == null) return children;
