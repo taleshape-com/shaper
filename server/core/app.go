@@ -387,9 +387,9 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 			}
 			placeholders += "?"
 			if values[i] != nil {
-				if v, ok := values[i].(time.Time); ok {
-					values[i] = v.UnixMilli()
-				}
+				// if v, ok := values[i].(time.Time); ok {
+				// 	values[i] = v.UnixMilli()
+				// }
 				if table == "task_runs" {
 					if cols[i] == "last_run_duration" {
 						v, ok := values[i].(duckdb.Interval)
@@ -398,17 +398,17 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 							return fmt.Errorf("failed to convert last_run_duration to time for duckdb table %s", table)
 						}
 						values[i] = formatInterval(v)
-					} else if cols[i] == "last_run_success" {
-						v, ok := values[i].(bool)
-						if !ok {
-							tx.Rollback()
-							return fmt.Errorf("failed to convert last_run_success to bool for duckdb table %s", table)
-						}
-						if v {
-							values[i] = 1
-						} else {
-							values[i] = 0
-						}
+						// } else if cols[i] == "last_run_success" {
+						// 	v, ok := values[i].(bool)
+						// 	if !ok {
+						// 		tx.Rollback()
+						// 		return fmt.Errorf("failed to convert last_run_success to bool for duckdb table %s", table)
+						// 	}
+						// 	if v {
+						// 		values[i] = 1
+						// 	} else {
+						// 		values[i] = 0
+						// 	}
 					}
 				}
 			}

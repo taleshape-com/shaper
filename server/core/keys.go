@@ -20,12 +20,12 @@ import (
 const API_KEY_PREFIX = "shaperkey."
 
 type APIKey struct {
-	ID        string  `db:"id" json:"id"`
-	Name      string  `db:"name" json:"name"`
-	Hash      string  `db:"hash" json:"-"`
-	Salt      string  `db:"salt" json:"-"`
-	CreatedAt int64   `db:"created_at" json:"createdAt"`
-	CreatedBy *string `db:"created_by" json:"createdBy,omitempty"`
+	ID        string    `db:"id" json:"id"`
+	Name      string    `db:"name" json:"name"`
+	Hash      string    `db:"hash" json:"-"`
+	Salt      string    `db:"salt" json:"-"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
 }
 
 type APIKeyListResult struct {

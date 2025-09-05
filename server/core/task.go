@@ -14,18 +14,18 @@ import (
 )
 
 type Task struct {
-	ID              string  `db:"id" json:"id"`
-	Path            string  `db:"path" json:"path"`
-	Name            string  `db:"name" json:"name"`
-	Content         string  `db:"content" json:"content"`
-	CreatedAt       int64   `db:"created_at" json:"createdAt"`
-	UpdatedAt       int64   `db:"updated_at" json:"updatedAt"`
-	CreatedBy       *string `db:"created_by" json:"createdBy,omitempty"`
-	UpdatedBy       *string `db:"updated_by" json:"updatedBy,omitempty"`
-	NextRunAt       *int64  `db:"next_run_at" json:"nextRunAt,omitempty"`
-	LastRunAt       *int64  `db:"last_run_at" json:"lastRunAt,omitempty"`
-	LastRunSuccess  *bool   `db:"last_run_success" json:"lastRunSuccess,omitempty"`
-	LastRunDuration *int64  `db:"last_run_duration" json:"lastRunDuration,omitempty"`
+	ID              string     `db:"id" json:"id"`
+	Path            string     `db:"path" json:"path"`
+	Name            string     `db:"name" json:"name"`
+	Content         string     `db:"content" json:"content"`
+	CreatedAt       time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time  `db:"updated_at" json:"updatedAt"`
+	CreatedBy       *string    `db:"created_by" json:"createdBy,omitempty"`
+	UpdatedBy       *string    `db:"updated_by" json:"updatedBy,omitempty"`
+	NextRunAt       *time.Time `db:"next_run_at" json:"nextRunAt,omitempty"`
+	LastRunAt       *time.Time `db:"last_run_at" json:"lastRunAt,omitempty"`
+	LastRunSuccess  *bool      `db:"last_run_success" json:"lastRunSuccess,omitempty"`
+	LastRunDuration *int64     `db:"last_run_duration" json:"lastRunDuration,omitempty"`
 }
 
 type CreateTaskPayload struct {

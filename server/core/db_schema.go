@@ -28,14 +28,14 @@ func initSQLite(sdb *sqlx.DB) error {
 			path TEXT NOT NULL,
 			name TEXT NOT NULL,
 			content TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
 			created_by TEXT,
 			updated_by TEXT,
 			visibility TEXT,
 			type TEXT NOT NULL,
 		  password_hash TEXT
-		) STRICT
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating apps table: %w", err)
@@ -48,11 +48,11 @@ func initSQLite(sdb *sqlx.DB) error {
 			hash TEXT NOT NULL,
 			salt TEXT NOT NULL,
 			name TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
 			created_by TEXT,
 			updated_by TEXT
-		) STRICT
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating config table: %w", err)
@@ -65,13 +65,13 @@ func initSQLite(sdb *sqlx.DB) error {
 			email TEXT NOT NULL,
 			password_hash TEXT,
 			name TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
 			created_by TEXT,
 			updated_by TEXT,
-			deleted_at INTEGER,
+			deleted_at DATETIME,
 			deleted_by TEXT
-		) STRICT
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating users table: %w", err)
@@ -83,9 +83,9 @@ func initSQLite(sdb *sqlx.DB) error {
 			user_id TEXT NOT NULL,
 			hash TEXT NOT NULL,
 			salt TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
+			created_at DATETIME NOT NULL,
 			FOREIGN KEY(user_id) REFERENCES users(id)
-		) STRICT
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating sessions table: %w", err)
@@ -96,9 +96,9 @@ func initSQLite(sdb *sqlx.DB) error {
 		CREATE TABLE IF NOT EXISTS invites (
 			code TEXT PRIMARY KEY,
 			email TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
+			created_at DATETIME NOT NULL,
 			created_by TEXT
-		) STRICT
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating invites table: %w", err)
@@ -108,12 +108,12 @@ func initSQLite(sdb *sqlx.DB) error {
 	_, err = sdb.Exec(`
 		CREATE TABLE IF NOT EXISTS task_runs (
 			task_id TEXT PRIMARY KEY NOT NULL,
-			last_run_at INTEGER,
-			last_run_success INTEGER,
+			last_run_at DATETIME,
+			last_run_success BOOLEAN,
 			last_run_duration INTEGER,
-			next_run_at INTEGER,
+			next_run_at DATETIME,
 			next_run_type TEXT NOT NULL DEFAULT 'single'
-		) STRICT
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating task_runs table: %w", err)
