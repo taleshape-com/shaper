@@ -62,8 +62,8 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	var task Task
 	err := app.Sqlite.GetContext(ctx, &task,
 		`SELECT a.id, a.path, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
-						CAST(round(unixepoch(tr.next_run_at, 'subsec')*1000) AS INTEGER) AS next_run_at,
-						CAST(round(unixepoch(tr.last_run_at, 'subsec')*1000) AS INTEGER) AS last_run_at,
+						tr.next_run_at,
+						tr.last_run_at,
 		        tr.last_run_success,
 		        tr.last_run_duration
 		 FROM apps a

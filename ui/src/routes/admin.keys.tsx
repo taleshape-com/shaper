@@ -37,7 +37,7 @@ import { Tooltip } from "../components/tremor/Tooltip";
 interface APIKey {
   id: string;
   name: string;
-  createdAt: number;
+  createdAt: string;
 }
 
 interface NewAPIKeyResponse {
