@@ -21,16 +21,16 @@ import (
 var ErrUserSetupCompleted = errors.New("user setup already completed")
 
 type User struct {
-	ID           string  `db:"id" json:"id"`
-	Email        string  `db:"email" json:"email"`
-	Name         string  `db:"name" json:"name"`
-	PasswordHash string  `db:"password_hash" json:"-"`
-	CreatedAt    int64   `db:"created_at" json:"createdAt"`
-	UpdatedAt    int64   `db:"updated_at" json:"updatedAt"`
-	DeletedAt    *int64  `db:"deleted_at" json:"deletedAt,omitempty"`
-	CreatedBy    *string `db:"created_by" json:"-"`
-	UpdatedBy    *string `db:"updated_by" json:"-"`
-	DeletedBy    *string `db:"deleted_by" json:"-"`
+	ID           string     `db:"id" json:"id"`
+	Email        string     `db:"email" json:"email"`
+	Name         string     `db:"name" json:"name"`
+	PasswordHash string     `db:"password_hash" json:"-"`
+	CreatedAt    time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time  `db:"updated_at" json:"updatedAt"`
+	DeletedAt    *time.Time `db:"deleted_at" json:"deletedAt,omitempty"`
+	CreatedBy    *string    `db:"created_by" json:"-"`
+	UpdatedBy    *string    `db:"updated_by" json:"-"`
+	DeletedBy    *string    `db:"deleted_by" json:"-"`
 }
 
 type CreateUserPayload struct {
@@ -300,10 +300,10 @@ func HandleDeleteUser(app *App, data []byte) bool {
 }
 
 type Invite struct {
-	Code      string  `db:"code" json:"code"`
-	Email     string  `db:"email" json:"email"`
-	CreatedAt int64   `db:"created_at" json:"createdAt"`
-	CreatedBy *string `db:"created_by" json:"-"`
+	Code      string    `db:"code" json:"code"`
+	Email     string    `db:"email" json:"email"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	CreatedBy *string   `db:"created_by" json:"-"`
 }
 
 func isInviteExpired(createdAt time.Time, expiration time.Duration) bool {
@@ -318,7 +318,7 @@ func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invite not found")
 	}
-	if isInviteExpired(time.UnixMilli(invite.CreatedAt), app.InviteExp) {
+	if isInviteExpired(invite.CreatedAt, app.InviteExp) {
 		return nil, fmt.Errorf("invite has expired")
 	}
 	return &invite, nil
@@ -455,7 +455,7 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 	if err != nil {
 		return fmt.Errorf("invalid invite code")
 	}
-	if isInviteExpired(time.UnixMilli(invite.CreatedAt), app.InviteExp) {
+	if isInviteExpired(invite.CreatedAt, app.InviteExp) {
 		return fmt.Errorf("invite has expired")
 	}
 
