@@ -3,6 +3,8 @@
 package main
 
 import (
+	_ "modernc.org/sqlite"
+
 	"context"
 	"database/sql"
 	"embed"
@@ -57,11 +59,11 @@ const USAGE = `Version: {{.Version}}
 `
 
 type Config struct {
+	DeprecatedSchema           string
 	SessionExp                 time.Duration
 	InviteExp                  time.Duration
 	Address                    string
 	DataDir                    string
-	Schema                     string
 	ExecutableModTime          time.Time
 	BasePath                   string
 	CustomCSS                  string
@@ -99,6 +101,7 @@ type Config struct {
 	TaskResultsStreamMaxAge    time.Duration
 	TaskResultConsumerNameFile string
 	TaskBroadcastSubject       string
+	SQLiteDB                   string
 	DuckDB                     string
 	DuckDBExtDir               string
 	InitSQL                    string
@@ -141,9 +144,10 @@ func loadConfig() Config {
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
+	sqliteDB := flags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper.sqlite)")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
-	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
+	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
@@ -246,9 +250,9 @@ func loadConfig() Config {
 	}
 
 	config := Config{
+		DeprecatedSchema:           *deprecatedSchema,
 		Address:                    *addr,
 		DataDir:                    *dataDir,
-		Schema:                     *schema,
 		ExecutableModTime:          executableModTime,
 		BasePath:                   bpath,
 		CustomCSS:                  *customCSS,
@@ -288,6 +292,7 @@ func loadConfig() Config {
 		TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
 		TaskResultConsumerNameFile: *taskResultConsumerNameFile,
 		TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
+		SQLiteDB:                   *sqliteDB,
 		DuckDB:                     *duckdb,
 		DuckDBExtDir:               *duckdbExtDir,
 		InitSQL:                    *initSQL,
@@ -319,25 +324,37 @@ func Run(cfg Config) func(context.Context) {
 		logger.Info("Created data directory", slog.Any("path", cfg.DataDir))
 	}
 
-	dbFile := cfg.DuckDB
+	// connect to SQLite
+	sqliteDBxFile := cfg.SQLiteDB
+	if cfg.SQLiteDB == "" {
+		sqliteDBxFile = path.Join(cfg.DataDir, "shaper.sqlite")
+	}
+	sqliteDbx, err := sqlx.Connect("sqlite", sqliteDBxFile)
+	if err != nil {
+		logger.Error("Failed to connect to SQLite", slog.String("file", sqliteDBxFile), slog.Any("error", err))
+		os.Exit(1)
+	}
+	logger.Info("SQLite opened", slog.Any("file", sqliteDBxFile))
+
+	duckDBFile := cfg.DuckDB
 	if cfg.DuckDB == "" {
-		dbFile = path.Join(cfg.DataDir, "shaper.duckdb")
+		duckDBFile = path.Join(cfg.DataDir, "shaper.duckdb")
 	}
 
 	// connect to duckdb
-	dbConnector, err := duckdb.NewConnector(dbFile, nil)
+	duckDBConnector, err := duckdb.NewConnector(duckDBFile, nil)
 	if err != nil {
-		logger.Error("Failed to create DuckDB connector", slog.String("file", dbFile), slog.Any("error", err))
+		logger.Error("Failed to create DuckDB connector", slog.String("file", duckDBFile), slog.Any("error", err))
 		os.Exit(1)
 	}
-	sqlDB := sql.OpenDB(dbConnector)
+	duckDbSqlDb := sql.OpenDB(duckDBConnector)
 	// This is important to avoid leaking variables or temp tables/views. Must not reuse connections.
-	sqlDB.SetMaxIdleConns(0)
-	db := sqlx.NewDb(sqlDB, "duckdb")
-	logger.Info("DuckDB opened", slog.Any("file", dbFile))
+	duckDbSqlDb.SetMaxIdleConns(0)
+	duckdbSqlxDb := sqlx.NewDb(duckDbSqlDb, "duckdb")
+	logger.Info("DuckDB opened", slog.Any("file", duckDBFile))
 
 	if cfg.DuckDBExtDir != "" {
-		_, err := db.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
+		_, err := duckdbSqlxDb.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
 		if err != nil {
 			logger.Error("Failed to set DuckDB extension directory", slog.String("path", cfg.DuckDBExtDir), slog.Any("error", err))
 			os.Exit(1)
@@ -352,7 +369,7 @@ func Run(cfg Config) func(context.Context) {
 		if sql == "" {
 			logger.Info("init-sql specified but empty, skipping")
 		} else {
-			_, err := db.Exec(sql)
+			_, err := duckdbSqlxDb.Exec(sql)
 			if err != nil {
 				logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
 				os.Exit(1)
@@ -376,7 +393,7 @@ func Run(cfg Config) func(context.Context) {
 			} else {
 				logger.Info("Executing init-sql-file")
 				// Substitute environment variables in the SQL file content
-				_, err = db.Exec(sql)
+				_, err = duckdbSqlxDb.Exec(sql)
 				if err != nil {
 					logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
 					os.Exit(1)
@@ -393,10 +410,11 @@ func Run(cfg Config) func(context.Context) {
 	app, err := core.New(
 		APP_NAME,
 		nodeID,
-		db,
+		sqliteDbx,
+		duckdbSqlxDb,
+		cfg.DeprecatedSchema,
 		logger,
 		cfg.BasePath,
-		cfg.Schema,
 		cfg.JWTExp,
 		cfg.SessionExp,
 		cfg.InviteExp,
@@ -433,8 +451,7 @@ func Run(cfg Config) func(context.Context) {
 		JSDir:               cfg.NatsJSDir,
 		JSKey:               cfg.NatsJSKey,
 		MaxStore:            cfg.NatsMaxStore,
-		DB:                  db,
-		Schema:              cfg.Schema,
+		Sqlite:              sqliteDbx,
 		IngestSubjectPrefix: cfg.IngestSubjectPrefix,
 	})
 	if err != nil {
@@ -444,8 +461,8 @@ func Run(cfg Config) func(context.Context) {
 
 	ingestConsumer, err := ingest.Start(
 		cfg.IngestSubjectPrefix,
-		dbConnector,
-		db,
+		duckDBConnector,
+		duckdbSqlxDb,
 		logger.WithGroup("ingest"),
 		c.Conn,
 		cfg.IngestStreamName,
@@ -486,7 +503,7 @@ func Run(cfg Config) func(context.Context) {
 		ingestConsumer.Close()
 		c.Close()
 		logger.Info("Closing DB connections...")
-		if err := db.Close(); err != nil {
+		if err := duckdbSqlxDb.Close(); err != nil {
 			logger.ErrorContext(ctx, "Error closing database connection", slog.Any("error", err))
 		}
 	}

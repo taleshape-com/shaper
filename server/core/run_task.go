@@ -57,7 +57,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 	result.TotalQueries = len(sqls)
 
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}

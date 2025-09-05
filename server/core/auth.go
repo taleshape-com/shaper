@@ -109,10 +109,8 @@ type AuthInfo struct {
 }
 
 func deleteExpiredSessions(app *App, userID string) (int64, error) {
-	result, err := app.DB.Exec(
-		`DELETE FROM `+app.Schema+`.sessions
-		WHERE user_id = $1
-		AND created_at < $2`,
+	result, err := app.Sqlite.Exec(
+		`DELETE FROM sessions WHERE user_id = $1 AND created_at < $2`,
 		userID,
 		time.Now().Add(-app.SessionExp),
 	)
@@ -131,10 +129,7 @@ func HandleDeleteSession(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.DB.Exec(
-		`DELETE FROM `+app.Schema+`.sessions WHERE id = $1`,
-		payload.ID,
-	)
+	_, err = app.Sqlite.Exec(`DELETE FROM sessions WHERE id = $1`, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to delete session from DB", slog.Any("error", err))
 		return false
@@ -161,8 +156,8 @@ func HandleCreateSession(app *App, data []byte) bool {
 			slog.Int64("count", deletedCount))
 	}
 
-	_, err = app.DB.Exec(
-		`INSERT INTO `+app.Schema+`.sessions (
+	_, err = app.Sqlite.Exec(
+		`INSERT INTO sessions (
 			id, user_id, hash, salt, created_at
 		) VALUES ($1, $2, $3, $4, $5)`,
 		payload.ID, payload.UserID, payload.Hash, payload.Salt, payload.Timestamp,
@@ -195,11 +190,12 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 		PasswordHash string `db:"password_hash"`
 	}
 
-	err := app.DB.GetContext(ctx, &user,
+	err := app.Sqlite.GetContext(ctx, &user,
 		`SELECT id, password_hash
-         FROM `+app.Schema+`.users
-         WHERE deleted_at IS NULL
-				 AND email = $1`, email,
+		 FROM users
+		 WHERE deleted_at IS NULL
+		 AND email = $1`,
+		email,
 	)
 	if err != nil {
 		return "", fmt.Errorf("error finding user: %w", err)
@@ -235,7 +231,7 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 }
 
 // ValidateAPIKey checks if an API key is valid by querying the database
-func ValidateAPIKey(db *sqlx.DB, schema string, ctx context.Context, token string) (bool, error) {
+func ValidateAPIKey(sdb *sqlx.DB, ctx context.Context, token string) (bool, error) {
 	if !strings.HasPrefix(token, API_KEY_PREFIX) {
 		return false, nil
 	}
@@ -246,8 +242,8 @@ func ValidateAPIKey(db *sqlx.DB, schema string, ctx context.Context, token strin
 	}
 
 	var storedKey APIKey
-	err := db.GetContext(ctx, &storedKey,
-		`SELECT hash, salt FROM `+schema+`.api_keys WHERE id = $1`, id)
+	err := sdb.GetContext(ctx, &storedKey,
+		`SELECT hash, salt FROM api_keys WHERE id = $1`, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -275,8 +271,8 @@ func validateSessionToken(app *App, ctx context.Context, token string) (bool, er
 	id := parts[0]
 
 	var storedSession Session
-	err := app.DB.GetContext(ctx, &storedSession,
-		`SELECT hash, salt, created_at FROM `+app.Schema+`.sessions WHERE id = $1`, id)
+	err := app.Sqlite.GetContext(ctx, &storedSession,
+		`SELECT hash, salt, created_at FROM sessions WHERE id = $1`, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -317,10 +313,10 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 			Email string `db:"email"`
 			Name  string `db:"name"`
 		}
-		err := app.DB.GetContext(ctx, &user,
+		err := app.Sqlite.GetContext(ctx, &user,
 			`SELECT u.id, u.email, u.name
-			 FROM `+app.Schema+`.sessions s
-			 JOIN `+app.Schema+`.users u ON s.user_id = u.id
+			 FROM sessions s
+			 JOIN users u ON s.user_id = u.id
 			 WHERE s.id = $1`, sessionID)
 		if err == nil {
 			ok, err := validateSessionToken(app, ctx, token)
@@ -347,10 +343,10 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 			ID   string `db:"id"`
 			Name string `db:"name"`
 		}
-		err := app.DB.GetContext(ctx, &key,
-			`SELECT id, name FROM `+app.Schema+`.api_keys WHERE id = $1`, id)
+		err := app.Sqlite.GetContext(ctx, &key,
+			`SELECT id, name FROM api_keys WHERE id = $1`, id)
 		if err == nil {
-			ok, err := ValidateAPIKey(app.DB, app.Schema, ctx, token)
+			ok, err := ValidateAPIKey(app.Sqlite, ctx, token)
 			if err != nil {
 				return AuthInfo{}, err
 			}

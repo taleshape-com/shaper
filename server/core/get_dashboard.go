@@ -81,7 +81,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
 
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}

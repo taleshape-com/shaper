@@ -52,8 +52,8 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 		return false
 	}
 	// Insert into DB
-	_, err = app.DB.Exec(
-		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
+	_, err = app.Sqlite.Exec(
+		`INSERT OR IGNORE INTO apps (
 			id, path, name, content, created_at, updated_at, created_by, updated_by, type
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'dashboard')`,
 		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
