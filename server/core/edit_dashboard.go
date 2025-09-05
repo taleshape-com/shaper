@@ -42,8 +42,10 @@ type UpdateDashboardPasswordPayload struct {
 
 func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
-	err := app.DB.GetContext(ctx, &dashboard,
-		`SELECT * EXCLUDE (type, password_hash) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	err := app.Sqlite.GetContext(ctx, &dashboard,
+		`SELECT id, path, name, content, created_at, updated_at, created_by, updated_by, visibility
+		FROM apps
+		WHERE id = $1 AND type = 'dashboard'`, id)
 	if dashboard.Visibility == nil {
 		dashboard.Visibility = new(string)
 		*dashboard.Visibility = "private"
@@ -65,7 +67,7 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -90,7 +92,7 @@ func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibilit
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -127,7 +129,7 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -152,7 +154,7 @@ func SaveDashboardPassword(app *App, ctx context.Context, id string, password st
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
@@ -178,8 +180,8 @@ func SaveDashboardPassword(app *App, ctx context.Context, id string, password st
 
 func VerifyDashboardPassword(app *App, ctx context.Context, id string, password string) (bool, error) {
 	var passwordHash string
-	err := app.DB.GetContext(ctx, &passwordHash,
-		`SELECT password_hash FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'dashboard' AND password_hash IS NOT NULL`, id)
+	err := app.Sqlite.GetContext(ctx, &passwordHash,
+		`SELECT password_hash FROM apps WHERE id = $1 AND type = 'dashboard' AND password_hash IS NOT NULL`, id)
 	if err != nil {
 		return false, fmt.Errorf("failed to get dashboard password hash: %w", err)
 	}
@@ -203,8 +205,8 @@ func HandleUpdateDashboardContent(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update dashboard content payload", slog.Any("error", err))
 		return false
 	}
-	_, err = app.DB.Exec(
-		`UPDATE `+app.Schema+`.apps
+	_, err = app.Sqlite.Exec(
+		`UPDATE apps
 		 SET content = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'dashboard'`,
 		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -222,8 +224,8 @@ func HandleUpdateDashboardName(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update dashboard name payload", slog.Any("error", err))
 		return false
 	}
-	_, err = app.DB.Exec(
-		`UPDATE `+app.Schema+`.apps
+	_, err = app.Sqlite.Exec(
+		`UPDATE apps
 		 SET name = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'dashboard'`,
 		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -248,8 +250,8 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 		visibility = "password-protected"
 	}
 	fmt.Println(visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
-	_, err = app.DB.Exec(
-		`UPDATE `+app.Schema+`.apps
+	_, err = app.Sqlite.Exec(
+		`UPDATE apps
 		 SET visibility = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'dashboard'`,
 		visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -267,8 +269,8 @@ func HandleUpdateDashboardPassword(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update dashboard password payload", slog.Any("error", err))
 		return false
 	}
-	_, err = app.DB.Exec(
-		`UPDATE `+app.Schema+`.apps
+	_, err = app.Sqlite.Exec(
+		`UPDATE apps
 		 SET password_hash = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'dashboard'`,
 		payload.PasswordHash, payload.TimeStamp, payload.UpdatedBy, payload.ID)

@@ -39,7 +39,7 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 	if len(sqls) == 0 {
 		return nil, "", fmt.Errorf("no SQL queries found in task content")
 	}
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get database connection: %w", err)
 	}
@@ -92,12 +92,12 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 	// schedule task
 	scheduleTask(app, ctx, taskID, *nextRunAt, scheduleType)
 	// set next_run_at in DB
-	_, err = app.DB.ExecContext(
+	_, err = app.Sqlite.ExecContext(
 		ctx,
-		`INSERT INTO `+app.Schema+`.task_runs
+		`INSERT INTO task_runs
 		(task_id, next_run_at, next_run_type)
 		VALUES ($1, $2, $3)
-		ON CONFLICT DO UPDATE SET next_run_at = $2, next_run_type = $3`,
+		ON CONFLICT(task_id) DO UPDATE SET next_run_at = $2, next_run_type = $3`,
 		taskID,
 		nextRunAt,
 		scheduleType,
@@ -252,12 +252,12 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 		nextRunSlogAttr,
 		nextRunTypeSlogAttr,
 	)
-	_, err := app.DB.ExecContext(
+	_, err := app.Sqlite.ExecContext(
 		ctx,
-		`INSERT INTO `+app.Schema+`.task_runs
+		`INSERT INTO task_runs
 			(task_id, last_run_at, last_run_success, last_run_duration, next_run_at, next_run_type)
 			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT DO UPDATE SET
+			ON CONFLICT(task_id) DO UPDATE SET
 				last_run_at = $2,
 				last_run_success = $3,
 				last_run_duration = $4,
@@ -265,7 +265,7 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 				next_run_type = $6`,
 		payload.TaskID,
 		payload.StartedAt,
-		payload.Success,
+		boolToInt(payload.Success),
 		fmt.Sprintf("%dms", payload.TotalDuration.Milliseconds()),
 		payload.NextRunAt,
 		payload.NextRunType,
@@ -278,10 +278,10 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 func scheduleExistingTasks(app *App, ctx context.Context) error {
 	app.Logger.Info("Loading scheduled tasks")
 	// Load scheduled task runs from database
-	rows, err := app.DB.QueryxContext(
+	rows, err := app.Sqlite.QueryxContext(
 		ctx,
 		`SELECT t.task_id, t.next_run_at, t.next_run_type
-			FROM `+app.Schema+`.task_runs t
+			FROM task_runs t
 			WHERE next_run_at IS NOT NULL`,
 	)
 	if err != nil {
@@ -290,14 +290,19 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 	}
 	for rows.Next() {
 		var taskID string
-		var nextRunAt time.Time
+		var nextRunAt string
 		var nextRunType string
 		if err := rows.Scan(&taskID, &nextRunAt, &nextRunType); err != nil {
 			rows.Close()
 			return fmt.Errorf("failed to scan scheduled task: %w", err)
 		}
-		scheduleTask(app, ctx, taskID, nextRunAt, nextRunType)
-		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", nextRunAt), slog.String("type", nextRunType))
+		t, err := time.Parse(time.RFC3339, nextRunAt)
+		if err != nil {
+			rows.Close()
+			return fmt.Errorf("Error parsing time: %v", nextRunAt)
+		}
+		scheduleTask(app, ctx, taskID, t, nextRunType)
+		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", t), slog.String("type", nextRunType))
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("error iterating over scheduled tasks: %w", err)

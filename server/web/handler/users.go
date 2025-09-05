@@ -5,7 +5,6 @@ package handler
 import (
 	"log/slog"
 	"net/http"
-	"time"
 
 	"shaper/server/core"
 
@@ -61,12 +60,6 @@ func DeleteUser(app *core.App) echo.HandlerFunc {
 
 type CreateInviteRequest struct {
 	Email string `json:"email"`
-}
-
-type CreateInviteResponse struct {
-	Code      string    `json:"code"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"createdAt"`
 }
 
 func CreateInvite(app *core.App) echo.HandlerFunc {

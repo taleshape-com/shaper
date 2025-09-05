@@ -66,7 +66,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidateAPIKey(app.DB, app.Schema, c.Request().Context(), key)
+			return core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
 		},
 	}
 

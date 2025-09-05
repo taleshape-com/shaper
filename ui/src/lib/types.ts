@@ -5,8 +5,8 @@ export interface IApp {
   name: string;
   path: string;
   content: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number; // epoch_ms
+  updatedAt: number; // epoch_ms
   createdBy?: string;
   updatedBy?: string;
   visibility?: 'public' | 'private' | 'password-protected';

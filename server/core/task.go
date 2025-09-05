@@ -14,18 +14,18 @@ import (
 )
 
 type Task struct {
-	ID        string    `db:"id" json:"id"`
-	Path      string    `db:"path" json:"path"`
-	Name      string    `db:"name" json:"name"`
-	Content   string    `db:"content" json:"content"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
-	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
-	UpdatedBy *string   `db:"updated_by" json:"updatedBy,omitempty"`
-	NextRunAt *int64 `db:"next_run_at" json:"nextRunAt,omitempty"`
-	LastRunAt *int64 `db:"last_run_at" json:"lastRunAt,omitempty"`
-	LastRunSuccess *bool `db:"last_run_success" json:"lastRunSuccess,omitempty"`
-	LastRunDuration *int64 `db:"last_run_duration" json:"lastRunDuration,omitempty"`
+	ID              string  `db:"id" json:"id"`
+	Path            string  `db:"path" json:"path"`
+	Name            string  `db:"name" json:"name"`
+	Content         string  `db:"content" json:"content"`
+	CreatedAt       int64   `db:"created_at" json:"createdAt"`
+	UpdatedAt       int64   `db:"updated_at" json:"updatedAt"`
+	CreatedBy       *string `db:"created_by" json:"createdBy,omitempty"`
+	UpdatedBy       *string `db:"updated_by" json:"updatedBy,omitempty"`
+	NextRunAt       *int64  `db:"next_run_at" json:"nextRunAt,omitempty"`
+	LastRunAt       *int64  `db:"last_run_at" json:"lastRunAt,omitempty"`
+	LastRunSuccess  *bool   `db:"last_run_success" json:"lastRunSuccess,omitempty"`
+	LastRunDuration *int64  `db:"last_run_duration" json:"lastRunDuration,omitempty"`
 }
 
 type CreateTaskPayload struct {
@@ -60,14 +60,14 @@ type DeleteTaskPayload struct {
 
 func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	var task Task
-	err := app.DB.GetContext(ctx, &task,
-		`SELECT a.* EXCLUDE (type, visibility, password_hash), 
-		        epoch_ms(tr.next_run_at) AS next_run_at, 
-		        epoch_ms(tr.last_run_at) AS last_run_at, 
-		        tr.last_run_success, 
-		        round(epoch(tr.last_run_duration) * 1000) AS last_run_duration
-		 FROM `+app.Schema+`.apps a
-		 LEFT JOIN `+app.Schema+`.task_runs tr ON tr.task_id = a.id
+	err := app.Sqlite.GetContext(ctx, &task,
+		`SELECT a.id, a.path, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
+						CAST(round(unixepoch(tr.next_run_at, 'subsec')*1000) AS INTEGER) AS next_run_at,
+						CAST(round(unixepoch(tr.last_run_at, 'subsec')*1000) AS INTEGER) AS last_run_at,
+		        tr.last_run_success,
+		        tr.last_run_duration
+		 FROM apps a
+		 LEFT JOIN task_runs tr ON tr.task_id = a.id
 		 WHERE a.id = $1 AND a.type = 'task'`, id)
 	if err != nil {
 		return task, fmt.Errorf("failed to get task: %w", err)
@@ -106,9 +106,9 @@ func HandleCreateTask(app *App, data []byte) bool {
 	}
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
 	// Insert into DB
-	_, err = app.DB.ExecContext(
+	_, err = app.Sqlite.ExecContext(
 		ctx,
-		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
+		`INSERT OR IGNORE INTO apps (
 			id, path, name, content, created_at, updated_at, created_by, updated_by, type
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'task')`,
 		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
@@ -127,7 +127,7 @@ func SaveTaskContent(app *App, ctx context.Context, id string, content string) e
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to load task: %w", err)
 	}
@@ -154,9 +154,9 @@ func HandleUpdateTaskContent(app *App, data []byte) bool {
 		return false
 	}
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.UpdatedBy))
-	_, err = app.DB.ExecContext(
+	_, err = app.Sqlite.ExecContext(
 		ctx,
-		`UPDATE `+app.Schema+`.apps
+		`UPDATE apps
 		 SET content = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'task'`,
 		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -174,7 +174,7 @@ func SaveTaskName(app *App, ctx context.Context, id string, name string) error {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query task: %w", err)
 	}
@@ -200,8 +200,8 @@ func HandleUpdateTaskName(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update task name payload", slog.Any("error", err))
 		return false
 	}
-	_, err = app.DB.Exec(
-		`UPDATE `+app.Schema+`.apps
+	_, err = app.Sqlite.Exec(
+		`UPDATE apps
 		 SET name = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'task'`,
 		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -218,7 +218,7 @@ func DeleteTask(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to load task: %w", err)
 	}
@@ -244,8 +244,8 @@ func HandleDeleteTask(app *App, data []byte) bool {
 		return false
 	}
 	unscheduleTask(app, payload.ID)
-	_, err = app.DB.Exec(
-		`DELETE FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, payload.ID)
+	_, err = app.Sqlite.Exec(
+		`DELETE FROM apps WHERE id = $1 AND type = 'task'`, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute DELETE statement", slog.Any("error", err))
 		return false
