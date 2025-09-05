@@ -81,17 +81,13 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 				placeholders += ", "
 			}
 			placeholders += "?"
-			if values[i] != nil {
-				if table == "task_runs" {
-					if cols[i] == "last_run_duration" {
-						v, ok := values[i].(duckdb.Interval)
-						if !ok {
-							tx.Rollback()
-							return fmt.Errorf("failed to convert last_run_duration to time for duckdb table %s", table)
-						}
-						values[i] = formatInterval(v)
-					}
+			if values[i] != nil && table == "task_runs" && cols[i] == "last_run_duration" {
+				v, ok := values[i].(duckdb.Interval)
+				if !ok {
+					tx.Rollback()
+					return fmt.Errorf("failed to convert last_run_duration to time for duckdb table %s", table)
 				}
+				values[i] = formatInterval(v)
 			}
 		}
 		_, err := tx.Exec(
