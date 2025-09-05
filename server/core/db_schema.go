@@ -121,10 +121,3 @@ func initSQLite(sdb *sqlx.DB) error {
 
 	return nil
 }
-
-func boolToInt(b bool) int64 {
-	if b {
-		return 1
-	}
-	return 0
-}
