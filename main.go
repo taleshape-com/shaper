@@ -16,6 +16,7 @@ import (
 	"shaper/server/comms"
 	"shaper/server/core"
 	"shaper/server/ingest"
+	"shaper/server/metrics"
 	"shaper/server/snapshots"
 	"shaper/server/util"
 	"shaper/server/util/signals"
@@ -543,6 +544,8 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TLSCache,
 		cfg.HTTPSHost,
 	)
+
+	metrics.Init()
 
 	return func(ctx context.Context) {
 		logger.Info("Initiating shutdown...")
