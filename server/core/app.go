@@ -216,31 +216,6 @@ func (app *App) setupStreamAndConsumer() error {
 		}
 		app.TaskBroadcastSubscription = taskBroadcastSub
 
-		// Task invocations are coordinate via this NATS work queue stream to ensure that tasks only run on one node in a Shaper cluster.
-		tasksStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
-			Name:                 app.TasksStreamName,
-			Subjects:             []string{app.TasksSubjectPrefix + ">"},
-			Storage:              jetstream.FileStorage,
-			DiscardNewPerSubject: true,
-			Discard:              jetstream.DiscardNew,
-			MaxMsgsPerSubject:    1,
-			Retention:            jetstream.WorkQueuePolicy,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create or update tasks stream: %w", err)
-		}
-		taskConsumer, err := tasksStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
-			Durable: app.TaskQueueConsumerName,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create or update task consumer: %w", err)
-		}
-		taskConsumeCtx, err := taskConsumer.Consume(app.HandleTask)
-		if err != nil {
-			return fmt.Errorf("failed to consume tasks: %w", err)
-		}
-		app.TaskConsumeCtx = taskConsumeCtx
-
 		// Task run results are published to all nodes in the cluster via this stream to ensure all nodes have task state in the database and schedule tasks.
 		// We are not using the state stream for results since task results have different persistence requirements. Task results potentitally happen more frequently than state changes, but they do not need to be retained after each node processed them.
 		taskResultsStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
@@ -269,6 +244,31 @@ func (app *App) setupStreamAndConsumer() error {
 			return fmt.Errorf("failed to consume task results: %w", err)
 		}
 		app.TaskResultConsumeCtx = taskResultConsumeCtx
+
+		// Task invocations are coordinate via this NATS work queue stream to ensure that tasks only run on one node in a Shaper cluster.
+		tasksStream, err := app.JetStream.CreateOrUpdateStream(initCtx, jetstream.StreamConfig{
+			Name:                 app.TasksStreamName,
+			Subjects:             []string{app.TasksSubjectPrefix + ">"},
+			Storage:              jetstream.FileStorage,
+			DiscardNewPerSubject: true,
+			Discard:              jetstream.DiscardNew,
+			MaxMsgsPerSubject:    1,
+			Retention:            jetstream.WorkQueuePolicy,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create or update tasks stream: %w", err)
+		}
+		taskConsumer, err := tasksStream.CreateOrUpdateConsumer(initCtx, jetstream.ConsumerConfig{
+			Durable: app.TaskQueueConsumerName,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create or update task consumer: %w", err)
+		}
+		taskConsumeCtx, err := taskConsumer.Consume(app.HandleTask, jetstream.PullMaxMessages(1))
+		if err != nil {
+			return fmt.Errorf("failed to consume tasks: %w", err)
+		}
+		app.TaskConsumeCtx = taskConsumeCtx
 	}
 
 	stateConsumeCtx, err := stateConsumer.Consume(app.HandleState)

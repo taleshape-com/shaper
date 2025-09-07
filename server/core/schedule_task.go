@@ -298,12 +298,10 @@ func scheduleExistingTasks(app *App, ctx context.Context) error {
 			return fmt.Errorf("failed to scan scheduled task: %w", err)
 		}
 		scheduleTask(app, ctx, taskID, nextRunAt, nextRunType)
-		app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", nextRunAt), slog.String("type", nextRunType))
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("error iterating over scheduled tasks: %w", err)
 	}
-	app.Logger.Info("All tasks scheduled")
 	return nil
 }
 

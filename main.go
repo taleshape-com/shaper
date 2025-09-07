@@ -16,6 +16,7 @@ import (
 	"shaper/server/comms"
 	"shaper/server/core"
 	"shaper/server/ingest"
+	"shaper/server/snapshots"
 	"shaper/server/util"
 	"shaper/server/util/signals"
 	"shaper/server/web"
@@ -104,6 +105,15 @@ type Config struct {
 	DuckDBExtDir               string
 	InitSQL                    string
 	InitSQLFile                string
+	SnapshotTime               string
+	SnapshotS3Bucket           string
+	SnapshotS3Region           string
+	SnapshotS3Endpoint         string
+	SnapshotS3AccessKey        string
+	SnapshotS3SecretKey        string
+	SnapshotStream             string
+	SnapshotConsumerName       string
+	SnapshotSubjectPrefix      string
 }
 
 func main() {
@@ -127,6 +137,12 @@ func loadConfig() Config {
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
+	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
+	snapshotS3Bucket := flags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
+	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional)")
+	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (required for snapshots)")
+	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (required for snapshots)")
+	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (required for snapshots)")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
@@ -163,12 +179,15 @@ func loadConfig() Config {
 	_ = flags.StringLong("state-consumer-name-file", "", "DEPRECATED: Using ephermal consumer and storing sequence in sqlite now")
 	taskQueueConsumerName := flags.StringLong("task-queue-consumer-name", "shaper-task-queue-consumer", "Name for the task queue consumer")
 	_ = flags.StringLong("task-result-consumer-name-file", "", "DEPRECATED: Now storing cursor in sqlite")
+	snapshotStream := flags.StringLong("snapshot-stream", "shaper-snapshots", "NATS stream name for scheduled snapshots")
+	snapshotConsumerName := flags.StringLong("snapshot-consumer-name", "shaper-snapshot-consumer", "Name for the snapshot consumer")
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
 	tasksSubjectPrefix := flags.StringLong("tasks-subject-prefix", "shaper.tasks.", "prefix for tasks NATS subjects")
 	taskResultsSubjectPrefix := flags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
 	taskBroadcastSubject := flags.StringLong("task-broadcast-subject", "shaper.task-broadcast", "subject to broadcast tasks to run on all nodes in a cluster when running manual task")
+	snapshotSubjectPrefix := flags.StringLong("snapshots-subject-prefix", "shaper.snapshots.", "prefix for snapshots NATS subjects")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -293,6 +312,15 @@ func loadConfig() Config {
 		DuckDBExtDir:               *duckdbExtDir,
 		InitSQL:                    *initSQL,
 		InitSQLFile:                initSQLFilePath,
+		SnapshotTime:               *snapshotTime,
+		SnapshotS3Bucket:           *snapshotS3Bucket,
+		SnapshotS3Region:           *snapshotS3Region,
+		SnapshotS3Endpoint:         *snapshotS3Endpoint,
+		SnapshotS3AccessKey:        *snapshotS3AccessKey,
+		SnapshotS3SecretKey:        *snapshotS3SecretKey,
+		SnapshotStream:             *streamPrefix + *snapshotStream,
+		SnapshotConsumerName:       *snapshotConsumerName,
+		SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
 	}
 	return config
 }
@@ -472,6 +500,22 @@ func Run(cfg Config) func(context.Context) {
 		os.Exit(1)
 	}
 
+	s := snapshots.Start(snapshots.Config{
+		Logger:        logger.WithGroup("snapshots"),
+		Sqlite:        sqliteDbx,
+		DuckDB:        duckdbSqlxDb,
+		Nats:          c.Conn,
+		S3Bucket:      cfg.SnapshotS3Bucket,
+		S3Region:      cfg.SnapshotS3Region,
+		S3Endpoint:    cfg.SnapshotS3Endpoint,
+		S3AccessKey:   cfg.SnapshotS3AccessKey,
+		S3SecretKey:   cfg.SnapshotS3SecretKey,
+		Stream:        cfg.SnapshotStream,
+		ConsumerName:  cfg.SnapshotConsumerName,
+		SubjectPrefix: cfg.SnapshotSubjectPrefix,
+		ScheduledTime: cfg.SnapshotTime,
+	})
+
 	e := web.Start(
 		cfg.Address,
 		app,
@@ -487,6 +531,7 @@ func Run(cfg Config) func(context.Context) {
 
 	return func(ctx context.Context) {
 		logger.Info("Initiating shutdown...")
+		s.Stop()
 		logger.Info("Stopping web server...")
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
