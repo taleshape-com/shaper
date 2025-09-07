@@ -114,6 +114,8 @@ type Config struct {
 	SnapshotStream             string
 	SnapshotConsumerName       string
 	SnapshotSubjectPrefix      string
+	NoSnapshots                bool
+	NoAutoRestore              bool
 }
 
 func main() {
@@ -143,6 +145,8 @@ func loadConfig() Config {
 	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (required for snapshots)")
 	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (required for snapshots)")
 	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (required for snapshots)")
+	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
+	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
@@ -321,6 +325,8 @@ func loadConfig() Config {
 		SnapshotStream:             *streamPrefix + *snapshotStream,
 		SnapshotConsumerName:       *snapshotConsumerName,
 		SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
+		NoSnapshots:                *noSnapshots,
+		NoAutoRestore:              *noAutoRestore,
 	}
 	return config
 }
@@ -353,17 +359,38 @@ func Run(cfg Config) func(context.Context) {
 	if cfg.SQLiteDB == "" {
 		sqliteDBxFile = path.Join(cfg.DataDir, "shaper_internal.sqlite")
 	}
+
+	duckDBFile := cfg.DuckDB
+	if cfg.DuckDB == "" {
+		duckDBFile = path.Join(cfg.DataDir, "shaper.duckdb")
+	}
+
+	// Attempt to restore snapshots if databases don't exist and snapshots are configured
+	snapshotConfig := snapshots.Config{
+		Logger:          logger,
+		S3Bucket:        cfg.SnapshotS3Bucket,
+		S3Region:        cfg.SnapshotS3Region,
+		S3Endpoint:      cfg.SnapshotS3Endpoint,
+		S3AccessKey:     cfg.SnapshotS3AccessKey,
+		S3SecretKey:     cfg.SnapshotS3SecretKey,
+		EnableSnapshots: !cfg.NoSnapshots,
+		EnableRestore:   !cfg.NoAutoRestore,
+		Stream:          cfg.SnapshotStream,
+		ConsumerName:    cfg.SnapshotConsumerName,
+		SubjectPrefix:   cfg.SnapshotSubjectPrefix,
+		ScheduledTime:   cfg.SnapshotTime,
+	}
+	if err := snapshots.RestoreLatestSnapshot(sqliteDBxFile, duckDBFile, snapshotConfig); err != nil {
+		logger.Error("Failed to restore snapshots", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	sqliteDbx, err := sqlx.Connect("sqlite", sqliteDBxFile)
 	if err != nil {
 		logger.Error("Failed to connect to SQLite", slog.String("file", sqliteDBxFile), slog.Any("error", err))
 		os.Exit(1)
 	}
 	logger.Info("SQLite opened", slog.Any("file", sqliteDBxFile))
-
-	duckDBFile := cfg.DuckDB
-	if cfg.DuckDB == "" {
-		duckDBFile = path.Join(cfg.DataDir, "shaper.duckdb")
-	}
 
 	// connect to duckdb
 	duckDBConnector, err := duckdb.NewConnector(duckDBFile, nil)
@@ -376,7 +403,6 @@ func Run(cfg Config) func(context.Context) {
 	duckDbSqlDb.SetMaxIdleConns(0)
 	duckdbSqlxDb := sqlx.NewDb(duckDbSqlDb, "duckdb")
 	logger.Info("DuckDB opened", slog.Any("file", duckDBFile))
-
 	if cfg.DuckDBExtDir != "" {
 		_, err := duckdbSqlxDb.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
 		if err != nil {
@@ -385,7 +411,6 @@ func Run(cfg Config) func(context.Context) {
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
-
 	if cfg.InitSQL != "" {
 		logger.Info("Executing init-sql")
 		// Substitute environment variables in the SQL
@@ -400,6 +425,7 @@ func Run(cfg Config) func(context.Context) {
 			}
 		}
 	}
+
 	if cfg.InitSQLFile != "" {
 		logger.Info("Loading init-sql-file", slog.Any("path", cfg.InitSQLFile))
 		data, err := os.ReadFile(cfg.InitSQLFile)
@@ -500,21 +526,10 @@ func Run(cfg Config) func(context.Context) {
 		os.Exit(1)
 	}
 
-	s := snapshots.Start(snapshots.Config{
-		Logger:        logger.WithGroup("snapshots"),
-		Sqlite:        sqliteDbx,
-		DuckDB:        duckdbSqlxDb,
-		Nats:          c.Conn,
-		S3Bucket:      cfg.SnapshotS3Bucket,
-		S3Region:      cfg.SnapshotS3Region,
-		S3Endpoint:    cfg.SnapshotS3Endpoint,
-		S3AccessKey:   cfg.SnapshotS3AccessKey,
-		S3SecretKey:   cfg.SnapshotS3SecretKey,
-		Stream:        cfg.SnapshotStream,
-		ConsumerName:  cfg.SnapshotConsumerName,
-		SubjectPrefix: cfg.SnapshotSubjectPrefix,
-		ScheduledTime: cfg.SnapshotTime,
-	})
+	snapshotConfig.Sqlite = sqliteDbx
+	snapshotConfig.DuckDB = duckdbSqlxDb
+	snapshotConfig.Nats = c.Conn
+	s := snapshots.Start(snapshotConfig)
 
 	e := web.Start(
 		cfg.Address,

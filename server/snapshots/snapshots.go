@@ -21,19 +21,21 @@ const (
 
 // Config holds the configuration for the snapshots service
 type Config struct {
-	Logger        *slog.Logger
-	Sqlite        *sqlx.DB
-	DuckDB        *sqlx.DB
-	Nats          *nats.Conn
-	S3Bucket      string
-	S3Region      string
-	S3Endpoint    string
-	S3AccessKey   string
-	S3SecretKey   string
-	Stream        string
-	ConsumerName  string
-	SubjectPrefix string
-	ScheduledTime string // Format: "HH:MM"
+	Logger          *slog.Logger
+	Sqlite          *sqlx.DB
+	DuckDB          *sqlx.DB
+	Nats            *nats.Conn
+	S3Bucket        string
+	S3Region        string
+	S3Endpoint      string
+	S3AccessKey     string
+	S3SecretKey     string
+	EnableSnapshots bool
+	EnableRestore   bool
+	Stream          string
+	ConsumerName    string
+	SubjectPrefix   string
+	ScheduledTime   string // Format: "HH:MM"
 }
 
 type Service struct {
@@ -71,7 +73,8 @@ func Start(config Config) *Service {
 }
 
 func isSnapshotsEnabled(config Config) bool {
-	return config.S3Bucket != "" &&
+	return config.EnableSnapshots &&
+		config.S3Bucket != "" &&
 		config.S3Endpoint != "" &&
 		config.S3AccessKey != "" &&
 		config.S3SecretKey != ""
@@ -217,38 +220,18 @@ func (s *Service) snapshotDuckDB(ctx context.Context, timestamp string) bool {
 	startTime := time.Now()
 	secretName := fmt.Sprintf("shaper_backup_secret_%s", strings.ReplaceAll(timestamp, "-", "_"))
 	s3Path := fmt.Sprintf("s3://%s/duckdb/shaper-duckdb-%s", s.config.S3Bucket, timestamp)
-	cleanEndpoint := strings.TrimPrefix(s.config.S3Endpoint, "http://")
-	cleanEndpoint = strings.TrimPrefix(cleanEndpoint, "https://")
-	useSSL := !strings.HasPrefix(s.config.S3Endpoint, "http://")
+
 	// Create temporary S3 secret
-	createSecretSQL := fmt.Sprintf(`
-		CREATE SECRET %s (
-			TYPE S3,
-			KEY_ID '%s',
-			SECRET '%s',
-			REGION '%s',
-			ENDPOINT '%s',
-			URL_STYLE 'path',
-			USE_SSL %t,
-			SCOPE '%s'
-		)`, secretName, s.config.S3AccessKey, s.config.S3SecretKey, s.config.S3Region, cleanEndpoint, useSSL, s3Path)
-	_, err := s.config.DuckDB.ExecContext(ctx, createSecretSQL)
-	if err != nil {
+	if err := createDuckDBSecret(ctx, s.config.DuckDB, secretName, s.config, s3Path); err != nil {
 		s.config.Logger.Error("Failed to create DuckDB S3 secret", slog.Any("error", err))
 		return false
 	}
 	// Ensure secret is cleaned up
-	defer func() {
-		dropSecretSQL := fmt.Sprintf("DROP SECRET IF EXISTS %s", secretName)
-		_, err := s.config.DuckDB.ExecContext(context.Background(), dropSecretSQL)
-		if err != nil {
-			s.config.Logger.Error("Failed to drop DuckDB S3 secret", slog.Any("error", err))
-		}
-	}()
+	defer dropDuckDBSecret(context.Background(), s.config.DuckDB, secretName, s.config.Logger)
 
 	// Export database to S3
 	exportSQL := fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT parquet, COMPRESSION zstd)", s3Path)
-	_, err = s.config.DuckDB.ExecContext(ctx, exportSQL)
+	_, err := s.config.DuckDB.ExecContext(ctx, exportSQL)
 	if err != nil {
 		s.config.Logger.Error("Failed to export DuckDB to S3", slog.Any("error", err))
 		return false
@@ -275,4 +258,32 @@ func (s *Service) Stop() {
 	}
 	close(s.stopChan)
 	s.config.Logger.Info("Snapshots service stopped")
+}
+
+// createDuckDBSecret creates a temporary S3 secret for DuckDB operations
+func createDuckDBSecret(ctx context.Context, db *sqlx.DB, secretName string, config Config, s3Path string) error {
+	cleanEndpoint := strings.TrimPrefix(config.S3Endpoint, "http://")
+	cleanEndpoint = strings.TrimPrefix(cleanEndpoint, "https://")
+	useSSL := !strings.HasPrefix(config.S3Endpoint, "http://")
+	createSecretSQL := fmt.Sprintf(`
+		CREATE SECRET %s (
+			TYPE S3,
+			KEY_ID '%s',
+			SECRET '%s',
+			REGION '%s',
+			ENDPOINT '%s',
+			URL_STYLE 'path',
+			USE_SSL %t,
+			SCOPE '%s'
+		)`, secretName, config.S3AccessKey, config.S3SecretKey, config.S3Region, cleanEndpoint, useSSL, s3Path)
+	_, err := db.ExecContext(ctx, createSecretSQL)
+	return err
+}
+
+// dropDuckDBSecret removes a temporary S3 secret from DuckDB
+func dropDuckDBSecret(ctx context.Context, db *sqlx.DB, secretName string, logger *slog.Logger) {
+	dropSecretSQL := fmt.Sprintf("DROP SECRET IF EXISTS %s", secretName)
+	if _, err := db.ExecContext(ctx, dropSecretSQL); err != nil {
+		logger.Error("Failed to drop DuckDB S3 secret", slog.Any("error", err))
+	}
 }
