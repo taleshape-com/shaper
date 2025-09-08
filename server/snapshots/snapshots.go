@@ -230,7 +230,7 @@ func (s *Service) snapshotDuckDB(ctx context.Context, timestamp string) bool {
 	defer dropDuckDBSecret(context.Background(), s.config.DuckDB, secretName, s.config.Logger)
 
 	// Export database to S3
-	exportSQL := fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT parquet, COMPRESSION zstd)", s3Path)
+	exportSQL := fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT parquet, COMPRESSION zstd, PARQUET_VERSION v2)", s3Path)
 	_, err := s.config.DuckDB.ExecContext(ctx, exportSQL)
 	if err != nil {
 		s.config.Logger.Error("Failed to export DuckDB to S3", slog.Any("error", err))
