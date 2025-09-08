@@ -133,10 +133,17 @@ export function MenuProvider({
             {translate("Docs")}
             <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
-          <Link to="/admin" disabled={isAdmin} className={cx(
-            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
-            { "text-ctext2 dark:text-dtext2": !isAdmin }
-          )}>
+          <Link
+            to="/admin"
+            disabled={isAdmin}
+            className={cx(
+              "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
+              {
+                "text-ctext2 dark:text-dtext2": !isAdmin,
+                "underline cursor-default": isAdmin,
+              }
+            )}
+          >
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
             {translate("Admin")}
           </Link>
