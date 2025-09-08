@@ -155,8 +155,12 @@ function DashboardEditor() {
   }, [queryApi, params, vars, runningQuery, navigate]);
 
   const handleRun = useCallback(() => {
-    setRunningQuery(editorQuery);
-  }, [editorQuery]);
+    if (editorQuery !== runningQuery) {
+      setRunningQuery(editorQuery);
+    } else {
+      previewDashboard()
+    }
+  }, [editorQuery, runningQuery]);
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
