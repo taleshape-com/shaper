@@ -468,6 +468,8 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "duration", nil
 	case "TIME":
 		return "time", nil
+	case "JSON":
+		return "object", nil
 	case "UUID":
 		return "string", nil
 	case "UINTEGER":
