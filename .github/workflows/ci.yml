@@ -29,7 +29,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: "npm"
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
@@ -91,7 +91,7 @@ jobs:
           apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
@@ -147,7 +147,7 @@ jobs:
           done
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
@@ -306,7 +306,7 @@ jobs:
           cat bin/checksums-*.txt | sort | uniq > npm-package/bin/SHA256SUMS
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
