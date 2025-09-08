@@ -70,6 +70,9 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		},
 	}
 
+	e.HEAD("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	e.GET("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
