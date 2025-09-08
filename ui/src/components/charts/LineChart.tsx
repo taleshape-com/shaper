@@ -114,7 +114,7 @@ const LineChart = (props: LineChartProps) => {
           color: categoryColors.get(category),
           borderWidth: 0,
           // always show dots when there are not too many data points and we only have a single line
-          opacity: categories.length > 1 || (data.length / (chartWidth) > 0.05) ? 0 : 1,
+          opacity: categories.length > 1 || (data.length / (chartWidth) > 0.02) ? 0 : 1,
         },
         markLine: {
           silent: true,
