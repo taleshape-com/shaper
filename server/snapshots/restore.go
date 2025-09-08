@@ -123,7 +123,7 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 		config.Logger.Info("No DuckDB snapshots found")
 		return nil
 	}
-	if hasData, err := checkDuckdbBackupHasData(ctx, minioClient, config.S3Bucket, latestSnapshot); err != nil {
+	if hasData, err := checkDuckdbSnapshotHasData(ctx, minioClient, config.S3Bucket, latestSnapshot); err != nil {
 		return fmt.Errorf("failed to check DuckDB backup data: %w", err)
 	} else if !hasData {
 		config.Logger.Info("Found DuckDB snapshot but it contains no load.sql, skipping restore", slog.String("snapshot", latestSnapshot))
@@ -145,21 +145,11 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 	// Extract timestamp from snapshot path for secret naming
 	timestamp := strings.TrimSuffix(filepath.Base(latestSnapshot), filepath.Ext(filepath.Base(latestSnapshot)))
 	timestamp = strings.ReplaceAll(timestamp, "-", "_")
-	secretName := fmt.Sprintf("shaper_restore_secret_%s", timestamp)
 	s3Path := fmt.Sprintf("s3://%s/%s", config.S3Bucket, latestSnapshot)
-
-	// Create S3 secret for DuckDB
-	err = createDuckDBSecret(ctx, tempDB, secretName, config, s3Path)
-	if err != nil {
-		os.Remove(tempFile)
-		tempDB.Close()
-		return fmt.Errorf("failed to create DuckDB S3 secret: %w", err)
-	}
 
 	// Import database from S3 into temporary database
 	importSQL := fmt.Sprintf("IMPORT DATABASE '%s'; CHECKPOINT;", s3Path)
 	_, err = tempDB.ExecContext(ctx, importSQL)
-	dropDuckDBSecret(context.Background(), tempDB, secretName, config.Logger)
 	if err != nil {
 		tempDB.Close()
 		os.Remove(tempFile)
@@ -229,8 +219,8 @@ func extractTimestampFromKey(key string) time.Time {
 	return time.Time{}
 }
 
-// Check if load.sql file exists in the backup
-func checkDuckdbBackupHasData(ctx context.Context, client *minio.Client, bucket, snapshotPath string) (bool, error) {
+// Check if load.sql file exists in the snapshot
+func checkDuckdbSnapshotHasData(ctx context.Context, client *minio.Client, bucket, snapshotPath string) (bool, error) {
 	objectCh := client.ListObjects(ctx, bucket, minio.ListObjectsOptions{Prefix: snapshotPath + "/"})
 	for object := range objectCh {
 		if object.Err != nil {

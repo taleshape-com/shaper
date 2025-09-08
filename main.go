@@ -530,7 +530,11 @@ func Run(cfg Config) func(context.Context) {
 	snapshotConfig.Sqlite = sqliteDbx
 	snapshotConfig.DuckDB = duckdbSqlxDb
 	snapshotConfig.Nats = c.Conn
-	s := snapshots.Start(snapshotConfig)
+	s, err := snapshots.Start(snapshotConfig)
+	if err != nil {
+		logger.Error("Failed to start snapshot service", slog.Any("error", err))
+		os.Exit(1)
+	}
 
 	e := web.Start(
 		cfg.Address,
