@@ -158,7 +158,7 @@ const BarChart = (props: BarChartProps) => {
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
     const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
-    const minLegendItemWidth = Math.max(avgLegendCharCount * 5.8, 50);
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 6.7, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
     const legendItemGap = 10;
@@ -168,9 +168,10 @@ const BarChart = (props: BarChartProps) => {
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
-    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 25 : 48) : 0);
+    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 35 : 58) : 0);
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
+    const xData = layout === "horizontal" && (!isTimestampData || data.length < timeTypeThreshold) ? dataCopy.map((item) => item[index]) : undefined;
 
     return {
       animation: false,
@@ -326,16 +327,16 @@ const BarChart = (props: BarChartProps) => {
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
         right: 15 + chartPadding,
-        top: 20 + legendTopOffset + labelTopOffset + chartPadding,
+        top: 10 + legendTopOffset + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 35 : 10) + chartPadding,
         containLabel: true,
       },
       xAxis: {
         type: layout === "horizontal" ? (isTimestampData && data.length >= timeTypeThreshold ? "time" as const : "category" as const) : "value" as const,
-        data: layout === "horizontal" && (!isTimestampData || data.length < timeTypeThreshold) ? dataCopy.map((item) => item[index]) : undefined,
+        data: xData,
         show: true,
         axisLabel: {
-          show: true, // Always show labels
+          show: true,
           formatter: (value: any) => {
             if (layout === "horizontal") {
               return indexFormatter(value, true);
@@ -344,8 +345,11 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          padding: [4, 8, 4, 8], // Add padding around labels
+          padding: [4, 8, 4, 8],
+          interval: layout === "horizontal" && (!isTimestampData || dataCopy.length >= timeTypeThreshold) ? 0 : 'auto',
+          rotate: xData && chartWidth / xData.join('').length < 14 ? 45 : 0,
           hideOverlap: true,
+          showMinLabel: (isTimestampData && indexType !== 'time') || undefined,
         },
         axisPointer: {
           type: layout === 'vertical' || dataCopy.length > 1 ? 'line' : 'none',
@@ -399,6 +403,9 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
+          fontSize: dataCopy.length >= 14 ? 10 : dataCopy.length >= 12 ? 11 : 12,
+          showMinLabel: true,
+          showMaxLabel: true,
           padding: [4, 8, 4, 8], // Add padding around labels
           hideOverlap: true,
         },

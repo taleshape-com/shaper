@@ -161,9 +161,10 @@ const LineChart = (props: LineChartProps) => {
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
-    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 25 : 48) : 0);
+    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 35 : 58) : 0);
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
+    const xData = !isTimestampData ? data.map((item) => item[index]) : undefined
 
     return {
       animation: false,
@@ -307,13 +308,13 @@ const LineChart = (props: LineChartProps) => {
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
         right: 15 + chartPadding,
-        top: 20 + legendTopOffset + labelTopOffset + chartPadding,
+        top: 10 + legendTopOffset + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 35 : 10) + chartPadding,
         containLabel: true,
       },
       xAxis: {
         type: isTimestampData ? "time" as const : "category" as const,
-        data: !isTimestampData ? data.map((item) => item[index]) : undefined,
+        data: xData,
         show: true,
         axisLabel: {
           show: true,
@@ -322,9 +323,10 @@ const LineChart = (props: LineChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          rotate: 0,
+          rotate: xData && chartWidth / xData.join('').length < 14 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
+          showMinLabel: isTimestampData || undefined,
         },
         axisPointer: {
           type: data.length > 1 ? 'line' : 'none',
