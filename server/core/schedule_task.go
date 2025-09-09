@@ -276,7 +276,6 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 }
 
 func scheduleExistingTasks(app *App, ctx context.Context) error {
-	app.Logger.Info("Loading scheduled tasks")
 	// Load scheduled task runs from database
 	rows, err := app.Sqlite.QueryxContext(
 		ctx,

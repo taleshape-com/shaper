@@ -16,8 +16,11 @@ import (
 )
 
 const (
-	SECRET_NAME      = "_shaper_snapshot_secret"
-	SNAPSHOT_SUBJECT = "snapshot"
+	SECRET_NAME                   = "_shaper_snapshot_secret"
+	SNAPSHOT_SUBJECT              = "snapshot"
+	SNAPSHOT_PREFIX               = "shaper-snapshots/"
+	SNAPSHOT_SQLITE_FILE_PREFIX   = SNAPSHOT_PREFIX + "shaper-sqlite-"
+	SNAPSHOT_DUCKDB_FOLDER_PREFIX = SNAPSHOT_PREFIX + "shaper-duckdb-"
 )
 
 // Config holds the configuration for the snapshots service
@@ -53,7 +56,7 @@ func Start(config Config) (*Service, error) {
 	s := &Service{
 		config:   config,
 		stopChan: make(chan struct{}),
-		enabled:  isSnapshotsEnabled(config),
+		enabled:  hasConfig(config) && config.EnableSnapshots,
 	}
 	if !s.enabled {
 		config.Logger.Info("Snapshots disabled")
@@ -61,7 +64,7 @@ func Start(config Config) (*Service, error) {
 	}
 	// Create S3 secret
 	// We leave the secret in DuckDB so the user has the option to inspect and work with snapshot data
-	if err := createDuckDBSecret(context.Background(), s.config.DuckDB, SECRET_NAME, s.config, fmt.Sprintf("s3://%s/", s.config.S3Bucket)); err != nil {
+	if err := createDuckDBSecret(context.Background(), s.config.DuckDB, SECRET_NAME, s.config); err != nil {
 		return s, fmt.Errorf("failed to create DuckDB S3 secret: %w", err)
 	}
 
@@ -77,9 +80,8 @@ func Start(config Config) (*Service, error) {
 	return s, nil
 }
 
-func isSnapshotsEnabled(config Config) bool {
-	return config.EnableSnapshots &&
-		config.S3Bucket != "" &&
+func hasConfig(config Config) bool {
+	return config.S3Bucket != "" &&
 		config.S3Endpoint != "" &&
 		config.S3AccessKey != "" &&
 		config.S3SecretKey != ""
@@ -197,7 +199,7 @@ func (s *Service) snapshotSQLite(ctx context.Context, timestamp string) bool {
 		return false
 	}
 	// Upload to S3
-	s3Key := fmt.Sprintf("sqlite/shaper-sqlite-%s.db", timestamp)
+	s3Key := fmt.Sprintf("%s%s.db", SNAPSHOT_SQLITE_FILE_PREFIX, timestamp)
 	err = uploadFileToS3(
 		ctx,
 		tempFile,
@@ -222,7 +224,7 @@ func (s *Service) snapshotSQLite(ctx context.Context, timestamp string) bool {
 func (s *Service) snapshotDuckDB(ctx context.Context, timestamp string) bool {
 	s.config.Logger.Info("Starting DuckDB snapshot")
 	startTime := time.Now()
-	s3Path := fmt.Sprintf("s3://%s/duckdb/shaper-duckdb-%s", s.config.S3Bucket, timestamp)
+	s3Path := fmt.Sprintf("s3://%s/%s%s", s.config.S3Bucket, SNAPSHOT_DUCKDB_FOLDER_PREFIX, timestamp)
 
 	// Export database to S3
 	exportSQL := fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT parquet, COMPRESSION zstd)", s3Path)
@@ -256,7 +258,8 @@ func (s *Service) Stop() {
 }
 
 // createDuckDBSecret creates a temporary S3 secret for DuckDB operations
-func createDuckDBSecret(ctx context.Context, db *sqlx.DB, secretName string, config Config, s3Path string) error {
+func createDuckDBSecret(ctx context.Context, duckDbx *sqlx.DB, secretName string, config Config) error {
+	s3Path := fmt.Sprintf("s3://%s/%s", config.S3Bucket, SNAPSHOT_PREFIX)
 	cleanEndpoint := strings.TrimPrefix(config.S3Endpoint, "http://")
 	cleanEndpoint = strings.TrimPrefix(cleanEndpoint, "https://")
 	useSSL := !strings.HasPrefix(config.S3Endpoint, "http://")
@@ -271,6 +274,6 @@ func createDuckDBSecret(ctx context.Context, db *sqlx.DB, secretName string, con
 			USE_SSL %t,
 			SCOPE '%s'
 		)`, secretName, config.S3AccessKey, config.S3SecretKey, config.S3Region, cleanEndpoint, useSSL, s3Path)
-	_, err := db.ExecContext(ctx, createSecretSQL)
+	_, err := duckDbx.ExecContext(ctx, createSecretSQL)
 	return err
 }

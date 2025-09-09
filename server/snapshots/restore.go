@@ -19,7 +19,7 @@ import (
 // RestoreLatestSnapsho attempts to restore the latest snapshots for SQLite and DuckDB
 // if the local database files don't exist and snapshots are configured
 func RestoreLatestSnapshot(sqlitePath, duckdbPath string, config Config) error {
-	if !isRestoreEnabled(config) {
+	if !hasConfig(config) || !config.EnableRestore {
 		return nil
 	}
 	ctx := context.Background()
@@ -38,14 +38,6 @@ func RestoreLatestSnapshot(sqlitePath, duckdbPath string, config Config) error {
 	return nil
 }
 
-func isRestoreEnabled(config Config) bool {
-	return config.EnableRestore &&
-		config.S3Bucket != "" &&
-		config.S3Endpoint != "" &&
-		config.S3AccessKey != "" &&
-		config.S3SecretKey != ""
-}
-
 func restoreSQLiteSnapshot(ctx context.Context, localPath string, config Config) error {
 	config.Logger.Info("SQLite empty. Looking for SQLite snapshots in S3")
 	minioClient, err := newMinioClient(config.S3Endpoint, config.S3Region, config.S3AccessKey, config.S3SecretKey)
@@ -59,7 +51,7 @@ func restoreSQLiteSnapshot(ctx context.Context, localPath string, config Config)
 	if !bucketExist {
 		return fmt.Errorf("bucket %s does not exist", config.S3Bucket)
 	}
-	latestSnapshot, err := getLatestSnapshot(ctx, minioClient, config.S3Bucket, "sqlite/")
+	latestSnapshot, err := getLatestSnapshot(ctx, minioClient, config.S3Bucket, SNAPSHOT_SQLITE_FILE_PREFIX)
 	if err != nil {
 		return fmt.Errorf("failed to find latest SQLite snapshot: %w", err)
 	}
@@ -115,7 +107,7 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 	if err != nil {
 		return fmt.Errorf("failed to create S3 client: %w", err)
 	}
-	latestSnapshot, err := getLatestSnapshot(ctx, minioClient, config.S3Bucket, "duckdb/")
+	latestSnapshot, err := getLatestSnapshot(ctx, minioClient, config.S3Bucket, SNAPSHOT_DUCKDB_FOLDER_PREFIX)
 	if err != nil {
 		return fmt.Errorf("failed to find latest DuckDB snapshot: %w", err)
 	}
@@ -140,6 +132,11 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 	if err != nil {
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to connect to temporary DuckDB: %w", err)
+	}
+
+	// Create S3 secret
+	if err := createDuckDBSecret(ctx, tempDB, SECRET_NAME, config); err != nil {
+		return fmt.Errorf("failed to create DuckDB S3 secret: %w", err)
 	}
 
 	// Extract timestamp from snapshot path for secret naming
