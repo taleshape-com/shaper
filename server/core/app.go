@@ -166,6 +166,7 @@ func (app *App) Init(nc *nats.Conn) error {
 		if err := scheduleExistingTasks(app, context.Background()); err != nil {
 			return fmt.Errorf("failed to schedule existing tasks: %w", err)
 		}
+		app.Logger.Info("Loaded scheduled tasks")
 	}
 
 	return nil
