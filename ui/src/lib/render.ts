@@ -30,10 +30,10 @@ export const formatValue = (value: string | number | boolean | null | undefined,
     return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
   }
   if (columnType === "hour") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: shortFormat ? undefined : '2-digit', minute: shortFormat ? undefined : '2-digit', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
   }
   if (columnType === "timestamp") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: shortFormat ? undefined : '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: shortFormat ? undefined : '2-digit', minute: shortFormat ? undefined : '2-digit', second: shortFormat ? undefined : '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
   }
   if (columnType === "duration" && !value) {
     return "0"
@@ -85,6 +85,12 @@ export const formatValue = (value: string | number | boolean | null | undefined,
     }
     if (columnType === "percent") {
       return `${Math.round(value * 10000) / 100}%`;
+    }
+  }
+  if (typeof value === "string") {
+    const strMaxLen = (shortFormat ? 10 : 30);
+    if (value.length > strMaxLen) {
+      return value.slice(0, strMaxLen) + "…"
     }
   }
   return value;

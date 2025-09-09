@@ -172,7 +172,17 @@ const BarChart = (props: BarChartProps) => {
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = layout === "horizontal" && (!isTimestampData || data.length < timeTypeThreshold) ? dataCopy.map((item) => item[index]) : undefined;
-    const xLabelSpace = xData && chartWidth / xData.map(x => layout === 'horizontal' ? indexFormatter(x, true) : valueFormatter(x, true)).join('').length;
+    let totalLabelLen = 0;
+    let maxLabelLen = 0;
+    (xData ?? []).forEach(x => {
+      const v = layout === 'horizontal' ? indexFormatter(x, true) : valueFormatter(x, true);
+      totalLabelLen += v.length;
+      if (v.length > maxLabelLen) {
+        maxLabelLen = v.length;
+      }
+    })
+    const xLabelSpace = xData && chartWidth / totalLabelLen;
+    const shouldRotateXLabel = !xAxisLabel && xLabelSpace && xLabelSpace < 11 && maxLabelLen > 7;
 
     return {
       animation: false,
@@ -346,12 +356,12 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          fontSize: xLabelSpace && xLabelSpace < 11 ? 10 : 12,
+          fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
           padding: [4, 8, 4, 8],
-          interval: layout === "horizontal" && (!isTimestampData || dataCopy.length >= timeTypeThreshold) ? 0 : 'auto',
-          rotate: !xAxisLabel && xLabelSpace && xLabelSpace < 10 ? 45 : 0,
+          interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
+          rotate: shouldRotateXLabel ? 45 : 0,
           hideOverlap: true,
-          showMinLabel: (isTimestampData && indexType !== 'time') || undefined,
+          showMinLabel: (isTimestampData && data.length >= timeTypeThreshold && indexType !== 'time') || undefined,
         },
         axisPointer: {
           type: layout === 'vertical' || dataCopy.length > 1 ? 'line' : 'none',
