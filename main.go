@@ -369,6 +369,9 @@ func Run(cfg Config) func(context.Context) {
 	// Attempt to restore snapshots if databases don't exist and snapshots are configured
 	snapshotConfig := snapshots.Config{
 		Logger:          logger,
+		DuckDBExtDir:    cfg.DuckDBExtDir,
+		InitSQL:         cfg.InitSQL,
+		InitSQLFile:     cfg.InitSQLFile,
 		S3Bucket:        cfg.SnapshotS3Bucket,
 		S3Region:        cfg.SnapshotS3Region,
 		S3Endpoint:      cfg.SnapshotS3Endpoint,
@@ -412,6 +415,7 @@ func Run(cfg Config) func(context.Context) {
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
+
 	if cfg.InitSQL != "" {
 		logger.Info("Executing init-sql")
 		// Substitute environment variables in the SQL
@@ -426,7 +430,6 @@ func Run(cfg Config) func(context.Context) {
 			}
 		}
 	}
-
 	if cfg.InitSQLFile != "" {
 		logger.Info("Loading init-sql-file", slog.Any("path", cfg.InitSQLFile))
 		data, err := os.ReadFile(cfg.InitSQLFile)

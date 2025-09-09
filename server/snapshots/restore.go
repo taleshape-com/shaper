@@ -2,11 +2,13 @@ package snapshots
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"shaper/server/util"
 	"strings"
 	"time"
 
@@ -15,6 +17,12 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/nrednav/cuid2"
 )
+
+var restoreInitSQLStatements = []string{
+	"INSTALL",
+	"LOAD",
+	"ATTACH",
+}
 
 // RestoreLatestSnapsho attempts to restore the latest snapshots for SQLite and DuckDB
 // if the local database files don't exist and snapshots are configured
@@ -134,6 +142,47 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 		return fmt.Errorf("failed to connect to temporary DuckDB: %w", err)
 	}
 
+	if config.DuckDBExtDir != "" {
+		_, err := tempDB.Exec("SET extension_directory = ?", config.DuckDBExtDir)
+		if err != nil {
+			return fmt.Errorf("failed to set DuckDB extension directory: %w", err)
+		}
+	}
+
+	if config.InitSQL != "" {
+		// Substitute environment variables in the SQL
+		sql, err := prepSQL(config.InitSQL)
+		if err != nil {
+			return fmt.Errorf("failed to prepare init-sql: %w", err)
+		}
+		if sql != "" {
+			_, err := tempDB.Exec(sql)
+			if err != nil {
+				return fmt.Errorf("failed to execute init-sql: %w", err)
+			}
+		}
+	}
+	if config.InitSQLFile != "" {
+		data, err := os.ReadFile(config.InitSQLFile)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("failed to read init-sql-file: %w", err)
+			}
+		} else {
+			sql, err := prepSQL(string(data))
+			if err != nil {
+				return fmt.Errorf("failed to prepare init-sql-file: %w", err)
+			}
+			if len(sql) != 0 {
+				// Substitute environment variables in the SQL file content
+				_, err = tempDB.Exec(sql)
+				if err != nil {
+					return fmt.Errorf("failed to execute init-sql-file: %w", err)
+				}
+			}
+		}
+	}
+
 	// Create S3 secret
 	if err := createDuckDBSecret(ctx, tempDB, SECRET_NAME, config); err != nil {
 		return fmt.Errorf("failed to create DuckDB S3 secret: %w", err)
@@ -228,4 +277,26 @@ func checkDuckdbSnapshotHasData(ctx context.Context, client *minio.Client, bucke
 		}
 	}
 	return false, nil
+}
+
+func prepSQL(sql string) (string, error) {
+	sql = util.StripSQLComments(sql)
+	parts, err := util.SplitSQLQueries(sql)
+	if err != nil {
+		return "", err
+	}
+	filteredSql := ""
+	for _, p := range parts {
+		normalized := strings.ToUpper(strings.TrimSpace(p))
+		for _, stmt := range restoreInitSQLStatements {
+			if strings.HasPrefix(normalized, stmt) {
+				filteredSql += p + ";\n"
+				break
+			}
+		}
+	}
+	sql = filteredSql
+	sql = strings.TrimSpace(sql)
+	sql = os.ExpandEnv(sql)
+	return sql, nil
 }

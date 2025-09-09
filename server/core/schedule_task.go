@@ -32,7 +32,7 @@ type BroadCastPayload struct {
 func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, string, error) {
 	// Run first query
 	cleanContent := util.StripSQLComments(content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to split SQL queries: %w", err)
 	}

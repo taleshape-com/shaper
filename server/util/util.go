@@ -3,6 +3,7 @@
 package util
 
 import (
+	"fmt"
 	"math/rand"
 	"strings"
 )
@@ -49,4 +50,75 @@ func StripSQLComments(sql string) string {
 		}
 	}
 	return result.String()
+}
+
+// Split by ; and handle ; inside single and double quotes
+func SplitSQLQueries(sql string) ([]string, error) {
+	var queries []string
+	var currentQuery strings.Builder
+	var inSingleQuote bool
+	var inDoubleQuote bool
+	var lineNum int = 1
+	var quoteStartLine int
+
+	for i := 0; i < len(sql); i++ {
+		c := sql[i]
+		currentQuery.WriteByte(c)
+
+		// Track line numbers
+		if c == '\n' {
+			lineNum++
+		}
+
+		// Handle single quotes
+		if c == '\'' && !inDoubleQuote {
+			if i+1 < len(sql) && sql[i+1] == '\'' {
+				currentQuery.WriteByte(sql[i+1])
+				i++
+				continue
+			}
+			if !inSingleQuote {
+				quoteStartLine = lineNum
+			}
+			inSingleQuote = !inSingleQuote
+			continue
+		}
+
+		// Handle double quotes
+		if c == '"' && !inSingleQuote {
+			if i+1 < len(sql) && sql[i+1] == '"' {
+				currentQuery.WriteByte(sql[i+1])
+				i++
+				continue
+			}
+			if !inDoubleQuote {
+				quoteStartLine = lineNum
+			}
+			inDoubleQuote = !inDoubleQuote
+			continue
+		}
+
+		// Handle semicolon
+		if c == ';' && !inSingleQuote && !inDoubleQuote {
+			query := strings.TrimSpace(currentQuery.String())
+			if len(query) > 0 {
+				queries = append(queries, query[:len(query)-1]) // Remove the semicolon
+			}
+			currentQuery.Reset()
+		}
+	}
+
+	if inSingleQuote {
+		return nil, fmt.Errorf("unclosed single quote starting in line %d", quoteStartLine+1)
+	}
+	if inDoubleQuote {
+		return nil, fmt.Errorf("unclosed double quote starting in line %d", quoteStartLine+1)
+	}
+
+	lastQuery := strings.TrimSpace(currentQuery.String())
+	if lastQuery != "" {
+		queries = append(queries, lastQuery)
+	}
+
+	return queries, nil
 }

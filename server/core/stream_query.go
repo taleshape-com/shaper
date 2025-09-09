@@ -41,7 +41,7 @@ func StreamQueryCSV(
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
@@ -160,7 +160,7 @@ func StreamQueryXLSX(
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}

@@ -51,7 +51,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 
 	cleanContent := util.StripSQLComments(content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return result, err
 	}

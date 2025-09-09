@@ -29,6 +29,9 @@ type Config struct {
 	Sqlite          *sqlx.DB
 	DuckDB          *sqlx.DB
 	Nats            *nats.Conn
+	DuckDBExtDir    string
+	InitSQL         string
+	InitSQLFile     string
 	S3Bucket        string
 	S3Region        string
 	S3Endpoint      string
