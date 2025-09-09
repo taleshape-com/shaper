@@ -172,6 +172,7 @@ const BarChart = (props: BarChartProps) => {
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = layout === "horizontal" && (!isTimestampData || data.length < timeTypeThreshold) ? dataCopy.map((item) => item[index]) : undefined;
+    const xLabelSpace = xData && chartWidth / xData.map(x => layout === 'horizontal' ? indexFormatter(x, true) : valueFormatter(x, true)).join('').length;
 
     return {
       animation: false,
@@ -345,9 +346,10 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
+          fontSize: xLabelSpace && xLabelSpace < 11 ? 10 : 12,
           padding: [4, 8, 4, 8],
           interval: layout === "horizontal" && (!isTimestampData || dataCopy.length >= timeTypeThreshold) ? 0 : 'auto',
-          rotate: xData && chartWidth / xData.join('').length < 14 ? 45 : 0,
+          rotate: !xAxisLabel && xLabelSpace && xLabelSpace < 10 ? 45 : 0,
           hideOverlap: true,
           showMinLabel: (isTimestampData && indexType !== 'time') || undefined,
         },
@@ -365,6 +367,7 @@ const BarChart = (props: BarChartProps) => {
               return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
             fontFamily: chartFont,
+            margin: 5,
           }
         },
         axisLine: {
@@ -422,6 +425,7 @@ const BarChart = (props: BarChartProps) => {
               return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
             fontFamily: chartFont,
+            margin: 10,
           }
         },
         axisLine: {

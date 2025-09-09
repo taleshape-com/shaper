@@ -165,6 +165,7 @@ const LineChart = (props: LineChartProps) => {
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined
+    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(x, true)).join('').length;
 
     return {
       animation: false,
@@ -323,7 +324,8 @@ const LineChart = (props: LineChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          rotate: xData && chartWidth / xData.join('').length < 14 ? 45 : 0,
+          fontSize: xLabelSpace && xLabelSpace < 11 ? 10 : 12,
+          rotate: !xAxisLabel && xLabelSpace && xLabelSpace < 10 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
           showMinLabel: isTimestampData || undefined,
@@ -338,6 +340,7 @@ const LineChart = (props: LineChartProps) => {
               return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
             fontFamily: chartFont,
+            margin: 5,
           }
         },
         axisLine: {
@@ -383,6 +386,7 @@ const LineChart = (props: LineChartProps) => {
               return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
             fontFamily: chartFont,
+            margin: 10,
           }
         },
         axisLine: {
