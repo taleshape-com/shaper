@@ -192,10 +192,16 @@ func (app *App) setupStreamAndConsumer() error {
 	if err != nil {
 		return fmt.Errorf("failed to get state consumer start sequence: %w", err)
 	}
-	stateConsumer, err := stream.OrderedConsumer(initCtx, jetstream.OrderedConsumerConfig{
-		DeliverPolicy: jetstream.DeliverByStartSequencePolicy,
-		OptStartSeq:   startSeq,
-	})
+	// If NATS has less data than seq in DB we only process new messages in NATS.
+	// This likely means we restored a snapshot with empty NATS.
+	consumerCfg := jetstream.OrderedConsumerConfig{}
+	if startSeq <= stream.CachedInfo().State.LastSeq {
+		consumerCfg.DeliverPolicy = jetstream.DeliverByStartSequencePolicy
+		consumerCfg.OptStartSeq = startSeq
+	} else {
+		consumerCfg.DeliverPolicy = jetstream.DeliverNewPolicy
+	}
+	stateConsumer, err := stream.OrderedConsumer(initCtx, consumerCfg)
 	if err != nil {
 		return fmt.Errorf("failed to create or update state consumer: %w", err)
 	}
@@ -233,10 +239,14 @@ func (app *App) setupStreamAndConsumer() error {
 		if err != nil {
 			return fmt.Errorf("failed to get task result consumer start sequence: %w", err)
 		}
-		taskResultConsumer, err := taskResultsStream.OrderedConsumer(initCtx, jetstream.OrderedConsumerConfig{
-			DeliverPolicy: jetstream.DeliverByStartSequencePolicy,
-			OptStartSeq:   taskResultStatSeq,
-		})
+		consumerCfg := jetstream.OrderedConsumerConfig{}
+		if taskResultStatSeq <= taskResultsStream.CachedInfo().State.LastSeq {
+			consumerCfg.DeliverPolicy = jetstream.DeliverByStartSequencePolicy
+			consumerCfg.OptStartSeq = taskResultStatSeq
+		} else {
+			consumerCfg.DeliverPolicy = jetstream.DeliverNewPolicy
+		}
+		taskResultConsumer, err := taskResultsStream.OrderedConsumer(initCtx, consumerCfg)
 		if err != nil {
 			return fmt.Errorf("failed to create or update task result consumer: %w", err)
 		}
