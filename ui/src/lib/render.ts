@@ -87,10 +87,9 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       return `${Math.round(value * 10000) / 100}%`;
     }
   }
-  if (typeof value === "string") {
-    const strMaxLen = (shortFormat ? 10 : 30);
-    if (value.length > strMaxLen) {
-      return value.slice(0, strMaxLen) + "…"
+  if (typeof value === "string" && shortFormat) {
+    if (value.length > 10) {
+      return value.slice(0, 10) + "…"
     }
   }
   return value;
