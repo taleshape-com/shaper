@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
@@ -52,8 +53,9 @@ export function Dashboard({
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+  const errResetFn = useRef<(() => void) | undefined>(undefined)
 
-  data = data ?? fetchedData;
+  const actualData = data ?? fetchedData;
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
@@ -132,7 +134,15 @@ export function Dashboard({
     };
   }, [fetchData, hash]);
 
-  if (error) {
+  useEffect(() => {
+    if (errResetFn.current) {
+      errResetFn.current();
+      errResetFn.current = undefined;
+    }
+  }, [loading]);
+
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+    errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
         {menuButton}
@@ -147,16 +157,22 @@ export function Dashboard({
     )
   }
 
-  return data ? (
-    <DataView
-      data={data}
-      onVarsChanged={onVarsChanged}
-      menuButton={menuButton}
-      vars={vars}
-      baseUrl={baseUrl}
-      getJwt={getJwt}
-      loading={loading || isFetching}
-    />
+  if (error) {
+    return <ErrorDisplay error={error} />
+  }
+
+  return actualData ? (
+    <ErrorBoundary fallbackRender={ErrorDisplay}>
+      <DataView
+        data={actualData}
+        onVarsChanged={onVarsChanged}
+        menuButton={menuButton}
+        vars={vars}
+        baseUrl={baseUrl}
+        getJwt={getJwt}
+        loading={loading || isFetching}
+      />
+    </ErrorBoundary>
   ) : (
     <ChartHoverProvider>
       <div className="w-full flex justify-center items-center flex-grow">
