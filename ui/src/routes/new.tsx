@@ -132,7 +132,7 @@ function NewDashboard() {
 
   // Check for unsaved changes when component mounts or type changes
   useEffect(() => {
-    const unsavedContent = editorStorage.getChanges('new')
+    const unsavedContent = editorStorage.getChanges('new', appType)
     if (unsavedContent) {
       setEditorQuery(unsavedContent)
       setRunningQuery(unsavedContent)
@@ -237,9 +237,9 @@ function NewDashboard() {
 
     // Save to localStorage
     if (newQuery !== currentDefaultQuery && newQuery.trim() !== '') {
-      editorStorage.saveChanges('new', newQuery)
+      editorStorage.saveChanges('new', newQuery, appType)
     } else {
-      editorStorage.clearChanges('new')
+      editorStorage.clearChanges('new', appType)
     }
     setEditorQuery(newQuery)
   }
@@ -260,7 +260,7 @@ function NewDashboard() {
           },
         })
         // Clear localStorage after successful save
-        editorStorage.clearChanges('new')
+        editorStorage.clearChanges('new', 'task')
         clearStoredAppType() // Reset the app type preference
 
         // Navigate to the task edit page

@@ -67,7 +67,7 @@ function TaskEdit() {
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
-    const unsavedContent = editorStorage.getChanges(id)
+    const unsavedContent = editorStorage.getChanges(id, 'task')
     if (unsavedContent && unsavedContent !== task.content) {
       setEditorQuery(unsavedContent)
     } else {
@@ -101,9 +101,9 @@ function TaskEdit() {
 
     // Save to localStorage
     if (task && newQuery !== task.content && newQuery.trim() !== '') {
-      editorStorage.saveChanges(id, newQuery)
+      editorStorage.saveChanges(id, newQuery, 'task')
     } else {
-      editorStorage.clearChanges(id)
+      editorStorage.clearChanges(id, 'task')
     }
     setEditorQuery(newQuery)
   }, [task, id])
@@ -119,7 +119,7 @@ function TaskEdit() {
       })
 
       // Clear localStorage after successful save
-      editorStorage.clearChanges(id)
+      editorStorage.clearChanges(id, 'task')
 
       toast({
         title: translate('Success'),
