@@ -44,17 +44,16 @@ function DashboardDropdown({
       )}
       <div className={cx("select-none", { ["ml-2"]: !label })}>
         <Select
-          defaultValue={formatValue(
-            data[0][valueIndex],
-            headers[valueIndex].type,
-          ).toString()}
           onValueChange={(value) => {
             if (value === EMPTY) {
               value = "";
             }
             onChange({ ...vars, [varName]: value });
           }}
-          value={selectedValue}
+          value={data.some((row) => row[valueIndex] === selectedValue) ? selectedValue : formatValue(
+            data[0][valueIndex],
+            headers[valueIndex].type,
+          ).toString() || EMPTY}
         >
           <SelectTrigger
             id={label}
