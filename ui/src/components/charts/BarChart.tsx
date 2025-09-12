@@ -84,9 +84,7 @@ const BarChart = (props: BarChartProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    // Check if we're dealing with timestamps
-    // TODO: I am still not completely sure why we need to handle time as timestamp as well
-    const isTimestampData = isTimeType(indexType) || indexType === "time";
+    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration";
 
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
@@ -175,7 +173,7 @@ const BarChart = (props: BarChartProps) => {
     let totalLabelLen = 0;
     let maxLabelLen = 0;
     (xData ?? []).forEach(x => {
-      const v = layout === 'horizontal' ? indexFormatter(x, true) : valueFormatter(x, true);
+      const v = layout === 'horizontal' ? indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(x).getTime() : x, true) : valueFormatter(x, true);
       totalLabelLen += v.length;
       if (v.length > maxLabelLen) {
         maxLabelLen = v.length;
@@ -225,7 +223,7 @@ const BarChart = (props: BarChartProps) => {
           const indexDim = layout === 'horizontal' ? 'x' : 'y';
           const axisData = params.find((item: any) => item?.axisDim === indexDim);
           const hoverValue = axisData?.axisValue;
-          const title = indexFormatter(hoverValue);
+          const title = indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(hoverValue).getTime() : hoverValue);
 
           let tooltipContent = `<div class="text-sm font-medium">${title}</div>`;
 
@@ -350,7 +348,7 @@ const BarChart = (props: BarChartProps) => {
           show: true,
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              return indexFormatter(value, true);
+              return indexFormatter(indexType === 'duration' || indexType === 'time' || indexType === 'time' ? new Date(value).getTime() : value, true);
             }
             return valueFormatter(value, true);
           },
@@ -372,7 +370,7 @@ const BarChart = (props: BarChartProps) => {
             show: data.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
-                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === 'duration' || indexType === 'time' ? new Date(params.value).getTime() : params.value);
               }
               return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
@@ -412,7 +410,7 @@ const BarChart = (props: BarChartProps) => {
             if (layout === "horizontal") {
               return valueFormatter(value, true);
             }
-            return indexFormatter(value, true);
+            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -432,7 +430,7 @@ const BarChart = (props: BarChartProps) => {
               if (layout === "horizontal") {
                 return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
               }
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === 'duration' || indexType === 'time' ? new Date(params.value).getTime() : params.value);
             },
             fontFamily: chartFont,
             margin: 10,
