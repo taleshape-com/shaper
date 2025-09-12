@@ -78,9 +78,7 @@ const LineChart = (props: LineChartProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    // Check if we're dealing with timestamps
-    // TODO: I am still not completely sure why we need to handle time as timestamp as well
-    const isTimestampData = isTimeType(indexType) || indexType === "time";
+    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration";
 
     // Set up chart options
     const series: LineSeriesOption[] = categories.map((category) => {
@@ -165,7 +163,7 @@ const LineChart = (props: LineChartProps) => {
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined
-    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(x, true)).join('').length;
+    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === 'duration' ? new Date(x).getTime() : x, true)).join('').length;
 
     return {
       animation: false,
@@ -215,7 +213,7 @@ const LineChart = (props: LineChartProps) => {
           }
           const extraData = extraDataByIndexAxis[indexValue];
 
-          const formattedIndex = indexFormatter(indexValue);
+          const formattedIndex = indexFormatter(indexType === 'duration' ? new Date(indexValue).getTime() : indexValue);
           let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
           if (extraData) {
@@ -320,7 +318,7 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return indexFormatter(value, true);
+            return indexFormatter(indexType === 'duration' ? new Date(value).getTime() : value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -337,7 +335,7 @@ const LineChart = (props: LineChartProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === 'duration' ? new Date(params.value).getTime() : params.value);
             },
             fontFamily: chartFont,
             margin: 5,

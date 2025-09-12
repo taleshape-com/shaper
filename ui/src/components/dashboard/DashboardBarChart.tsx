@@ -46,8 +46,8 @@ const DashboardBarChart = ({
   data.forEach((row) => {
     let key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
     if (key === null) {
-      if (isTimeType(indexAxisHeader.type)) {
-        return
+      if (isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration") {
+        return;
       }
       key = '';
     }

@@ -1076,11 +1076,18 @@ func getAxisType(rows Rows, index int) (string, error) {
 		if !ok {
 			return "", fmt.Errorf("invalid union value for axis value, got: %v (type %T, column %v)", row[index], row[index], index)
 		}
-		if _, ok := union.Value.(float64); !ok {
-			return "string", nil
+		fmt.Println(row, index, union)
+		if strings.HasSuffix(union.Tag, "_interval") {
+			return "duration", nil
+		}
+		if strings.HasSuffix(union.Tag, "_time") {
+			return "time", nil
+		}
+		if strings.HasSuffix(union.Tag, "_double") {
+			return "number", nil
 		}
 	}
-	return "number", nil
+	return "string", nil
 }
 
 // TODO: assert that variable names are alphanumeric
