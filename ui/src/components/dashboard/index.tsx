@@ -433,6 +433,7 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        markLines={query.render.markLines}
       />
     );
   }
@@ -469,6 +470,7 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        markLines={query.render.markLines}
       />
     );
   }

@@ -12,7 +12,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType } from "../../lib/types";
+import { Column, isTimeType, MarkLine } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { EChart } from "./EChart";
 
@@ -31,6 +31,7 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
+  markLines?: MarkLine[];
 }
 
 const chartPadding = 16;
@@ -52,6 +53,7 @@ const LineChart = (props: LineChartProps) => {
     yAxisLabel,
     chartId,
     label,
+    markLines,
     ...other
   } = props;
 
@@ -78,74 +80,99 @@ const LineChart = (props: LineChartProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration";
+    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
 
     // Set up chart options
-    const series: LineSeriesOption[] = categories.map((category) => {
-      const baseSeries: LineSeriesOption = {
-        name: category,
-        id: category,
-        type: 'line' as const,
-        data: isTimestampData
-          ? data.map((item) => [item[index], item[category]])
-          : data.map((item) => item[category]),
-        connectNulls: true,
-        symbol: 'circle',
-        symbolSize: 6,
-        emphasis: {
-          itemStyle: {
-            color: categoryColors.get(category),
-            borderWidth: 0,
-            shadowBlur: 0,
-            shadowColor: categoryColors.get(category),
-            opacity: 1,
-          },
-          lineStyle: {
-            width: 2,
-          },
-        },
-        lineStyle: {
-          color: categoryColors.get(category),
-          width: 2,
-        },
+    const series: LineSeriesOption[] = categories.map((category) => ({
+      name: category,
+      id: category,
+      type: 'line' as const,
+      data: isTimestampData
+        ? data.map((item) => [item[index], item[category]])
+        : data.map((item) => item[category]),
+      connectNulls: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      emphasis: {
         itemStyle: {
           color: categoryColors.get(category),
           borderWidth: 0,
-          // always show dots when there are not too many data points and we only have a single line
-          opacity: categories.length > 1 || (data.length / (chartWidth) > 0.02) ? 0 : 1,
+          shadowBlur: 0,
+          shadowColor: categoryColors.get(category),
+          opacity: 1,
         },
+        lineStyle: {
+          width: 2,
+        },
+      },
+      lineStyle: {
+        color: categoryColors.get(category),
+        width: 2,
+      },
+      itemStyle: {
+        color: categoryColors.get(category),
+        borderWidth: 0,
+        // always show dots when there are not too many data points and we only have a single line
+        opacity: categories.length > 1 || (data.length / (chartWidth) > 0.02) ? 0 : 1,
+      },
+    }));
+
+    // Add markLine if we're hovering on a different chart
+    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
+      series.push({
+        type: 'line' as const,
         markLine: {
           silent: true,
           symbol: 'none',
           label: {
             show: false,
           },
-          data: [],
-        },
-      };
-
-      // Add markLine if we're hovering on a different chart
-      if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
-        return {
-          ...baseSeries,
-          markLine: {
-            silent: true,
-            symbol: 'none',
-            label: {
-              show: false,
-            },
-            lineStyle: {
-              color: referenceLineColor,
-            },
-            data: [
-              { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
-            ],
+          lineStyle: {
+            color: referenceLineColor,
           },
-        };
-      }
+          data: [
+            { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
+          ],
+        },
+      });
+    }
 
-      return baseSeries;
-    });
+    // TODO: Theme
+    const goalMarkLineColor = '#888';
+    const eventMarkLineColor = 'rgb(244, 114, 182)';
+
+    if (markLines) {
+      series.push({
+        type: 'line' as const,
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: markLines.map(m => {
+            return {
+              xAxis: m.isYAxis ? undefined : m.value,
+              yAxis: m.isYAxis ? m.value : undefined,
+              lineStyle: {
+                color: m.isYAxis ? goalMarkLineColor : eventMarkLineColor,
+                type: m.isYAxis ? 'dashed' : 'solid',
+                width: 1.5,
+                opacity: 0.7,
+              },
+              label: {
+                formatter: m.label,
+                position: m.isYAxis ? 'insideStartTop' : 'insideStart',
+                color: m.isYAxis ? goalMarkLineColor : eventMarkLineColor,
+                textBorderWidth: 2,
+                textBorderColor: '#fff',
+                fontFamily: chartFont,
+                fontWeight: 700,
+                fontSize: 13,
+                opacity: 1,
+              },
+            };
+          }),
+        },
+      })
+    }
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
     const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
@@ -164,6 +191,15 @@ const LineChart = (props: LineChartProps) => {
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined
     const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === 'duration' ? new Date(x).getTime() : x, true)).join('').length;
+    let customValues = undefined;
+    if (isTimestampData) {
+      const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / data.length > (isTimeType(indexType) ? 90 : indexType === 'duration' ? 80 : 45);
+      if (canFitAll) {
+        customValues = data.map((item) => item[index]).filter((_, i) => i !== 0 || i !== data.length - 1);
+      } else {
+        customValues = data.map((item) => item[index]).filter((_, i) => i === 0 || i === data.length - 1);
+      }
+    }
 
     return {
       animation: false,
@@ -265,6 +301,7 @@ const LineChart = (props: LineChartProps) => {
       },
       legend: {
         show: showLegend,
+        selectedMode: false,
         type: canFitLegendItems ? 'plain' : 'scroll',
         orient: 'horizontal',
         left: chartPadding,
@@ -318,20 +355,27 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return indexFormatter(indexType === 'duration' ? new Date(value).getTime() : value, true);
+            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
           rotate: !xAxisLabel && xLabelSpace && xLabelSpace < 11 ? 45 : 0,
-          padding: [4, 8, 4, 8],
+          padding: isTimestampData ? [4, 0, 4, 0] : [4, 8, 4, 8],
           hideOverlap: true,
+          customValues,
           showMinLabel: isTimestampData || undefined,
+          alignMinLabel: isTimestampData ? indexType === 'duration' ? 'right' : 'left' : undefined,
+          showMaxLabel: isTimestampData || undefined,
+          alignMaxLabel: isTimestampData ? indexType === 'duration' ? 'left' : 'right' : undefined,
         },
         axisPointer: {
           type: data.length > 1 ? 'line' : 'none',
           show: true,
           triggerOn: 'mousemove',
+          lineStyle: {
+            color: referenceLineColor,
+          },
           label: {
             show: true,
             formatter: (params: any) => {
@@ -374,7 +418,7 @@ const LineChart = (props: LineChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: 'line',
+          type: 'none',
           show: data.length > 1,
           triggerOn: 'mousemove',
           triggerEmphasis: false,
@@ -441,6 +485,7 @@ const LineChart = (props: LineChartProps) => {
     chartWidth,
     chartHeight,
     label,
+    markLines,
   ]);
 
   // Event handlers for the EChart component

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, isTimeType, Result } from "../../lib/types";
+import { Column, isTimeType, MarkLine, Result } from "../../lib/types";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 import { BarChart } from "../charts/BarChart";
@@ -15,6 +15,7 @@ type BarProps = {
   maxTimeValue: number;
   stacked?: boolean;
   vertical?: boolean;
+  markLines?: MarkLine[];
 };
 
 const DashboardBarChart = ({
@@ -24,6 +25,7 @@ const DashboardBarChart = ({
   data,
   stacked,
   vertical,
+  markLines,
 }: BarProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
@@ -126,6 +128,7 @@ const DashboardBarChart = ({
       xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
+      markLines={markLines}
     />
   );
 };

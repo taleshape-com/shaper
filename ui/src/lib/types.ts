@@ -41,6 +41,12 @@ export type GaugeCategory = {
   color?: string;
 };
 
+export type MarkLine = {
+  isYAxis: boolean;
+  value: number;
+  label?: string;
+};
+
 export type Result = {
   name: string;
   visibility?: 'public' | 'private' | 'password-protected';
@@ -78,6 +84,7 @@ export type Result = {
         | "barchartVertical"
         | "barchartVerticalStacked";
         label?: string;
+        markLines: MarkLine[];
       }
       | ({
         type: "gauge";

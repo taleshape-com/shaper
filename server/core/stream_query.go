@@ -512,7 +512,7 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, data, "")
+		rInfo := getRenderInfo(colTypes, data, "", []MarkLine{})
 
 		if rInfo.Download != "" {
 			nextIsDownload = true
