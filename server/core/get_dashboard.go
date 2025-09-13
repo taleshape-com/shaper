@@ -66,6 +66,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	nextLabel := ""
 	hideNextContentSection := false
 	nextIsDownload := false
+	nextMarkLines := []MarkLine{}
 	cleanContent := util.StripSQLComments(dashboardQuery.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
@@ -182,11 +183,17 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel)
+		if lines, ok := getMarkLines(colTypes, query.Rows); ok {
+			nextMarkLines = append(nextMarkLines, lines...)
+			continue
+		}
+
+		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextMarkLines)
 		query.Render = Render{
 			Type:            rInfo.Type,
 			Label:           rInfo.Label,
 			GaugeCategories: rInfo.GaugeCategories,
+			MarkLines:       rInfo.MarkLines,
 		}
 
 		if rInfo.Download != "" {
@@ -236,10 +243,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				}
 				if t, ok := cell.(time.Time); ok {
 					if colType == "time" {
-						// Convert time to ms since midnight
-						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
-						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
-						row[i] = ms
+						row[i] = formatTime(t)
 						continue
 					}
 					ms := t.UnixMilli()
@@ -339,6 +343,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		nextLabel = ""
+		nextMarkLines = []MarkLine{}
 	}
 	if err := conn.Close(); err != nil {
 		return result, fmt.Errorf("Error closing conn: %v", err)
@@ -527,14 +532,14 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 		}
 	}
 	if unionDefinition == "" {
-		return nil, 0
+		return nil, -1
 	}
 	for i, c := range columns {
 		if c.DatabaseTypeName() == unionDefinition {
 			return c, i
 		}
 	}
-	return nil, 0
+	return nil, -1
 }
 
 // Some SQL statements are only used for their side effects and should not be shown on the dashboard.
@@ -582,6 +587,67 @@ func isPlaceholder(columns []*sql.ColumnType, rows Rows) bool {
 	return (len(rows) == 1 && len(rows[0]) == 1)
 }
 
+func getMarkLines(columns []*sql.ColumnType, rows Rows) ([]MarkLine, bool) {
+	axis := ""
+	valueIndex := -1
+	if col, i := findColumnByTag(columns, "XLINE"); col != nil {
+		axis = "x"
+		valueIndex = i
+	} else if col, i := findColumnByTag(columns, "YLINE"); col != nil {
+		axis = "y"
+		valueIndex = i
+	}
+	_, labelIndex := findColumnByTag(columns, "LABEL")
+	lines := []MarkLine{}
+	if axis == "" || valueIndex == -1 {
+		return lines, false
+	}
+	for _, row := range rows {
+		if len(row) <= valueIndex {
+			continue
+		}
+		v := row[valueIndex]
+		if v == nil {
+			continue
+		}
+		u, ok := v.(duckdb.Union)
+		if !ok || u.Value == nil {
+			continue
+		}
+		line := MarkLine{IsYaxis: axis == "y"}
+		// {"YLINE", "UNION(\"_shaper_yline_timestamp\" TIMESTAMP, \"_shaper_yline_time\" TIME, \"_shaper_yline_double\" DOUBLE, \"_shaper_yline_interval\" INTERVAL)", "axis"},
+		// Format values according to same logic as chart values
+		fmt.Println(u)
+		switch val := u.Value.(type) {
+		case string:
+			line.Value = val
+		case float64:
+			if math.IsNaN(val) || math.IsInf(val, 0) {
+				continue
+			}
+			line.Value = val
+		case time.Time:
+			if strings.HasSuffix(u.Tag, "_time") {
+				line.Value = formatTime(val)
+			} else {
+				line.Value = val.UnixMilli()
+			}
+		case duckdb.Interval:
+			line.Value = formatInterval(val)
+		}
+		// Set label if specified
+		if labelIndex != -1 && labelIndex < len(row) {
+			if u, ok := row[labelIndex].(duckdb.Union); ok {
+				if l, ok := u.Value.(string); ok {
+					line.Label = l
+				}
+			}
+		}
+		lines = append(lines, line)
+	}
+	return lines, true
+}
+
 func getDownloadType(columns []*sql.ColumnType) string {
 	csvColumn, _ := findColumnByTag(columns, "DOWNLOAD_CSV")
 	if csvColumn != nil {
@@ -594,7 +660,7 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	return ""
 }
 
-func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines []MarkLine) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
@@ -619,6 +685,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Type:           "linechart",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &linechartIndex,
+			MarkLines:      markLines,
 		}
 		if lineCat != nil {
 			r.CategoryIndex = &lineCatIndex
@@ -647,6 +714,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Type:           "barchartHorizontal",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartIndex,
+			MarkLines:      markLines,
 		}
 		if barCat != nil {
 			r.CategoryIndex = &barCatIndex
@@ -671,6 +739,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
+			MarkLines:      markLines,
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -685,6 +754,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Type:           "barchartVertical",
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartIndex,
+			MarkLines:      markLines,
 		}
 		if barCat != nil {
 			r.CategoryIndex = &barCatIndex
@@ -701,6 +771,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
+			MarkLines:      markLines,
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -1076,7 +1147,6 @@ func getAxisType(rows Rows, index int) (string, error) {
 		if !ok {
 			return "", fmt.Errorf("invalid union value for axis value, got: %v (type %T, column %v)", row[index], row[index], index)
 		}
-		fmt.Println(row, index, union)
 		if strings.HasSuffix(union.Tag, "_interval") {
 			return "duration", nil
 		}
@@ -1401,6 +1471,12 @@ func formatInterval(v any) int64 {
 	ms += int64(interval.Days) * 24 * 60 * 60 * 1000
 	ms += int64(interval.Months) * 30 * 24 * 60 * 60 * 1000
 	return ms
+}
+
+// Convert time to ms since midnight
+func formatTime(t time.Time) int64 {
+	seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
+	return int64(seconds*1000) + int64(t.Nanosecond()/1000000)
 }
 
 // Must be a single column and a single row.

@@ -43,6 +43,7 @@ type Render struct {
 	Type            string          `json:"type"`
 	Label           *string         `json:"label"`
 	GaugeCategories []GaugeCategory `json:"gaugeCategories,omitempty"`
+	MarkLines       []MarkLine      `json:"markLines,omitempty"`
 }
 
 type GaugeCategory struct {
@@ -50,6 +51,12 @@ type GaugeCategory struct {
 	To    float64 `json:"to"`
 	Label string  `json:"label,omitempty"`
 	Color string  `json:"color,omitempty"`
+}
+
+type MarkLine struct {
+	IsYaxis bool   `json:"isYAxis"`
+	Value   any    `json:"value"`
+	Label   string `json:"label,omitempty"`
 }
 
 type renderInfo struct {
@@ -68,6 +75,7 @@ type renderInfo struct {
 	CompareIndex    *int
 	TrendIndex      *int
 	GaugeCategories []GaugeCategory
+	MarkLines       []MarkLine
 }
 
 type Column struct {

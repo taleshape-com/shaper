@@ -22,6 +22,8 @@ var dbTypes = []struct {
 	{"LABEL", "UNION(\"_shaper_label_varchar\" VARCHAR)", "string"},
 	{"XAXIS", "UNION(\"_shaper_xaxis_varchar\" VARCHAR, \"_shaper_xaxis_timestamp\" TIMESTAMP, \"_shaper_xaxis_time\" TIME, \"_shaper_xaxis_double\" DOUBLE, \"_shaper_xaxis_interval\" INTERVAL)", "axis"},
 	{"YAXIS", "UNION(\"_shaper_yaxis_varchar\" VARCHAR, \"_shaper_xaxis_timestamp\" TIMESTAMP, \"_shaper_yaxis_time\" TIME, \"_shaper_yaxis_double\" DOUBLE, \"_shaper_yaxis_interval\" INTERVAL)", "axis"},
+	{"XLINE", "UNION(\"_shaper_xline_varchar\" VARCHAR, \"_shaper_xline_timestamp\" TIMESTAMP, \"_shaper_xline_time\" TIME, \"_shaper_xline_double\" DOUBLE, \"_shaper_xline_interval\" INTERVAL)", "axis"},
+	{"YLINE", "UNION(\"_shaper_yline_timestamp\" TIMESTAMP, \"_shaper_yline_time\" TIME, \"_shaper_yline_double\" DOUBLE, \"_shaper_yline_interval\" INTERVAL)", "axis"},
 	{"LINECHART", "UNION(\"_shaper_linechart_interval\" INTERVAL, \"_shaper_linechart_double\" DOUBLE)", "chart"},
 	{"LINECHART_PERCENT", "UNION(\"_shaper_linechart_percent_double\" DOUBLE)", "percent"},
 	{"LINECHART_CATEGORY", "UNION(\"_shaper_linechart_category_varchar\" VARCHAR)", "string"},

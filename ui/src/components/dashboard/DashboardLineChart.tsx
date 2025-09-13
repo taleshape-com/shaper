@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, isTimeType, Result } from "../../lib/types";
+import { Column, isTimeType, MarkLine, Result } from "../../lib/types";
 import { LineChart } from "../charts/LineChart";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
@@ -13,6 +13,7 @@ type LineProps = {
   // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
+  markLines?: MarkLine[];
 };
 
 const DashboardLineChart = ({
@@ -20,6 +21,7 @@ const DashboardLineChart = ({
   label,
   headers,
   data,
+  markLines,
 }: LineProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
@@ -120,6 +122,7 @@ const DashboardLineChart = ({
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
+      markLines={markLines}
     />
   );
 };
