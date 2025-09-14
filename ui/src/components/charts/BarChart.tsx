@@ -211,14 +211,22 @@ const BarChart = (props: BarChartProps) => {
     const xLabelSpace = xData && chartWidth / totalLabelLen;
     const shouldRotateXLabel = !xAxisLabel && xLabelSpace && xLabelSpace < 11 && maxLabelLen > 7;
     let customValues = undefined;
-    let cannotFitCustomValues = false;
     if (layout === 'horizontal' && isTimestampData) {
       const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / dataCopy.length > (isTimeType(indexType) ? 90 : indexType === 'duration' ? 80 : 45);
       if (canFitAll) {
         customValues = dataCopy.map((item) => item[index]);
       } else {
-        customValues = dataCopy.map((item) => item[index]).filter((_, i) => i === 0 || i === dataCopy.length - 1);
-        cannotFitCustomValues = !canFitAll;
+        const space = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+        const numVals = Math.floor(space / 130);
+        const dataMin = Math.min(...data.map(d => d[index]));
+        const dataMax = Math.max(...data.map(d => d[index]));
+        const dataPadding = (dataMax - dataMin) * (60 / space);
+        const dataSpan = (dataMax - dataMin) - 2 * dataPadding;
+        const offset = dataSpan / (numVals);
+        customValues = [];
+        for (let i = 0; i <= numVals; i++) {
+          customValues.push(Math.round(dataMin + dataPadding + i * offset))
+        }
       }
     }
 
@@ -400,11 +408,7 @@ const BarChart = (props: BarChartProps) => {
           rotate: shouldRotateXLabel ? 45 : 0,
           hideOverlap: true,
           customValues,
-          padding: cannotFitCustomValues ? [4, 0, 4, 0] : [4, 8, 4, 8],
-          showMinLabel: cannotFitCustomValues || undefined,
-          showMaxLabel: cannotFitCustomValues || undefined,
-          alignMaxLabel: cannotFitCustomValues ? indexType === 'duration' ? undefined : 'right' : undefined,
-          alignMinLabel: cannotFitCustomValues ? indexType === 'duration' ? undefined : 'left' : undefined,
+          padding: [4, 8, 4, 8],
         },
         axisPointer: {
           type: layout === 'horizontal' ? 'line' : 'none',

@@ -193,11 +193,16 @@ const LineChart = (props: LineChartProps) => {
     const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === 'duration' ? new Date(x).getTime() : x, true)).join('').length;
     let customValues = undefined;
     if (isTimestampData) {
-      const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / data.length > (isTimeType(indexType) ? 90 : indexType === 'duration' ? 80 : 45);
-      if (canFitAll) {
-        customValues = data.map((item) => item[index]).filter((_, i) => i !== 0 || i !== data.length - 1);
-      } else {
-        customValues = data.map((item) => item[index]).filter((_, i) => i === 0 || i === data.length - 1);
+      const space = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+      const numVals = Math.floor(space / 130);
+      const dataMin = Math.min(...data.map(d => d[index]));
+      const dataMax = Math.max(...data.map(d => d[index]));
+      const dataPadding = (dataMax - dataMin) * (60 / space);
+      const dataSpan = (dataMax - dataMin) - 2 * dataPadding;
+      const offset = dataSpan / (numVals);
+      customValues = [];
+      for (let i = 0; i <= numVals; i++) {
+        customValues.push(Math.round(dataMin + dataPadding + i * offset))
       }
     }
 
@@ -361,13 +366,9 @@ const LineChart = (props: LineChartProps) => {
           fontFamily: chartFont,
           fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
           rotate: !xAxisLabel && xLabelSpace && xLabelSpace < 11 ? 45 : 0,
-          padding: isTimestampData ? [4, 0, 4, 0] : [4, 8, 4, 8],
+          padding: [4, 8, 4, 8],
           hideOverlap: true,
           customValues,
-          showMinLabel: isTimestampData || undefined,
-          alignMinLabel: isTimestampData ? indexType === 'duration' ? 'right' : 'left' : undefined,
-          showMaxLabel: isTimestampData || undefined,
-          alignMaxLabel: isTimestampData ? indexType === 'duration' ? 'left' : 'right' : undefined,
         },
         axisPointer: {
           type: data.length > 1 ? 'line' : 'none',
