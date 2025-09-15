@@ -5,7 +5,7 @@
 # 2. We need wget to run the healthcheck
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
-FROM debian:13.0-slim
+FROM debian:13.1-slim
 LABEL maintainer="hi@taleshape.com"
 
 ARG BUILD_DATE
