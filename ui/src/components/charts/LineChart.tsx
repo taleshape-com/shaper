@@ -75,7 +75,7 @@ const LineChart = (props: LineChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
+    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
@@ -129,6 +129,7 @@ const LineChart = (props: LineChartProps) => {
           },
           lineStyle: {
             color: referenceLineColor,
+            type: 'dashed',
           },
           data: [
             { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
@@ -137,11 +138,18 @@ const LineChart = (props: LineChartProps) => {
       });
     }
 
-    // TODO: Theme
-    const goalMarkLineColor = '#888';
-    const eventMarkLineColor = 'rgb(244, 114, 182)';
-
     if (markLines) {
+      let foundEventLine = false;
+      let multiEventLines = false;
+      for (const m of markLines) {
+        if (!m.isYAxis) {
+          if (foundEventLine) {
+            multiEventLines = true;
+            break;
+          }
+          foundEventLine = true;
+        }
+      }
       series.push({
         type: 'line' as const,
         markLine: {
@@ -151,22 +159,27 @@ const LineChart = (props: LineChartProps) => {
             return {
               xAxis: m.isYAxis ? undefined : m.value,
               yAxis: m.isYAxis ? m.value : undefined,
+              symbol: m.isYAxis ? 'none' : 'circle',
+              symbolSize: 6.5,
               lineStyle: {
-                color: m.isYAxis ? goalMarkLineColor : eventMarkLineColor,
-                type: m.isYAxis ? 'dashed' : 'solid',
-                width: 1.5,
-                opacity: 0.7,
+                color: textColorSecondary,
+                type: 'dashed',
+                width: m.isYAxis ? 1.2 : 1.0,
+                opacity: m.isYAxis ? 0.5 : 0.8,
               },
               label: {
                 formatter: m.label,
-                position: m.isYAxis ? 'insideStartTop' : 'insideStart',
-                color: m.isYAxis ? goalMarkLineColor : eventMarkLineColor,
-                textBorderWidth: 2,
-                textBorderColor: '#fff',
+                position: m.isYAxis ? 'insideStartTop' : multiEventLines ? 'insideEnd' : 'end',
+                distance: m.isYAxis ? 1.5 : multiEventLines ? 5 : 3.8,
+                color: textColorSecondary,
                 fontFamily: chartFont,
-                fontWeight: 700,
-                fontSize: 13,
-                opacity: 1,
+                fontWeight: 500,
+                fontSize: 10.5,
+                opacity: m.isYAxis ? 0.5 : 0.8,
+                width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
+                overflow: 'truncate',
+                textBorderColor: backgroundColorSecondary,
+                textBorderWidth: !m.isYAxis && multiEventLines ? 2 : 0,
               },
             };
           }),
@@ -376,6 +389,7 @@ const LineChart = (props: LineChartProps) => {
           triggerOn: 'mousemove',
           lineStyle: {
             color: referenceLineColor,
+            type: 'dashed',
           },
           label: {
             show: true,
@@ -419,7 +433,7 @@ const LineChart = (props: LineChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: 'none',
+          type: data.length > 1 ? 'line' : 'none',
           show: data.length > 1,
           triggerOn: 'mousemove',
           triggerEmphasis: false,

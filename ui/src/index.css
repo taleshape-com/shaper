@@ -47,7 +47,7 @@
 :root {
   --shaper-font: DMSans;
   --shaper-display-font: SourceSansPro;
-  --shaper-reference-line-color: rgb(244 114 182 / .5);
+  --shaper-reference-line-color: #b5b5b5;
 
   --shaper-color-two: #abdaf7;
   --shaper-color-three: #f079c7;
