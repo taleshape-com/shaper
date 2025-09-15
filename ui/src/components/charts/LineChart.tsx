@@ -130,6 +130,7 @@ const LineChart = (props: LineChartProps) => {
           lineStyle: {
             color: referenceLineColor,
             type: 'dashed',
+            width: 0.8
           },
           data: [
             { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
@@ -390,6 +391,7 @@ const LineChart = (props: LineChartProps) => {
           lineStyle: {
             color: referenceLineColor,
             type: 'dashed',
+            width: 0.8
           },
           label: {
             show: true,
