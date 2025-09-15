@@ -615,9 +615,7 @@ func getMarkLines(columns []*sql.ColumnType, rows Rows) ([]MarkLine, bool) {
 			continue
 		}
 		line := MarkLine{IsYaxis: axis == "y"}
-		// {"YLINE", "UNION(\"_shaper_yline_timestamp\" TIMESTAMP, \"_shaper_yline_time\" TIME, \"_shaper_yline_double\" DOUBLE, \"_shaper_yline_interval\" INTERVAL)", "axis"},
 		// Format values according to same logic as chart values
-		fmt.Println(u)
 		switch val := u.Value.(type) {
 		case string:
 			line.Value = val

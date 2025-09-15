@@ -113,12 +113,6 @@ const BarChart = (props: BarChartProps) => {
       itemStyle: {
         color: categoryColors.get(category),
       },
-      emphasis: {
-        itemStyle: {
-          //color: categoryColors.get(category),
-          //opacity: dataCopy.length > 1 ? 0.8 : 1,
-        },
-      },
     }));
 
     // Add markLine if we're hovering on a different chart

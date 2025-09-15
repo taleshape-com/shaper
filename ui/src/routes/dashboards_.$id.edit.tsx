@@ -160,7 +160,7 @@ function DashboardEditor() {
     } else {
       previewDashboard()
     }
-  }, [editorQuery, runningQuery]);
+  }, [editorQuery, runningQuery, previewDashboard]);
 
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
