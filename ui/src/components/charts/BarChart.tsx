@@ -221,7 +221,7 @@ const BarChart = (props: BarChartProps) => {
     const shouldRotateXLabel = !xAxisLabel && xLabelSpace && xLabelSpace < 11 && maxLabelLen > 7;
     let customValues = undefined;
     if (layout === 'horizontal' && isTimestampData) {
-      const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / dataCopy.length > (isTimeType(indexType) ? 90 : indexType === 'duration' ? 80 : 45);
+      const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / dataCopy.length > (isTimeType(indexType) ? 80 : indexType === 'duration' ? 75 : 45);
       if (canFitAll) {
         customValues = dataCopy.map((item) => item[index]);
       } else {

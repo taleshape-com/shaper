@@ -64,7 +64,7 @@ export const formatValue = (value: string | number | boolean | null | undefined,
         }
       }
       if (!shortFormat || value < 3600000) {
-        if (ms > 0) {
+        if (!shortFormat && ms > 0) {
           mainParts.push(`${seconds}.${ms.toString().padStart(3, '0')}s`)
         } else if (seconds > 0) {
           mainParts.push(`${seconds}s`)
@@ -81,7 +81,7 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       const seconds = Math.floor((value % 60000) / 1000);
       const ms = Math.floor(value % 1000);
       const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}${shortFormat ? '' : `:${String(seconds).padStart(2, '0')}`}`;
-      return ms > 0 ? `${timeString}.${String(ms).padStart(3, '0')}` : timeString;
+      return !shortFormat && ms > 0 ? `${timeString}.${String(ms).padStart(3, '0')}` : timeString;
     }
     if (columnType === "percent") {
       return `${Math.round(value * 10000) / 100}%`;
