@@ -80,7 +80,7 @@ const BarChart = (props: BarChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { borderColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
+    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
@@ -134,21 +134,31 @@ const BarChart = (props: BarChartProps) => {
           },
           lineStyle: {
             color: referenceLineColor,
+            type: 'dashed',
+            width: 0.8
           },
           data: [{
-            [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData
-              ? hoveredIndex
-              : dataCopy.findIndex(item => item[index] === hoveredIndex),
+            [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && layout === "vertical"
+              ? indexType === 'number' ? hoveredIndex.toString() : new Date(hoveredIndex).toISOString()
+              : hoveredIndex,
           }],
         },
       });
     }
 
-    // TODO: Theme
-    const goalMarkLineColor = '#888';
-    const eventMarkLineColor = 'rgb(244, 114, 182)';
-
     if (markLines) {
+      let foundEventLine = false;
+      let multiEventLines = false;
+      for (const m of markLines) {
+        const isEventLine = !m.isYAxis && layout === 'horizontal';
+        if (isEventLine) {
+          if (foundEventLine) {
+            multiEventLines = true;
+            break;
+          }
+          foundEventLine = true;
+        }
+      }
       series.push({
         type: 'bar' as const,
         stack: type === "stacked" ? "stack" : categories[0],
@@ -160,22 +170,27 @@ const BarChart = (props: BarChartProps) => {
             return {
               xAxis: m.isYAxis ? undefined : m.value,
               yAxis: m.isYAxis ? m.value : undefined,
+              symbol: isGoalLine ? 'none' : 'circle',
+              symbolSize: 6.5,
               lineStyle: {
-                color: isGoalLine ? goalMarkLineColor : eventMarkLineColor,
-                type: isGoalLine ? 'dashed' : 'solid',
-                width: 1.5,
-                opacity: 0.7,
+                color: textColorSecondary,
+                type: 'dashed',
+                width: isGoalLine ? 1.2 : 1.0,
+                opacity: isGoalLine ? 0.5 : 0.8,
               },
               label: {
                 formatter: m.label,
-                position: isGoalLine ? 'insideStartTop' : 'insideStart',
-                color: isGoalLine ? goalMarkLineColor : eventMarkLineColor,
-                textBorderWidth: 2,
-                textBorderColor: '#fff',
+                position: isGoalLine ? 'insideStartTop' : multiEventLines ? 'insideEnd' : 'end',
+                distance: isGoalLine ? 1.5 : multiEventLines ? 5 : 3.8,
+                color: textColorSecondary,
                 fontFamily: chartFont,
-                fontWeight: 700,
-                fontSize: 13,
-                opacity: 1,
+                fontWeight: 500,
+                fontSize: 10.5,
+                opacity: isGoalLine ? 0.5 : 0.8,
+                width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
+                overflow: 'truncate',
+                textBorderColor: backgroundColorSecondary,
+                textBorderWidth: !isGoalLine && multiEventLines ? 2 : 0,
               },
             };
           }),
@@ -411,13 +426,15 @@ const BarChart = (props: BarChartProps) => {
           padding: [4, 8, 4, 8],
         },
         axisPointer: {
-          type: layout === 'horizontal' ? 'line' : 'none',
+          type: 'line',
           show: layout === 'horizontal' || dataCopy.length > 1,
           triggerEmphasis: layout === 'horizontal',
           triggerOn: 'mousemove',
           triggerTooltip: layout === "horizontal",
           lineStyle: {
             color: referenceLineColor,
+            type: 'dashed',
+            width: 0.8
           },
           label: {
             show: data.length > 1,
@@ -474,12 +491,14 @@ const BarChart = (props: BarChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: layout === 'vertical' ? 'line' : 'none',
+          type: 'line',
           show: layout === 'vertical' || dataCopy.length > 1,
           triggerEmphasis: layout === 'vertical',
           triggerOn: 'mousemove',
           lineStyle: {
             color: referenceLineColor,
+            type: 'dashed',
+            width: 0.8
           },
           label: {
             show: layout === 'horizontal' || dataCopy.length > 1,
