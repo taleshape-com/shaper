@@ -36,7 +36,7 @@ function DashboardDropdownMulti({
     ? selectedVal
     : [selectedVal]) : [];
   return (
-    <div className="ml-2 select-none">
+    <div className="ml-2 select-none print:hidden">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" className="flex w-full items-center justify-between my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga">

@@ -80,6 +80,7 @@ export function MenuProvider({
       <div
         className={cx(
           "fixed top-0 bottom-0 left-0 z-50 overflow-y-auto shadow-sm shadow-cb dark:shadow-db bg-cbg dark:bg-dbg w-full sm:w-56 flex flex-col",
+          "print:hidden",
           {
             "hidden": !actuallyOpen,
           },
@@ -166,7 +167,7 @@ export function MenuProvider({
         </div>
       </div>
 
-      <div className={cx({ "sm:ml-56 overflow-auto": actuallyOpen })}>
+      <div className={cx({ "sm:ml-56 print:ml-0": actuallyOpen })}>
         {children}
       </div>
     </MenuContext.Provider>

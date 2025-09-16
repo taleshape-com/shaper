@@ -64,13 +64,15 @@ const BarChart = (props: BarChartProps) => {
 
   const chartRef = useRef<ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(0);
-  const [chartHeight, setChartHeight] = React.useState(0);
+  const [chartWidth, setChartWidth] = React.useState(1);
+  const [chartHeight, setChartHeight] = React.useState(1);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
+
+  const [legendFont, setLegendFont] = React.useState<string | undefined>();
 
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
@@ -241,15 +243,12 @@ const BarChart = (props: BarChartProps) => {
 
     return {
       animation: false,
-      // Quality settings for sharper rendering
-      progressive: 0, // Disable progressive rendering for better quality
-      progressiveThreshold: 0,
-      useDirtyRect: true,
       cursor: 'default',
       title: {
         text: label,
         textStyle: {
           fontSize: 16,
+          lineHeight: 16,
           fontFamily: displayFont,
           fontWeight: 600,
           color: textColor,
@@ -366,7 +365,7 @@ const BarChart = (props: BarChartProps) => {
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
-          fontFamily: chartFont,
+          fontFamily: legendFont,
           fontWeight: 500,
           width: canFitLegendItems ? legendItemWidth : undefined,
           overflow: 'truncate',
@@ -563,6 +562,7 @@ const BarChart = (props: BarChartProps) => {
     chartHeight,
     label,
     markLines,
+    legendFont,
   ]);
 
   // Event handlers for the EChart component
@@ -620,6 +620,10 @@ const BarChart = (props: BarChartProps) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
     setChartHeight(chart.getHeight());
+    setTimeout(() => {
+      const chartFont = getChartFont();
+      setLegendFont(chartFont);
+    }, 0);
   }, []);
 
   const handleChartResize = useCallback((chart: ECharts) => {
@@ -633,7 +637,7 @@ const BarChart = (props: BarChartProps) => {
       {...other}
     >
       <EChart
-        className="absolute inset-0"
+        className="relative h-full w-full"
         option={chartOptions}
         events={chartEvents}
         onChartReady={handleChartReady}

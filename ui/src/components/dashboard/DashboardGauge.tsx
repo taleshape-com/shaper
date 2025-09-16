@@ -159,12 +159,11 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
 
     return {
       animation: false,
-      progressive: 0, // Disable progressive rendering for better quality
-      progressiveThreshold: 0,
       title: {
         text: label,
         textStyle: {
           fontSize: 16,
+          lineHeight: 16,
           fontFamily: displayFont,
           fontWeight: 600,
           color: theme.textColor,
@@ -247,7 +246,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   return (
     <div className="w-full h-full relative select-none overflow-hidden">
       <EChart
-        className="absolute inset-0"
+        className="relative h-full w-full"
         option={chartOptions}
         onChartReady={handleChartReady}
         onResize={handleChartResize}

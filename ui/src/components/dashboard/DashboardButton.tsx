@@ -44,7 +44,7 @@ function DashboardButton({
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = url.split('#')[0].split('?')[0].split('/').pop() ?? 'download.csv';
+      link.download = url.split('#')[0].split('?')[0].split('/').pop() ?? 'download';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -59,7 +59,7 @@ function DashboardButton({
   return (
     <>
       {label && (
-        <Label className="ml-3 pr-1">
+        <Label className="ml-3 pr-1 print:hidden">
           {label}:
         </Label>
       )}
@@ -67,7 +67,7 @@ function DashboardButton({
         onClick={handleDownload}
         disabled={isLoading}
         variant="secondary"
-        className={cx("flex items-center justify-between my-1 select-none", {
+        className={cx("flex items-center justify-between my-1 select-none  print:hidden", {
           "ml-2": !label,
         })}
       >

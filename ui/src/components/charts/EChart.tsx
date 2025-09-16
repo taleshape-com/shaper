@@ -20,11 +20,10 @@ import {
   MarkLineComponent,
 } from 'echarts/components';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
-import { CanvasRenderer } from 'echarts/renderers';
+import { SVGRenderer } from 'echarts/renderers';
 
 interface EChartProps {
   option: echarts.EChartsCoreOption;
-  chartSettings?: echarts.EChartsInitOpts;
   events?: Record<string, (param: any) => void>;
   onChartReady?: (chart: echarts.ECharts) => void;
   onResize?: (chart: echarts.ECharts) => void;
@@ -50,7 +49,7 @@ echarts.use([
   MarkLineComponent,
   LabelLayout,
   UniversalTransition,
-  CanvasRenderer
+  SVGRenderer,
 ]);
 
 const optionSettings = {
@@ -60,7 +59,6 @@ const optionSettings = {
 
 export const EChart = ({
   option,
-  chartSettings,
   events = {},
   onChartReady,
   onResize,
@@ -86,7 +84,7 @@ export const EChart = ({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null, chartSettings);
+    const chart = echarts.init(chartRef.current, null);
     if (onChartReady) {
       onChartReady(chart);
     }
@@ -94,6 +92,23 @@ export const EChart = ({
       resizeChart();
     });
     resizeObserver.observe(chartRef.current);
+
+    const handlePrint = () => {
+      if (chartRef.current) {
+        const chart = echarts.getInstanceByDom(chartRef.current);
+        if (chart) {
+          chart.resize();
+          if (onResize) {
+            onResize(chart);
+          }
+        }
+      }
+    };
+
+    window.matchMedia('print').addEventListener('change', handlePrint);
+    window.addEventListener('beforeprint', handlePrint);
+    window.addEventListener('afterprint', handlePrint);
+
     const currentRef = chartRef.current;
     return () => {
       chart?.dispose();
@@ -101,8 +116,10 @@ export const EChart = ({
         resizeObserver.unobserve(currentRef);
       }
       resizeObserver.disconnect();
+      window.removeEventListener('beforeprint', handlePrint);
+      window.removeEventListener('afterprint', handlePrint);
     };
-  }, [chartSettings, resizeChart, onChartReady]);
+  }, [resizeChart, onChartReady]);
 
   useEffect(() => {
     if (!chartRef.current) return;

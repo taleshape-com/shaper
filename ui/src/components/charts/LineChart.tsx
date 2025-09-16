@@ -58,8 +58,8 @@ const LineChart = (props: LineChartProps) => {
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(0);
-  const [chartHeight, setChartHeight] = React.useState(0);
+  const [chartWidth, setChartWidth] = React.useState(1);
+  const [chartHeight, setChartHeight] = React.useState(1);
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
@@ -222,15 +222,12 @@ const LineChart = (props: LineChartProps) => {
 
     return {
       animation: false,
-      // Quality settings for sharper rendering
-      progressive: 0, // Disable progressive rendering for better quality
-      progressiveThreshold: 0,
-      useDirtyRect: true,
       cursor: 'default',
       title: {
         text: label,
         textStyle: {
           fontSize: 16,
+          lineHeight: 16,
           fontFamily: displayFont,
           fontWeight: 600,
           color: textColor,
@@ -328,7 +325,7 @@ const LineChart = (props: LineChartProps) => {
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
-          fontFamily: chartFont,
+          //fontFamily: chartFont,
           fontWeight: 500,
           width: canFitLegendItems ? legendItemWidth : undefined,
           overflow: 'truncate',
@@ -554,7 +551,7 @@ const LineChart = (props: LineChartProps) => {
       {...other}
     >
       <EChart
-        className="absolute inset-0"
+        className="relative h-full w-full"
         option={chartOptions}
         events={chartEvents}
         onChartReady={handleChartReady}

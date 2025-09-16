@@ -38,7 +38,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
   }, [chartId, label, isDarkMode]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none print:hidden">
       <button
         className={cx(
           "absolute top-2 right-2 z-50",

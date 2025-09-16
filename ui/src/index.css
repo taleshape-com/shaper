@@ -9,24 +9,28 @@
   src: url('./assets/fonts/DMSans-Regular.woff2') format('woff2');
   font-style: normal;
   font-weight: 400;
+  font-display: block;
 }
 @font-face {
   font-family: 'DMSans';
   src: url('./assets/fonts/DMSans-Medium.woff2') format('woff2');
   font-style: normal;
   font-weight: 500;
+  font-display: block;
 }
 @font-face {
   font-family: 'DMSans';
   src: url('./assets/fonts/DMSans-SemiBold.woff2') format('woff2');
   font-style: normal;
   font-weight: 600;
+  font-display: block;
 }
 @font-face {
   font-family: 'DMSans';
   src: url('./assets/fonts/DMSans-Bold.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
+  font-display: block;
 }
 
 
@@ -35,12 +39,14 @@
   src: url('./assets/fonts/SourceSansPro-Regular.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 500;
+  font-display: block;
 }
 @font-face {
   font-family: 'SourceSansPro';
   src: url('./assets/fonts/SourceSansPro-Bold.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
+  font-display: block;
 }
 
 
@@ -95,3 +101,22 @@
 .shaper-scope .\@container {
   container-type: size;
 }
+
+@page {
+  size: A4;
+  /* size: 210mm 297mm; */
+  margin-left: 7.048mm;
+  margin-right: 7.048mm;
+  margin-top: 4.62mm;
+  margin-bottom: 14.62mm;
+}
+
+@media print {
+  .shaper-scope body {
+    width: 1320px;
+  }
+  .shaper-scope .\@container {
+    container-type: unset;
+  }
+}
+

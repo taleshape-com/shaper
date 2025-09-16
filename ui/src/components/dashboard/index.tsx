@@ -312,11 +312,11 @@ const DataView = ({
         <section
           key={sectionIndex}
           className={cx("grid grid-cols-1 ml-4", {
-            "@sm:grid-cols-2": numQueriesInSection > 1,
-            "@lg:grid-cols-2":
+            "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+            "@lg:grid-cols-2 print:grid-cols-2":
               numQueriesInSection === 2 ||
               (numContentSections === 1 && numQueriesInSection === 4),
-            "@lg:grid-cols-3":
+            "@lg:grid-cols-3 print:grid-cols-3":
               numQueriesInSection > 4 ||
               numQueriesInSection === 3 ||
               (numQueriesInSection === 4 && numContentSections > 1),
@@ -341,10 +341,12 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
-                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
-                    "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
+                    "min-h-[320px] h-[calc(50dvh-3.15rem)] print:h-[320px]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
+                    "h-[calc(50dvh-1.6rem)] print:h-[320px]": !firstIsHeader && numContentSections === 1,
                     "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
                     "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
+                    "min-h-max h-fit print:min-h-max print:h-fit": section.queries.length === 1 && (query.render.type === "value" || query.render.type === "table"),
+                    "break-inside-avoid": query.render.type !== "table",
                   },
                 )}
               >

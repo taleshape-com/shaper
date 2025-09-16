@@ -33,8 +33,8 @@ function DashboardDatePicker({
 
   return (
     <>
-      {label && <Label htmlFor={label} className="ml-3 pr-1">{label}:</Label>}
-      <div className={cx("select-none", { ["ml-2"]: !label })}>
+      {label && <Label htmlFor={label} className="ml-3 pr-1 print:hidden">{label}:</Label>}
+      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
         <DatePicker
           id={label}
           defaultValue={typeof defaultValue === 'boolean' || !defaultValue ? undefined : new Date(defaultValue)}
