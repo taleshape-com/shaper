@@ -80,10 +80,9 @@ function DashboardEditor() {
   const [loadDuration, setLoadDuration] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showPasswordSuccessDialog, setShowPasswordSuccessDialog] = useState(false);
   const [showSuccessPassword, setShowSuccessPassword] = useState(false);
-  const [unsavedContent, setUnsavedContent] = useState<string | null>(null);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [selectedVisibility, setSelectedVisibility] = useState<string>(dashboard.visibility || 'private');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
@@ -95,12 +94,12 @@ function DashboardEditor() {
   // Track the current AbortController for preview requests
   const previewAbortRef = useRef<AbortController | null>(null);
 
-  // Check for unsaved changes when component mounts
+  // Check for unsaved changes when component mounts and restore directly
   useEffect(() => {
     const savedContent = editorStorage.getChanges(params.id);
     if (savedContent && savedContent !== dashboard.content) {
-      setUnsavedContent(savedContent);
-      setShowRestoreDialog(true);
+      setEditorQuery(savedContent);
+      setRunningQuery(savedContent);
     }
   }, [params.id, dashboard.content]);
 
@@ -358,17 +357,11 @@ function DashboardEditor() {
   };
 
 
-  const handleRestoreUnsavedChanges = () => {
-    if (unsavedContent) {
-      setEditorQuery(unsavedContent);
-      setRunningQuery(unsavedContent);
-    }
-    setShowRestoreDialog(false);
-  };
-
-  const handleDiscardUnsavedChanges = () => {
+  const handleDiscardChanges = () => {
     editorStorage.clearChanges(params.id);
-    setShowRestoreDialog(false);
+    setEditorQuery(dashboard.content);
+    setRunningQuery(dashboard.content);
+    setShowDiscardDialog(false);
   };
 
   // Load initial preview
@@ -502,6 +495,20 @@ function DashboardEditor() {
               <Tooltip
                 showArrow={false}
                 asChild
+                content="Discard Changes"
+              >
+                <Button
+                  onClick={() => setShowDiscardDialog(true)}
+                  className={cx("ml-2", { "hidden": editorQuery === dashboard.content })}
+                  disabled={editorQuery === dashboard.content}
+                  variant='destructive'
+                >
+                  {translate("Discard")}
+                </Button>
+              </Tooltip>
+              <Tooltip
+                showArrow={false}
+                asChild
                 content="Save Dashboard"
               >
                 <Button
@@ -577,6 +584,28 @@ function DashboardEditor() {
               }}
             >
               {translate("Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to discard your unsaved changes? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowDiscardDialog(false)}>
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDiscardChanges}
+            >
+              {translate("Discard")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -738,29 +767,6 @@ function DashboardEditor() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{translate("Unsaved Changes")}</DialogTitle>
-            <DialogDescription>
-              {translate("There are unsaved previous edits. Do you want to restore them?")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="secondary"
-              onClick={handleDiscardUnsavedChanges}
-            >
-              {translate("Discard")}
-            </Button>
-            <Button
-              onClick={handleRestoreUnsavedChanges}
-            >
-              {translate("Restore")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={showPasswordSuccessDialog} onOpenChange={setShowPasswordSuccessDialog}>
         <DialogContent className="max-w-md">
