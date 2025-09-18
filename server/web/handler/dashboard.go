@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"shaper/server/core"
+	"shaper/server/pdf"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -369,6 +370,61 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 			}{Error: "Invalid filename extension. Must be .csv or .xlsx"},
 			"  ",
 		)
+	}
+}
+
+func DownloadPdf(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+		variables := map[string]any{}
+		if vars, hasVariables := claims["variables"]; hasVariables {
+			variables = vars.(map[string]any)
+		}
+		// Validate filename extension
+		filename := c.Param("filename")
+
+		c.Response().Header().Set(echo.HeaderContentType, "application/pdf")
+		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
+
+		// Disable response buffering
+		c.Response().Header().Set("X-Content-Type-Options", "nosniff")
+		c.Response().Header().Set("Transfer-Encoding", "chunked")
+
+		// Create a writer that writes to the response
+		writer := c.Response().Writer
+
+		// Start the streaming query and write directly to response
+		err := pdf.StreamDashboardPdf(
+			c.Request().Context(),
+			c.Param("id"),
+			c.QueryParams(),
+			variables,
+			writer,
+		)
+
+		if err != nil {
+			// If headers haven't been sent yet, return JSON error
+			if c.Response().Committed {
+				// If we've already started streaming, log the error since we can't modify the response
+				c.Logger().Error("streaming error after response started:", slog.Any("error", err))
+				return err
+			}
+			c.Logger().Error("error downloading PDF:", slog.Any("error", err))
+			return c.JSONPretty(
+				http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: err.Error()},
+				"  ",
+			)
+		}
+
+		return nil
 	}
 }
 

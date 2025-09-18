@@ -196,7 +196,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			MarkLines:       rInfo.MarkLines,
 		}
 
-		if rInfo.Download != "" {
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
 			nextIsDownload = true
 		}
 
@@ -219,13 +219,16 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
-			if (rInfo.Download == "csv" || rInfo.Download == "xlsx") && len(query.Rows) > 0 {
+			if (rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "pdf") && len(query.Rows) > 0 {
 				filename := query.Rows[0][colIndex].(duckdb.Union).Value.(string)
 				queryString := ""
 				if len(queryParams) > 0 {
 					queryString = "?" + queryParams.Encode()
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				if rInfo.Download == "pdf" {
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				}
+				query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
 			}
 		}
 
@@ -654,6 +657,10 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	xlsxColumn, _ := findColumnByTag(columns, "DOWNLOAD_XLSX")
 	if xlsxColumn != nil {
 		return "xlsx"
+	}
+	pdfColumn, _ := findColumnByTag(columns, "DOWNLOAD_PDF")
+	if pdfColumn != nil {
+		return "pdf"
 	}
 	return ""
 }

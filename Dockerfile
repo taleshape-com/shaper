@@ -5,7 +5,7 @@
 # 2. We need wget to run the healthcheck
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
-FROM debian:13.0-slim
+FROM chromedp/headless-shell:stable
 LABEL maintainer="hi@taleshape.com"
 
 ARG BUILD_DATE
@@ -16,7 +16,6 @@ LABEL org.opencontainers.image.url="https://hub.docker.com/r/taleshape/shaper"
 LABEL org.opencontainers.image.documentation="https://taleshape.com/shaper"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.vendor="Taleshape"
-LABEL org.opencontainers.image.licenses="MPL-2.0"
 LABEL org.opencontainers.image.source="https://github.com/taleshape-com/shaper"
 
 ARG TARGETARCH
