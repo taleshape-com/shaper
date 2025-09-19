@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -30,6 +31,7 @@ var (
 
 func StreamDashboardPdf(
 	ctx context.Context,
+	logger *slog.Logger,
 	writer io.Writer,
 	baseUrl string,
 	dashboardId string,
@@ -53,7 +55,6 @@ func StreamDashboardPdf(
 		return fmt.Errorf("failed to json marshal params: %w", err)
 	}
 	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
-	fmt.Println(urlstr)
 	headerImage := ""
 	footerLink := ""
 	err = chromedp.Run(ctx, chromedp.Tasks{
@@ -73,13 +74,16 @@ func StreamDashboardPdf(
 		chromedp.Evaluate(`document.querySelector('.shaper-scope .shaper-custom-dashboard-header').remove();`, nil),
 		chromedp.Evaluate(`document.querySelector('.shaper-scope .shaper-custom-dashboard-footer').remove();`, nil),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			fmt.Println("printing to pdf...", headerImage, footerLink)
+			h, err := header(headerImage)
+			if err != nil {
+				logger.Warn("failed to load header image for pdf", slog.String("image", headerImage), slog.String("dashboard", dashboardId), slog.Any("error", err))
+			}
 			_, rawPdfStream, err := page.PrintToPDF().
 				WithPrintBackground(true).
 				WithPreferCSSPageSize(true).
 				WithScale(scale).
 				WithDisplayHeaderFooter(true).
-				WithHeaderTemplate(header(headerImage)).
+				WithHeaderTemplate(h).
 				WithFooterTemplate(footer(time.Now(), footerLink)).
 				WithTransferMode(page.PrintToPDFTransferModeReturnAsStream).
 				Do(ctx)
@@ -97,26 +101,24 @@ func StreamDashboardPdf(
 			return err
 		}),
 	})
-	fmt.Println("wrote pdf")
 	if err != nil {
 		return fmt.Errorf("failed to generate pdf: %w", err)
 	}
 	return nil
 }
 
-func header(imageURL string) string {
+func header(imageURL string) (string, error) {
 	if imageURL == "" {
-		return "<span></span>"
+		return "<span></span>", nil
 	}
 
 	// Download and convert image to base64 data URL
 	base64Image, err := downloadImageAsBase64(imageURL)
 	if err != nil {
-		fmt.Printf("Failed to download header image: %v\n", err)
-		return "<span></span>"
+		return "<span></span>", err
 	}
 
-	return `<img src="` + base64Image + `" style="max-height: 40px; margin-left: 35px; object-fit: contain;" />`
+	return `<img src="` + base64Image + `" style="max-height: 40px; margin-left: 35px; object-fit: contain;" />`, nil
 }
 
 func downloadImageAsBase64(imageURL string) (string, error) {

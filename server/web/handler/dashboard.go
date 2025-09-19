@@ -402,6 +402,7 @@ func DownloadPdf(app *core.App, internalUrl string) echo.HandlerFunc {
 		// Start the streaming query and write directly to response
 		err := pdf.StreamDashboardPdf(
 			c.Request().Context(),
+			app.Logger,
 			writer,
 			internalUrl,
 			c.Param("id"),

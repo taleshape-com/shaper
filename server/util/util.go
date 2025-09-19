@@ -38,17 +38,58 @@ func EscapeSQLIdentifier(str string) string {
 
 func StripSQLComments(sql string) string {
 	var result strings.Builder
-	lines := strings.SplitSeq(sql, "\n")
-	for line := range lines {
-		if idx := strings.Index(line, "--"); idx >= 0 {
-			// Only take the part before the comment
-			line = line[:idx]
+	var inSingleQuote bool
+	var inDoubleQuote bool
+
+	for i := 0; i < len(sql); i++ {
+		c := sql[i]
+
+		// Handle single quotes
+		if c == '\'' && !inDoubleQuote {
+			if i+1 < len(sql) && sql[i+1] == '\'' {
+				// Escaped single quote
+				result.WriteByte(c)
+				result.WriteByte(sql[i+1])
+				i++
+				continue
+			}
+			inSingleQuote = !inSingleQuote
+			result.WriteByte(c)
+			continue
 		}
-		if strings.TrimSpace(line) != "" {
-			result.WriteString(line)
-			result.WriteString("\n")
+
+		// Handle double quotes
+		if c == '"' && !inSingleQuote {
+			if i+1 < len(sql) && sql[i+1] == '"' {
+				// Escaped double quote
+				result.WriteByte(c)
+				result.WriteByte(sql[i+1])
+				i++
+				continue
+			}
+			inDoubleQuote = !inDoubleQuote
+			result.WriteByte(c)
+			continue
 		}
+
+		// Check for comment start (--) only when not inside quotes
+		if c == '-' && !inSingleQuote && !inDoubleQuote {
+			if i+1 < len(sql) && sql[i+1] == '-' {
+				// Found comment start, skip to end of line
+				for i < len(sql) && sql[i] != '\n' {
+					i++
+				}
+				// Write the newline if we found one
+				if i < len(sql) {
+					result.WriteByte(sql[i])
+				}
+				continue
+			}
+		}
+
+		result.WriteByte(c)
 	}
+
 	return result.String()
 }
 
