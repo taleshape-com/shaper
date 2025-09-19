@@ -53,6 +53,8 @@ export type Result = {
   minTimeValue: number;
   maxTimeValue: number;
   reloadAt: number;
+  headerImage?: string;
+  footerLink?: string;
   sections: ({
     type: 'header';
     title?: string;

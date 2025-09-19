@@ -8,7 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
+	"path/filepath"
+	"strings"
 	"time"
 
 	chromeio "github.com/chromedp/cdproto/io"
@@ -51,19 +54,33 @@ func StreamDashboardPdf(
 	}
 	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
 	fmt.Println(urlstr)
+	headerImage := ""
+	footerLink := ""
 	err = chromedp.Run(ctx, chromedp.Tasks{
 		chromedp.Navigate(urlstr),
-		chromedp.WaitVisible(`.shaper-scope section`),
+		// chromedp.WaitVisible(`.shaper-scope section`),
 		// chromedp.Sleep(500 * time.Millisecond), // TODO: waiting for fonts to load
+		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-header`, "data-header-image", &headerImage, nil),
+		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-footer`, "data-footer-link", &footerLink, nil),
+		chromedp.Evaluate(`
+			const el = document.querySelector('.shaper-scope .shaper-custom-dashboard-header');
+			if (el.getAttribute('data-header-image')) {
+				const style = document.createElement('style');
+				style.textContent = '@page { margin-top: 26.62mm; }';
+				document.head.appendChild(style);
+			}
+		`, nil),
+		chromedp.Evaluate(`document.querySelector('.shaper-scope .shaper-custom-dashboard-header').remove();`, nil),
+		chromedp.Evaluate(`document.querySelector('.shaper-scope .shaper-custom-dashboard-footer').remove();`, nil),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			fmt.Println("printing to pdf...")
+			fmt.Println("printing to pdf...", headerImage, footerLink)
 			_, rawPdfStream, err := page.PrintToPDF().
 				WithPrintBackground(true).
 				WithPreferCSSPageSize(true).
 				WithScale(scale).
 				WithDisplayHeaderFooter(true).
-				WithHeaderTemplate(`<span></span>`).
-				WithFooterTemplate(footer(time.Now())).
+				WithHeaderTemplate(header(headerImage)).
+				WithFooterTemplate(footer(time.Now(), footerLink)).
 				WithTransferMode(page.PrintToPDFTransferModeReturnAsStream).
 				Do(ctx)
 			if err != nil {
@@ -87,11 +104,87 @@ func StreamDashboardPdf(
 	return nil
 }
 
-func footer(date time.Time) string {
+func header(imageURL string) string {
+	if imageURL == "" {
+		return "<span></span>"
+	}
+
+	// Download and convert image to base64 data URL
+	base64Image, err := downloadImageAsBase64(imageURL)
+	if err != nil {
+		fmt.Printf("Failed to download header image: %v\n", err)
+		return "<span></span>"
+	}
+
+	return `<img src="` + base64Image + `" style="max-height: 40px; margin-left: 35px; object-fit: contain;" />`
+}
+
+func downloadImageAsBase64(imageURL string) (string, error) {
+	// If the imageURL is already a data URL, return it as-is
+	if strings.HasPrefix(imageURL, "data:") {
+		return imageURL, nil
+	}
+
+	// Create HTTP client with timeout to prevent hanging
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// Make HTTP request to download the image
+	resp, err := client.Get(imageURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch image: status %d", resp.StatusCode)
+	}
+
+	// Read the image data
+	imageData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read image data: %w", err)
+	}
+
+	// Determine content type from URL extension or response header
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		// Fallback to guessing from file extension
+		ext := strings.ToLower(filepath.Ext(imageURL))
+		switch ext {
+		case ".jpg", ".jpeg":
+			contentType = "image/jpeg"
+		case ".png":
+			contentType = "image/png"
+		case ".gif":
+			contentType = "image/gif"
+		case ".webp":
+			contentType = "image/webp"
+		default:
+			contentType = "image/jpeg" // Default fallback
+		}
+	}
+
+	// Convert to base64
+	base64String := base64.StdEncoding.EncodeToString(imageData)
+
+	// Return as data URL
+	return fmt.Sprintf("data:%s;base64,%s", contentType, base64String), nil
+}
+
+func footer(date time.Time, footerLink string) string {
+	content := ""
+	if footerLink != "" {
+		formattedLink := strings.TrimPrefix(footerLink, "http://")
+		formattedLink = strings.TrimPrefix(formattedLink, "https://")
+		formattedLink = strings.TrimPrefix(formattedLink, "mailto:")
+		content = `<a href="` + footerLink + `" style="color: var(--shaper-text-color-secondary); text-decoration: none;">` + formattedLink + `</a>`
+	}
 	return `
-<div style="font-family: var(--shaper-font), ui-sans-serif, system-ui, sans-serif; font-size:8px; width: 100%; margin: 0 35px; display: flex; justify-content: space-between;">
+<div style="font-family: var(--shaper-font), ui-sans-serif, system-ui, sans-serif; font-size:7px; width: 100%; margin: 0 35px; display: flex; justify-content: space-between;">
 	<span style="color: var(--shaper-text-color-secondary);">` + date.Format("02.01.2006") + `</span>
-	<a style="color: var(--shaper-text-color); text-decoration: none;" href="url">url</a>
+	` + content + `
 	<span style="color: var(--shaper-text-color-secondary);">
 		<span class="pageNumber"></span>
 		<span>/</span>

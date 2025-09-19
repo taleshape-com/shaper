@@ -23,6 +23,8 @@ type GetResult struct {
 	MinTimeValue int64     `json:"minTimeValue"`
 	MaxTimeValue int64     `json:"maxTimeValue"`
 	ReloadAt     int64     `json:"reloadAt"`
+	HeaderImage  *string   `json:"headerImage,omitempty"`
+	FooterLink   *string   `json:"footerLink,omitempty"`
 }
 
 type Section struct {

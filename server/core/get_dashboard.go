@@ -81,6 +81,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
+	headerImage := ""
+	footerLink := ""
 
 	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
@@ -180,6 +182,15 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				return result, fmt.Errorf("Multiple RELOAD queries in dashboard %s", dashboardQuery.ID)
 			}
 			result.ReloadAt = getReloadValue(query.Rows)
+			continue
+		}
+
+		if isHeaderImage(colTypes, query.Rows) {
+			headerImage = getHtmlValue(query.Rows)
+			continue
+		}
+		if isFooterLink(colTypes, query.Rows) {
+			footerLink = getHtmlValue(query.Rows)
 			continue
 		}
 
@@ -354,6 +365,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
+	if headerImage != "" {
+		result.HeaderImage = &headerImage
+	}
+	if footerLink != "" {
+		result.FooterLink = &footerLink
+	}
 	return result, err
 }
 
@@ -1519,6 +1536,42 @@ func getReloadValue(rows Rows) int64 {
 		return 0
 	}
 	return 0
+}
+
+func isHeaderImage(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "HEADER_IMAGE")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
+}
+func isFooterLink(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "FOOTER_LINK")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
+}
+
+func getHtmlValue(rows Rows) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	row := rows[0]
+	if len(row) == 0 {
+		return ""
+	}
+	val := rows[0][0]
+	if len(row) == 0 || val == nil {
+		return ""
+	}
+	if union, ok := val.(duckdb.Union); ok {
+		if str, ok := union.Value.(string); ok {
+			return str
+		}
+		return ""
+	}
+	return ""
 }
 
 func lessThanTwoUniqueRangeValues(r []any) bool {

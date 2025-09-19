@@ -207,6 +207,17 @@ const DataView = ({
   ).length;
 
   return (<ChartHoverProvider>
+    {!loading && (
+      <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-14": !!data.headerImage })} data-header-image={data.headerImage}>
+        {data.headerImage && (
+          <img
+            src={data.headerImage}
+            alt="Header Image"
+            className="max-h-16 object-contain"
+          />
+        )}
+      </div>
+    )}
     {sections.map((section, sectionIndex) => {
       if (section.type === "header") {
         const queries = section.queries.filter(
@@ -393,14 +404,29 @@ const DataView = ({
         </div>
       ) : null
     }
-    {loading && (
+    {loading ? (
       <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
         <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
           <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
         </div>
       </div>
+    ) : (
+      <div
+        className={cx("shaper-custom-dashboard-footer", {
+          "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
+        })}
+        data-footer-link={data.footerLink}
+      >
+        {data.footerLink && (
+          <a
+            href={data.footerLink}
+            target="_blank"
+            className="no-underline text-ctext2 text-xs"
+          >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, '')}</a>
+        )}
+      </div>
     )}
-  </ChartHoverProvider >)
+  </ChartHoverProvider>)
 }
 
 const renderContent = (
