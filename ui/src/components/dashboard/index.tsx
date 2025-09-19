@@ -345,7 +345,7 @@ const DataView = ({
                     "h-[calc(50dvh-1.6rem)] print:h-[320px]": !firstIsHeader && numContentSections === 1,
                     "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
                     "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
-                    "min-h-max h-fit print:min-h-max print:h-fit": section.queries.length === 1 && (query.render.type === "value" || query.render.type === "table"),
+                    "min-h-max h-fit print:min-h-max print:h-fit": section.queries.length === 1 && (query.render.type === "table" || (query.render.type === "value" && numContentSections > 2)),
                     "break-inside-avoid": query.render.type !== "table",
                   },
                 )}

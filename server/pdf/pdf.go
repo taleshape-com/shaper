@@ -4,6 +4,8 @@ package pdf
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -12,20 +14,26 @@ import (
 	chromeio "github.com/chromedp/cdproto/io"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var PDF_STREAM_BATCH_SIZE = 1024 * 32 // 32kb
 
+var (
+	scale = 0.75
+	w     = 1320/scale - 470
+	h     = 500 // Not too high size we want to have cards at min-height
+)
+
 func StreamDashboardPdf(
 	ctx context.Context,
+	writer io.Writer,
+	baseUrl string,
 	dashboardId string,
 	params url.Values,
 	variables map[string]any,
-	writer io.Writer,
+	jwtToken *jwt.Token,
 ) error {
-	scale := 0.75
-	w := 1320/scale - 470
-	h := 500 // Not too high size we want to have cards at min-height
 
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
@@ -37,8 +45,13 @@ func StreamDashboardPdf(
 	defer cancel()
 
 	// capture pdf
-	urlstr := `http://localhost:5454/view/` + dashboardId + "?" + params.Encode()
-	err := chromedp.Run(ctx, chromedp.Tasks{
+	vars, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("failed to json marshal params: %w", err)
+	}
+	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
+	fmt.Println(urlstr)
+	err = chromedp.Run(ctx, chromedp.Tasks{
 		chromedp.Navigate(urlstr),
 		chromedp.WaitVisible(`.shaper-scope section`),
 		// chromedp.Sleep(500 * time.Millisecond), // TODO: waiting for fonts to load
@@ -68,7 +81,7 @@ func StreamDashboardPdf(
 		}),
 	})
 	fmt.Println("wrote pdf")
-	if err == nil {
+	if err != nil {
 		return fmt.Errorf("failed to generate pdf: %w", err)
 	}
 	return nil

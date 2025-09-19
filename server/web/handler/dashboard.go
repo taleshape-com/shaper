@@ -373,9 +373,10 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func DownloadPdf(app *core.App) echo.HandlerFunc {
+func DownloadPdf(app *core.App, internalUrl string) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		jwtToken := c.Get("user").(*jwt.Token)
+		claims := jwtToken.Claims.(jwt.MapClaims)
 		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -401,10 +402,12 @@ func DownloadPdf(app *core.App) echo.HandlerFunc {
 		// Start the streaming query and write directly to response
 		err := pdf.StreamDashboardPdf(
 			c.Request().Context(),
+			writer,
+			internalUrl,
 			c.Param("id"),
 			c.QueryParams(),
 			variables,
-			writer,
+			jwtToken,
 		)
 
 		if err != nil {

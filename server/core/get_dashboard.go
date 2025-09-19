@@ -226,9 +226,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					queryString = "?" + queryParams.Encode()
 				}
 				if rInfo.Download == "pdf" {
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
+				} else {
 					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
 			}
 		}
 
