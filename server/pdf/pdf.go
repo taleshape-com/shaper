@@ -24,8 +24,8 @@ import (
 var PDF_STREAM_BATCH_SIZE = 1024 * 32 // 32kb
 
 var (
-	scale = 0.75
-	w     = 1320/scale - 470
+	scale = 0.58
+	w     = 1320
 	h     = 500 // Not too high size we want to have cards at min-height
 )
 
