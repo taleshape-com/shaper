@@ -66,6 +66,7 @@ const LineChart = (props: LineChartProps) => {
     React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
+  const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
 
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
@@ -116,28 +117,6 @@ const LineChart = (props: LineChartProps) => {
         opacity: categories.length > 1 || (data.length / (chartWidth) > 0.02) ? 0 : 1,
       },
     }));
-
-    // Add markLine if we're hovering on a different chart
-    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
-      series.push({
-        type: 'line' as const,
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          label: {
-            show: false,
-          },
-          lineStyle: {
-            color: referenceLineColor,
-            type: 'dashed',
-            width: 0.8
-          },
-          data: [
-            { xAxis: isTimestampData ? hoveredIndex : data.findIndex(item => item[index] === hoveredIndex) }
-          ],
-        },
-      });
-    }
 
     if (markLines) {
       let foundEventLine = false;
@@ -325,7 +304,7 @@ const LineChart = (props: LineChartProps) => {
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
-          //fontFamily: chartFont,
+          fontFamily: chartFont,
           fontWeight: 500,
           width: canFitLegendItems ? legendItemWidth : undefined,
           overflow: 'truncate',
@@ -491,15 +470,58 @@ const LineChart = (props: LineChartProps) => {
     xAxisLabel,
     yAxisLabel,
     extraDataByIndexAxis,
-    hoveredIndex,
-    hoveredChartId,
-    hoveredIndexType,
-    chartId,
     isDarkMode,
     chartWidth,
     chartHeight,
     label,
     markLines,
+  ]);
+
+  useEffect(() => {
+    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
+      setIsHovering(hoveredIndex);
+    } else {
+      setIsHovering(null);
+    }
+  }, [
+    chartId,
+    indexType,
+    hoveredIndex,
+    hoveredIndexType,
+    hoveredChartId,
+    setIsHovering,
+  ]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+    const { referenceLineColor } = getThemeColors(isDarkMode);
+    const series: LineSeriesOption[] = [{
+      id: 'shaper-hover-reference-line',
+      type: 'line' as const,
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        label: {
+          show: false,
+        },
+        lineStyle: {
+          //opacity: 0,
+          color: referenceLineColor,
+          type: 'dashed',
+          width: 0.8
+        },
+        data: isHovering != null ? [{ xAxis: isHovering }] : [],
+      },
+    }];
+    chart.setOption({ series }, { lazyUpdate: true });
+  }, [
+    categories,
+    indexType,
+    isDarkMode,
+    isHovering,
   ]);
 
   // Event handlers for the EChart component

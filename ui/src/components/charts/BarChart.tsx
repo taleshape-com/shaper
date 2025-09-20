@@ -71,8 +71,7 @@ const BarChart = (props: BarChartProps) => {
     React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
-
-  const [legendFont, setLegendFont] = React.useState<string | undefined>();
+  const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
 
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
@@ -116,31 +115,6 @@ const BarChart = (props: BarChartProps) => {
         color: categoryColors.get(category),
       },
     }));
-
-    // Add markLine if we're hovering on a different chart
-    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
-      series.push({
-        type: 'bar' as const,
-        stack: type === "stacked" ? "stack" : categories[0],
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          label: {
-            show: false,
-          },
-          lineStyle: {
-            color: referenceLineColor,
-            type: 'dashed',
-            width: 0.8
-          },
-          data: [{
-            [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && layout === "vertical"
-              ? indexType === 'number' ? hoveredIndex.toString() : new Date(hoveredIndex).toISOString()
-              : hoveredIndex,
-          }],
-        },
-      });
-    }
 
     if (markLines) {
       let foundEventLine = false;
@@ -365,7 +339,7 @@ const BarChart = (props: BarChartProps) => {
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
         textStyle: {
           color: textColor,
-          fontFamily: legendFont,
+          fontFamily: chartFont,
           fontWeight: 500,
           width: canFitLegendItems ? legendItemWidth : undefined,
           overflow: 'truncate',
@@ -553,16 +527,65 @@ const BarChart = (props: BarChartProps) => {
     xAxisLabel,
     yAxisLabel,
     extraDataByIndexAxis,
-    hoveredIndex,
-    hoveredIndexType,
-    hoveredChartId,
-    chartId,
     isDarkMode,
     chartWidth,
     chartHeight,
     label,
     markLines,
-    legendFont,
+  ]);
+
+  useEffect(() => {
+    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
+      setIsHovering(hoveredIndex);
+    } else {
+      setIsHovering(null);
+    }
+  }, [
+    chartId,
+    indexType,
+    hoveredIndex,
+    hoveredIndexType,
+    hoveredChartId,
+    setIsHovering,
+  ]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+    const { referenceLineColor } = getThemeColors(isDarkMode);
+    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
+    const series: BarSeriesOption[] = [{
+      id: 'shaper-hover-reference-line',
+      type: 'bar' as const,
+      stack: type === "stacked" ? "stack" : categories[0],
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        label: {
+          show: false,
+        },
+        lineStyle: {
+          color: referenceLineColor,
+          type: 'dashed',
+          width: 0.8
+        },
+        data: isHovering != null ? [{
+          [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && layout === "vertical"
+            ? indexType === 'number' ? isHovering.toString() : new Date(isHovering).toISOString()
+            : isHovering,
+        }] : [],
+      },
+    }];
+    chart.setOption({ series }, { lazyUpdate: true });
+  }, [
+    categories,
+    indexType,
+    isDarkMode,
+    layout,
+    type,
+    isHovering,
   ]);
 
   // Event handlers for the EChart component
@@ -620,10 +643,6 @@ const BarChart = (props: BarChartProps) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
     setChartHeight(chart.getHeight());
-    setTimeout(() => {
-      const chartFont = getChartFont();
-      setLegendFont(chartFont);
-    }, 0);
   }, []);
 
   const handleChartResize = useCallback((chart: ECharts) => {

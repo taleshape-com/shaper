@@ -123,7 +123,7 @@ export const EChart = ({
       window.removeEventListener('beforeprint', handlePrint);
       window.removeEventListener('afterprint', handlePrint);
     };
-  }, [resizeChart, onChartReady]);
+  }, [resizeChart, onChartReady, onResize]);
 
   useEffect(() => {
     if (!chartRef.current) return;
