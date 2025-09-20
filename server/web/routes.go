@@ -50,7 +50,7 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string) {
+func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
 	apiWithAuth := e.Group("/api",
 		echojwt.WithConfig(echojwt.Config{
 			TokenLookup: "header:Authorization",
@@ -102,7 +102,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.GET("/dashboards/:id/pdf/:filename", handler.DownloadPdf(app, internalUrl))
+	apiWithAuth.GET("/dashboards/:id/pdf/:filename", handler.DownloadPdf(app, internalUrl, pdfDateFormat))
 	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
 	if !app.NoTasks {
 		apiWithAuth.POST("/tasks", handler.CreateTask(app))

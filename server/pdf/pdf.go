@@ -34,6 +34,7 @@ func StreamDashboardPdf(
 	logger *slog.Logger,
 	writer io.Writer,
 	baseUrl string,
+	pdfDateFormat string,
 	dashboardId string,
 	params url.Values,
 	variables map[string]any,
@@ -84,7 +85,7 @@ func StreamDashboardPdf(
 				WithScale(scale).
 				WithDisplayHeaderFooter(true).
 				WithHeaderTemplate(h).
-				WithFooterTemplate(footer(time.Now(), footerLink)).
+				WithFooterTemplate(footer(time.Now().Format(pdfDateFormat), footerLink)).
 				WithTransferMode(page.PrintToPDFTransferModeReturnAsStream).
 				Do(ctx)
 			if err != nil {
@@ -175,7 +176,7 @@ func downloadImageAsBase64(imageURL string) (string, error) {
 	return fmt.Sprintf("data:%s;base64,%s", contentType, base64String), nil
 }
 
-func footer(date time.Time, footerLink string) string {
+func footer(formattedDate string, footerLink string) string {
 	content := ""
 	if footerLink != "" {
 		formattedLink := strings.TrimPrefix(footerLink, "http://")
@@ -185,7 +186,7 @@ func footer(date time.Time, footerLink string) string {
 	}
 	return `
 <div style="font-family: var(--shaper-font), ui-sans-serif, system-ui, sans-serif; font-size:7px; width: 100%; margin: 0 35px; display: flex; justify-content: space-between;">
-	<span style="color: var(--shaper-text-color-secondary);">` + date.Format("02.01.2006") + `</span>
+	<span style="color: var(--shaper-text-color-secondary);">` + formattedDate + `</span>
 	` + content + `
 	<span style="color: var(--shaper-text-color-secondary);">
 		<span class="pageNumber"></span>

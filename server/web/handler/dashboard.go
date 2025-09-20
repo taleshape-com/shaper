@@ -373,7 +373,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func DownloadPdf(app *core.App, internalUrl string) echo.HandlerFunc {
+func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		jwtToken := c.Get("user").(*jwt.Token)
 		claims := jwtToken.Claims.(jwt.MapClaims)
@@ -405,6 +405,7 @@ func DownloadPdf(app *core.App, internalUrl string) echo.HandlerFunc {
 			app.Logger,
 			writer,
 			internalUrl,
+			pdfDateFormat,
 			c.Param("id"),
 			c.QueryParams(),
 			variables,

@@ -36,6 +36,7 @@ func Start(
 	tlsEmail,
 	tlsCacheDir,
 	httpsHost string,
+	pdfDateFormat string,
 ) *echo.Echo {
 	// Echo instance
 	e := echo.New()
@@ -68,7 +69,7 @@ func Start(
 	e.Use(echoprometheus.NewMiddleware(app.Name))
 
 	// Routes
-	routes(e, app, frontendFS, modTime, customCSS, favicon, getInternalUrl(addr, tlsDomain, httpsHost))
+	routes(e, app, frontendFS, modTime, customCSS, favicon, getInternalUrl(addr, tlsDomain, httpsHost), pdfDateFormat)
 
 	// Configure Let's Encrypt if TLS is enabled
 	if tlsDomain != "" {
