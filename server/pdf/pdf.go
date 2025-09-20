@@ -60,8 +60,6 @@ func StreamDashboardPdf(
 	footerLink := ""
 	err = chromedp.Run(ctx, chromedp.Tasks{
 		chromedp.Navigate(urlstr),
-		// chromedp.WaitVisible(`.shaper-scope section`),
-		// chromedp.Sleep(500 * time.Millisecond), // TODO: waiting for fonts to load
 		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-header`, "data-header-image", &headerImage, nil),
 		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-footer`, "data-footer-link", &footerLink, nil),
 		chromedp.Evaluate(`

@@ -20,7 +20,7 @@ import {
   MarkLineComponent,
 } from 'echarts/components';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
-import { SVGRenderer } from 'echarts/renderers';
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 
 interface EChartProps {
   option: echarts.EChartsCoreOption;
@@ -49,7 +49,11 @@ echarts.use([
   MarkLineComponent,
   LabelLayout,
   UniversalTransition,
+  // SVG renderer as default it looks sharper
+  // and allows zooming in browser and PDFs
   SVGRenderer,
+  // Using canvas renderer to support downloading as PNG
+  CanvasRenderer,
 ]);
 
 const optionSettings = {
@@ -84,7 +88,7 @@ export const EChart = ({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null);
+    const chart = echarts.init(chartRef.current, null, { renderer: 'svg' });
     if (onChartReady) {
       onChartReady(chart);
     }
