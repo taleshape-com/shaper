@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import * as SelectPrimitives from "@radix-ui/react-select";
-import { RiFileDownloadLine } from "@remixicon/react";
+import { RiFileDownloadLine, RiLoader3Fill } from "@remixicon/react";
 import { Column, Result } from "../../lib/types";
 import { Button } from "../tremor/Button";
 import { Label } from "../tremor/Label";
@@ -67,14 +66,18 @@ function DashboardButton({
         onClick={handleDownload}
         disabled={isLoading}
         variant="secondary"
-        className={cx("flex items-center justify-between my-1 select-none  print:hidden", {
+        className={cx("my-1 select-none print:hidden", {
           "ml-2": !label,
         })}
       >
-        {headers[0].name}
-        <SelectPrimitives.Icon asChild>
-          <RiFileDownloadLine className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2" />
-        </SelectPrimitives.Icon>
+        <span className="flex items-center justify-between">
+          {headers[0].name}
+          {isLoading ? (
+            <RiLoader3Fill className="ml-1.5 size-4 text-ctext2 dark:text-dtext2 animate-spin" />
+          ) : (
+            <RiFileDownloadLine className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
+          )}
+        </span>
       </Button >
     </>
   );

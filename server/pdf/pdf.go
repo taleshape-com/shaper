@@ -40,7 +40,6 @@ func StreamDashboardPdf(
 	variables map[string]any,
 	jwtToken *jwt.Token,
 ) error {
-
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.WindowSize(int(w), int(h)),
@@ -69,9 +68,9 @@ func StreamDashboardPdf(
 				style.textContent = '@page { margin-top: 26.62mm; }';
 				document.head.appendChild(style);
 			}
+			document.querySelector('.shaper-scope .shaper-custom-dashboard-header').remove();
+			document.querySelector('.shaper-scope .shaper-custom-dashboard-footer').remove();
 		`, nil),
-		chromedp.Evaluate(`document.querySelector('.shaper-scope .shaper-custom-dashboard-header').remove();`, nil),
-		chromedp.Evaluate(`document.querySelector('.shaper-scope .shaper-custom-dashboard-footer').remove();`, nil),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			h, err := header(headerImage)
 			if err != nil {
