@@ -170,7 +170,7 @@ const BarChart = (props: BarChartProps) => {
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
     const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
-    const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 9, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
     const legendItemGap = 10;
