@@ -22,9 +22,9 @@ type TableProps = {
 
 function DashboardTable({ headers, data }: TableProps) {
   return (
-    <TableRoot className="h-full">
+    <TableRoot>
       <Table>
-        <TableHead className="sticky top-0 bg-cbgs dark:bg-dbgs shadow-sm">
+        <TableHead>
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell
@@ -50,7 +50,6 @@ function DashboardTable({ headers, data }: TableProps) {
                         <div
                           className={cx(
                             "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi",
-                            // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
                           )}
                         >
                           {percent > 0 && '+'}{percent}%{

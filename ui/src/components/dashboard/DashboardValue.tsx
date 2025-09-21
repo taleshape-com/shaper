@@ -11,7 +11,6 @@ import TextWithLinks from "../TextWithLinks";
 type ValueProps = {
   headers: Column[];
   data: Result['sections'][0]['queries'][0]['rows'];
-  yScroll: boolean;
 };
 
 const getLongestLineLength = (text: string) => {
@@ -23,7 +22,7 @@ const calcFontSize = (width: number, longestLine: number, factor: number, min: n
   return Math.max(min, Math.min(max, Math.floor((width / longestLine) * factor / round) * round));
 };
 
-function DashboardValue({ headers, data, yScroll }: ValueProps) {
+function DashboardValue({ headers, data }: ValueProps) {
   const valueIndex = headers.findIndex(header => header.tag === 'value')
   const valueHeader = headers[valueIndex]
   const value = data[0][valueIndex]
@@ -59,9 +58,8 @@ function DashboardValue({ headers, data, yScroll }: ValueProps) {
   return (
     <div
       className={cx(
-        "h-full w-full flex flex-col justify-center py-2 overflow-x-auto overflow-y-hidden", {
+        "h-full w-full flex flex-col justify-center py-2 overflow-auto", {
         "items-center py-8": formattedValue.length < 300 || !!labelText,
-        "overflow-y-auto": yScroll,
       },
       )}
       ref={containerRef}

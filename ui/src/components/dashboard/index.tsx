@@ -331,7 +331,7 @@ const DataView = ({
               numQueriesInSection > 4 ||
               numQueriesInSection === 3 ||
               (numQueriesInSection === 4 && numContentSections > 1),
-            "@xl:grid-cols-4":
+            "@xl:grid-cols-4 print:grid-cols-4":
               (numQueriesInSection === 4 && numContentSections > 1) ||
               numQueriesInSection === 7 ||
               numQueriesInSection === 8 ||
@@ -346,45 +346,43 @@ const DataView = ({
               return <div key={queryIndex}></div>;
             }
             const isChartQuery = query.render.type === 'linechart' || query.render.type === 'gauge' || query.render.type.startsWith('barchart');
+            const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             return (
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[320px] h-[calc(50dvh-3.15rem)] print:h-[320px]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
-                    "h-[calc(50dvh-1.6rem)] print:h-[320px]": !firstIsHeader && numContentSections === 1,
-                    "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
-                    "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
-                    "min-h-max h-fit print:min-h-max print:h-fit": section.queries.length === 1 && (query.render.type === "table" || (query.render.type === "value" && numContentSections > 2)),
-                    "break-inside-avoid": query.render.type !== "table",
+                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && (section.queries.some(q => q.render.type !== "value") || numContentSections <= 2),
+                    "h-[calc(50dvh-1.6rem)] print:h-[340px]": !singleTable && !firstIsHeader && numContentSections === 1,
+                    "h-[calc(100cqh-5.3rem)]": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
+                    "h-[calc(100cqh-2.2rem)] ": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
+                    "break-before-avoid": singleTable,
+                    "p-4": !isChartQuery,
                   },
                 )}
               >
-                {isChartQuery && (
+                {isChartQuery ? (
                   <ChartDownloadButton
                     chartId={`${sectionIndex}-${queryIndex}`}
                     label={query.render.label}
                     className="absolute top-2 right-2 z-40"
                   />
-                )}
-                {query.render.label && !isChartQuery ? (
-                  <h2 className="text-md pt-4 mx-4 text-center font-semibold font-display">
+                ) : query.render.label && (
+                  <h2 className="text-md pb-4 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
-                ) : null}
-                <div
-                  className={cx("flex-1 relative overflow-auto", { "m-4": !isChartQuery })}
-                >
-                  {renderContent(
+                )}
+                {
+                  renderContent(
                     query,
                     sectionIndex,
                     queryIndex,
                     data.minTimeValue,
                     data.maxTimeValue,
                     numQueriesInSection,
-                  )}
-                </div>
+                  )
+                }
               </Card>
             );
           })}
@@ -404,29 +402,31 @@ const DataView = ({
         </div>
       ) : null
     }
-    {loading ? (
-      <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
-        <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
-          <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
+    {
+      loading ? (
+        <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
+          <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
+            <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
+          </div>
         </div>
-      </div>
-    ) : (
-      <div
-        className={cx("shaper-custom-dashboard-footer", {
-          "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
-        })}
-        data-footer-link={data.footerLink}
-      >
-        {data.footerLink && (
-          <a
-            href={data.footerLink}
-            target="_blank"
-            className="no-underline text-ctext2 text-xs"
-          >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, '')}</a>
-        )}
-      </div>
-    )}
-  </ChartHoverProvider>)
+      ) : (
+        <div
+          className={cx("shaper-custom-dashboard-footer", {
+            "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
+          })}
+          data-footer-link={data.footerLink}
+        >
+          {data.footerLink && (
+            <a
+              href={data.footerLink}
+              target="_blank"
+              className="no-underline text-ctext2 text-xs"
+            >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, '')}</a>
+          )}
+        </div>
+      )
+    }
+  </ChartHoverProvider >)
 }
 
 const renderContent = (
@@ -503,9 +503,20 @@ const renderContent = (
     );
   }
   if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} yScroll={numQueriesInSection > 1} />;
+    return <DashboardValue headers={query.columns} data={query.rows} />;
   }
-  return <DashboardTable headers={query.columns} data={query.rows} />;
+  if (numQueriesInSection === 1) {
+    return <DashboardTable headers={query.columns} data={query.rows} />;
+  }
+  return (
+    <div
+      // Activate if table is used in a float environment
+      // className="flow-root"
+      className={cx("h-full overflow-auto")}
+    >
+      <DashboardTable headers={query.columns} data={query.rows} />
+    </div>
+  )
 };
 
 const fetchDashboard = async (
