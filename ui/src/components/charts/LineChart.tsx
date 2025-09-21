@@ -508,7 +508,6 @@ const LineChart = (props: LineChartProps) => {
           show: false,
         },
         lineStyle: {
-          //opacity: 0,
           color: referenceLineColor,
           type: 'dashed',
           width: 0.8
