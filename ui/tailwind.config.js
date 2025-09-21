@@ -11,6 +11,7 @@ export default {
     "ui/index.html",
     "ui/src/**/*.{js,ts,jsx,tsx}",
     "server/web/view.html",
+    "server/web/pdfview.html",
   ],
   // We scope styles to avoid with other instances of tailwind in the parent application when embedding
   important: '.shaper-scope',

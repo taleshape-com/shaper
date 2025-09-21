@@ -34,7 +34,8 @@ And subscribe to our [newsletter](https://taleshape.com/newsletter) to get updat
 ## Development Setup
 
 1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
-2. Install dependencies: `npm install`
+2. To generate PDFs you also need Google Chrome or Chromium installed
+3. Install dependencies: `npm install`
 
 ## Running Shaper from Source
 

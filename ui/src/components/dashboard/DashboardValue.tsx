@@ -50,7 +50,7 @@ function DashboardValue({ headers, data, yScroll }: ValueProps) {
   }, []);
 
   const valueLongestLine = getLongestLineLength(formattedValue);
-  const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.6, 16, 64, 8);
+  const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.6, 16, 60, 8);
 
   const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : '';
   const labelLongestLine = getLongestLineLength(labelText);
@@ -59,17 +59,19 @@ function DashboardValue({ headers, data, yScroll }: ValueProps) {
   return (
     <div
       className={cx(
-        "items-center h-full w-full flex flex-col justify-center py-2 overflow-x-auto overflow-y-hidden",
-        { "overflow-y-auto": yScroll },
+        "h-full w-full flex flex-col justify-center py-2 overflow-x-auto overflow-y-hidden", {
+        "items-center py-8": formattedValue.length < 300 || !!labelText,
+        "overflow-y-auto": yScroll,
+      },
       )}
       ref={containerRef}
     >
       <div
         className={cx({
           "font-mono": isJSONType(valueHeader.type),
-          "font-semibold": formattedValue.length < 300,
-          "text-center": formattedValue.length < 400,
-          "text-justify": formattedValue.length >= 400,
+          "font-semibold": formattedValue.length < 200,
+          "text-center": formattedValue.length < 300,
+          "text-justify": formattedValue.length >= 300,
         })}
         style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.2 }}
       >
@@ -106,7 +108,7 @@ function DashboardValue({ headers, data, yScroll }: ValueProps) {
           </div>
         ) : undefined
       }
-    </div >
+    </div>
   );
 }
 

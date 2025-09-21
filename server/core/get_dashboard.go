@@ -81,6 +81,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
+	headerImage := ""
+	footerLink := ""
 
 	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
@@ -183,6 +185,15 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
+		if isHeaderImage(colTypes, query.Rows) {
+			headerImage = getSingleValue(query.Rows)
+			continue
+		}
+		if isFooterLink(colTypes, query.Rows) {
+			footerLink = getSingleValue(query.Rows)
+			continue
+		}
+
 		if lines, ok := getMarkLines(colTypes, query.Rows); ok {
 			nextMarkLines = append(nextMarkLines, lines...)
 			continue
@@ -196,7 +207,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			MarkLines:       rInfo.MarkLines,
 		}
 
-		if rInfo.Download != "" {
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
 			nextIsDownload = true
 		}
 
@@ -219,13 +230,17 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
-			if (rInfo.Download == "csv" || rInfo.Download == "xlsx") && len(query.Rows) > 0 {
+			if (rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "pdf") && len(query.Rows) > 0 {
 				filename := query.Rows[0][colIndex].(duckdb.Union).Value.(string)
 				queryString := ""
 				if len(queryParams) > 0 {
 					queryString = "?" + queryParams.Encode()
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				if rInfo.Download == "pdf" {
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
+				} else {
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				}
 			}
 		}
 
@@ -350,6 +365,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
+	if headerImage != "" {
+		result.HeaderImage = &headerImage
+	}
+	if footerLink != "" {
+		result.FooterLink = &footerLink
+	}
 	return result, err
 }
 
@@ -654,6 +675,10 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	xlsxColumn, _ := findColumnByTag(columns, "DOWNLOAD_XLSX")
 	if xlsxColumn != nil {
 		return "xlsx"
+	}
+	pdfColumn, _ := findColumnByTag(columns, "DOWNLOAD_PDF")
+	if pdfColumn != nil {
+		return "pdf"
 	}
 	return ""
 }
@@ -1511,6 +1536,42 @@ func getReloadValue(rows Rows) int64 {
 		return 0
 	}
 	return 0
+}
+
+func isHeaderImage(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "HEADER_IMAGE")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
+}
+func isFooterLink(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "FOOTER_LINK")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
+}
+
+func getSingleValue(rows Rows) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	row := rows[0]
+	if len(row) == 0 {
+		return ""
+	}
+	val := rows[0][0]
+	if len(row) == 0 || val == nil {
+		return ""
+	}
+	if union, ok := val.(duckdb.Union); ok {
+		if str, ok := union.Value.(string); ok {
+			return str
+		}
+		return ""
+	}
+	return ""
 }
 
 func lessThanTwoUniqueRangeValues(r []any) bool {

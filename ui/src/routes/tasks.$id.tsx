@@ -60,6 +60,7 @@ function TaskEdit() {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [name, setName] = useState(task.name)
   const [savingName, setSavingName] = useState(false)
@@ -195,6 +196,12 @@ function TaskEdit() {
     }
   }
 
+  const handleDiscardChanges = () => {
+    editorStorage.clearChanges(id, 'task')
+    setEditorQuery(task.content)
+    setShowDiscardDialog(false)
+  }
+
 
   return (
     <MenuProvider>
@@ -300,6 +307,20 @@ function TaskEdit() {
               <Tooltip
                 showArrow={false}
                 asChild
+                content='Discard Changes'
+              >
+                <Button
+                  onClick={() => setShowDiscardDialog(true)}
+                  className={cx("ml-2", { "hidden": editorQuery === task?.content })}
+                  disabled={editorQuery === task?.content}
+                  variant='destructive'
+                >
+                  {translate('Discard')}
+                </Button>
+              </Tooltip>
+              <Tooltip
+                showArrow={false}
+                asChild
                 content='Save Task'
               >
                 <Button
@@ -371,6 +392,28 @@ function TaskEdit() {
               }}
             >
               {translate('Delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to discard your unsaved changes? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowDiscardDialog(false)}>
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDiscardChanges}
+            >
+              {translate("Discard")}
             </Button>
           </DialogFooter>
         </DialogContent>

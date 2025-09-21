@@ -41,6 +41,7 @@ var dbTypes = []struct {
 	{"SECTION", "UNION(\"_shaper_section_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_CSV", "UNION(\"_shaper_download_csv_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_XLSX", "UNION(\"_shaper_download_xlsx_varchar\" VARCHAR)", "string"},
+	{"DOWNLOAD_PDF", "UNION(\"_shaper_download_pdf_varchar\" VARCHAR)", "string"},
 	{"DATEPICKER", "UNION(\"_shaper_datepicker_date\" DATE)", "date"},
 	{"DATEPICKER_FROM", "UNION(\"_shaper_datepicker_from_date\" DATE)", "date"},
 	{"DATEPICKER_TO", "UNION(\"_shaper_datepicker_to_date\" DATE)", "date"},
@@ -59,6 +60,8 @@ var dbTypes = []struct {
 	{"COLOR", "UNION(\"_shaper_color_varchar\" VARCHAR)", "string"},
 	{"LINECHART_COLOR", "UNION(\"_shaper_linechart_color_varchar\" VARCHAR)", "string"},
 	{"BARCHART_COLOR", "UNION(\"_shaper_barchart_color_varchar\" VARCHAR)", "string"},
+	{"HEADER_IMAGE", "UNION(\"_shaper_header_image_varchar\" VARCHAR)", "string"},
+	{"FOOTER_LINK", "UNION(\"_shaper_footer_link_varchar\" VARCHAR)", "string"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

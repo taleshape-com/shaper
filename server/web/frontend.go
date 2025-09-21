@@ -21,6 +21,9 @@ import (
 //go:embed view.html
 var viewHTML []byte
 
+//go:embed pdfview.html
+var pdfViewHTML []byte
+
 func frontend(frontendFS fs.FS) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
@@ -94,6 +97,13 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.Ha
 func serveViewHTML(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		http.ServeContent(c.Response(), c.Request(), "view.html", modTime, bytes.NewReader(viewHTML))
+		return nil
+	}
+}
+
+func servePdfViewHTML(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		http.ServeContent(c.Response(), c.Request(), "pdfview.html", modTime, bytes.NewReader(pdfViewHTML))
 		return nil
 	}
 }

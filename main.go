@@ -79,6 +79,7 @@ type Config struct {
 	TLSEmail                   string
 	TLSCache                   string
 	HTTPSHost                  string
+	PdfDateFormat              string
 	NatsServers                string
 	NatsHost                   string
 	NatsPort                   int
@@ -140,12 +141,12 @@ func loadConfig() Config {
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
-	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
 	snapshotS3Bucket := flags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
-	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional)")
 	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (required for snapshots)")
 	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (required for snapshots)")
 	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (required for snapshots)")
+	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
+	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional)")
 	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
 	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
@@ -156,6 +157,7 @@ func loadConfig() Config {
 	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
 	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
 	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
+	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
 	natsToken := flags.String('t', "nats-token", "", "NATS authentication token")
@@ -290,6 +292,7 @@ func loadConfig() Config {
 		TLSEmail:                   *tlsEmail,
 		TLSCache:                   tlsCacheDir,
 		HTTPSHost:                  *httpsHost,
+		PdfDateFormat:              *pdfDateFormat,
 		NatsServers:                *natsServers,
 		NatsHost:                   *natsHost,
 		NatsPort:                   *natsPort,
@@ -550,6 +553,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TLSEmail,
 		cfg.TLSCache,
 		cfg.HTTPSHost,
+		cfg.PdfDateFormat,
 	)
 
 	metrics.Init()

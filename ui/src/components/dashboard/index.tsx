@@ -207,6 +207,17 @@ const DataView = ({
   ).length;
 
   return (<ChartHoverProvider>
+    {!loading && (
+      <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-14": !!data.headerImage })} data-header-image={data.headerImage}>
+        {data.headerImage && (
+          <img
+            src={data.headerImage}
+            alt="Header Image"
+            className="max-h-16 object-contain"
+          />
+        )}
+      </div>
+    )}
     {sections.map((section, sectionIndex) => {
       if (section.type === "header") {
         const queries = section.queries.filter(
@@ -312,11 +323,11 @@ const DataView = ({
         <section
           key={sectionIndex}
           className={cx("grid grid-cols-1 ml-4", {
-            "@sm:grid-cols-2": numQueriesInSection > 1,
-            "@lg:grid-cols-2":
+            "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+            "@lg:grid-cols-2 print:grid-cols-2":
               numQueriesInSection === 2 ||
               (numContentSections === 1 && numQueriesInSection === 4),
-            "@lg:grid-cols-3":
+            "@lg:grid-cols-3 print:grid-cols-3":
               numQueriesInSection > 4 ||
               numQueriesInSection === 3 ||
               (numQueriesInSection === 4 && numContentSections > 1),
@@ -341,10 +352,12 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
-                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
-                    "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
+                    "min-h-[320px] h-[calc(50dvh-3.15rem)] print:h-[320px]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
+                    "h-[calc(50dvh-1.6rem)] print:h-[320px]": !firstIsHeader && numContentSections === 1,
                     "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
                     "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
+                    "min-h-max h-fit print:min-h-max print:h-fit": section.queries.length === 1 && (query.render.type === "table" || (query.render.type === "value" && numContentSections > 2)),
+                    "break-inside-avoid": query.render.type !== "table",
                   },
                 )}
               >
@@ -391,14 +404,29 @@ const DataView = ({
         </div>
       ) : null
     }
-    {loading && (
+    {loading ? (
       <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
         <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
           <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
         </div>
       </div>
+    ) : (
+      <div
+        className={cx("shaper-custom-dashboard-footer", {
+          "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
+        })}
+        data-footer-link={data.footerLink}
+      >
+        {data.footerLink && (
+          <a
+            href={data.footerLink}
+            target="_blank"
+            className="no-underline text-ctext2 text-xs"
+          >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, '')}</a>
+        )}
+      </div>
     )}
-  </ChartHoverProvider >)
+  </ChartHoverProvider>)
 }
 
 const renderContent = (

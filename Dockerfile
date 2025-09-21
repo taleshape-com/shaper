@@ -6,6 +6,17 @@
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
 FROM debian:13.1-slim
+
+# install wget for healthchecks and dependencies for headless-shell
+RUN apt-get update -y \
+  && apt-get install --no-install-recommends -y wget ca-certificates libnspr4 libnss3 libexpat1 libfontconfig1 libuuid1 socat \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Get headless-shell (a minimal Chromium build)
+# It is also built on Debian slim so should be compatible
+COPY --from=chromedp/headless-shell:stable /headless-shell /headless-shell
+
 LABEL maintainer="hi@taleshape.com"
 
 ARG BUILD_DATE
@@ -16,11 +27,13 @@ LABEL org.opencontainers.image.url="https://hub.docker.com/r/taleshape/shaper"
 LABEL org.opencontainers.image.documentation="https://taleshape.com/shaper"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.vendor="Taleshape"
-LABEL org.opencontainers.image.licenses="MPL-2.0"
 LABEL org.opencontainers.image.source="https://github.com/taleshape-com/shaper"
 
 ARG TARGETARCH
 
+# 2 vars for headless-shell
+ENV LANG en-US.UTF-8
+ENV PATH /headless-shell:$PATH
 # When running in a container, listen on all interfaces (including IPv6) by default
 ENV SHAPER_ADDR=:5454
 # Override default data directory with something easy to mount to
@@ -31,9 +44,6 @@ ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
 
 EXPOSE 5454
 HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
-
-# install wget for healthcheck
-RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
 # Copy the correct binary based on architecture
 COPY bin/shaper-linux-${TARGETARCH} /usr/local/bin/shaper

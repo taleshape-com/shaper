@@ -38,11 +38,11 @@ function DashboardDropdown({
   return (
     <>
       {label && (
-        <Label htmlFor={label} className="ml-3 pr-1">
+        <Label htmlFor={label} className="ml-3 pr-1 print:hidden">
           {label}:
         </Label>
       )}
-      <div className={cx("select-none", { ["ml-2"]: !label })}>
+      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
         <Select
           onValueChange={(value) => {
             if (value === EMPTY) {
