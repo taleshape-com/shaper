@@ -21,12 +21,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var PDF_STREAM_BATCH_SIZE = 1024 * 32 // 32kb
-
 var (
-	scale = 0.58
-	w     = 1320
-	h     = 500 // Not too high size we want to have cards at min-height
+	PDF_STREAM_BATCH_SIZE = 1024 * 32 // 32kb
+	PDF_SCALE             = 0.58
+	BROWSER_WIDTH         = 1320 // Matches print body width in index.css so charts are at correct size for print
+	BROWSER_HEIGHT        = 500  // Limit height so cards use min-height
 )
 
 func StreamDashboardPdf(
@@ -42,7 +41,7 @@ func StreamDashboardPdf(
 ) error {
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.WindowSize(int(w), int(h)),
+		chromedp.WindowSize(int(BROWSER_WIDTH), int(BROWSER_HEIGHT)),
 	)
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
 	defer cancel()
@@ -59,8 +58,11 @@ func StreamDashboardPdf(
 	footerLink := ""
 	err = chromedp.Run(ctx, chromedp.Tasks{
 		chromedp.Navigate(urlstr),
+		// Get header image and footer link from dashboard
 		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-header`, "data-header-image", &headerImage, nil),
 		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-footer`, "data-footer-link", &footerLink, nil),
+		// Set margin-top if header image is set to avoid overlap
+		// Also remove header and footer elements as we use PDF header+footer
 		chromedp.Evaluate(`
 			const el = document.querySelector('.shaper-scope .shaper-custom-dashboard-header');
 			if (el.getAttribute('data-header-image')) {
@@ -79,7 +81,7 @@ func StreamDashboardPdf(
 			_, rawPdfStream, err := page.PrintToPDF().
 				WithPrintBackground(true).
 				WithPreferCSSPageSize(true).
-				WithScale(scale).
+				WithScale(PDF_SCALE).
 				WithDisplayHeaderFooter(true).
 				WithHeaderTemplate(h).
 				WithFooterTemplate(footer(time.Now().Format(pdfDateFormat), footerLink)).

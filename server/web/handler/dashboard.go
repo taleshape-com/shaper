@@ -386,7 +386,6 @@ func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 		if vars, hasVariables := claims["variables"]; hasVariables {
 			variables = vars.(map[string]any)
 		}
-		// Validate filename extension
 		filename := c.Param("filename")
 
 		c.Response().Header().Set(echo.HeaderContentType, "application/pdf")

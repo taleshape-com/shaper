@@ -97,6 +97,7 @@ export const EChart = ({
     });
     resizeObserver.observe(chartRef.current);
 
+    // TODO: I am not sure if this is needed and if it even does anything
     const handlePrint = () => {
       if (chartRef.current) {
         const chart = echarts.getInstanceByDom(chartRef.current);
@@ -108,8 +109,6 @@ export const EChart = ({
         }
       }
     };
-
-    window.matchMedia('print').addEventListener('change', handlePrint);
     window.addEventListener('beforeprint', handlePrint);
     window.addEventListener('afterprint', handlePrint);
 

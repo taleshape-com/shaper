@@ -186,11 +186,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isHeaderImage(colTypes, query.Rows) {
-			headerImage = getHtmlValue(query.Rows)
+			headerImage = getSingleValue(query.Rows)
 			continue
 		}
 		if isFooterLink(colTypes, query.Rows) {
-			footerLink = getHtmlValue(query.Rows)
+			footerLink = getSingleValue(query.Rows)
 			continue
 		}
 
@@ -1553,7 +1553,7 @@ func isFooterLink(columns []*sql.ColumnType, rows Rows) bool {
 	return len(rows) == 1 && len(rows[0]) == 1
 }
 
-func getHtmlValue(rows Rows) string {
+func getSingleValue(rows Rows) string {
 	if len(rows) == 0 {
 		return ""
 	}

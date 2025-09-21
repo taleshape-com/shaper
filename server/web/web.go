@@ -69,7 +69,7 @@ func Start(
 	e.Use(echoprometheus.NewMiddleware(app.Name))
 
 	// Routes
-	routes(e, app, frontendFS, modTime, customCSS, favicon, getInternalUrl(addr, tlsDomain, httpsHost), pdfDateFormat)
+	routes(e, app, frontendFS, modTime, customCSS, favicon, getInternalUrl(addr, tlsDomain), pdfDateFormat)
 
 	// Configure Let's Encrypt if TLS is enabled
 	if tlsDomain != "" {
@@ -122,9 +122,9 @@ func Start(
 	return e
 }
 
-func getInternalUrl(addr, tlsDomain, httpsHost string) string {
+func getInternalUrl(addr, tlsDomain string) string {
 	if tlsDomain != "" {
-		// When running TLS server, use the HTTP server
+		// When running TLS server, go via TLS domain instead of localhost
 		return "https://" + tlsDomain + ":" + DEFAULT_HTTPS_PORT
 	}
 	internalAddr := addr
