@@ -208,7 +208,7 @@ const DataView = ({
 
   return (<ChartHoverProvider>
     {!loading && (
-      <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-14": !!data.headerImage })} data-header-image={data.headerImage}>
+      <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
         {data.headerImage && (
           <img
             src={data.headerImage}

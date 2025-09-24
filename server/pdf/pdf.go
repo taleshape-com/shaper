@@ -67,7 +67,7 @@ func StreamDashboardPdf(
 			const el = document.querySelector('.shaper-scope .shaper-custom-dashboard-header');
 			if (el.getAttribute('data-header-image')) {
 				const style = document.createElement('style');
-				style.textContent = '@page { margin-top: 26.62mm; }';
+				style.textContent = '@page { margin-top: 20mm; }';
 				document.head.appendChild(style);
 			}
 			document.querySelector('.shaper-scope .shaper-custom-dashboard-header').remove();
