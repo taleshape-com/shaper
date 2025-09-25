@@ -14,7 +14,6 @@ import {
   varsParamSchema,
   copyToClipboard,
 } from "../lib/utils";
-import { translate } from "../lib/translate";
 import { editorStorage } from "../lib/editorStorage";
 import { IDashboard, Result } from "../lib/types";
 import { Button } from "../components/tremor/Button";
@@ -187,11 +186,11 @@ function DashboardEditor() {
         return navigate(err.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           err instanceof Error
             ? err.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     } finally {
@@ -233,11 +232,11 @@ function DashboardEditor() {
         return navigate(err.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           err instanceof Error
             ? err.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
       // Revert name on error
@@ -255,8 +254,8 @@ function DashboardEditor() {
       });
       // Navigate back to dashboard list
       toast({
-        title: translate("Success"),
-        description: translate("Dashboard deleted successfully"),
+        title: "Success",
+        description: "Dashboard deleted successfully",
       });
       navigate({ to: "/" });
     } catch (err) {
@@ -264,11 +263,11 @@ function DashboardEditor() {
         return navigate(err.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           err instanceof Error
             ? err.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     }
@@ -314,11 +313,11 @@ function DashboardEditor() {
         return navigate(err.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           err instanceof Error
             ? err.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     }
@@ -343,7 +342,7 @@ function DashboardEditor() {
       });
     } else {
       toast({
-        title: translate("Error"),
+        title: "Error",
         description: "Failed to copy password",
         variant: "error",
       });
@@ -378,7 +377,7 @@ function DashboardEditor() {
   return (
     <MenuProvider>
       <Helmet>
-        <title>{translate("Edit Dashboard")} - {dashboard.name}</title>
+        <title>Edit Dashboard - {dashboard.name}</title>
       </Helmet>
 
       <div className="h-dvh flex flex-col">
@@ -395,7 +394,7 @@ function DashboardEditor() {
                     variant="secondary"
                     className="mt-4 capitalize"
                   >
-                    {dashboard.visibility === 'password-protected' ? 'Password Protected' : translate(dashboard.visibility || 'private')}
+                    {dashboard.visibility === 'password-protected' ? 'Password Protected' : (dashboard.visibility || 'private')}
                     <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
                   </Button>
                   {(dashboard.visibility === 'public' || dashboard.visibility === 'password-protected') && (
@@ -408,7 +407,7 @@ function DashboardEditor() {
                 variant="destructive"
                 className="mt-4 mx-4"
               >
-                {translate("Delete Dashboard")}
+                Delete Dashboard
               </Button>
               {loadDuration && (
                 <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
@@ -461,7 +460,7 @@ function DashboardEditor() {
                   disabled={savingName}
                   isLoading={savingName}
                 >
-                  {translate("Save")}
+                  Save
                 </Button>
               </form>
             ) : (
@@ -469,7 +468,7 @@ function DashboardEditor() {
                 <Tooltip
                   showArrow={false}
                   asChild
-                  content={translate("Click to edit dashboard name")}
+                  content="Click to edit dashboard name"
                 >
                   <h1
                     className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
@@ -488,7 +487,7 @@ function DashboardEditor() {
               search={() => ({ vars })}
               className="text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200 flex-grow sm:grow-0"
             >
-              {translate("View Dashboard")}
+              View Dashboard
             </Link>
 
             <div className="space-x-2">
@@ -503,7 +502,7 @@ function DashboardEditor() {
                   disabled={editorQuery === dashboard.content}
                   variant='destructive'
                 >
-                  {translate("Discard")}
+                  Discard
                 </Button>
               </Tooltip>
               <Tooltip
@@ -518,7 +517,7 @@ function DashboardEditor() {
                   isLoading={saving}
                   variant='secondary'
                 >
-                  {translate("Save")}
+                  Save
                 </Button>
               </Tooltip>
               <Tooltip
@@ -531,7 +530,7 @@ function DashboardEditor() {
                   disabled={isPreviewLoading}
                   isLoading={isPreviewLoading}
                 >
-                  {translate("Run")}
+                  Run
                 </Button>
               </Tooltip>
             </div>
@@ -564,9 +563,9 @@ function DashboardEditor() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {translate('Are you sure you want to delete the dashboard "%%"?').replace(
+              {('Are you sure you want to delete the dashboard "%%"?').replace(
                 "%%",
                 dashboard.name,
               )}
@@ -574,7 +573,7 @@ function DashboardEditor() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDeleteDialog(false)}>
-              {translate("Cancel")}
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -583,7 +582,7 @@ function DashboardEditor() {
                 setShowDeleteDialog(false);
               }}
             >
-              {translate("Delete")}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -599,13 +598,13 @@ function DashboardEditor() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDiscardDialog(false)}>
-              {translate("Cancel")}
+              Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDiscardChanges}
             >
-              {translate("Discard")}
+              Discard
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -750,7 +749,7 @@ function DashboardEditor() {
               onClick={() => setShowVisibilityDialog(false)}
               variant="secondary"
             >
-              {translate("Cancel")}
+              Cancel
             </Button>
             <Button
               variant="primary"
@@ -761,7 +760,7 @@ function DashboardEditor() {
               disabled={selectedVisibility === 'password-protected' && password.length < 4}
               isLoading={savingPassword}
             >
-              {translate("Save")}
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -857,7 +856,7 @@ function DashboardEditor() {
               onClick={() => setShowPasswordSuccessDialog(false)}
               variant="secondary"
             >
-              {translate("Close")}
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

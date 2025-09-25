@@ -13,7 +13,6 @@ import {
 } from "@remixicon/react";
 import { logout, getJwt } from "../../lib/auth";
 import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
-import { translate } from "../../lib/translate";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
 import { getSystemConfig } from "../../lib/system";
@@ -108,7 +107,7 @@ export function MenuProvider({
             })}
           >
             <RiHomeLine className="size-4 inline mr-1.5 mb-1" />
-            {translate("Home")}
+            Home
           </Link>
           <Link
             to="/new"
@@ -119,7 +118,7 @@ export function MenuProvider({
             })}
           >
             <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
-            {translate("New")}
+            New
           </Link>
           {extraContent}
         </div>
@@ -131,7 +130,7 @@ export function MenuProvider({
             target="shaper-docs"
           >
             <RiBook2Line className="size-4 inline mr-1.5 mb-1" />
-            {translate("Docs")}
+            Docs
             <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
           <Link
@@ -146,7 +145,7 @@ export function MenuProvider({
             )}
           >
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
-            {translate("Admin")}
+            Admin
           </Link>
           {getSystemConfig().loginRequired && (
             <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
@@ -160,7 +159,7 @@ export function MenuProvider({
                 variant="light"
               >
                 <RiLogoutBoxRLine className="size-4 inline mr-0.5 -ml-0.5 -mt-0.5" />
-                {translate("Logout")}
+                Logout
               </Button>
             </div>
           )}

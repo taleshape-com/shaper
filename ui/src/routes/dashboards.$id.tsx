@@ -10,7 +10,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { VarsParamSchema, varsParamSchema } from "../lib/utils";
 import { useAuth, getJwt } from "../lib/auth";
 import { useCallback, useState } from "react";
-import { translate } from "../lib/translate";
 import { Result } from "../lib/types";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
@@ -78,7 +77,7 @@ function DashboardViewComponent() {
         className="block px-4 py-3 hover:underline"
       >
         <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
-        {translate("Edit Dashboard")}
+        Edit Dashboard
       </Link>
       <VariablesMenu />
       {(visibility === 'public' || visibility === 'password-protected') && (

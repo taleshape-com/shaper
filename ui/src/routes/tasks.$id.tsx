@@ -9,7 +9,6 @@ import {
   focusRing,
   isMac,
 } from '../lib/utils'
-import { translate } from '../lib/translate'
 import { editorStorage } from '../lib/editorStorage'
 import { Button } from '../components/tremor/Button'
 import { useQueryApi } from '../hooks/useQueryApi'
@@ -123,8 +122,8 @@ function TaskEdit() {
       editorStorage.clearChanges(id, 'task')
 
       toast({
-        title: translate('Success'),
-        description: translate('Task saved successfully'),
+        title: 'Success',
+        description: 'Task saved successfully',
         variant: 'success',
       })
 
@@ -134,8 +133,8 @@ function TaskEdit() {
         return navigate(err.options)
       }
       toast({
-        title: translate('Error'),
-        description: err instanceof Error ? err.message : translate('An error occurred'),
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'An error occurred',
         variant: 'error',
       })
     } finally {
@@ -161,8 +160,8 @@ function TaskEdit() {
         return navigate(err.options);
       }
       toast({
-        title: translate('Error'),
-        description: err instanceof Error ? err.message : translate('An error occurred'),
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'An error occurred',
         variant: 'error',
       })
       // Revert name on error
@@ -180,8 +179,8 @@ function TaskEdit() {
       })
       // Navigate back to task list
       toast({
-        title: translate('Success'),
-        description: translate('Task deleted successfully'),
+        title: 'Success',
+        description: 'Task deleted successfully',
       })
       navigate({ to: '/' });
     } catch (err) {
@@ -189,8 +188,8 @@ function TaskEdit() {
         return navigate(err.options);
       }
       toast({
-        title: translate('Error'),
-        description: err instanceof Error ? err.message : translate('An error occurred'),
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'An error occurred',
         variant: 'error',
       })
     }
@@ -235,7 +234,7 @@ function TaskEdit() {
                   variant='destructive'
                   className='mt-4'
                 >
-                  {translate('Delete Task')}
+                  Delete Task
                 </Button>
               </div>
             </MenuTrigger>
@@ -282,7 +281,7 @@ function TaskEdit() {
                   disabled={savingName}
                   isLoading={savingName}
                 >
-                  {translate('Save')}
+                  Save
                 </Button>
               </form>
             ) : (
@@ -290,7 +289,7 @@ function TaskEdit() {
                 <Tooltip
                   showArrow={false}
                   asChild
-                  content={translate("Click to edit task name")}
+                  content="Click to edit task name"
                 >
                   <h1
                     className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
@@ -315,7 +314,7 @@ function TaskEdit() {
                   disabled={editorQuery === task?.content}
                   variant='destructive'
                 >
-                  {translate('Discard')}
+                  Discard
                 </Button>
               </Tooltip>
               <Tooltip
@@ -330,7 +329,7 @@ function TaskEdit() {
                   isLoading={saving}
                   variant='secondary'
                 >
-                  {translate('Save')}
+                  Save
                 </Button>
               </Tooltip>
               <Tooltip
@@ -343,7 +342,7 @@ function TaskEdit() {
                   disabled={isPreviewLoading}
                   isLoading={isPreviewLoading}
                 >
-                  {translate('Run')}
+                  Run
                 </Button>
               </Tooltip>
             </div>
@@ -372,9 +371,9 @@ function TaskEdit() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {translate('Are you sure you want to delete the task "%%"?').replace(
+              {'Are you sure you want to delete the task "%%"?'.replace(
                 '%%',
                 task.name,
               )}
@@ -382,7 +381,7 @@ function TaskEdit() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDeleteDialog(false)}>
-              {translate('Cancel')}
+              Cancel
             </Button>
             <Button
               variant='destructive'
@@ -391,7 +390,7 @@ function TaskEdit() {
                 setShowDeleteDialog(false);
               }}
             >
-              {translate('Delete')}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -407,13 +406,13 @@ function TaskEdit() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDiscardDialog(false)}>
-              {translate("Cancel")}
+              Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDiscardChanges}
             >
-              {translate("Discard")}
+              Discard
             </Button>
           </DialogFooter>
         </DialogContent>

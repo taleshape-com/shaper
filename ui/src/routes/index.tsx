@@ -31,7 +31,6 @@ import {
   RiBarChart2Line,
   RiUserSharedLine,
 } from "@remixicon/react";
-import { translate } from "../lib/translate";
 import { getSystemConfig } from "../lib/system";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
@@ -126,16 +125,16 @@ function Index() {
       });
       router.invalidate();
       toast({
-        title: translate("Success"),
-        description: translate(app.type === "dashboard" ? "Dashboard deleted successfully" : "Task deleted successfully"),
+        title: "Success",
+        description: app.type === "dashboard" ? "Dashboard deleted successfully" : "Task deleted successfully",
       });
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       toast({
-        title: translate("Error"),
-        description: err instanceof Error ? err.message : translate("Unknown error"),
+        title: "Error",
+        description: err instanceof Error ? err.message : "Unknown error",
         variant: "error",
       });
     }
@@ -148,7 +147,7 @@ function Index() {
   return (
     <MenuProvider isHome>
       <Helmet>
-        <title>{translate("Home")}</title>
+        <title>Home</title>
         <meta name="description" content="Show a list of all dashboards and tasks" />
       </Helmet>
 
@@ -160,7 +159,7 @@ function Index() {
               className="size-5 inline hidden md:inline mr-1 -mt-1"
               aria-hidden={true}
             />
-            {translate("Overview")}
+            Overview
           </h1>
         </div>
 
@@ -179,7 +178,7 @@ function Index() {
               >
                 <Button>
                   <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />
-                  {translate("New")}
+                  New
                 </Button>
               </Link>
             </div>
@@ -193,7 +192,7 @@ function Index() {
                       >
                         <Tooltip
                           showArrow={false}
-                          content={translate("Type")}
+                          content="Type"
                         >
                           <RiFile3Fill
                             className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 cursor-default"
@@ -206,22 +205,22 @@ function Index() {
                       onClick={() => handleSort("name" as const)}
                       className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                     >
-                      {translate("Name")} <SortIcon field="name" />
+                      Name <SortIcon field="name" />
                     </TableHeaderCell>
                     <TableHeaderCell
                       className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                       onClick={() => handleSort("created" as const)}
                     >
-                      {translate("Created")} <SortIcon field="created" />
+                      Created <SortIcon field="created" />
                     </TableHeaderCell>
                     <TableHeaderCell
                       className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                       onClick={() => handleSort("updated" as const)}
                     >
-                      {translate("Updated")} <SortIcon field="updated" />
+                      Updated <SortIcon field="updated" />
                     </TableHeaderCell>
                     <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
-                      {translate("Actions")}
+                      Actions
                     </TableHeaderCell>
                   </TableRow>
                 </TableHead>
@@ -274,7 +273,7 @@ function Index() {
                                     nextRunAt={app.taskInfo.nextRunAt}
                                   >
                                     <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                      {translate("Task Error")}
+                                      Task Error
                                     </span>
                                   </RuntimeTooltip>
                                 )
@@ -283,7 +282,7 @@ function Index() {
                                     lastRunAt={app.taskInfo.lastRunAt}
                                   >
                                     <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                      {translate("Next Run")}: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
+                                      Next Run: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
                                     </span>
                                   </RuntimeTooltip>
                                 )
@@ -291,7 +290,7 @@ function Index() {
                             : app.visibility === "public" ? (
                               <Tooltip
                                 showArrow={false}
-                                content={translate("This dashboard is public")}
+                                content="This dashboard is public"
                               >
                                 <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
                               </Tooltip>
@@ -344,7 +343,7 @@ function Index() {
                               "hover:underline transition-colors duration-200",
                             )}
                           >
-                            {translate("Edit")}
+                            Edit
                           </Link>
                           <button
                             onClick={() => {
@@ -352,7 +351,7 @@ function Index() {
                             }}
                             className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                           >
-                            {translate("Delete")}
+                            Delete
                           </button>
                         </div>
                       </TableCell>
@@ -367,9 +366,9 @@ function Index() {
         <Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+              <DialogTitle>Confirm Deletion</DialogTitle>
               <DialogDescription>
-                {deleteDialog && translate(
+                {deleteDialog && (
                   deleteDialog.type === 'dashboard'
                     ? 'Are you sure you want to delete the dashboard "%%"?'
                     : 'Are you sure you want to delete the task "%%"?'
@@ -381,7 +380,7 @@ function Index() {
             </DialogHeader>
             <DialogFooter>
               <Button onClick={() => setDeleteDialog(null)} variant="secondary">
-                {translate("Cancel")}
+                Cancel
               </Button>
               <Button
                 variant="destructive"
@@ -392,7 +391,7 @@ function Index() {
                   }
                 }}
               >
-                {translate("Delete")}
+                Delete
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -410,11 +409,11 @@ function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
   if (lastRunAt == null) return children;
   const tooltipContent = (
     <>
-      {translate("Last Run")}: <RelativeDate refresh date={new Date(lastRunAt)} />
+      Last Run: <RelativeDate refresh date={new Date(lastRunAt)} />
       {nextRunAt != null && (
         <>
           <br />
-          {translate("Next Run")}: <RelativeDate refresh date={new Date(nextRunAt)} />
+          Next Run: <RelativeDate refresh date={new Date(nextRunAt)} />
         </>
       )}
     </>

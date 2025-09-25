@@ -8,7 +8,6 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useToast } from '../hooks/useToast'
-import { translate } from '../lib/translate'
 import { useQueryApi } from '../hooks/useQueryApi'
 import { RiLockLine } from '@remixicon/react'
 
@@ -29,19 +28,19 @@ function Admin() {
         method: 'POST',
       })
       toast({
-        title: translate('Success'),
-        description: translate('JWT secret reset successfully'),
+        title: 'Success',
+        description: 'JWT secret reset successfully',
       })
     } catch (error) {
       if (isRedirect(error)) {
         return navigate(error.options)
       }
       toast({
-        title: translate('Error'),
+        title: 'Error',
         description:
           error instanceof Error
             ? error.message
-            : translate('An error occurred'),
+            : 'An error occurred',
         variant: 'error',
       })
     } finally {
@@ -53,18 +52,14 @@ function Admin() {
     <div>
       <h2 className="text-xl font-semibold mb-4">
         <RiLockLine className="size-4 inline mr-1 -mt-0.5" />
-        {translate('Security Settings')}
+        Security Settings
       </h2>
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-medium mb-2">JWT Secret</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {translate(
-              'Reset the JWT secret to invalidate all existing tokens.',
-            )}
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Reset the JWT secret to invalidate all existing tokens.</p>
           <Button onClick={handleReset} disabled={isResetting} variant="destructive">
-            {isResetting ? translate('Resetting...') : translate('Reset JWT Secret')}
+            {isResetting ? 'Resetting...' : 'Reset JWT Secret'}
           </Button>
         </div>
       </div>

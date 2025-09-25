@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { translate } from '../lib/translate'
 import { Card } from './tremor/Card'
 import { Table } from './tremor/Table'
 import { Callout } from "./tremor/Callout";
@@ -34,7 +33,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
       <div className="p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-2 border-cb dark:border-db border-t-cprimary dark:border-t-dprimary rounded-full mx-auto mb-4"></div>
-          <p className="text-ctext2 dark:text-dtext2">{translate('Running task...')}</p>
+          <p className="text-ctext2 dark:text-dtext2">Running task...</p>
         </div>
       </div>
     )
@@ -45,7 +44,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
       <div className="p-8 flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-ctext2 dark:text-dtext2 text-lg">
-            {translate("Click Run to execute the task now. Task is scheduled when you save it.")}
+            Click Run to execute the task now. Task is scheduled when you save it.
           </p>
         </div>
       </div>
@@ -60,16 +59,16 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
             ? 'text-cprimary dark:text-dprimary'
             : 'bg-cerr text-ctexti dark:bg-derra dark:text-dtexti'
             }`}>
-            {data.success ? translate('Success') : translate('Failed')}
+            {data.success ? 'Success' : 'Failed'}
           </span>
           {data.nextRunAt && data.nextRunAt != 0 && (
             <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti px-2 py-1 rounded">
-              {translate("If task is saved, next run")} <RelativeDate date={new Date(data.nextRunAt)} />
+              If task is saved, next run <RelativeDate date={new Date(data.nextRunAt)} />
             </span>
           )}
         </div>
         <div className="text-xs text-ctext2 dark:text-dtext2 mr-4">
-          {translate('Total Duration')}:
+          Total Duration:
           <span className="ml-2">{data.queries.reduce((acc, q) => acc + q.duration, 0)}ms</span>
         </div>
       </div>
@@ -79,13 +78,13 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
           <div className="space-y-3 p-4">
             <div className="flex items-start justify-between">
               <h3 className="text-sm font-medium text-ctext dark:text-dtext">
-                {translate('Query')} {index + 1}/{data.totalQueries}
+                Query {index + 1}/{data.totalQueries}
               </h3>
               <div className="flex items-center gap-2 text-xs text-ctext2 dark:text-dtext2">
                 <span>{query.duration}ms</span>
                 {query.error && (
                   <span className="px-2 py-1 bg-cerr text-ctexti dark:bg-derr dark:text-dtexti rounded">
-                    {translate('Error')}
+                    Error
                   </span>
                 )}
               </div>
@@ -94,10 +93,10 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
             {query.stopExecution && (
               <Callout
                 className="mb-4"
-                title={translate('Query stopped script execution')}
+                title="Query stopped script execution"
                 variant="neutral"
               >
-                {translate('The query returned the single boolean "false" which signals that the script should stop executing further queries.')}
+                The query returned the single boolean "false" which signals that the script should stop executing further queries.
               </Callout>
             )}
 
@@ -108,14 +107,14 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
             {query.error ? (
               <div className="p-2 bg-cerr dark:bg-derr rounded">
                 <p className="text-sm text-ctexti dark:text-dtexti">
-                  <strong>{translate('Error')}:</strong> {query.error}
+                  <strong>Error:</strong> {query.error}
                 </p>
               </div>
             ) :
               query.resultRows.length > 0 ? (
                 <div>
                   <h4 className="text-sm font-medium mb-2 text-ctext dark:text-dtext">
-                    {translate('Result')} ({query.resultRows.length} {query.resultRows.length === 1 ? translate('row') : translate('rows')})
+                    Result ({query.resultRows.length} {query.resultRows.length === 1 ? 'row' : 'rows'})
                   </h4>
                   <div className="overflow-x-auto">
                     <Table>
@@ -148,7 +147,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
                 </div>
               ) : (
                 <p className="text-sm text-ctext2 dark:text-dtext2">
-                  {translate('No rows returned')}
+                  No rows returned
                 </p>
               )
             }
@@ -156,7 +155,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
         </Card>
       )) : (
         <p className="text-ctext2 dark:text-dtext2 p-4 bg-cbgs dark:bg-dbgs rounded flex-grow flex items-center justify-center">
-          {translate("Task empty. Add some queries to see results here.")}
+          Task empty. Add some queries to see results here.
         </p>
       )}
     </div>

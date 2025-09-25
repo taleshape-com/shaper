@@ -15,7 +15,6 @@ import {
   isMac,
   varsParamSchema,
 } from '../lib/utils'
-import { translate } from '../lib/translate'
 import { editorStorage } from '../lib/editorStorage'
 import { Button } from '../components/tremor/Button'
 import { useQueryApi } from '../hooks/useQueryApi'
@@ -294,9 +293,9 @@ function NewDashboard() {
         return navigate(err.options)
       }
       toast({
-        title: translate('Error'),
+        title: 'Error',
         description:
-          err instanceof Error ? err.message : translate('An error occurred'),
+          err instanceof Error ? err.message : 'An error occurred',
         variant: 'error',
       })
       setCreating(false)
@@ -340,7 +339,7 @@ function NewDashboard() {
             </MenuTrigger>
 
             <h1 className="flex items-center gap-3 flex-grow text-xl font-semibold font-display">
-              {translate('New')}
+              New
               {getSystemConfig().tasksEnabled ? (
                 <Select value={appType} onValueChange={handleTypeChange}>
                   <SelectTrigger className="w-36">
@@ -352,19 +351,19 @@ function NewDashboard() {
                         className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
                         aria-hidden={true}
                       />
-                      {translate('Dashboard')}
+                      Dashboard
                     </SelectItem>
                     <SelectItem value="task">
                       <RiCodeSSlashFill
                         className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
                         aria-hidden={true}
                       />
-                      {translate('Task')}
+                      Task
                     </SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
-                " " + translate("Dashboard")
+                " Dashboard"
               )}
             </h1>
 
@@ -375,7 +374,7 @@ function NewDashboard() {
                   disabled={creating}
                   variant="secondary"
                 >
-                  {translate('Create')}
+                  Create
                 </Button>
               </Tooltip>
               <Tooltip
@@ -388,7 +387,7 @@ function NewDashboard() {
                   disabled={isPreviewLoading}
                   isLoading={isPreviewLoading}
                 >
-                  {translate('Run')}
+                  Run
                 </Button>
               </Tooltip>
             </div>
@@ -429,7 +428,7 @@ function NewDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {translate(`Create ${appType === 'task' ? 'Task' : 'Dashboard'}`)}
+              {`Create ${appType === 'task' ? 'Task' : 'Dashboard'}`}
             </DialogTitle>
           </DialogHeader>
           <form
@@ -444,7 +443,7 @@ function NewDashboard() {
                 id="dashboardName"
                 value={dashboardName}
                 onChange={(e) => setDashboardName(e.target.value)}
-                placeholder={translate(`Enter a name for the ${appType === 'task' ? 'task' : 'dashboard'}`)}
+                placeholder={`Enter a name for the ${appType === 'task' ? 'task' : 'dashboard'}`}
                 autoFocus
                 required
               />
@@ -455,14 +454,14 @@ function NewDashboard() {
                 onClick={() => setShowCreateDialog(false)}
                 variant="secondary"
               >
-                {translate('Cancel')}
+                Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={creating || !dashboardName.trim()}
                 isLoading={creating}
               >
-                {translate('Create')}
+                Create
               </Button>
             </DialogFooter>
           </form>

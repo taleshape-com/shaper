@@ -446,7 +446,7 @@ const renderContent = (
             aria-hidden={true}
           />
           <p className="mt-2 font-medium">
-            {translate("No data")}
+            {translate("No Data")}
           </p>
         </div>
       </div>
