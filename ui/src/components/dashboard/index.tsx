@@ -228,7 +228,7 @@ const DataView = ({
             key={sectionIndex}
             className={cx("flex flex-wrap items-center ml-2 mr-4", {
               "mt-3 mb-3": section.queries.length > 0 || section.title,
-              "mt-4": section.title && sectionIndex !== 0,
+              "mt-8": section.title && sectionIndex !== 0,
               "my-2": section.queries.length === 0 && !section.title && sectionIndex === 0,
             })}
           >
