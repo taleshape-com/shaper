@@ -32,8 +32,8 @@ LABEL org.opencontainers.image.source="https://github.com/taleshape-com/shaper"
 ARG TARGETARCH
 
 # 2 vars for headless-shell
-ENV LANG en-US.UTF-8
-ENV PATH /headless-shell:$PATH
+ENV LANG=en-US.UTF-8
+ENV PATH=/headless-shell:$PATH
 # When running in a container, listen on all interfaces (including IPv6) by default
 ENV SHAPER_ADDR=:5454
 # Override default data directory with something easy to mount to
