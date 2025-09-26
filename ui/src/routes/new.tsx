@@ -61,19 +61,21 @@ FROM (
   (3, 30),
 );`;
 
-const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that defines when the task runs. Examples:
+const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that defines when the task runs.
+-- Examples:
 
--- Every hour
-SELECT (INTERVAL '1h')::SCHEDULE;
+-- Every hour:
+-- SELECT (INTERVAL '1h')::SCHEDULE;
 
--- Every day at 1am
-SELECT (date_trunc('day', now()) + INTERVAL '25h')::SCHEDULE;
+-- Every day at 1am:
+-- SELECT (date_trunc('day', now()) + INTERVAL '25h')::SCHEDULE;
 
--- Every Monday at 1am
-SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;
+-- Every Monday at 1am:
+-- SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;
 
--- Never run automatically
-SELECT NULL::SCHEDULE;`;
+-- Never run automatically:
+SELECT NULL::SCHEDULE;
+`;
 
 // LocalStorage key for storing the app type preference
 const APP_TYPE_STORAGE_KEY = 'shaper-new-app-type';
@@ -131,7 +133,7 @@ function NewDashboard() {
 
   // Check for unsaved changes when component mounts or type changes
   useEffect(() => {
-    const unsavedContent = editorStorage.getChanges('new', appType)
+    const unsavedContent = editorStorage.getChanges('new')
     if (unsavedContent) {
       setEditorQuery(unsavedContent)
       setRunningQuery(unsavedContent)
@@ -236,9 +238,9 @@ function NewDashboard() {
 
     // Save to localStorage
     if (newQuery !== currentDefaultQuery && newQuery.trim() !== '') {
-      editorStorage.saveChanges('new', newQuery, appType)
+      editorStorage.saveChanges('new', newQuery)
     } else {
-      editorStorage.clearChanges('new', appType)
+      editorStorage.clearChanges('new')
     }
     setEditorQuery(newQuery)
   }
@@ -259,7 +261,7 @@ function NewDashboard() {
           },
         })
         // Clear localStorage after successful save
-        editorStorage.clearChanges('new', 'task')
+        editorStorage.clearChanges('new')
         clearStoredAppType() // Reset the app type preference
 
         // Navigate to the task edit page
