@@ -153,10 +153,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isSectionTitle(colTypes, query.Rows) {
-			result.Sections = append(result.Sections, Section{
-				Type:    "header",
-				Queries: []Query{},
-			})
+			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil {
+				result.Sections = append(result.Sections, Section{
+					Type:    "header",
+					Queries: []Query{},
+				})
+			}
 			hideNextContentSection = false
 			lastSection := &result.Sections[len(result.Sections)-1]
 			if len(query.Rows) == 0 {
