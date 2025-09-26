@@ -779,9 +779,9 @@ func parseTimestamp(value string) (time.Time, error) {
 	formats := []string{
 		time.RFC3339,
 		time.RFC3339Nano,
+		"2006-01-02 15:04:05.000Z07:00",
 		"2006-01-02 15:04:05",
 		"2006-01-02T15:04:05",
-		"2006-01-02 15:04:05.000Z07:00",
 	}
 
 	for _, format := range formats {

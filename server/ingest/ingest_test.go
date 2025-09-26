@@ -776,7 +776,7 @@ func TestTimestampHandling(t *testing.T) {
 	tableCache := make(map[string]TableCache)
 	subjectPrefix := "test."
 
-	// Unix timestamp to use in our test (June 15, 2023 14:30:45 UTC)
+	// Unix timestamp to use in our test (June 15, 2023 14:10:45 UTC)
 	const unixTimestamp int64 = 1686838245
 
 	// Test various timestamp formats
@@ -788,6 +788,7 @@ func TestTimestampHandling(t *testing.T) {
 			"ts3": unixTimestamp,                                                      // Unix timestamp (seconds)
 			"ts4": unixTimestamp * 1000,                                               // Unix timestamp (milliseconds)
 			"ts5": time.Unix(unixTimestamp, 123456000).UTC().Format(time.RFC3339Nano), // With fractional seconds
+			"ts6": "2023-06-15T16:10:45.0001000+02:00",                                // 7 decimal places with timezone
 		}),
 	}
 
@@ -844,7 +845,7 @@ func TestTimestampHandling(t *testing.T) {
 		case time.Time:
 			t = v
 		case string:
-			for _, format := range []string{time.RFC3339, "2006-01-02 15:04:05"} {
+			for _, format := range []string{time.RFC3339, time.RFC3339Nano, "2006-01-02 15:04:05", "2006-01-02T15:04:05.0000000-07:00"} {
 				if parsed, err := time.Parse(format, v); err == nil {
 					t = parsed
 					break
@@ -867,7 +868,7 @@ func TestTimestampHandling(t *testing.T) {
 	}
 
 	// Verify date components for each field
-	for _, field := range []string{"ts1", "ts2", "ts5"} {
+	for _, field := range []string{"ts1", "ts2", "ts5", "ts6"} {
 		if val, exists := rowData[field]; exists && val != nil {
 			// Get the components from the stored value
 			year, month, day, hour, min, sec, err := extractDateComponents(val)
@@ -897,11 +898,8 @@ func TestTimestampHandling(t *testing.T) {
 			t.Logf("%s time components: expected %02d:%02d, got %02d:%02d (diff: %.0f min)",
 				field, expectedTime.Hour(), expectedTime.Minute(), hour, min, minutesDiff)
 
-			// The difference should either be small (same timezone)
-			// or close to a multiple of 60 (different timezone)
-			if minutesDiff < 5 || math.Mod(minutesDiff, 60) < 5 || math.Mod(minutesDiff, 60) > 55 {
-				// Close enough - likely just timezone differences
-			} else {
+			// The difference should either be small
+			if minutesDiff > 0 {
 				t.Errorf("Unexpected time difference for %s: %.0f minutes", field, minutesDiff)
 			}
 
@@ -1581,7 +1579,89 @@ func TestTimestampFormats(t *testing.T) {
 	}
 }
 
-// Additional test to verify that existing tests still work with _id and _ts columns
+func TestSevenDecimalTimestampFormat(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Test various 7-decimal place timestamp formats with different timezones
+	batch := []jetstream.Msg{
+		createMockMsg("test.seven_decimal_ts", map[string]any{
+			"id":  1,
+			"ts1": "2024-11-08T09:34:25.5785161+01:00", // Positive timezone offset
+			"ts2": "2006-01-02T15:04:05.0000000+07:00", // Reference format from request
+			"ts3": "2023-12-25T23:59:59.9999999-05:00", // Negative timezone offset
+			"ts4": "2024-01-01T00:00:00.1234567Z",      // UTC timezone
+		}),
+	}
+
+	err := processBatch(ctx, batch, tableCache, dbConnector, db, logger, subjectPrefix)
+	require.NoError(t, err, "Failed to process seven decimal timestamp batch")
+
+	// Query the data to verify timestamps were parsed correctly
+	rows, err := db.QueryxContext(ctx, "SELECT * FROM seven_decimal_ts WHERE id = 1")
+	require.NoError(t, err, "Failed to query seven decimal timestamp table")
+	defer rows.Close()
+
+	require.True(t, rows.Next(), "No rows returned from seven decimal timestamp test")
+
+	// Use MapScan to get raw values
+	rowData := make(map[string]any)
+	err = rows.MapScan(rowData)
+	require.NoError(t, err, "Failed to scan seven decimal timestamp row")
+
+	// Helper function to parse and validate timestamp
+	validateTimestamp := func(fieldName string, expectedYear int, expectedMonth time.Month, expectedDay int) {
+		val, exists := rowData[fieldName]
+		require.True(t, exists, "Field %s should exist", fieldName)
+		require.NotNil(t, val, "Field %s should not be nil", fieldName)
+
+		// Parse the stored timestamp back to time.Time
+		var parsedTime time.Time
+		switch v := val.(type) {
+		case time.Time:
+			parsedTime = v
+		case string:
+			// Try multiple formats to parse the stored timestamp
+			formats := []string{
+				time.RFC3339,
+				time.RFC3339Nano,
+				"2006-01-02T15:04:05.0000000-07:00",
+				"2006-01-02 15:04:05.999999999-07:00",
+			}
+			var parseErr error
+			for _, format := range formats {
+				if t, err := time.Parse(format, v); err == nil {
+					parsedTime = t
+					parseErr = nil
+					break
+				} else {
+					parseErr = err
+				}
+			}
+			require.NoError(t, parseErr, "Failed to parse stored timestamp for %s: %v", fieldName, v)
+		default:
+			t.Fatalf("Unexpected type for %s: %T", fieldName, v)
+		}
+
+		// Verify the date components
+		assert.Equal(t, expectedYear, parsedTime.Year(), "Year mismatch for %s", fieldName)
+		assert.Equal(t, expectedMonth, parsedTime.Month(), "Month mismatch for %s", fieldName)
+		assert.Equal(t, expectedDay, parsedTime.Day(), "Day mismatch for %s", fieldName)
+
+		t.Logf("%s parsed as: %v", fieldName, parsedTime)
+	}
+
+	// Validate each timestamp - note that timestamps are converted to UTC, so dates may shift
+	validateTimestamp("ts1", 2024, time.November, 8)  // 09:34 +01:00 -> 08:34 UTC (same date)
+	validateTimestamp("ts2", 2006, time.January, 2)   // 15:04 +07:00 -> 08:04 UTC (same date)
+	validateTimestamp("ts3", 2023, time.December, 26) // 23:59 -05:00 -> 04:59 UTC next day
+	validateTimestamp("ts4", 2024, time.January, 1)   // 00:00 Z -> 00:00 UTC (same date)
+}
+
 func TestBackwardsCompatibility(t *testing.T) {
 	dbConnector, db := setupTestDB(t)
 	defer db.Close()
