@@ -30,10 +30,10 @@ export const formatValue = (value: string | number | boolean | null | undefined,
     return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
   }
   if (columnType === "hour") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: shortFormat ? undefined : '2-digit', minute: shortFormat ? undefined : '2-digit', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
+    return d.toLocaleString(navigator.languages, { year: shortFormat ? undefined : 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: shortFormat ? undefined : '2-digit', timeZone: 'UTC', weekday: shortFormat ? undefined : 'short' })
   }
   if (columnType === "timestamp") {
-    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: shortFormat ? undefined : '2-digit', minute: shortFormat ? undefined : '2-digit', second: shortFormat ? undefined : '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
+    return d.toLocaleString(navigator.languages, { year: 'numeric', month: 'numeric', day: 'numeric', hour: shortFormat ? undefined : 'numeric', minute: shortFormat ? undefined : '2-digit', second: shortFormat ? undefined : '2-digit', hourCycle: 'h24', timeZone: 'UTC' });
   }
   if (columnType === "duration" && !value) {
     return "0"
