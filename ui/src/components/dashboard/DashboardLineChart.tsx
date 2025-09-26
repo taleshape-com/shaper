@@ -113,10 +113,10 @@ const DashboardLineChart = ({
       valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
       colorsByCategory={colorsByCategory}
-      valueFormatter={(n: number, shortFormat?: boolean) => {
+      valueFormatter={(n: number, shortFormat?: boolean | number) => {
         return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
-      indexFormatter={(n: number, shortFormat?: boolean) => {
+      indexFormatter={(n: number, shortFormat?: boolean | number) => {
         return formatValue(n, indexType, true, shortFormat).toString();
       }}
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}

@@ -29,8 +29,8 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   valueType: Column['type'];
   categories: string[];
   colorsByCategory: Record<string, string>;
-  valueFormatter: (value: number, shortFormat?: boolean) => string;
-  indexFormatter: (value: number, shortFormat?: boolean) => string;
+  valueFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number, shortFormat?: boolean | number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -184,30 +184,31 @@ const BarChart = (props: BarChartProps) => {
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = layout === "horizontal" && !isTimestampData ? dataCopy.map((item) => item[index]) : undefined;
+    const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+    const shortenLabel = layout === 'horizontal' ? xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true : false;
     let totalLabelLen = 0;
     let maxLabelLen = 0;
     (xData ?? []).forEach(x => {
-      const v = layout === 'horizontal' ? indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(x).getTime() : x, true) : valueFormatter(x, true);
+      const v = layout === 'horizontal' ? indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(x).getTime() : x, shortenLabel) : valueFormatter(x, true);
       totalLabelLen += v.length;
       if (v.length > maxLabelLen) {
         maxLabelLen = v.length;
       }
     })
     const xLabelSpace = xData && chartWidth / totalLabelLen;
-    const shouldRotateXLabel = !xAxisLabel && xLabelSpace && xLabelSpace < 11 && maxLabelLen > 7;
+    const shouldRotateXLabel = !xAxisLabel && typeof shortenLabel === 'number' && shortenLabel <= 12;
     let customValues = undefined;
     if (layout === 'horizontal' && isTimestampData) {
       const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / dataCopy.length > (isTimeType(indexType) ? 80 : indexType === 'duration' ? 75 : 45);
       if (canFitAll) {
         customValues = dataCopy.map((item) => item[index]);
       } else {
-        const space = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
-        const numVals = Math.floor(space / 130);
+        const numVals = Math.floor(xSpace / 130);
         const dataMin = Math.min(...data.map(d => d[index]));
         const dataMax = Math.max(...data.map(d => d[index]));
-        const dataPadding = (dataMax - dataMin) * (60 / space);
+        const dataPadding = (dataMax - dataMin) * (60 / xSpace);
         const dataSpan = (dataMax - dataMin) - 2 * dataPadding;
-        const offset = dataSpan / (numVals);
+        const offset = dataSpan / numVals;
         customValues = [];
         for (let i = 0; i <= numVals; i++) {
           customValues.push(Math.round(dataMin + dataPadding + i * offset))
@@ -278,7 +279,7 @@ const BarChart = (props: BarChartProps) => {
             }, 0);
             tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
               <span class="font-medium">${translate('Total')}</span>
-              <span>${formatValue(total, valueType, true)}</span>
+              <span>${valueFormatter(total)}</span>
             </div>`;
           }
 
@@ -315,7 +316,7 @@ const BarChart = (props: BarChartProps) => {
               return;
             }
 
-            const formattedValue = formatValue(value, valueType, true);
+            const formattedValue = valueFormatter(value);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${param.color}"></span>
@@ -379,7 +380,7 @@ const BarChart = (props: BarChartProps) => {
           show: true,
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, true);
+              return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, shortenLabel);
             }
             return valueFormatter(value, true);
           },
@@ -447,7 +448,7 @@ const BarChart = (props: BarChartProps) => {
             if (layout === "horizontal") {
               return valueFormatter(value, true);
             }
-            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, false);
+            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, xSpace / 30);
           },
           color: textColorSecondary,
           fontFamily: chartFont,

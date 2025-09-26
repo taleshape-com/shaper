@@ -26,8 +26,8 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   valueType: Column['type'];
   categories: string[];
   colorsByCategory: Record<string, string>;
-  valueFormatter: (value: number, shortFormat?: boolean) => string;
-  indexFormatter: (value: number, shortFormat?: boolean) => string;
+  valueFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number, shortFormat?: boolean | number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -183,16 +183,17 @@ const LineChart = (props: LineChartProps) => {
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined
-    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === 'duration' ? new Date(x).getTime() : x, true)).join('').length;
+    const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+    const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === 'duration' ? new Date(x).getTime() : x, shortenLabel)).join('').length;
     let customValues = undefined;
     if (isTimestampData) {
-      const space = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
-      const numVals = Math.floor(space / 130);
+      const numVals = Math.floor(xSpace / 130);
       const dataMin = Math.min(...data.map(d => d[index]));
       const dataMax = Math.max(...data.map(d => d[index]));
-      const dataPadding = (dataMax - dataMin) * (60 / space);
+      const dataPadding = (dataMax - dataMin) * (60 / xSpace);
       const dataSpan = (dataMax - dataMin) - 2 * dataPadding;
-      const offset = dataSpan / (numVals);
+      const offset = dataSpan / numVals;
       customValues = [];
       for (let i = 0; i <= numVals; i++) {
         customValues.push(Math.round(dataMin + dataPadding + i * offset))
@@ -280,7 +281,7 @@ const LineChart = (props: LineChartProps) => {
               return;
             }
 
-            const formattedValue = formatValue(value, valueType, true);
+            const formattedValue = valueFormatter(value);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${param.color}"></span>
@@ -350,12 +351,12 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, true);
+            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, shortenLabel);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
-          rotate: !xAxisLabel && xLabelSpace && xLabelSpace < 11 ? 45 : 0,
+          rotate: !xAxisLabel && typeof shortenLabel === 'number' && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
           customValues,

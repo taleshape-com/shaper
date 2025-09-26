@@ -9,7 +9,7 @@ function parseLocalDate(d: string | number) {
   return new Date(d);
 }
 
-export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column['type'], shouldFormatNumbers?: boolean, shortFormat?: boolean) => {
+export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column['type'], shouldFormatNumbers?: boolean, shortFormat?: boolean | number) => {
   if (value === null || value === undefined) {
     return ""
   }
@@ -88,8 +88,9 @@ export const formatValue = (value: string | number | boolean | null | undefined,
     }
   }
   if (typeof value === "string" && shortFormat) {
-    if (value.length > 10) {
-      return value.slice(0, 10) + "…"
+    const maxLen = typeof shortFormat === "number" ? Math.max(Math.round(shortFormat), 12) : 30;
+    if (value.length > maxLen) {
+      return value.slice(0, maxLen) + "…"
     }
   }
   return value;
