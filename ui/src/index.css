@@ -112,7 +112,7 @@
 
 @media print {
   .shaper-scope body {
-    width: 1320px;
+    width: 1520px;
   }
   .shaper-scope .\@container {
     container-type: unset;

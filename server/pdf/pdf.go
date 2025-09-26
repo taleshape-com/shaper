@@ -24,7 +24,7 @@ import (
 var (
 	PDF_STREAM_BATCH_SIZE = 1024 * 32 // 32kb
 	PDF_SCALE             = 0.5597
-	BROWSER_WIDTH         = 1320 // Matches print body width in index.css so charts are at correct size for print
+	BROWSER_WIDTH         = 1520 // Matches print body width in index.css so charts are at correct size for print
 	BROWSER_HEIGHT        = 500  // Limit height so cards use min-height
 )
 
