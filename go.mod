@@ -6,15 +6,17 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
+	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
+	github.com/chromedp/chromedp v0.14.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo-contrib v0.17.4
 	github.com/labstack/echo-jwt/v4 v4.3.1
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/labstack/gommon v0.4.2
-	github.com/marcboeker/go-duckdb/v2 v2.3.6
+	github.com/marcboeker/go-duckdb/v2 v2.4.0
 	github.com/minio/minio-go/v7 v7.0.95
-	github.com/nats-io/nats-server/v2 v2.11.9
+	github.com/nats-io/nats-server/v2 v2.12.0
 	github.com/nats-io/nats.go v1.45.0
 	github.com/nrednav/cuid2 v1.1.0
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
@@ -29,19 +31,17 @@ require (
 
 require (
 	github.com/antithesishq/antithesis-sdk-go v0.4.3-default-no-op // indirect
-	github.com/apache/arrow-go/v18 v18.4.0 // indirect
+	github.com/apache/arrow-go/v18 v18.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
-	github.com/chromedp/chromedp v0.14.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/duckdb/duckdb-go-bindings v0.1.17 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.12 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.12 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.12 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.12 // indirect
-	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.12 // indirect
+	github.com/duckdb/duckdb-go-bindings v0.1.19 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.19 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.19 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.19 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.19 // indirect
+	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.19 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -58,8 +58,8 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/marcboeker/go-duckdb/arrowmapping v0.0.10 // indirect
-	github.com/marcboeker/go-duckdb/mapping v0.0.11 // indirect
+	github.com/marcboeker/go-duckdb/arrowmapping v0.0.19 // indirect
+	github.com/marcboeker/go-duckdb/mapping v0.0.19 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/minio/highwayhash v1.0.3 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nats-io/jwt/v2 v2.7.4 // indirect
+	github.com/nats-io/jwt/v2 v2.8.0 // indirect
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
