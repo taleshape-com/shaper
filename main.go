@@ -136,7 +136,7 @@ func loadConfig() Config {
 	flags := ff.NewFlagSet(APP_NAME)
 	help := flags.Bool('h', "help", "show help")
 	version := flags.Bool('v', "version", "show version")
-	logLevel := flags.StringLong("loglevel", "info", "log level: debug, info, warn, error")
+	logLevel := flags.StringLong("log-level", "info", "log level: debug, info, warn, error")
 	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
