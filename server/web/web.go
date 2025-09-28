@@ -50,10 +50,10 @@ func Start(
 			path := ctx.Request().URL.Path
 			// Always log API requests
 			if strings.HasPrefix(path, "/api/") {
-				// Only log non-API requests if debug level is enabled
-				return app.Logger.Enabled(ctx.Request().Context(), slog.LevelDebug)
+				return true
 			}
-			return true
+			// Only log non-API requests if debug level is enabled
+			return app.Logger.Enabled(ctx.Request().Context(), slog.LevelDebug)
 		}),
 	))
 	e.Use(middleware.BodyLimit("2M"))
