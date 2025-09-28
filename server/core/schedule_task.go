@@ -106,7 +106,7 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 		app.Logger.WithGroup("tasks").Error("Error inserting next run time into DB", slog.Any("error", err), slog.String("task", taskID))
 		return
 	}
-	app.Logger.WithGroup("tasks").Info("Scheduled task", slog.String("task", taskID), slog.Time("next", *nextRunAt))
+	app.Logger.WithGroup("tasks").Debug("Scheduled task", slog.String("task", taskID), slog.Time("next", *nextRunAt))
 }
 
 // Schedule a timer, then publish task to NATS.
