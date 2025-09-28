@@ -2,7 +2,8 @@
 
 **Open Source, SQL-driven Data Dashboards powered by DuckDB.**
 
-Learn more at: https://taleshape.com/shaper/docs/
+Learn more:
+https://taleshape.com/shaper/docs/
 
 [
 ![Screenshot](https://taleshape.com/_astro/session_dashboard.DjtFqCnO_Z15ug1D.webp)
@@ -22,7 +23,7 @@ For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs
 To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
 
 
-## Get in Touch
+## Get in touch
 
 Feel free to open an [issue](https://github.com/taleshape-com/shaper/issues) or start a [discussion](https://github.com/taleshape-com/shaper/discussions) if you have any questions or suggestions.
 
