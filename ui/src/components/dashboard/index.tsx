@@ -505,14 +505,9 @@ const renderContent = (
   if (query.render.type === "value") {
     return <DashboardValue headers={query.columns} data={query.rows} />;
   }
-  if (numQueriesInSection === 1) {
-    return <DashboardTable headers={query.columns} data={query.rows} />;
-  }
   return (
     <div
-      // Activate if table is used in a float environment
-      // className="flow-root"
-      className={cx("h-full overflow-auto")}
+      className={cx("overflow-auto", { "h-full": numQueriesInSection > 1 })}
     >
       <DashboardTable headers={query.columns} data={query.rows} />
     </div>
