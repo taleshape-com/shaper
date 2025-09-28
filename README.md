@@ -1,6 +1,6 @@
 # Shaper
 
-**Shaper is a minimal data platform built on top of DuckDB and NATS to create analytics dashboards and embed them into your software.**
+**Open Source, SQL-driven Data Dashboards powered by DuckDB.**
 
 Learn more at: https://taleshape.com/shaper/docs/
 
@@ -19,7 +19,7 @@ Then open http://localhost:5454/new in your browser.
 
 For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs/getting-started/).
 
-And to run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
+To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
 
 
 ## Get in Touch
@@ -31,33 +31,9 @@ Also follow along on [BlueSky](https://bsky.app/profile/taleshape.bsky.social) o
 And subscribe to our [newsletter](https://taleshape.com/newsletter) to get updates about Shaper.
 
 
-## Development Setup
+## Contributing
 
-1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
-2. To generate PDFs you also need Google Chrome or Chromium installed
-3. Install dependencies: `npm install`
-
-## Running Shaper from Source
-
-1. Build the frontend: `npm run all`
-2. Run the backend server: `go run .`
-3. Access the app at [http://localhost:5454](http://localhost:5454)
-
-
-## Developing Shaper
-
-1. Run the backend server: `go run .`
-2. Run the frontend: `npm start`
-3. Access the app at [http://localhost:5453](http://localhost:5453)
-4. Verify your changes:
-  - `go test ./...`
-  - `go vet ./...`
-  - `npm run all`
-
-
-### Releasing
-
-Create a new Git tag to trigger a release.
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 
 ## Release Notes
