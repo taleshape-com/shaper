@@ -240,19 +240,19 @@ func HandleDeleteTask(app *App, data []byte) bool {
 	var payload DeleteTaskPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal delete task payload", slog.Any("error", err))
+		app.Logger.WithGroup("tasks").Error("failed to unmarshal delete task payload", slog.Any("error", err))
 		return false
 	}
 	unscheduleTask(app, payload.ID)
 	_, err = app.Sqlite.Exec(
 		`DELETE FROM apps WHERE id = $1 AND type = 'task'`, payload.ID)
 	if err != nil {
-		app.Logger.Error("failed to execute DELETE statement for task", slog.Any("error", err))
+		app.Logger.WithGroup("tasks").Error("failed to execute DELETE statement for task", slog.Any("error", err))
 		return false
 	}
 	_, err = app.Sqlite.Exec(`DELETE FROM task_runs WHERE task_id = $1`, payload.ID)
 	if err != nil {
-		app.Logger.Error("failed to execute DELETE statement for task_runs", slog.Any("error", err))
+		app.Logger.WithGroup("tasks").Error("failed to execute DELETE statement for task_runs", slog.Any("error", err))
 		return false
 	}
 	return true
