@@ -78,7 +78,7 @@ func (app *App) HandleState(msg jetstream.Msg) {
 	case "delete_invite":
 		handler = HandleDeleteInvite
 	}
-	app.Logger.Info("Handling shaper state change", slog.String("event", event))
+	app.Logger.Debug("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
 	if ok {
 		err := trackConsumerState(app, INTERNAL_STATE_CONSUMER_NAME, meta.Sequence.Stream)

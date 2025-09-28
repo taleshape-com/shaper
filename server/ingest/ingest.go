@@ -213,7 +213,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 					if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 						return fmt.Errorf("failed to process final batch: %w", err)
 					}
-					logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					logger.Debug("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				wg.Wait()
 				return nil
@@ -233,7 +233,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 				if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
-					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					logger.Debug("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 				// Stop timer after processing
@@ -249,7 +249,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 				if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
-					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					logger.Debug("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 			}
