@@ -62,6 +62,7 @@ const USAGE = `Version: {{.Version}}
 
 type Config struct {
 	DeprecatedSchema           string
+	LogLevel                   string
 	SessionExp                 time.Duration
 	InviteExp                  time.Duration
 	Address                    string
@@ -135,6 +136,7 @@ func loadConfig() Config {
 	flags := ff.NewFlagSet(APP_NAME)
 	help := flags.Bool('h', "help", "show help")
 	version := flags.Bool('v', "version", "show version")
+	logLevel := flags.StringLong("loglevel", "info", "log level: debug, info, warn, error")
 	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
@@ -216,6 +218,14 @@ func loadConfig() Config {
 		os.Exit(0)
 	}
 
+	switch *logLevel {
+	case "debug", "info", "warn", "error":
+		// valid
+	default:
+		fmt.Printf("Invalid log level '%s'. Valid options are: debug, info, warn, error\n", *logLevel)
+		os.Exit(1)
+	}
+
 	executableModTime, err := getExecutableModTime()
 	if err != nil {
 		fmt.Printf("Error getting executable modification time: %v\n", err)
@@ -275,6 +285,7 @@ func loadConfig() Config {
 
 	config := Config{
 		DeprecatedSchema:           *deprecatedSchema,
+		LogLevel:                   *logLevel,
 		Address:                    *addr,
 		DataDir:                    *dataDir,
 		ExecutableModTime:          executableModTime,
@@ -336,7 +347,24 @@ func loadConfig() Config {
 }
 
 func Run(cfg Config) func(context.Context) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	var logLevel slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+
+	handlerOptions := &slog.HandlerOptions{
+		Level: logLevel,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, handlerOptions))
 
 	logger.Info("Starting Shaper", slog.String("version", Version))
 	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")

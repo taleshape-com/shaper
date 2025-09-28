@@ -44,7 +44,18 @@ func Start(
 	e.HidePort = true
 
 	// Middlewares
-	e.Use(slogecho.New(app.Logger.WithGroup("web")))
+	e.Use(slogecho.NewWithFilters(
+		app.Logger,
+		slogecho.Accept(func(ctx echo.Context) bool {
+			path := ctx.Request().URL.Path
+			// Always log API requests
+			if strings.HasPrefix(path, "/api/") {
+				return true
+			}
+			// Only log non-API requests if debug level is enabled
+			return app.Logger.Enabled(ctx.Request().Context(), slog.LevelDebug)
+		}),
+	))
 	e.Use(middleware.BodyLimit("2M"))
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 5}))
 	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
