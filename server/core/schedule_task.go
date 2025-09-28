@@ -106,7 +106,7 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 		app.Logger.Error("Error inserting next run time into DB", slog.Any("error", err), slog.String("task", taskID))
 		return
 	}
-	app.Logger.Info("Scheduled task", slog.String("task", taskID), slog.Time("next", *nextRunAt))
+	app.Logger.Debug("Scheduled task", slog.String("task", taskID), slog.Time("next", *nextRunAt))
 }
 
 // Schedule a timer, then publish task to NATS.
@@ -122,7 +122,7 @@ func scheduleTask(app *App, ctx context.Context, taskID string, runAt time.Time,
 		if runType != "single" {
 			app.Logger.Warn("Invalid run type for task. Assuming single...", slog.String("task", taskID), slog.String("type", runType))
 		}
-		app.Logger.Info("Dispatching task", slog.String("task", taskID))
+		app.Logger.Debug("Dispatching task", slog.String("task", taskID))
 		msgID := fmt.Sprintf("%s-%d", taskID, runAt.UnixMilli())
 		subject := app.TasksSubjectPrefix + taskID
 		// Send message to NATS
@@ -147,7 +147,7 @@ func unscheduleTask(app *App, taskID string) {
 func (app *App) HandleTask(msg jetstream.Msg) {
 	taskID := strings.TrimPrefix(msg.Subject(), app.TasksSubjectPrefix)
 	msgID := msg.Headers().Get(jetstream.MsgIDHeader)
-	app.Logger.Info("Running task", slog.String("task", taskID), slog.String("type", "single"))
+	app.Logger.Debug("Running task", slog.String("task", taskID), slog.String("type", "single"))
 	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
 	task, err := GetTask(app, ctx, taskID)
 	if err != nil {
@@ -191,7 +191,7 @@ func (app *App) HandleTask(msg jetstream.Msg) {
 
 func runAll(app *App, taskID string, runTime time.Time) {
 	msgID := fmt.Sprintf("%s-%d", taskID, runTime.UnixMilli())
-	app.Logger.Info("Running task", slog.String("task", taskID), slog.String("type", "all"))
+	app.Logger.Debug("Running task", slog.String("task", taskID), slog.String("type", "all"))
 	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
 	task, err := GetTask(app, ctx, taskID)
 	if err != nil {
@@ -243,7 +243,7 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 		nextRunSlogAttr = slog.Time("next_run", *payload.NextRunAt)
 		nextRunTypeSlogAttr = slog.String("next_run_type", payload.NextRunType)
 	}
-	app.Logger.Info(
+	app.Logger.Debug(
 		"Task Result",
 		slog.String("task", payload.TaskID),
 		slog.Time("started_at", payload.StartedAt),
@@ -376,7 +376,7 @@ func (app *App) HandleTaskBroadcast(msg *nats.Msg) {
 	if payload.NodeID == app.NodeID {
 		return
 	}
-	app.Logger.Info("Running broadcasted task", slog.String("origin", payload.NodeID))
+	app.Logger.Debug("Running broadcasted task", slog.String("origin", payload.NodeID))
 	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorTask})
 	_, err = RunTask(app, ctx, payload.Content)
 	if err != nil {
