@@ -74,6 +74,7 @@ type renderInfo struct {
 	LabelIndex      *int
 	HintIndex       *int
 	Download        string
+	DownloadIdIndex *int
 	CompareIndex    *int
 	TrendIndex      *int
 	GaugeCategories []GaugeCategory

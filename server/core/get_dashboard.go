@@ -73,11 +73,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		return result, err
 	}
 
-	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
 	if err != nil {
 		return result, err
 	}
+	// Used to set params for download links
+	downloadLinkParams := url.Values{}
 
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
@@ -232,14 +233,27 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
-			if (rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "pdf") && len(query.Rows) > 0 {
-				filename := query.Rows[0][colIndex].(duckdb.Union).Value.(string)
+			if tag == "download" && len(query.Rows) > 0 {
+				v := query.Rows[0][colIndex]
+				filename := ""
+				if v != nil {
+					filename = v.(duckdb.Union).Value.(string)
+				}
 				queryString := ""
-				if len(queryParams) > 0 {
-					queryString = "?" + queryParams.Encode()
+				if len(downloadLinkParams) > 0 {
+					queryString = "?" + downloadLinkParams.Encode()
 				}
 				if rInfo.Download == "pdf" {
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
+					id := dashboardQuery.ID
+					if rInfo.DownloadIdIndex != nil {
+						v := query.Rows[0][*rInfo.DownloadIdIndex]
+						if v == nil {
+							id = ""
+						} else {
+							id = v.(duckdb.Union).Value.(string)
+						}
+					}
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
 				} else {
 					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
 				}
@@ -247,6 +261,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		if err != nil {
+			return result, err
+		}
+		err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
 		}
@@ -429,7 +447,7 @@ func mapTag(index int, rInfo renderInfo) string {
 			return "defaultTo"
 		}
 	}
-	if rInfo.Download != "" {
+	if rInfo.Download != "" && (rInfo.DownloadIdIndex == nil || index != *rInfo.DownloadIdIndex) {
 		return "download"
 	}
 	if rInfo.Type == "gauge" {
@@ -858,10 +876,17 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 
 	downloadType := getDownloadType(columns)
 	if downloadType != "" {
+		var downloadIdIndex *int
+		if downloadType == "pdf" {
+			if idCol, idColIndex := findColumnByTag(columns, "ID"); idCol != nil {
+				downloadIdIndex = &idColIndex
+			}
+		}
 		return renderInfo{
-			Label:    labelValue,
-			Type:     "button",
-			Download: downloadType,
+			Label:           labelValue,
+			Type:            "button",
+			Download:        downloadType,
+			DownloadIdIndex: downloadIdIndex,
 		}
 	}
 
@@ -1450,6 +1475,253 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if toParam != "" {
 			singleVars[toColumnName] = "TIMESTAMP '" + util.EscapeSQLString(toParam) + " 23:59:59.999999'"
+		}
+	}
+	return nil
+}
+
+// TODO: This shares a lot of code with collectVars
+func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+	// Fetch vars from dropdown
+	if renderType == "dropdown" {
+		columnName := ""
+		columnIndex := -1
+		for i, col := range columns {
+			if col.Tag == "value" {
+				columnName = col.Name
+				columnIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing value column for dropdown")
+		}
+		param := queryParams.Get(columnName)
+		if param != "" {
+			// Check if param actually exists in the dropdown
+			isValidVar := false
+			for i, row := range data {
+				union, ok := row[columnIndex].(duckdb.Union)
+				if !ok {
+					return fmt.Errorf("invalid union value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				}
+				val, ok := union.Value.(string)
+				if !ok {
+					if union.Value == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				if val == param {
+					isValidVar = true
+					break
+				}
+			}
+			if !isValidVar {
+				// Ignore invalid param
+				param = ""
+			}
+		}
+		if param == "" {
+			if len(data) == 0 {
+				// No vars for dropdown without options
+				return nil
+			}
+			// Set default value to first row
+			union, ok := data[0][columnIndex].(duckdb.Union)
+			if !ok {
+				return fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+			}
+			param, ok = union.Value.(string)
+			if !ok {
+				if union.Value == nil {
+					param = ""
+				} else {
+					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+				}
+			}
+		}
+		downloadLinkParams.Add(columnName, param)
+	}
+
+	// Fetch vars from dropdownMulti
+	if renderType == "dropdownMulti" {
+		columnName := ""
+		columnIndex := -1
+		for i, col := range columns {
+			if col.Tag == "value" {
+				columnName = col.Name
+				columnIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing value column for dropdownMulti")
+		}
+		params := queryParams[columnName]
+		if len(params) > 0 {
+			paramsToCheck := map[string]bool{}
+			for _, param := range params {
+				paramsToCheck[param] = true
+			}
+			for i, row := range data {
+				union, ok := row[columnIndex].(duckdb.Union)
+				var val string
+				if !ok {
+					return fmt.Errorf("invalid union value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				}
+				val, ok = union.Value.(string)
+				if !ok {
+					if union.Value == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				if paramsToCheck[val] {
+					delete(paramsToCheck, val)
+					if len(paramsToCheck) == 0 {
+						break
+					}
+				}
+			}
+			if len(paramsToCheck) > 0 {
+				// Remove invalid params
+				cleanedParams := make([]string, 0, len(params)-len(paramsToCheck))
+				for _, param := range params {
+					if paramsToCheck[param] {
+						continue
+					}
+					cleanedParams = append(cleanedParams, param)
+				}
+				params = cleanedParams
+			}
+		}
+		if len(params) == 0 {
+			// Set default value to all rows
+			for i, row := range data {
+				union, ok := row[columnIndex].(duckdb.Union)
+				if !ok {
+					return fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				} else {
+					val, ok := union.Value.(string)
+					if !ok {
+						if union.Value == nil {
+							val = ""
+						} else {
+							return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+						}
+					}
+					params = append(params, val)
+				}
+			}
+		}
+		for _, param := range params {
+			downloadLinkParams.Add(columnName, param)
+		}
+	}
+
+	// Fetch vars from datepicker
+	if renderType == "datepicker" {
+		if len(data) == 0 {
+			return nil
+		}
+		columnName := ""
+		defaultValueIndex := -1
+		for i, col := range columns {
+			if col.Tag == "default" {
+				columnName = col.Name
+				defaultValueIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing datepicker column")
+		}
+		param := queryParams.Get(columnName)
+		if param == "" {
+			// Set default value
+			if defaultValueIndex != -1 {
+				val := data[0][defaultValueIndex].(duckdb.Union).Value
+				if val != nil {
+					date := val.(time.Time)
+					param = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if param is a valid date
+			if !isDateString(param) {
+				return fmt.Errorf("invalid date for datepicker query param '%s': %s", columnName, param)
+			}
+		}
+		if param != "" {
+			downloadLinkParams.Add(columnName, param)
+		}
+	}
+
+	// Fetch vars from daterangePicker
+	if renderType == "daterangePicker" {
+		if len(data) == 0 {
+			return nil
+		}
+		fromColumnName := ""
+		toColumnName := ""
+		fromDefaultValueIndex := -1
+		toDefaultValueIndex := -1
+		for i, col := range columns {
+			if col.Tag == "defaultFrom" {
+				fromColumnName = col.Name
+				fromDefaultValueIndex = i
+			}
+			if col.Tag == "defaultTo" {
+				toColumnName = col.Name
+				toDefaultValueIndex = i
+			}
+		}
+		if fromColumnName == "" {
+			return fmt.Errorf("missing DATEPICKER_FROM column")
+		}
+		if toColumnName == "" {
+			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		fromParam := queryParams.Get(fromColumnName)
+		if fromParam == "" {
+			// Set default value
+			if fromDefaultValueIndex != -1 {
+				val := data[0][fromDefaultValueIndex].(duckdb.Union).Value
+				if val != nil {
+					date := val.(time.Time)
+					fromParam = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if fromParam is a valid date
+			if !isDateString(fromParam) {
+				return fmt.Errorf("invalid date for datepicker query fromParam '%s': %s", fromColumnName, fromParam)
+			}
+		}
+		if fromParam != "" {
+			downloadLinkParams.Add(fromColumnName, fromParam)
+		}
+		toParam := queryParams.Get(toColumnName)
+		if toParam == "" {
+			// Set default value
+			if toDefaultValueIndex != -1 {
+				val := data[0][toDefaultValueIndex].(duckdb.Union).Value
+				if val != nil {
+					date := val.(time.Time)
+					toParam = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if toParam is a valid date
+			if !isDateString(toParam) {
+				return fmt.Errorf("invalid date for datepicker query toParam '%s': %s", toColumnName, toParam)
+			}
+		}
+		if toParam != "" {
+			downloadLinkParams.Add(toColumnName, toParam)
 		}
 	}
 	return nil

@@ -1,6 +1,7 @@
 **Open Source, SQL-driven Data Dashboards powered by DuckDB.**
 
 Learn more:
+
 https://taleshape.com/shaper/docs/
 
 ---

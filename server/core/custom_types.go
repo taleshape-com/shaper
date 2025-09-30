@@ -62,6 +62,7 @@ var dbTypes = []struct {
 	{"BARCHART_COLOR", "UNION(\"_shaper_barchart_color_varchar\" VARCHAR)", "string"},
 	{"HEADER_IMAGE", "UNION(\"_shaper_header_image_varchar\" VARCHAR)", "string"},
 	{"FOOTER_LINK", "UNION(\"_shaper_footer_link_varchar\" VARCHAR)", "string"},
+	{"ID", "UNION(\"_shaper_id_varchar\" VARCHAR)", "string"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
