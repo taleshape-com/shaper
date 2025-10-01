@@ -1315,6 +1315,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
 		params := queryParams[columnName]
+		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
 			paramsToCheck := map[string]bool{}
 			for _, param := range params {
@@ -1353,8 +1354,8 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				params = cleanedParams
 			}
 		}
-		if len(params) == 0 {
-			// Set default value to all rows
+		if len(params) == 0 && !paramWasProvided {
+			// Set default value to all rows only when no parameter was provided
 			for i, row := range data {
 				union, ok := row[columnIndex].(duckdb.Union)
 				if !ok {
@@ -1372,6 +1373,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				}
 			}
 		}
+		// If paramWasProvided but params is empty, we keep it as empty array
 		multiVars[columnName] = params
 	}
 
@@ -1560,6 +1562,7 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
 		params := queryParams[columnName]
+		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
 			paramsToCheck := map[string]bool{}
 			for _, param := range params {
@@ -1598,8 +1601,8 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 				params = cleanedParams
 			}
 		}
-		if len(params) == 0 {
-			// Set default value to all rows
+		if len(params) == 0 && !paramWasProvided {
+			// Set default value to all rows only when no parameter was provided
 			for i, row := range data {
 				union, ok := row[columnIndex].(duckdb.Union)
 				if !ok {
@@ -1617,6 +1620,7 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 				}
 			}
 		}
+		// If paramWasProvided but params is empty, we keep it as empty array
 		for _, param := range params {
 			downloadLinkParams.Add(columnName, param)
 		}
