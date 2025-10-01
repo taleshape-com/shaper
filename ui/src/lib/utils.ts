@@ -40,13 +40,22 @@ export const varsParamSchema = z
 export type VarsParamSchema = (typeof varsParamSchema)["_type"];
 
 export const getSearchParamString = (vars: VarsParamSchema) => {
-  const urlVars = Object.entries(vars ?? {}).reduce((acc, [key, value]) => {
+  const params = new URLSearchParams();
+  Object.entries(vars ?? {}).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      return [...acc, ...value.map((v) => [key, v])];
+      // To allow clearing an array param, we need to explicitly set it to empty string
+      if (value.length === 0) {
+        params.set(key, "");
+        return;
+      }
+      value.forEach((v) => {
+        params.append(key, v);
+      });
+      return;
     }
-    return [...acc, [key, value]];
-  }, [] as string[][]);
-  return new URLSearchParams(urlVars).toString();
+    params.set(key, value);
+  });
+  return params.toString();
 };
 
 export const goToLoginPage = () => {

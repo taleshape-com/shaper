@@ -97,6 +97,12 @@ const translations = {
   "Failed to retrieve JWT for public dashboard": {
     de: "Fehler beim Laden des JWTs",
   },
+  "Select all": {
+    de: "Alle auswählen",
+  },
+  "Unselect all": {
+    de: "Alle abwählen",
+  },
 };
 
 export function translate (s: keyof typeof translations) {
