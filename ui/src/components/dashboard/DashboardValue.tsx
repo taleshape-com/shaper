@@ -10,11 +10,11 @@ import TextWithLinks from "../TextWithLinks";
 
 type ValueProps = {
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows'];
+  data: Result["sections"][0]["queries"][0]["rows"];
 };
 
 const getLongestLineLength = (text: string) => {
-  return Math.max(...text.split('\n').map(line => line.length));
+  return Math.max(...text.split("\n").map(line => line.length));
 };
 
 const calcFontSize = (width: number, longestLine: number, factor: number, min: number, max: number, round: number) => {
@@ -22,18 +22,18 @@ const calcFontSize = (width: number, longestLine: number, factor: number, min: n
   return Math.max(min, Math.min(max, Math.floor((width / longestLine) * factor / round) * round));
 };
 
-function DashboardValue({ headers, data }: ValueProps) {
-  const valueIndex = headers.findIndex(header => header.tag === 'value')
-  const valueHeader = headers[valueIndex]
-  const value = data[0][valueIndex]
-  const compareIndex = headers.findIndex(header => header.tag === 'compare')
+function DashboardValue ({ headers, data }: ValueProps) {
+  const valueIndex = headers.findIndex(header => header.tag === "value");
+  const valueHeader = headers[valueIndex];
+  const value = data[0][valueIndex];
+  const compareIndex = headers.findIndex(header => header.tag === "compare");
   // TODO: Currently we format compare value by the value header type, but we should use the compare header type once ::COMPARE supports multiple data types
-  const compareHeader = compareIndex !== -1 ? headers[compareIndex] : undefined
-  const compareValue = compareIndex !== -1 ? data[0][compareIndex] : undefined
-  const percent = typeof value === 'number' && typeof compareValue === 'number' && compareValue !== value ?
-    Math.round(-100 * (1 - (value / compareValue))) : undefined
-  const formattedValue = formatValue(value, valueHeader.type, true).toString()
-  const hasLabel = valueHeader.name !== value && valueHeader.name !== `'${value}'`
+  const compareHeader = compareIndex !== -1 ? headers[compareIndex] : undefined;
+  const compareValue = compareIndex !== -1 ? data[0][compareIndex] : undefined;
+  const percent = typeof value === "number" && typeof compareValue === "number" && compareValue !== value ?
+    Math.round(-100 * (1 - (value / compareValue))) : undefined;
+  const formattedValue = formatValue(value, valueHeader.type, true).toString();
+  const hasLabel = valueHeader.name !== value && valueHeader.name !== `'${value}'`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -51,7 +51,7 @@ function DashboardValue({ headers, data }: ValueProps) {
   const valueLongestLine = getLongestLineLength(formattedValue);
   const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.6, 16, 60, 8);
 
-  const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : '';
+  const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : "";
   const labelLongestLine = getLongestLineLength(labelText);
   const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 24, 4);
 
@@ -59,8 +59,8 @@ function DashboardValue({ headers, data }: ValueProps) {
     <div
       className={cx(
         "h-full w-full flex flex-col justify-center py-2 overflow-auto", {
-        "items-center py-8": formattedValue.length < 300 || !!labelText,
-      },
+          "items-center py-8": formattedValue.length < 300 || !!labelText,
+        },
       )}
       ref={containerRef}
     >
@@ -73,8 +73,8 @@ function DashboardValue({ headers, data }: ValueProps) {
         })}
         style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.2 }}
       >
-        {typeof formattedValue === 'string' && formattedValue.includes('\n')
-          ? formattedValue.split('\n').map((line, idx, arr) => (
+        {typeof formattedValue === "string" && formattedValue.includes("\n")
+          ? formattedValue.split("\n").map((line, idx, arr) => (
             <React.Fragment key={idx}>
               <TextWithLinks text={line} />
               {idx < arr.length - 1 && <br />}
@@ -102,7 +102,7 @@ function DashboardValue({ headers, data }: ValueProps) {
                 "ml-2 rounded px-1 py-1 text-sm font-medium text-ctexti dark:text-dtexti flex flex-nowrap items-center b bg-cbgi dark:bg-dbgi",
                 // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
               )}
-            >{percent > 0 && '+'}{percent}%{percent > 0 ? <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" /> : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />}</div>}
+            >{percent > 0 && "+"}{percent}%{percent > 0 ? <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" /> : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />}</div>}
           </div>
         ) : undefined
       }
@@ -111,4 +111,3 @@ function DashboardValue({ headers, data }: ValueProps) {
 }
 
 export default DashboardValue;
-

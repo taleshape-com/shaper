@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export function PreviewError({ children }: { children: React.ReactNode }) {
+export function PreviewError ({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
       <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit">
@@ -11,5 +11,3 @@ export function PreviewError({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-

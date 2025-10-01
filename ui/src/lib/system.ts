@@ -28,7 +28,7 @@ const configFromLocalStorage = () => {
     }
   }
   return false;
-}
+};
 
 export const fetchSystemConfig = async () => {
   const response = await fetch(`${window.shaper.defaultBaseUrl}api/system/config`);
@@ -41,7 +41,7 @@ export const fetchSystemConfig = async () => {
   }
   systemConfig = data;
   localStorage.setItem(localStorageSystemConfigKey, JSON.stringify(data));
-}
+};
 
 const configChanged = (existingSystemConfig: ISystemConfig) => {
   const refreshedSystemConfig = getSystemConfig();
@@ -49,7 +49,7 @@ const configChanged = (existingSystemConfig: ISystemConfig) => {
     existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled ||
     existingSystemConfig.publicSharingEnabled !== refreshedSystemConfig.publicSharingEnabled ||
     existingSystemConfig.passwordProtectedSharingEnabled !== refreshedSystemConfig.passwordProtectedSharingEnabled;
-}
+};
 
 export const reloadSystemConfig = async () => {
   const previousConfig = getSystemConfig();
@@ -59,7 +59,7 @@ export const reloadSystemConfig = async () => {
     localStorage.removeItem(localStorageJwtKey);
     window.location.reload();
   }
-}
+};
 
 export const loadSystemConfig = async () => {
   if (configFromLocalStorage()) {
@@ -67,12 +67,11 @@ export const loadSystemConfig = async () => {
     return;
   }
   await fetchSystemConfig();
-}
+};
 
 export const getSystemConfig = (): ISystemConfig => {
   if (systemConfig === null) {
     throw new Error("System config not loaded");
   }
   return systemConfig;
-}
-
+};

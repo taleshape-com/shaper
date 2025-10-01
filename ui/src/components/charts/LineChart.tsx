@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React, { useEffect, useCallback, useRef } from "react";
-import type { ECharts } from 'echarts/core';
-import type { LineSeriesOption } from 'echarts/charts';
+import type { ECharts } from "echarts/core";
+import type { LineSeriesOption } from "echarts/charts";
 import {
   constructCategoryColors,
   getThemeColors,
@@ -22,8 +22,8 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   data: Record<string, any>[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   index: string;
-  indexType: Column['type'];
-  valueType: Column['type'];
+  indexType: Column["type"];
+  valueType: Column["type"];
   categories: string[];
   colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
@@ -87,12 +87,12 @@ const LineChart = (props: LineChartProps) => {
     const series: LineSeriesOption[] = categories.map((category) => ({
       name: category,
       id: category,
-      type: 'line' as const,
+      type: "line" as const,
       data: isTimestampData
         ? data.map((item) => [item[index], item[category]])
         : data.map((item) => item[category]),
       connectNulls: true,
-      symbol: 'circle',
+      symbol: "circle",
       symbolSize: 6,
       emphasis: {
         itemStyle: {
@@ -131,25 +131,25 @@ const LineChart = (props: LineChartProps) => {
         }
       }
       series.push({
-        type: 'line' as const,
+        type: "line" as const,
         markLine: {
           silent: true,
-          symbol: 'none',
+          symbol: "none",
           data: markLines.map(m => {
             return {
               xAxis: m.isYAxis ? undefined : m.value,
               yAxis: m.isYAxis ? m.value : undefined,
-              symbol: m.isYAxis ? 'none' : 'circle',
+              symbol: m.isYAxis ? "none" : "circle",
               symbolSize: 6.5,
               lineStyle: {
                 color: textColorSecondary,
-                type: 'dashed',
+                type: "dashed",
                 width: m.isYAxis ? 1.2 : 1.0,
                 opacity: m.isYAxis ? 0.5 : 0.8,
               },
               label: {
                 formatter: m.label,
-                position: m.isYAxis ? 'insideStartTop' : multiEventLines ? 'insideEnd' : 'end',
+                position: m.isYAxis ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
                 distance: m.isYAxis ? 1.5 : multiEventLines ? 5 : 3.8,
                 color: textColorSecondary,
                 fontFamily: chartFont,
@@ -157,14 +157,14 @@ const LineChart = (props: LineChartProps) => {
                 fontSize: 10.5,
                 opacity: m.isYAxis ? 0.5 : 0.8,
                 width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
-                overflow: 'truncate',
+                overflow: "truncate",
                 textBorderColor: backgroundColorSecondary,
                 textBorderWidth: !m.isYAxis && multiEventLines ? 2 : 0,
               },
             };
           }),
         },
-      })
+      });
     }
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
@@ -182,10 +182,10 @@ const LineChart = (props: LineChartProps) => {
     const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 35 : 58) : 0);
     const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
-    const xData = !isTimestampData ? data.map((item) => item[index]) : undefined
+    const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
-    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === 'duration' ? new Date(x).getTime() : x, shortenLabel)).join('').length;
+    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === "duration" ? new Date(x).getTime() : x, shortenLabel)).join("").length;
     let customValues = undefined;
     if (isTimestampData) {
       const numVals = Math.floor(xSpace / 130);
@@ -196,13 +196,13 @@ const LineChart = (props: LineChartProps) => {
       const offset = dataSpan / numVals;
       customValues = [];
       for (let i = 0; i <= numVals; i++) {
-        customValues.push(Math.round(dataMin + dataPadding + i * offset))
+        customValues.push(Math.round(dataMin + dataPadding + i * offset));
       }
     }
 
     return {
       animation: false,
-      cursor: 'default',
+      cursor: "default",
       title: {
         text: label,
         textStyle: {
@@ -212,16 +212,16 @@ const LineChart = (props: LineChartProps) => {
           fontWeight: 600,
           color: textColor,
           width: chartWidth - 10 - 2 * chartPadding,
-          overflow: 'break',
+          overflow: "break",
         },
-        textAlign: 'center',
-        left: '50%',
+        textAlign: "center",
+        left: "50%",
         top: chartPadding,
       },
       tooltip: {
         show: true,
-        trigger: 'axis',
-        triggerOn: 'mousemove',
+        trigger: "axis",
+        triggerOn: "mousemove",
         enterable: false,
         confine: true,
         hideDelay: 200, // Increase hide delay to prevent flickering
@@ -229,7 +229,7 @@ const LineChart = (props: LineChartProps) => {
         borderRadius: 5,
         backgroundColor: undefined,
         borderColor,
-        className: 'bg-cbg dark:bg-dbg',
+        className: "bg-cbg dark:bg-dbg",
         textStyle: {
           fontFamily: chartFont,
           color: textColor,
@@ -237,7 +237,7 @@ const LineChart = (props: LineChartProps) => {
         formatter: (params: any) => {
           let indexValue: any;
 
-          const axisData = params.find((item: any) => item?.axisDim === 'x');
+          const axisData = params.find((item: any) => item?.axisDim === "x");
           if (isTimestampData) {
             indexValue = axisData.value[0]; // timestamp is the first element
           } else {
@@ -245,11 +245,11 @@ const LineChart = (props: LineChartProps) => {
           }
           const extraData = extraDataByIndexAxis[indexValue];
 
-          const formattedIndex = indexFormatter(indexType === 'duration' ? new Date(indexValue).getTime() : indexValue);
+          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
           let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
           if (extraData) {
-            tooltipContent += `<div class="mt-2">`;
+            tooltipContent += "<div class=\"mt-2\">";
             Object.entries(extraData).forEach(([key, valueData]) => {
               if (Array.isArray(valueData) && valueData.length >= 2) {
                 const [value, columnType] = valueData;
@@ -259,13 +259,13 @@ const LineChart = (props: LineChartProps) => {
                 </div>`;
               }
             });
-            tooltipContent += `</div>`;
+            tooltipContent += "</div>";
           }
 
           // Use a Set to track shown categories
-          tooltipContent += `<div class="mt-2">`;
+          tooltipContent += "<div class=\"mt-2\">";
           params.forEach((param: any) => {
-            if (param.axisDim !== 'x') {
+            if (param.axisDim !== "x") {
               return; // Skip non-index axis items
             }
 
@@ -285,12 +285,12 @@ const LineChart = (props: LineChartProps) => {
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${param.color}"></span>
-                ${categories.length > 1 ? `<span>${param.seriesName}</span>` : ''}
+                ${categories.length > 1 ? `<span>${param.seriesName}</span>` : ""}
               </div>
               <span class="font-medium">${formattedValue}</span>
             </div>`;
           });
-          tooltipContent += `</div>`;
+          tooltipContent += "</div>";
 
           return tooltipContent;
         },
@@ -298,8 +298,8 @@ const LineChart = (props: LineChartProps) => {
       legend: {
         show: showLegend,
         selectedMode: false,
-        type: canFitLegendItems ? 'plain' : 'scroll',
-        orient: 'horizontal',
+        type: canFitLegendItems ? "plain" : "scroll",
+        orient: "horizontal",
         left: chartPadding,
         top: 7 + labelTopOffset + chartPadding,
         padding: [5, canFitLegendItems ? legendPaddingRight : 25, 5, legendPaddingLeft],
@@ -308,7 +308,7 @@ const LineChart = (props: LineChartProps) => {
           fontFamily: chartFont,
           fontWeight: 500,
           width: canFitLegendItems ? legendItemWidth : undefined,
-          overflow: 'truncate',
+          overflow: "truncate",
         },
         itemStyle: {
           opacity: 1,
@@ -317,24 +317,24 @@ const LineChart = (props: LineChartProps) => {
         itemGap: legendItemGap,
         itemHeight: 8,
         itemWidth: 16,
-        pageButtonPosition: 'end',
+        pageButtonPosition: "end",
         pageButtonGap: 10,
         pageButtonItemGap: 5,
         pageIconColor: textColorSecondary,
         pageIconInactiveColor: borderColor,
         pageIcons: {
           horizontal: [
-            'M10.8284 12.0007L15.7782 16.9504L14.364 18.3646L8 12.0007L14.364 5.63672L15.7782 7.05093L10.8284 12.0007Z',
-            'M13.1717 12.0007L8.22192 7.05093L9.63614 5.63672L16.0001 12.0007L9.63614 18.3646L8.22192 16.9504L13.1717 12.0007Z'
-          ]
+            "M10.8284 12.0007L15.7782 16.9504L14.364 18.3646L8 12.0007L14.364 5.63672L15.7782 7.05093L10.8284 12.0007Z",
+            "M13.1717 12.0007L8.22192 7.05093L9.63614 5.63672L16.0001 12.0007L9.63614 18.3646L8.22192 16.9504L13.1717 12.0007Z",
+          ],
         },
         pageIconSize: 12,
-        pageFormatter: () => '',
+        pageFormatter: () => "",
         pageTextStyle: {
           fontSize: 1,
         },
         // Enable multi-row layout
-        width: 'auto',
+        width: "auto",
         height: categories.length > 4 ? 40 : 20, // Allow more height for multi-row
       },
       grid: {
@@ -351,33 +351,33 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return indexFormatter(indexType === 'duration' || indexType === 'time' ? new Date(value).getTime() : value, shortenLabel);
+            return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
-          rotate: !xAxisLabel && typeof shortenLabel === 'number' && shortenLabel <= 12 ? 45 : 0,
+          rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
           customValues,
         },
         axisPointer: {
-          type: data.length > 1 ? 'line' : 'none',
+          type: data.length > 1 ? "line" : "none",
           show: true,
-          triggerOn: 'mousemove',
+          triggerOn: "mousemove",
           lineStyle: {
             color: referenceLineColor,
-            type: 'dashed',
-            width: 0.8
+            type: "dashed",
+            width: 0.8,
           },
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === 'duration' ? new Date(params.value).getTime() : params.value);
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value);
             },
             fontFamily: chartFont,
             margin: 5,
-          }
+          },
         },
         axisLine: {
           show: false,
@@ -389,7 +389,7 @@ const LineChart = (props: LineChartProps) => {
           show: false,
         },
         name: xAxisLabel,
-        nameLocation: 'middle',
+        nameLocation: "middle",
         nameGap: 40,
         nameTextStyle: {
           color: textColor,
@@ -412,9 +412,9 @@ const LineChart = (props: LineChartProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: data.length > 1 ? 'line' : 'none',
+          type: data.length > 1 ? "line" : "none",
           show: data.length > 1,
-          triggerOn: 'mousemove',
+          triggerOn: "mousemove",
           triggerEmphasis: false,
           label: {
             show: true,
@@ -423,7 +423,7 @@ const LineChart = (props: LineChartProps) => {
             },
             fontFamily: chartFont,
             margin: 10,
-          }
+          },
         },
         axisLine: {
           show: false,
@@ -453,7 +453,7 @@ const LineChart = (props: LineChartProps) => {
             fill: textColor,
             width: chartHeight,
             textAlign: "center",
-          }
+          },
         },
       ],
       series,
@@ -500,18 +500,18 @@ const LineChart = (props: LineChartProps) => {
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
     const series: LineSeriesOption[] = [{
-      id: 'shaper-hover-reference-line',
-      type: 'line' as const,
+      id: "shaper-hover-reference-line",
+      type: "line" as const,
       markLine: {
         silent: true,
-        symbol: 'none',
+        symbol: "none",
         label: {
           show: false,
         },
         lineStyle: {
           color: referenceLineColor,
-          type: 'dashed',
-          width: 0.8
+          type: "dashed",
+          width: 0.8,
         },
         data: isHovering != null ? [{ xAxis: isHovering }] : [],
       },

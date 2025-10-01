@@ -52,7 +52,7 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitives.Content>
 >(({ className, ...props }, forwardedRef) => {
   return (
-    <DialogPortal container={document.querySelector('.shaper-scope') === document.querySelector('html') ? document.body : document.querySelector('.shaper-scope')}>
+    <DialogPortal container={document.querySelector(".shaper-scope") === document.querySelector("html") ? document.body : document.querySelector(".shaper-scope")}>
       <DialogOverlay className="absolute">
         <DialogPrimitives.Content
           ref={forwardedRef}

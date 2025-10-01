@@ -15,12 +15,12 @@ import { formatValue } from "../../lib/render";
 type DropdownProps = {
   label?: string;
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows']
+  data: Result["sections"][0]["queries"][0]["rows"]
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
 };
 
-function DashboardDropdownMulti({
+function DashboardDropdownMulti ({
   label,
   data,
   headers,

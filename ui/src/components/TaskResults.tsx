@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Card } from './tremor/Card'
-import { Table } from './tremor/Table'
+import { Card } from "./tremor/Card";
+import { Table } from "./tremor/Table";
 import { Callout } from "./tremor/Callout";
-import { RelativeDate } from './RelativeDate';
+import { RelativeDate } from "./RelativeDate";
 
 export interface TaskQueryResult {
   sql: string;
@@ -27,7 +27,7 @@ interface TaskResultsProps {
   loading?: boolean;
 }
 
-export function TaskResults({ data, loading }: TaskResultsProps) {
+export function TaskResults ({ data, loading }: TaskResultsProps) {
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -36,7 +36,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
           <p className="text-ctext2 dark:text-dtext2">Running task...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!data) {
@@ -48,7 +48,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -56,10 +56,10 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-ctext2 dark:text-dtext2">
           <span className={`px-2 py-1 rounded text-sm font-medium ${data.success
-            ? 'text-cprimary dark:text-dprimary'
-            : 'bg-cerr text-ctexti dark:bg-derra dark:text-dtexti'
-            }`}>
-            {data.success ? 'Success' : 'Failed'}
+            ? "text-cprimary dark:text-dprimary"
+            : "bg-cerr text-ctexti dark:bg-derra dark:text-dtexti"
+          }`}>
+            {data.success ? "Success" : "Failed"}
           </span>
           {data.nextRunAt && data.nextRunAt != 0 && (
             <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti px-2 py-1 rounded">
@@ -114,7 +114,7 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
               query.resultRows.length > 0 ? (
                 <div>
                   <h4 className="text-sm font-medium mb-2 text-ctext dark:text-dtext">
-                    Result ({query.resultRows.length} {query.resultRows.length === 1 ? 'row' : 'rows'})
+                    Result ({query.resultRows.length} {query.resultRows.length === 1 ? "row" : "rows"})
                   </h4>
                   <div className="overflow-x-auto">
                     <Table>
@@ -159,5 +159,5 @@ export function TaskResults({ data, loading }: TaskResultsProps) {
         </p>
       )}
     </div>
-  )
+  );
 }

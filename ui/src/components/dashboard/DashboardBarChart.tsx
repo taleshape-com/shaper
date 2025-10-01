@@ -9,7 +9,7 @@ type BarProps = {
   chartId: string;
   label?: string;
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows']
+  data: Result["sections"][0]["queries"][0]["rows"]
   // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
@@ -32,7 +32,7 @@ const DashboardBarChart = ({
     throw new Error("No column with tag 'value'");
   }
   const colorIndex = headers.findIndex((c) => c.tag === "color");
-  const valueAxisHeader = headers[valueAxisIndex]
+  const valueAxisHeader = headers[valueAxisIndex];
   const valueAxisName = valueAxisHeader.name;
   const categoryIndex = headers.findIndex((c) => c.tag === "category");
   const categories = new Set<string>();
@@ -46,12 +46,12 @@ const DashboardBarChart = ({
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = new Map<string | number, Record<string, string | number>>();
   data.forEach((row) => {
-    let key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
+    let key = typeof row[indexAxisIndex] === "boolean" ? row[indexAxisIndex] ? "1" : "0" : row[indexAxisIndex];
     if (key === null) {
       if (isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration" || indexAxisHeader.type === "number") {
         return;
       }
-      key = '';
+      key = "";
     }
     if (!dataByIndexAxis.get(key)) {
       dataByIndexAxis.set(key, {
@@ -72,30 +72,30 @@ const DashboardBarChart = ({
         return;
       }
       if (i === colorIndex) {
-        const color = (cell ?? '').toString();
+        const color = (cell ?? "").toString();
         if (color.length > 0) {
           if (categoryIndex === -1) {
             colorsByCategory[valueAxisName] = color;
           } else {
-            const category = (row[categoryIndex] ?? '').toString();
+            const category = (row[categoryIndex] ?? "").toString();
             colorsByCategory[category] = color;
           }
         }
         return;
       }
-      const c = formatCellValue(cell)
+      const c = formatCellValue(cell);
       if (i === valueAxisIndex) {
         if (categoryIndex === -1) {
           v[valueAxisName] = c;
           return;
         }
-        const category = (row[categoryIndex] ?? '').toString();
+        const category = (row[categoryIndex] ?? "").toString();
         categories.add(category);
         v[category] = c;
         return;
       }
-      const extraData = extraDataByIndexAxis[key]
-      const header = headers[i]
+      const extraData = extraDataByIndexAxis[key];
+      const header = headers[i];
       if (extraData != null) {
         extraData[header.name] = [c, header.type];
       } else {

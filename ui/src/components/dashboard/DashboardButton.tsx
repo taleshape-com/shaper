@@ -15,7 +15,7 @@ type ButtonProps = {
   getJwt: () => Promise<string>;
 };
 
-function DashboardButton({
+function DashboardButton ({
   label,
   data,
   headers,
@@ -43,7 +43,7 @@ function DashboardButton({
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = url.split('#')[0].split('?')[0].split('/').pop() ?? 'download';
+      link.download = url.split("#")[0].split("?")[0].split("/").pop() ?? "download";
       document.body.appendChild(link);
       link.click();
       link.remove();

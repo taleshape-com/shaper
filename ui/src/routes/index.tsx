@@ -77,11 +77,11 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
-function Index() {
+function Index () {
   const data = Route.useLoaderData();
   const { sort, order } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
@@ -120,7 +120,7 @@ function Index() {
 
   const handleDelete = async (app: IApp) => {
     try {
-      await queryApi(`${app.type === 'dashboard' ? 'dashboards' : 'tasks'}/${app.id}`, {
+      await queryApi(`${app.type === "dashboard" ? "dashboards" : "tasks"}/${app.id}`, {
         method: "DELETE",
       });
       router.invalidate();
@@ -233,7 +233,7 @@ function Index() {
                       {getSystemConfig().tasksEnabled && (
                         <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
                           <Link
-                            to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                            to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
                             params={{ id: app.id }}
                             className="p-4 block"
                           >
@@ -258,12 +258,12 @@ function Index() {
                       )}
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
                         <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                          to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="p-4 block"
                         >
                           <span className="group-hover:underline">{app.name}</span>
-                          {app.type === 'task'
+                          {app.type === "task"
                             ?
                             app.taskInfo && (
                               !(app.taskInfo.lastRunSuccess ?? true)
@@ -307,7 +307,7 @@ function Index() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                          to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="block p-4"
                         >
@@ -321,7 +321,7 @@ function Index() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
                         <Link
-                          to={app.type === 'dashboard' ? "/dashboards/$id" : "/tasks/$id"}
+                          to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
                           params={{ id: app.id }}
                           className="block p-4"
                         >
@@ -336,7 +336,7 @@ function Index() {
                       <TableCell className="hidden md:table-cell">
                         <div className="flex gap-4">
                           <Link
-                            to={app.type === 'dashboard' ? "/dashboards/$id/edit" : "/tasks/$id"}
+                            to={app.type === "dashboard" ? "/dashboards/$id/edit" : "/tasks/$id"}
                             params={{ id: app.id }}
                             className={cx(
                               "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
@@ -369,9 +369,9 @@ function Index() {
               <DialogTitle>Confirm Deletion</DialogTitle>
               <DialogDescription>
                 {deleteDialog && (
-                  deleteDialog.type === 'dashboard'
-                    ? 'Are you sure you want to delete the dashboard "%%"?'
-                    : 'Are you sure you want to delete the task "%%"?'
+                  deleteDialog.type === "dashboard"
+                    ? "Are you sure you want to delete the dashboard \"%%\"?"
+                    : "Are you sure you want to delete the task \"%%\"?"
                 ).replace(
                   "%%",
                   deleteDialog.name,
@@ -401,7 +401,7 @@ function Index() {
   );
 }
 
-function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
+function RuntimeTooltip ({ lastRunAt, nextRunAt, children }: {
   lastRunAt?: number | string;
   nextRunAt?: number | string;
   children?: React.ReactNode;
@@ -417,7 +417,7 @@ function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
         </>
       )}
     </>
-  )
+  );
   return (
     <Tooltip
       showArrow={false}

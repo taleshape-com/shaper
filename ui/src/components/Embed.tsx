@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Dashboard } from './dashboard'
+import { Dashboard } from "./dashboard";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { parseJwt, VarsParamSchema, cx, focusRing } from "../lib/utils";
 import { DarkModeProvider } from "./providers/DarkModeProvider";
@@ -18,7 +18,7 @@ export type EmbedProps = {
   onTitleChanged?: (title: string) => void;
 }
 
-const LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX = 'shaper-dashboard-password-';
+const LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX = "shaper-dashboard-password-";
 
 const getPublicJwt = async (baseUrl: string, dashboardId: string, password?: string): Promise<string | null> => {
   return fetch(`${baseUrl}api/auth/public`, {
@@ -37,7 +37,7 @@ const getPublicJwt = async (baseUrl: string, dashboardId: string, password?: str
     const res = await response.json();
     return res.jwt;
   });
-}
+};
 
 const getVisibility = async (baseUrl: string, dashboardId: string): Promise<string> => {
   return fetch(`${baseUrl}api/public/${dashboardId}/status`, {
@@ -47,12 +47,12 @@ const getVisibility = async (baseUrl: string, dashboardId: string): Promise<stri
     },
   }).then(async (response) => {
     if (response.status !== 200) {
-      return 'private';
+      return "private";
     }
     const res = await response.json();
-    return res.visibility ?? 'private';
+    return res.visibility ?? "private";
   });
-}
+};
 
 const PasswordDialog = ({
   open,
@@ -91,7 +91,7 @@ const PasswordDialog = ({
               className={cx(
                 "w-full px-3 py-2 border rounded-md pr-12",
                 "bg-cbgs dark:bg-dbgs border-cb dark:border-db",
-                focusRing
+                focusRing,
               )}
               minLength={1}
               required
@@ -129,7 +129,7 @@ const PasswordDialog = ({
   );
 };
 
-export function EmbedComponent({
+export function EmbedComponent ({
   initialProps,
   updateSubscriber,
 }: {
@@ -144,7 +144,7 @@ export function EmbedComponent({
   const waitingForJwtCallbackRef = useRef<((jwt: string) => void) | null>(null);
 
   let baseUrl = props.baseUrl ?? window.shaper.defaultBaseUrl;
-  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://') && baseUrl[0] !== "/") {
+  if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://") && baseUrl[0] !== "/") {
     baseUrl = "/" + baseUrl;
   }
   if (baseUrl[baseUrl.length - 1] !== "/") {
@@ -162,7 +162,7 @@ export function EmbedComponent({
     return new Promise<string>((resolve) => {
       waitingForJwtCallbackRef.current = resolve;
     });
-  }, [])
+  }, []);
 
   const handleVarsChanged = useCallback((vars: VarsParamSchema) => {
     setProps(prevProps => ({ ...prevProps, vars }));
@@ -176,7 +176,6 @@ export function EmbedComponent({
       onTitleChanged(name);
     }
   }, [onTitleChanged]);
-
 
   const handlePasswordSubmit = async (password: string) => {
     // Try to get JWT with the password - verification happens server-side
@@ -205,11 +204,11 @@ export function EmbedComponent({
     }
     if (!getJwt) {
       const visibility = await getVisibility(baseUrl, props.dashboardId);
-      if (visibility === 'private') {
+      if (visibility === "private") {
         throw new Error(translate("Dashboard is not public"));
       }
       let password: string | undefined = undefined;
-      if (visibility === 'password-protected') {
+      if (visibility === "password-protected") {
         // Check if we have a cached password first
         const cachedPassword = localStorage.getItem(`${LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX}${props.dashboardId}`);
         if (cachedPassword) {
@@ -227,16 +226,16 @@ export function EmbedComponent({
           await waitForPassword();
           const jwt = jwtRef.current;
           if (!jwt) {
-            throw new Error(translate("Failed to get JWT for password-protected dashboard"))
+            throw new Error(translate("Failed to get JWT for password-protected dashboard"));
           }
-          return jwt
+          return jwt;
         }
       }
       const newJwt = await getPublicJwt(baseUrl, props.dashboardId, password);
       if (newJwt == null) {
         throw new Error(translate("Failed to retrieve JWT for public dashboard"));
       }
-      jwtRef.current = newJwt
+      jwtRef.current = newJwt;
       return newJwt;
     }
     const newJwt = await getJwt();

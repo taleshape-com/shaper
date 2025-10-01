@@ -29,7 +29,7 @@ export const Route = createFileRoute("/signup")({
         headers: {
           "Content-Type": "application/json",
         },
-      })
+      });
       const data = await response.json();
       if (response.status !== 200) {
         return { error: data.error } as { invite?: Invite; error?: string };
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/signup")({
   component: SignupComponent,
 });
 
-function SignupComponent() {
+function SignupComponent () {
   const navigate = useNavigate({ from: "/signup" });
   const { toast } = useToast();
   const data = Route.useLoaderData();

@@ -32,7 +32,7 @@ export const localStorageVariablesKey = "shaper-variables";
 
 export const AuthContext = React.createContext<IAuthContext | null>(null);
 
-export function useAuth() {
+export function useAuth () {
   const context = React.useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
@@ -40,7 +40,7 @@ export function useAuth() {
   return context;
 }
 
-export async function logout() {
+export async function logout () {
   const jwt = localStorage.getItem(localStorageJwtKey);
   if (jwt) {
     await fetch(`${window.shaper.defaultBaseUrl}api/logout`, {
@@ -49,7 +49,7 @@ export async function logout() {
         "Content-Type": "application/json",
         Authorization: jwt,
       },
-    })
+    });
   }
   localStorage.clear();
   loadSystemConfig();
@@ -82,7 +82,6 @@ export const refreshJwt = async (token: string, vars: Variables) => {
     return res.jwt;
   });
 };
-
 
 export const getJwt = async () => {
   const jwt = localStorage.getItem(localStorageJwtKey);
@@ -124,4 +123,3 @@ export const testLogin = async () => {
   });
   return response.status === 200;
 };
-

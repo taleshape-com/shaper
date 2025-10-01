@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 
-export function generatePassword(length: number = 16): string {
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-  const digits = '0123456789';
+export function generatePassword (length: number = 16): string {
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
   const allChars = uppercase + lowercase + digits;
 
   // Ensure at least one character from each category
   const password = [
     uppercase[Math.floor(Math.random() * uppercase.length)],
     lowercase[Math.floor(Math.random() * lowercase.length)],
-    digits[Math.floor(Math.random() * digits.length)]
+    digits[Math.floor(Math.random() * digits.length)],
   ];
 
   // Fill the remaining length with random characters
@@ -24,5 +24,5 @@ export function generatePassword(length: number = 16): string {
     [password[i], password[j]] = [password[j], password[i]];
   }
 
-  return password.join('');
+  return password.join("");
 }

@@ -61,30 +61,30 @@ interface InviteState {
   expiresIn?: string
 }
 
-function getInviteState(createdAt: string, validTimeInSeconds: number): InviteState {
-  const createdTime = new Date(createdAt).getTime()
-  const expirationTime = createdTime + (validTimeInSeconds * 1000)
-  const now = Date.now()
-  const isExpired = now > expirationTime
+function getInviteState (createdAt: string, validTimeInSeconds: number): InviteState {
+  const createdTime = new Date(createdAt).getTime();
+  const expirationTime = createdTime + (validTimeInSeconds * 1000);
+  const now = Date.now();
+  const isExpired = now > expirationTime;
 
   if (isExpired) {
-    return { isExpired: true }
+    return { isExpired: true };
   }
 
-  const timeLeft = expirationTime - now
-  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const timeLeft = expirationTime - now;
+  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-  let expiresIn = ''
+  let expiresIn = "";
   if (days > 0) {
-    expiresIn = ('Expires in %% days').replace('%%', days.toString())
+    expiresIn = ("Expires in %% days").replace("%%", days.toString());
   } else if (hours > 0) {
-    expiresIn = ('Expires in %% hours').replace('%%', hours.toString())
+    expiresIn = ("Expires in %% hours").replace("%%", hours.toString());
   } else {
-    expiresIn = 'Expires soon'
+    expiresIn = "Expires soon";
   }
 
-  return { isExpired: false, expiresIn }
+  return { isExpired: false, expiresIn };
 }
 
 export const Route = createFileRoute("/admin/")({
@@ -113,7 +113,7 @@ const getInviteLink = (code: string) => {
   return `${baseUrl}${basePath}signup?code=${code}`;
 };
 
-function UsersManagement() {
+function UsersManagement () {
   const router = useRouter();
   const data = Route.useLoaderData();
   const { sort, order } = Route.useSearch();
@@ -283,7 +283,7 @@ function UsersManagement() {
                           to: "/login",
                           replace: true,
                         });
-                      }, 0)
+                      }, 0);
                     } catch (error) {
                       toast({
                         title: "Error",
@@ -565,11 +565,11 @@ function UsersManagement() {
                           </TableCell>
                           <TableCell className="text-ctext2 dark:text-dtext2">
                             {(() => {
-                              const inviteState = getInviteState(invite.createdAt, data.inviteValidTimeInSeconds)
+                              const inviteState = getInviteState(invite.createdAt, data.inviteValidTimeInSeconds);
                               if (inviteState.isExpired) {
                                 return (
                                   <span>Expired</span>
-                                )
+                                );
                               }
                               return (
                                 <div className="space-y-1">
@@ -580,11 +580,11 @@ function UsersManagement() {
                                     <Button
                                       variant="light"
                                       onClick={() => {
-                                        navigator.clipboard.writeText(getInviteLink(invite.code))
+                                        navigator.clipboard.writeText(getInviteLink(invite.code));
                                         toast({
-                                          title: 'Success',
-                                          description: 'Invite link copied to clipboard',
-                                        })
+                                          title: "Success",
+                                          description: "Invite link copied to clipboard",
+                                        });
                                       }}
                                     >
                                       Copy
@@ -594,7 +594,7 @@ function UsersManagement() {
                                     {inviteState.expiresIn}
                                   </div>
                                 </div>
-                              )
+                              );
                             })()}
                           </TableCell>
                           <TableCell>

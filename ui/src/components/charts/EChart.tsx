@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { useMemo, useRef, useEffect } from 'react';
-import { debounce } from 'lodash';
+import { useMemo, useRef, useEffect } from "react";
+import { debounce } from "lodash";
 
-import * as echarts from 'echarts/core';
-import { BarChart, LineChart, GaugeChart } from 'echarts/charts';
+import * as echarts from "echarts/core";
+import { BarChart, LineChart, GaugeChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
@@ -18,9 +18,9 @@ import {
   LegendPlainComponent,
   LegendScrollComponent,
   MarkLineComponent,
-} from 'echarts/components';
-import { LabelLayout, UniversalTransition } from 'echarts/features';
-import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
+} from "echarts/components";
+import { LabelLayout, UniversalTransition } from "echarts/features";
+import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
 
 interface EChartProps {
   option: echarts.EChartsCoreOption;
@@ -57,9 +57,9 @@ echarts.use([
 ]);
 
 const optionSettings = {
-  replaceMerge: 'series',
+  replaceMerge: "series",
   lazyUpdate: true,
-}
+};
 
 export const EChart = ({
   option,
@@ -83,12 +83,12 @@ export const EChart = ({
           }
         }
       }, 50),
-    [onResize]
+    [onResize],
   );
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null, { renderer: 'svg' });
+    const chart = echarts.init(chartRef.current, null, { renderer: "svg" });
     if (onChartReady) {
       onChartReady(chart);
     }
@@ -109,8 +109,8 @@ export const EChart = ({
         }
       }
     };
-    window.addEventListener('beforeprint', handlePrint);
-    window.addEventListener('afterprint', handlePrint);
+    window.addEventListener("beforeprint", handlePrint);
+    window.addEventListener("afterprint", handlePrint);
 
     const currentRef = chartRef.current;
     return () => {
@@ -119,8 +119,8 @@ export const EChart = ({
         resizeObserver.unobserve(currentRef);
       }
       resizeObserver.disconnect();
-      window.removeEventListener('beforeprint', handlePrint);
-      window.removeEventListener('afterprint', handlePrint);
+      window.removeEventListener("beforeprint", handlePrint);
+      window.removeEventListener("afterprint", handlePrint);
     };
   }, [resizeChart, onChartReady, onResize]);
 
@@ -138,7 +138,7 @@ export const EChart = ({
     const currentEventKeys = Object.keys(events);
     currentEventKeys.forEach(key => {
       const handler = events[key];
-      if (typeof handler === 'function') {
+      if (typeof handler === "function") {
         chart.on(key, handler);
       }
     });
@@ -158,7 +158,7 @@ export const EChart = ({
   return (
     <div
       ref={chartRef}
-      style={{ imageRendering: 'crisp-edges' }}
+      style={{ imageRendering: "crisp-edges" }}
       {...props}
     />
   );

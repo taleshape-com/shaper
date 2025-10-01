@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { useState } from 'react'
+import { useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { cx, focusRing, hasErrorInput } from "../lib/utils";
 import { useAuth } from "../lib/auth";
@@ -11,7 +11,7 @@ interface VariablesMenuProps {
 
 const rows = 4;
 
-export function VariablesMenu({ onVariablesChange }: VariablesMenuProps) {
+export function VariablesMenu ({ onVariablesChange }: VariablesMenuProps) {
   const [hasVariableError, setHasVariableError] = useState(false);
   const auth = useAuth();
 

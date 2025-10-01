@@ -34,11 +34,11 @@ export const Route = createFileRoute("/login")({
   errorComponent: LoginErrorComponent as any,
 });
 
-function LoginErrorComponent({ error }: ErrorComponentProps) {
+function LoginErrorComponent ({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
-function LoginComponent() {
+function LoginComponent () {
   const auth = useAuth();
   const router = useRouter();
   const search = Route.useSearch();

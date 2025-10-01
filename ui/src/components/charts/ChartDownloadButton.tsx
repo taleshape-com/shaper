@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import React from 'react';
-import * as echarts from 'echarts/core';
-import type { ECharts } from 'echarts/core';
+import React from "react";
+import * as echarts from "echarts/core";
+import type { ECharts } from "echarts/core";
 import { RiDownload2Line } from "@remixicon/react";
 import { downloadChartAsImage } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
@@ -51,10 +51,10 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
           "opacity-0 group-hover:opacity-100",
           "focus:outline-none focus:ring-2 focus:ring-cprimary dark:focus:ring-dprimary",
           "pointer-events-auto",
-          className
+          className,
         )}
         onClick={handleDownload}
-        title={translate('Save as image')}
+        title={translate("Save as image")}
       >
         <RiDownload2Line className="size-4" />
       </button>

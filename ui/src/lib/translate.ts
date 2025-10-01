@@ -99,7 +99,7 @@ const translations = {
   },
 };
 
-export function translate(s: keyof typeof translations) {
+export function translate (s: keyof typeof translations) {
   const available = translations[s] ?? {};
   for (const lang of navigator.languages) {
     const firstPart = lang.split("-")[0];
@@ -107,7 +107,7 @@ export function translate(s: keyof typeof translations) {
       return s;
     }
     // TODO: The type casting is more hack than accurate.
-    const t = available[firstPart as 'de'];
+    const t = available[firstPart as "de"];
     if (t) {
       return t;
     }

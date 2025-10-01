@@ -6,8 +6,8 @@ import React from "react";
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
 // Function to split text into parts (text, URLs, and line breaks)
-const splitTextAndUrls = (text: string): Array<{ type: 'text' | 'url' | 'linebreak', content: string }> => {
-  const parts: Array<{ type: 'text' | 'url' | 'linebreak', content: string }> = [];
+const splitTextAndUrls = (text: string): Array<{ type: "text" | "url" | "linebreak", content: string }> => {
+  const parts: Array<{ type: "text" | "url" | "linebreak", content: string }> = [];
   let lastIndex = 0;
   let match;
 
@@ -23,8 +23,8 @@ const splitTextAndUrls = (text: string): Array<{ type: 'text' | 'url' | 'linebre
 
     // Add URL
     parts.push({
-      type: 'url',
-      content: match[0]
+      type: "url",
+      content: match[0],
     });
 
     lastIndex = match.index + match[0].length;
@@ -40,23 +40,23 @@ const splitTextAndUrls = (text: string): Array<{ type: 'text' | 'url' | 'linebre
 };
 
 // Helper function to split text by line breaks
-const splitTextByLineBreaks = (text: string): Array<{ type: 'text' | 'linebreak', content: string }> => {
-  const parts: Array<{ type: 'text' | 'linebreak', content: string }> = [];
-  const segments = text.split('\n');
+const splitTextByLineBreaks = (text: string): Array<{ type: "text" | "linebreak", content: string }> => {
+  const parts: Array<{ type: "text" | "linebreak", content: string }> = [];
+  const segments = text.split("\n");
 
   for (let i = 0; i < segments.length; i++) {
     if (segments[i]) {
       parts.push({
-        type: 'text',
-        content: segments[i]
+        type: "text",
+        content: segments[i],
       });
     }
 
     // Add line break between segments (except after the last one)
     if (i < segments.length - 1) {
       parts.push({
-        type: 'linebreak',
-        content: '\n'
+        type: "linebreak",
+        content: "\n",
       });
     }
   }
@@ -65,12 +65,12 @@ const splitTextByLineBreaks = (text: string): Array<{ type: 'text' | 'linebreak'
 };
 
 const removeLinkPrefix = (link: string): string => {
-  return link.replace(/^https?:\/\//, '');
+  return link.replace(/^https?:\/\//, "");
 };
 
 // Function to check if text contains URLs or line breaks
 const containsUrlsOrLineBreaks = (text: string): boolean => {
-  return URL_REGEX.test(text) || text.includes('\n');
+  return URL_REGEX.test(text) || text.includes("\n");
 };
 
 // Component to render text with clickable links and line breaks
@@ -84,7 +84,7 @@ export const TextWithLinks: React.FC<{ text: string; className?: string }> = ({ 
   return (
     <span className={className}>
       {parts.map((part, index) => {
-        if (part.type === 'url') {
+        if (part.type === "url") {
           return (
             <a
               key={index}
@@ -97,7 +97,7 @@ export const TextWithLinks: React.FC<{ text: string; className?: string }> = ({ 
             </a>
           );
         }
-        if (part.type === 'linebreak') {
+        if (part.type === "linebreak") {
           return <br key={index} />;
         }
         return <span key={index}>{part.content}</span>;

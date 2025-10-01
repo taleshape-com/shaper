@@ -36,7 +36,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard({
+export function Dashboard ({
   id,
   vars,
   getJwt,
@@ -53,7 +53,7 @@ export function Dashboard({
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
-  const errResetFn = useRef<(() => void) | undefined>(undefined)
+  const errResetFn = useRef<(() => void) | undefined>(undefined);
 
   const actualData = data ?? fetchedData;
 
@@ -106,7 +106,7 @@ export function Dashboard({
       }
     } catch (err: unknown) {
       // Swallow abort errors (they are expected when a new request starts)
-      if ((err as any)?.name === 'AbortError') {
+      if ((err as any)?.name === "AbortError") {
         return;
       }
       setError(err as Error);
@@ -141,7 +141,7 @@ export function Dashboard({
     }
   }, [loading]);
 
-  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -154,11 +154,11 @@ export function Dashboard({
           </div>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   if (error) {
-    return <ErrorDisplay error={error} />
+    return <ErrorDisplay error={error} />;
   }
 
   return actualData ? (
@@ -190,7 +190,7 @@ const DataView = ({
   baseUrl,
   getJwt,
   loading,
-}: (Pick<DashboardProps, 'onVarsChanged' | 'menuButton' | 'vars' | 'baseUrl' | 'getJwt'> & Required<Pick<DashboardProps, 'data'>>) & { loading: boolean }) => {
+}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt"> & Required<Pick<DashboardProps, "data">>) & { loading: boolean }) => {
   const firstIsHeader = !(data.sections.length === 0 || data.sections[0].type !== "header");
   const sections: Result["sections"] = firstIsHeader
     ? data.sections
@@ -345,7 +345,7 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
-            const isChartQuery = query.render.type === 'linechart' || query.render.type === 'gauge' || query.render.type.startsWith('barchart');
+            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart");
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             return (
               <Card
@@ -421,13 +421,13 @@ const DataView = ({
               href={data.footerLink}
               target="_blank"
               className="no-underline text-ctext2 text-xs"
-            >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, '')}</a>
+            >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
           )}
         </div>
       )
     }
-  </ChartHoverProvider >)
-}
+  </ChartHoverProvider >);
+};
 
 const renderContent = (
   query: Result["sections"][0]["queries"][0],
@@ -511,7 +511,7 @@ const renderContent = (
     >
       <DashboardTable headers={query.columns} data={query.rows} />
     </div>
-  )
+  );
 };
 
 const fetchDashboard = async (

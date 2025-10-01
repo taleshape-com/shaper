@@ -8,7 +8,7 @@ interface RelativeDateProps {
   refresh?: boolean;
 }
 
-export function RelativeDate({ date, refresh }: RelativeDateProps) {
+export function RelativeDate ({ date, refresh }: RelativeDateProps) {
   const [text, setText] = useState<string>("");
 
   const formatRelativeDate = (targetDate: Date) => {
@@ -60,7 +60,7 @@ export function RelativeDate({ date, refresh }: RelativeDateProps) {
     updateText();
 
     if (!refresh) {
-      return
+      return;
     }
 
     // Update every 10 seconds

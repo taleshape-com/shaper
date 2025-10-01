@@ -1,9 +1,9 @@
 // Tremor Label [v0.0.2]
 
-import React from "react"
-import * as LabelPrimitives from "@radix-ui/react-label"
+import React from "react";
+import * as LabelPrimitives from "@radix-ui/react-label";
 
-import { cx } from "../../lib/utils"
+import { cx } from "../../lib/utils";
 
 interface LabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitives.Root> {
@@ -32,8 +32,8 @@ const Label = React.forwardRef<
     tremor-id="tremor-raw"
     {...props}
   />
-))
+));
 
-Label.displayName = "Label"
+Label.displayName = "Label";
 
-export { Label }
+export { Label };

@@ -10,7 +10,8 @@
     "build:main": "vite build ui",
     "build:embed": "vite build -c ui/vite.embed.ts",
     "typecheck": "tsc -b ui",
-    "lint": "eslint -c ui/eslint.config.js"
+    "lint": "eslint -c ui/eslint.config.js",
+    "format": "eslint -c ui/eslint.config.js --fix"
   },
   "dependencies": {
     "@internationalized/date": "^3.5.6",

@@ -11,8 +11,8 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-function Admin() {
-  const location = useLocation()
+function Admin () {
+  const location = useLocation();
 
   let selectedTab = "users";
   if (location.pathname.endsWith("/admin/keys")) {

@@ -55,7 +55,7 @@ export const Route = createFileRoute("/admin/keys")({
   component: Admin,
 });
 
-function Admin() {
+function Admin () {
   const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
@@ -185,7 +185,7 @@ function Admin() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {deleteKeyDialog && ('Are you sure you want to delete this API key "%%"?').replace(
+              {deleteKeyDialog && ("Are you sure you want to delete this API key \"%%\"?").replace(
                 "%%",
                 deleteKeyDialog.name,
               )}

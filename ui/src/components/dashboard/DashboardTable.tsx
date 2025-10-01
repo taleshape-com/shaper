@@ -17,10 +17,10 @@ import TextWithLinks from "../TextWithLinks";
 
 type TableProps = {
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows']
+  data: Result["sections"][0]["queries"][0]["rows"]
 };
 
-function DashboardTable({ headers, data }: TableProps) {
+function DashboardTable ({ headers, data }: TableProps) {
   return (
     <TableRoot>
       <Table>
@@ -41,18 +41,18 @@ function DashboardTable({ headers, data }: TableProps) {
             data.map((items, index) => (
               <TableRow key={index}>
                 {items.map((item, index) => {
-                  const header = headers[index]
-                  const percent = header.tag === 'trend' && typeof item === 'number' ? Math.round(-100 * (1 - item)) : undefined
-                  const formattedValue = percent !== undefined ? '' : formatValue(item, header.type, true).toString()
+                  const header = headers[index];
+                  const percent = header.tag === "trend" && typeof item === "number" ? Math.round(-100 * (1 - item)) : undefined;
+                  const formattedValue = percent !== undefined ? "" : formatValue(item, header.type, true).toString();
                   return (
                     <TableCell key={index} className={cx("text-ctext dark:text-dtext", { "text-right": alignRight(header) })}>
-                      {percent !== undefined ? percent === 0 ? '-' : (
+                      {percent !== undefined ? percent === 0 ? "-" : (
                         <div
                           className={cx(
                             "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi",
                           )}
                         >
-                          {percent > 0 && '+'}{percent}%{
+                          {percent > 0 && "+"}{percent}%{
                             percent > 0 ?
                               <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
                               : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
@@ -60,7 +60,7 @@ function DashboardTable({ headers, data }: TableProps) {
                         </div>) :
                         <span className={cx({
                           "font-display": !isJSONType(header.type),
-                          "font-mono": isJSONType(header.type) || header.type === 'number' || header.type === 'boolean' || header.type === 'percent',
+                          "font-mono": isJSONType(header.type) || header.type === "number" || header.type === "boolean" || header.type === "percent",
                           "text-xs": formattedValue.length > 30,
                         })}>
                           <TextWithLinks text={formattedValue} />

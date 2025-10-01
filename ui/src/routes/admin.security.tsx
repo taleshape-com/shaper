@@ -1,52 +1,52 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Button } from '../components/tremor/Button'
-import { useState } from 'react'
+import { Button } from "../components/tremor/Button";
+import { useState } from "react";
 import {
   createFileRoute,
   isRedirect,
   useNavigate,
-} from '@tanstack/react-router'
-import { useToast } from '../hooks/useToast'
-import { useQueryApi } from '../hooks/useQueryApi'
-import { RiLockLine } from '@remixicon/react'
+} from "@tanstack/react-router";
+import { useToast } from "../hooks/useToast";
+import { useQueryApi } from "../hooks/useQueryApi";
+import { RiLockLine } from "@remixicon/react";
 
-export const Route = createFileRoute('/admin/security')({
+export const Route = createFileRoute("/admin/security")({
   component: Admin,
-})
+});
 
-function Admin() {
-  const [isResetting, setIsResetting] = useState(false)
-  const { toast } = useToast()
-  const queryApi = useQueryApi()
-  const navigate = useNavigate({ from: '/admin' })
+function Admin () {
+  const [isResetting, setIsResetting] = useState(false);
+  const { toast } = useToast();
+  const queryApi = useQueryApi();
+  const navigate = useNavigate({ from: "/admin" });
 
   const handleReset = async () => {
-    setIsResetting(true)
+    setIsResetting(true);
     try {
-      await queryApi('admin/reset-jwt-secret', {
-        method: 'POST',
-      })
+      await queryApi("admin/reset-jwt-secret", {
+        method: "POST",
+      });
       toast({
-        title: 'Success',
-        description: 'JWT secret reset successfully',
-      })
+        title: "Success",
+        description: "JWT secret reset successfully",
+      });
     } catch (error) {
       if (isRedirect(error)) {
-        return navigate(error.options)
+        return navigate(error.options);
       }
       toast({
-        title: 'Error',
+        title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : 'An error occurred',
-        variant: 'error',
-      })
+            : "An error occurred",
+        variant: "error",
+      });
     } finally {
-      setIsResetting(false)
+      setIsResetting(false);
     }
-  }
+  };
 
   return (
     <div>
@@ -59,10 +59,10 @@ function Admin() {
           <h3 className="text-lg font-medium mb-2">JWT Secret</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">Reset the JWT secret to invalidate all existing tokens.</p>
           <Button onClick={handleReset} disabled={isResetting} variant="destructive">
-            {isResetting ? 'Resetting...' : 'Reset JWT Secret'}
+            {isResetting ? "Resetting..." : "Reset JWT Secret"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

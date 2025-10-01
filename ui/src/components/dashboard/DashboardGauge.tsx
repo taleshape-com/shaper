@@ -3,16 +3,15 @@
 import React, { useCallback, useRef } from "react";
 import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
-import type { ECharts } from 'echarts/core';
-import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor, getDisplayFont } from '../../lib/chartUtils';
-import { DarkModeContext } from '../../contexts/DarkModeContext';
+import type { ECharts } from "echarts/core";
+import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor, getDisplayFont } from "../../lib/chartUtils";
+import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { formatValue } from "../../lib/render";
-
 
 type DashboardGaugeProps = {
   chartId: string;
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows'];
+  data: Result["sections"][0]["queries"][0]["rows"];
   gaugeCategories: GaugeCategory[];
   label?: string;
 };
@@ -31,14 +30,13 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [chartSize, setChartSize] = React.useState<{ width: number, height: number }>({ width: 0, height: 0 });
 
-
   const chartOptions = React.useMemo(() => {
     const theme = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
 
     // Find the value column
-    const valueIndex = headers.findIndex(h => h.tag === 'value');
+    const valueIndex = headers.findIndex(h => h.tag === "value");
     const valueHeader = headers[valueIndex];
     const value = data[0][valueIndex];
 
@@ -68,21 +66,21 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     // Color stops for axisLine
     const colorStops = gaugeCategoriesWithColor.map(cat => [
       (cat.to - min) / (max - min),
-      cat.color!
+      cat.color!,
     ]) as [number, string][];
 
     // Helper to check if a value is a boundary (with float tolerance)
-    function isBoundary(val: number) {
+    function isBoundary (val: number) {
       return boundaryValues.some(b => Math.abs(b - val) < 1e-6);
     }
 
     // axisLabel formatter: only show value at boundaries
-    function valueLabelFormatter(v: number) {
-      return isBoundary(v) ? formatValue(v, valueHeader.type, true).toString() : '';
+    function valueLabelFormatter (v: number) {
+      return isBoundary(v) ? formatValue(v, valueHeader.type, true).toString() : "";
     }
 
     // Helper to calculate GCD
-    function gcd(a: number, b: number): number {
+    function gcd (a: number, b: number): number {
       return b === 0 ? a : gcd(b, a % b);
     }
 
@@ -103,11 +101,11 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     const radius = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 540 ? 0.52 : 0.40);
     const centerPx = [
       chartSize.width / 2,
-      chartSize.height / 2 + radius / 2
+      chartSize.height / 2 + radius / 2,
     ];
 
     const baseSeries = {
-      type: 'gauge' as const,
+      type: "gauge" as const,
       min,
       max,
       axisTick: {
@@ -121,9 +119,9 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       },
       data: [
         {
-          value: typeof value === 'number' ? value : Number(value),
-          name: label || valueHeader?.name || '',
-        }
+          value: typeof value === "number" ? value : Number(value),
+          name: label || valueHeader?.name || "",
+        },
       ],
       startAngle: 180,
       endAngle: 0,
@@ -139,18 +137,18 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
         const x = centerPx[0] + (radius + 9) * Math.cos(angle);
         const y = centerPx[1] - (radius + 9) * Math.sin(angle) + labelTopOffset;
         return {
-          type: 'text',
+          type: "text",
           x,
           y,
           style: {
-            text: gaugeCategoriesWithColor[i].label ?? '',
+            text: gaugeCategoriesWithColor[i].label ?? "",
             fill: theme.textColorSecondary,
             font: `500 12px ${chartFont}`,
-            textAlign: relative < 0.4 ? 'right' : relative > 0.6 ? 'left' : 'center',
-            textVerticalAlign: 'middle',
+            textAlign: relative < 0.4 ? "right" : relative > 0.6 ? "left" : "center",
+            textVerticalAlign: "middle",
           },
           z: 100,
-          cursor: 'default',
+          cursor: "default",
         };
       })
       : [];
@@ -168,10 +166,10 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           fontWeight: 600,
           color: theme.textColor,
           width: chartSize.width - 10 - 2 * chartPadding,
-          overflow: 'break',
+          overflow: "break",
         },
-        textAlign: 'center',
-        left: '50%',
+        textAlign: "center",
+        left: "50%",
         top: chartPadding,
       },
       series: [
@@ -198,26 +196,26 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
             width: barWidth,
             itemStyle: {
               color: theme.primaryColor,
-            }
+            },
           },
           pointer: {
             show: gaugeCategories.length >= 2,
-            icon: 'triangle',
+            icon: "triangle",
             length: 16,
             width: 14,
             offsetCenter: [0, pointerOffset],
             itemStyle: {
               color: theme.textColor,
-            }
+            },
           },
           detail: {
             valueAnimation: false,
             fontSize: chartSize.width > 300 ? 36 : 24,
             fontFamily: chartFont,
-            offsetCenter: [0, '-26%'],
+            offsetCenter: [0, "-26%"],
             color: theme.textColor,
             fontWeight: 600,
-            formatter: function(v: number) {
+            formatter: function (v: number) {
               return formatValue(v, valueHeader.type, true).toString();
             },
           },

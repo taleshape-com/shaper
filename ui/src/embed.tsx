@@ -9,7 +9,7 @@ import "./lib/globals";
 (RemoveScroll.defaultProps ?? {}).enabled = false;
 
 // Function to inject custom CSS
-function injectCustomCSS() {
+function injectCustomCSS () {
   if (window.shaper?.customCSS) {
     const existingStyles = document.head.getElementsByTagName("style");
     for (const style of existingStyles) {
@@ -28,7 +28,7 @@ type EmbedArgs = EmbedProps & {
   container: HTMLElement;
 };
 
-export function dashboard({ container, ...initialProps }: EmbedArgs) {
+export function dashboard ({ container, ...initialProps }: EmbedArgs) {
   injectCustomCSS();
   container.classList.add("shaper-scope");
 

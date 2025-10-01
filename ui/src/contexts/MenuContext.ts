@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import React from 'react';
+import React from "react";
 
 export const MenuContext = React.createContext<{
   isMenuOpen: boolean;
@@ -13,6 +13,3 @@ export const MenuContext = React.createContext<{
   setExtraContent: () => { },
   setTitle: () => { },
 });
-
-
-

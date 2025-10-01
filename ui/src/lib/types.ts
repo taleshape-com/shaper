@@ -9,8 +9,8 @@ export interface IApp {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
-  visibility?: 'public' | 'private' | 'password-protected';
-  type: 'dashboard' | 'task';
+  visibility?: "public" | "private" | "password-protected";
+  type: "dashboard" | "task";
   taskInfo?: ITaskInfo;
 }
 
@@ -21,7 +21,7 @@ interface ITaskInfo {
   nextRunAt?: string;
 }
 
-export type IDashboard = Omit<IApp, 'type'>;
+export type IDashboard = Omit<IApp, "type">;
 
 export type Column = {
   name: string;
@@ -30,9 +30,9 @@ export type Column = {
   tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "defaultFrom" | "defaultTo" | "compare" | "trend" | "color" | "";
 };
 
-export const isTimeType = (t: Column['type']) => {
+export const isTimeType = (t: Column["type"]) => {
   return t === "year" || t === "month" || t === "hour" || t === "date" || t === "timestamp";
-}
+};
 
 export type GaugeCategory = {
   from: number;
@@ -49,14 +49,14 @@ export type MarkLine = {
 
 export type Result = {
   name: string;
-  visibility?: 'public' | 'private' | 'password-protected';
+  visibility?: "public" | "private" | "password-protected";
   minTimeValue: number;
   maxTimeValue: number;
   reloadAt: number;
   headerImage?: string;
   footerLink?: string;
   sections: ({
-    type: 'header';
+    type: "header";
     title?: string;
     queries: ({
       render:
@@ -73,7 +73,7 @@ export type Result = {
       rows: (string | number | boolean)[][];
     })[];
   } | {
-    type: 'content';
+    type: "content";
     queries: {
       render: {
         type:

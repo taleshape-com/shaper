@@ -19,7 +19,7 @@ import { getSystemConfig } from "../../lib/system";
 
 const isLg = () => window.innerWidth >= 1024;
 
-export function MenuProvider({
+export function MenuProvider ({
   children,
   isHome = false,
   isAdmin = false,
@@ -32,7 +32,7 @@ export function MenuProvider({
 }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
-  const [defaultOpen, setDefaultOpen] = useState(isLg())
+  const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
   const [title, setTitle] = useState<string | undefined>(undefined);
   const [userName, setUserName] = useState<string>("");
@@ -141,7 +141,7 @@ export function MenuProvider({
               {
                 "text-ctext2 dark:text-dtext2": !isAdmin,
                 "underline cursor-default": isAdmin,
-              }
+              },
             )}
           >
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />

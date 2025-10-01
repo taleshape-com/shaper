@@ -2,7 +2,7 @@
 
 import { RiExternalLinkLine } from "@remixicon/react";
 
-export function PublicLink({ href }: { href: string }) {
+export function PublicLink ({ href }: { href: string }) {
   return (
     <a
       href={href}
@@ -13,4 +13,3 @@ export function PublicLink({ href }: { href: string }) {
     </a>
   );
 }
-

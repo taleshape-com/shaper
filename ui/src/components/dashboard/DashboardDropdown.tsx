@@ -12,7 +12,7 @@ import {
 import { Label } from "../tremor/Label";
 import { cx } from "../../lib/utils";
 
-const EMPTY = '<<EMPTY>>';
+const EMPTY = "<<EMPTY>>";
 
 type DropdownProps = {
   label?: string;
@@ -22,7 +22,7 @@ type DropdownProps = {
   vars?: Record<string, string | string[]>;
 };
 
-function DashboardDropdown({
+function DashboardDropdown ({
   label,
   data,
   headers,
