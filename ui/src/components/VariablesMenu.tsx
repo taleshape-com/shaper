@@ -30,9 +30,9 @@ export function VariablesMenu({ onVariablesChange }: VariablesMenuProps) {
   }, 500);
 
   return (
-    <div className="mt-6 px-4 w-full">
+    <div className="mt-5 px-4 w-full">
       <label>
-        <span className="text-lg font-medium font-display ml-1 mb-2 block">Variables</span>
+        <span className="text-sm font-medium font-display ml-1 mb-2 block">Variables</span>
         <textarea
           className={cx(
             "w-full px-3 py-1.5 bg-cbg dark:bg-dbg text-sm border border-cb dark:border-db shadow-sm outline-none ring-0 rounded-md font-mono resize-none",

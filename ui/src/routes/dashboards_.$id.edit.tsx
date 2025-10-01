@@ -1,10 +1,25 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { z } from "zod";
-import { createFileRoute, isRedirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  isRedirect,
+  Link,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet";
-import { RiPencilLine, RiCloseLine, RiArrowDownSLine, RiEyeLine, RiEyeOffLine, RiFileCopyLine, RiRefreshLine, RiExternalLinkLine } from "@remixicon/react";
+import {
+  RiPencilLine,
+  RiCloseLine,
+  RiArrowDownSLine,
+  RiEyeLine,
+  RiEyeOffLine,
+  RiFileCopyLine,
+  RiRefreshLine,
+  RiExternalLinkLine,
+} from "@remixicon/react";
 import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import {
@@ -47,12 +62,7 @@ export const Route = createFileRoute("/dashboards_/$id/edit")({
   shouldReload: (match) => {
     return match.cause === "enter";
   },
-  loader: async ({
-    params: { id },
-    context: {
-      queryApi,
-    },
-  }) => {
+  loader: async ({ params: { id }, context: { queryApi } }) => {
     const data = await queryApi(`dashboards/${id}/query`);
     return data as IDashboard;
   },
@@ -79,11 +89,14 @@ function DashboardEditor() {
   const [loadDuration, setLoadDuration] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
-  const [showPasswordSuccessDialog, setShowPasswordSuccessDialog] = useState(false);
+  const [showPasswordSuccessDialog, setShowPasswordSuccessDialog] =
+    useState(false);
   const [showSuccessPassword, setShowSuccessPassword] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
-  const [selectedVisibility, setSelectedVisibility] = useState<string>(dashboard.visibility || 'private');
-  const [password, setPassword] = useState<string>('');
+  const [selectedVisibility, setSelectedVisibility] = useState<string>(
+    dashboard.visibility || "private",
+  );
+  const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [generatingPassword, setGeneratingPassword] = useState(false);
@@ -92,6 +105,9 @@ function DashboardEditor() {
 
   // Track the current AbortController for preview requests
   const previewAbortRef = useRef<AbortController | null>(null);
+
+  // Ref for dashboard ID text selection
+  const dashboardIdRef = useRef<HTMLElement>(null);
 
   // Check for unsaved changes when component mounts and restore directly
   useEffect(() => {
@@ -125,10 +141,13 @@ function DashboardEditor() {
         signal: abortController.signal,
       });
       const duration = Date.now() - startTime;
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          resolve();
-        }, Math.max(0, MIN_SHOW_LOADING - duration));
+      await new Promise<void>((resolve) => {
+        setTimeout(
+          () => {
+            resolve();
+          },
+          Math.max(0, MIN_SHOW_LOADING - duration),
+        );
       });
 
       // Only apply result if this is the latest request
@@ -137,7 +156,7 @@ function DashboardEditor() {
         setPreviewData(data);
       }
     } catch (err: unknown) {
-      if ((err as any)?.name === 'AbortError') {
+      if ((err as any)?.name === "AbortError") {
         return; // ignore aborts
       }
       if (isRedirect(err)) {
@@ -156,7 +175,7 @@ function DashboardEditor() {
     if (editorQuery !== runningQuery) {
       setRunningQuery(editorQuery);
     } else {
-      previewDashboard()
+      previewDashboard();
     }
   }, [editorQuery, runningQuery, previewDashboard]);
 
@@ -170,13 +189,10 @@ function DashboardEditor() {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await queryApi(
-        `dashboards/${params.id}/query`,
-        {
-          method: "POST",
-          body: { content: editorQuery },
-        },
-      );
+      await queryApi(`dashboards/${params.id}/query`, {
+        method: "POST",
+        body: { content: editorQuery },
+      });
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.id);
       dashboard.content = editorQuery;
@@ -187,10 +203,7 @@ function DashboardEditor() {
       }
       toast({
         title: "Error",
-        description:
-          err instanceof Error
-            ? err.message
-            : "An error occurred",
+        description: err instanceof Error ? err.message : "An error occurred",
         variant: "error",
       });
     } finally {
@@ -210,7 +223,6 @@ function DashboardEditor() {
     [navigate],
   );
 
-
   const handleSaveName = async (newName: string) => {
     if (newName === dashboard.name) {
       setEditingName(false);
@@ -218,13 +230,10 @@ function DashboardEditor() {
     }
     setSavingName(true);
     try {
-      await queryApi(
-        `dashboards/${params.id}/name`,
-        {
-          method: "POST",
-          body: { name: newName },
-        },
-      );
+      await queryApi(`dashboards/${params.id}/name`, {
+        method: "POST",
+        body: { name: newName },
+      });
       dashboard.name = newName;
       setName(newName);
     } catch (err) {
@@ -233,10 +242,7 @@ function DashboardEditor() {
       }
       toast({
         title: "Error",
-        description:
-          err instanceof Error
-            ? err.message
-            : "An error occurred",
+        description: err instanceof Error ? err.message : "An error occurred",
         variant: "error",
       });
       // Revert name on error
@@ -264,10 +270,7 @@ function DashboardEditor() {
       }
       toast({
         title: "Error",
-        description:
-          err instanceof Error
-            ? err.message
-            : "An error occurred",
+        description: err instanceof Error ? err.message : "An error occurred",
         variant: "error",
       });
     }
@@ -275,38 +278,41 @@ function DashboardEditor() {
 
   const handleVisibilityChange = async () => {
     try {
-      await queryApi(
-        `dashboards/${params.id}/visibility`,
-        {
-          method: "POST",
-          body: { visibility: selectedVisibility },
-        },
-      );
+      await queryApi(`dashboards/${params.id}/visibility`, {
+        method: "POST",
+        body: { visibility: selectedVisibility },
+      });
 
       // Save password if visibility is password-protected
-      if (selectedVisibility === 'password-protected' && password) {
+      if (selectedVisibility === "password-protected" && password) {
         setSavingPassword(true);
-        await queryApi(
-          `dashboards/${params.id}/password`,
-          {
-            method: "POST",
-            body: { password: password },
-          },
-        );
+        await queryApi(`dashboards/${params.id}/password`, {
+          method: "POST",
+          body: { password: password },
+        });
         setSavingPassword(false);
       }
 
       // Show success dialog for password-protected dashboards
-      if (selectedVisibility === 'password-protected') {
+      if (selectedVisibility === "password-protected") {
         setShowPasswordSuccessDialog(true);
       } else {
         toast({
-          title: selectedVisibility === 'public' ? "Dashboard made public" : "Dashboard made private",
-          description: selectedVisibility === 'public' ? "Try the link in the sidebar" : "The dashboard is not publicly accessible anymore.",
+          title:
+            selectedVisibility === "public"
+              ? "Dashboard made public"
+              : "Dashboard made private",
+          description:
+            selectedVisibility === "public"
+              ? "Try the link in the sidebar"
+              : "The dashboard is not publicly accessible anymore.",
         });
       }
 
-      dashboard.visibility = selectedVisibility as 'public' | 'private' | 'password-protected';
+      dashboard.visibility = selectedVisibility as
+        | "public"
+        | "private"
+        | "password-protected";
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
@@ -314,10 +320,7 @@ function DashboardEditor() {
       }
       toast({
         title: "Error",
-        description:
-          err instanceof Error
-            ? err.message
-            : "An error occurred",
+        description: err instanceof Error ? err.message : "An error occurred",
         variant: "error",
       });
     }
@@ -349,12 +352,37 @@ function DashboardEditor() {
     }
   };
 
-  const handleOpenVisibilityDialog = () => {
-    setSelectedVisibility(dashboard.visibility || 'private');
-    setPassword('');
-    setShowVisibilityDialog(true);
+  const handleCopyDashboardId = async () => {
+    const success = await copyToClipboard(params.id);
+    if (success) {
+      toast({
+        title: "Dashboard ID copied",
+        description: "Dashboard ID copied to clipboard",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to copy dashboard ID",
+        variant: "error",
+      });
+    }
   };
 
+  const handleDashboardIdClick = () => {
+    if (dashboardIdRef.current) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(dashboardIdRef.current);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+  };
+
+  const handleOpenVisibilityDialog = () => {
+    setSelectedVisibility(dashboard.visibility || "private");
+    setPassword("");
+    setShowVisibilityDialog(true);
+  };
 
   const handleDiscardChanges = () => {
     editorStorage.clearChanges(params.id);
@@ -384,24 +412,47 @@ function DashboardEditor() {
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
           <div className="flex items-center p-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
-              <VariablesMenu
-                onVariablesChange={previewDashboard}
-              />
-              {(systemConfig.publicSharingEnabled || systemConfig.passwordProtectedSharingEnabled) && (
-                <div className="my-2 px-4">
-                  <Button
-                    onClick={handleOpenVisibilityDialog}
-                    variant="secondary"
-                    className="mt-4 capitalize"
-                  >
-                    {dashboard.visibility === 'password-protected' ? 'Password Protected' : (dashboard.visibility || 'private')}
-                    <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
-                  </Button>
-                  {(dashboard.visibility === 'public' || dashboard.visibility === 'password-protected') && (
-                    <PublicLink href={`../../view/${params.id}`} />
-                  )}
+              <div className="mt-6 px-4">
+                <div className="text-sm font-medium text-ctext2 dark:text-dtext2 mb-2">
+                  Dashboard ID
                 </div>
-              )}
+                <div className="flex items-center space-x-2">
+                  <code
+                    ref={dashboardIdRef}
+                    onClick={handleDashboardIdClick}
+                    className="flex-grow px-2 py-1.5 bg-cbgs dark:bg-dbgs border border-cb dark:border-db rounded text-xs font-mono text-ctext dark:text-dtext overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer hover:bg-cbga dark:hover:bg-dbga transition-colors"
+                  >
+                    {params.id}
+                  </code>
+                  <Button
+                    onClick={handleCopyDashboardId}
+                    variant="secondary"
+                    className="px-2 py-1.5 flex-shrink-0"
+                  >
+                    <RiFileCopyLine className="size-4" />
+                  </Button>
+                </div>
+              </div>
+              <VariablesMenu onVariablesChange={previewDashboard} />
+              {(systemConfig.publicSharingEnabled ||
+                systemConfig.passwordProtectedSharingEnabled) && (
+                  <div className="my-2 px-4">
+                    <Button
+                      onClick={handleOpenVisibilityDialog}
+                      variant="secondary"
+                      className="mt-4 capitalize"
+                    >
+                      {dashboard.visibility === "password-protected"
+                        ? "Password Protected"
+                        : dashboard.visibility || "private"}
+                      <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
+                    </Button>
+                    {(dashboard.visibility === "public" ||
+                      dashboard.visibility === "password-protected") && (
+                        <PublicLink href={`../../view/${params.id}`} />
+                      )}
+                  </div>
+                )}
               <Button
                 onClick={() => setShowDeleteDialog(true)}
                 variant="destructive"
@@ -412,7 +463,10 @@ function DashboardEditor() {
               {loadDuration && (
                 <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
                   <span>
-                    Load time: {loadDuration >= 1000 ? `${(loadDuration / 1000).toFixed(2)}s` : `${loadDuration}ms`}
+                    Load time:{" "}
+                    {loadDuration >= 1000
+                      ? `${(loadDuration / 1000).toFixed(2)}s`
+                      : `${loadDuration}ms`}
                   </span>
                 </div>
               )}
@@ -491,31 +545,27 @@ function DashboardEditor() {
             </Link>
 
             <div className="space-x-2">
-              <Tooltip
-                showArrow={false}
-                asChild
-                content="Discard Changes"
-              >
+              <Tooltip showArrow={false} asChild content="Discard Changes">
                 <Button
                   onClick={() => setShowDiscardDialog(true)}
-                  className={cx("ml-2", { "hidden": editorQuery === dashboard.content })}
+                  className={cx("ml-2", {
+                    hidden: editorQuery === dashboard.content,
+                  })}
                   disabled={editorQuery === dashboard.content}
-                  variant='destructive'
+                  variant="destructive"
                 >
                   Discard
                 </Button>
               </Tooltip>
-              <Tooltip
-                showArrow={false}
-                asChild
-                content="Save Dashboard"
-              >
+              <Tooltip showArrow={false} asChild content="Save Dashboard">
                 <Button
                   onClick={handleSave}
-                  className={cx("ml-2", { "hidden": editorQuery === dashboard.content })}
+                  className={cx("ml-2", {
+                    hidden: editorQuery === dashboard.content,
+                  })}
                   disabled={saving || editorQuery === dashboard.content}
                   isLoading={saving}
-                  variant='secondary'
+                  variant="secondary"
                 >
                   Save
                 </Button>
@@ -546,9 +596,7 @@ function DashboardEditor() {
         </div>
 
         <div className="flex-grow overflow-y-auto relative">
-          {previewError && (
-            <PreviewError>{previewError}</PreviewError>
-          )}
+          {previewError && <PreviewError>{previewError}</PreviewError>}
           <Dashboard
             vars={vars}
             hash={auth.hash}
@@ -565,16 +613,14 @@ function DashboardEditor() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {('Are you sure you want to delete the dashboard "%%"?').replace(
+              {'Are you sure you want to delete the dashboard "%%"?'.replace(
                 "%%",
                 dashboard.name,
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
+            <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
             <Button
               variant="destructive"
               onClick={() => {
@@ -593,24 +639,23 @@ function DashboardEditor() {
           <DialogHeader>
             <DialogTitle>Discard Changes</DialogTitle>
             <DialogDescription>
-              Are you sure you want to discard your unsaved changes? This action cannot be undone.
+              Are you sure you want to discard your unsaved changes? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setShowDiscardDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDiscardChanges}
-            >
+            <Button onClick={() => setShowDiscardDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDiscardChanges}>
               Discard
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showVisibilityDialog} onOpenChange={setShowVisibilityDialog}>
+      <Dialog
+        open={showVisibilityDialog}
+        onOpenChange={setShowVisibilityDialog}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Dashboard Visibility</DialogTitle>
@@ -626,7 +671,7 @@ function DashboardEditor() {
                   type="radio"
                   name="visibility"
                   value="private"
-                  checked={selectedVisibility === 'private'}
+                  checked={selectedVisibility === "private"}
                   onChange={(e) => setSelectedVisibility(e.target.value)}
                   className="mt-1"
                 />
@@ -640,13 +685,12 @@ function DashboardEditor() {
 
               {systemConfig.passwordProtectedSharingEnabled && (
                 <>
-
                   <label className="flex items-start space-x-3">
                     <input
                       type="radio"
                       name="visibility"
                       value="password-protected"
-                      checked={selectedVisibility === 'password-protected'}
+                      checked={selectedVisibility === "password-protected"}
                       onChange={(e) => setSelectedVisibility(e.target.value)}
                       className="mt-1"
                     />
@@ -658,7 +702,7 @@ function DashboardEditor() {
                     </div>
                   </label>
 
-                  {selectedVisibility === 'password-protected' && (
+                  {selectedVisibility === "password-protected" && (
                     <div className="ml-6 space-y-3">
                       <div className="flex items-center space-x-2">
                         <div className="relative flex-grow">
@@ -666,11 +710,15 @@ function DashboardEditor() {
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder={dashboard.visibility === 'password-protected' ? "Set new password" : "Password"}
+                            placeholder={
+                              dashboard.visibility === "password-protected"
+                                ? "Set new password"
+                                : "Password"
+                            }
                             className={cx(
                               "w-full px-3 py-2 border rounded-md pr-20",
                               "bg-cbgs dark:bg-dbgs border-cb dark:border-db",
-                              focusRing
+                              focusRing,
                             )}
                             minLength={4}
                           />
@@ -681,7 +729,11 @@ function DashboardEditor() {
                               onClick={() => setShowPassword(!showPassword)}
                               className="p-1.5"
                             >
-                              {showPassword ? <RiEyeOffLine className="size-4" /> : <RiEyeLine className="size-4" />}
+                              {showPassword ? (
+                                <RiEyeOffLine className="size-4" />
+                              ) : (
+                                <RiEyeLine className="size-4" />
+                              )}
                             </Button>
                             {password && (
                               <Button
@@ -695,7 +747,10 @@ function DashboardEditor() {
                             )}
                           </div>
                         </div>
-                        <Tooltip showArrow={false} content="Generate a secure 16-character password">
+                        <Tooltip
+                          showArrow={false}
+                          content="Generate a secure 16-character password"
+                        >
                           <Button
                             type="button"
                             variant="secondary"
@@ -703,10 +758,12 @@ function DashboardEditor() {
                             className="px-3.5 py-2.5"
                             disabled={generatingPassword}
                           >
-                            <RiRefreshLine className={cx(
-                              "size-5 transition-transform duration-400",
-                              generatingPassword && "animate-spin"
-                            )} />
+                            <RiRefreshLine
+                              className={cx(
+                                "size-5 transition-transform duration-400",
+                                generatingPassword && "animate-spin",
+                              )}
+                            />
                           </Button>
                         </Tooltip>
                       </div>
@@ -729,7 +786,7 @@ function DashboardEditor() {
                     type="radio"
                     name="visibility"
                     value="public"
-                    checked={selectedVisibility === 'public'}
+                    checked={selectedVisibility === "public"}
                     onChange={(e) => setSelectedVisibility(e.target.value)}
                     className="mt-1"
                   />
@@ -757,7 +814,10 @@ function DashboardEditor() {
                 handleVisibilityChange();
                 setShowVisibilityDialog(false);
               }}
-              disabled={selectedVisibility === 'password-protected' && password.length < 4}
+              disabled={
+                selectedVisibility === "password-protected" &&
+                password.length < 4
+              }
               isLoading={savingPassword}
             >
               Save
@@ -766,13 +826,16 @@ function DashboardEditor() {
         </DialogContent>
       </Dialog>
 
-
-      <Dialog open={showPasswordSuccessDialog} onOpenChange={setShowPasswordSuccessDialog}>
+      <Dialog
+        open={showPasswordSuccessDialog}
+        onOpenChange={setShowPasswordSuccessDialog}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Dashboard Password Protected</DialogTitle>
             <DialogDescription>
-              Your dashboard is now password protected. Copy the password now - you won't be able to see it again.
+              Your dashboard is now password protected. Copy the password now -
+              you won't be able to see it again.
             </DialogDescription>
           </DialogHeader>
 
@@ -787,17 +850,23 @@ function DashboardEditor() {
                     readOnly
                     className={cx(
                       "w-full px-3 py-2 border rounded-md pr-20 bg-gray-50 dark:bg-gray-800 border-cb dark:border-db",
-                      "font-mono text-sm"
+                      "font-mono text-sm",
                     )}
                   />
                   <div className="absolute right-1 top-1 flex space-x-1">
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setShowSuccessPassword(!showSuccessPassword)}
+                      onClick={() =>
+                        setShowSuccessPassword(!showSuccessPassword)
+                      }
                       className="p-1.5"
                     >
-                      {showSuccessPassword ? <RiEyeOffLine className="size-4" /> : <RiEyeLine className="size-4" />}
+                      {showSuccessPassword ? (
+                        <RiEyeOffLine className="size-4" />
+                      ) : (
+                        <RiEyeLine className="size-4" />
+                      )}
                     </Button>
                     <Button
                       type="button"
@@ -821,14 +890,16 @@ function DashboardEditor() {
                   readOnly
                   className={cx(
                     "flex-grow px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 border-cb dark:border-db",
-                    "text-sm"
+                    "text-sm",
                   )}
                 />
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    copyToClipboard(`${window.location.origin}${window.shaper.defaultBaseUrl}view/${params.id}`);
+                    copyToClipboard(
+                      `${window.location.origin}${window.shaper.defaultBaseUrl}view/${params.id}`,
+                    );
                     toast({
                       title: "Link copied",
                       description: "Share link copied to clipboard",

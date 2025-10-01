@@ -231,9 +231,11 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct {
+			// Not returning the actual error to the client for security reasons.
+			// Only returning that in edit mode
+			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: err.Error()}, "  ")
+			}{Error: "error getting dashboard"}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
 	}
@@ -309,11 +311,12 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 					return err
 				}
 				c.Logger().Error("error downloading CSV:", slog.Any("error", err))
+				// Not returning the actual error to the client for security reasons.
 				return c.JSONPretty(
-					http.StatusBadRequest,
+					http.StatusInternalServerError,
 					struct {
 						Error string `json:"error"`
-					}{Error: err.Error()},
+					}{Error: "error downloading csv file"},
 					"  ",
 				)
 			}
@@ -351,11 +354,12 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 					return err
 				}
 				c.Logger().Error("error downloading .xlsx file:", slog.Any("error", err))
+				// Not returning the actual error to the client for security reasons.
 				return c.JSONPretty(
-					http.StatusBadRequest,
+					http.StatusInternalServerError,
 					struct {
 						Error string `json:"error"`
-					}{Error: err.Error()},
+					}{Error: "error downloading xlsx file"},
 					"  ",
 				)
 			}

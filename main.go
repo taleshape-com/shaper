@@ -477,7 +477,6 @@ func Run(cfg Config) func(context.Context) {
 				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
 				logger.Info("Executing init-sql-file")
-				// Substitute environment variables in the SQL file content
 				_, err = duckdbSqlxDb.Exec(sql)
 				if err != nil {
 					logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))

@@ -1,5 +1,12 @@
 # Contributing
 
+Thank you for wanting to help improve Shaper!
+
+Please open an issue or start a discussion if you have any ideas or changes you like to contribute.
+Contributions are very welcome, so don't hesitate to reach out even if you are unsure about it.
+Let's just make sure we talk it through before writing code to make sure you spend your time on the right thing.
+
+
 ## Setup
 
 1. Make sure you have [Node.js](https://nodejs.org/en/download/) and [Go](https://go.dev/doc/install) installed
