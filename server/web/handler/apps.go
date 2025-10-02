@@ -21,7 +21,8 @@ func ListApps(app *core.App) echo.HandlerFunc {
 		}
 		sort := c.QueryParam("sort")
 		order := c.QueryParam("order")
-		result, err := core.ListApps(app, c.Request().Context(), sort, order)
+		path := c.QueryParam("path")
+		result, err := core.ListApps(app, c.Request().Context(), sort, order, path)
 		if err != nil {
 			c.Logger().Error("error listing apps:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {

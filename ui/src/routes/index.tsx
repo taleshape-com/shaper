@@ -30,6 +30,9 @@ import {
   RiFile3Fill,
   RiBarChart2Line,
   RiUserSharedLine,
+  RiFolderAddFill,
+  RiFolderFill,
+  RiArrowRightSLine,
 } from "@remixicon/react";
 import { getSystemConfig } from "../lib/system";
 import { useQueryApi } from "../hooks/useQueryApi";
@@ -37,6 +40,7 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { Button } from "../components/tremor/Button";
 import { Tooltip } from "../components/tremor/Tooltip";
+import { Input } from "../components/tremor/Input";
 import { useState } from "react";
 import {
   Dialog,
@@ -58,16 +62,23 @@ export const Route = createFileRoute("/")({
   validateSearch: z.object({
     sort: z.enum(["name", "created", "updated"]).optional(),
     order: z.enum(["asc", "desc"]).optional(),
+    path: z.string().optional(),
   }),
-  loaderDeps: ({ search: { sort, order } }) => ({
+  loaderDeps: ({ search: { sort, order, path } }) => ({
     sort,
     order,
+    path,
   }),
   loader: async ({
     context: { queryApi },
-    deps: { sort = "updated", order = "desc" },
+    deps: { sort = "updated", order = "desc", path },
   }) => {
-    return queryApi(`apps?sort=${sort}&order=${order}`).then(
+    const params = new URLSearchParams();
+    if (sort) params.set("sort", sort);
+    if (order) params.set("order", order);
+    if (path) params.set("path", path);
+
+    return queryApi(`apps?${params.toString()}`).then(
       (fetchedData: DashboardListResponse) => {
         return fetchedData;
       },
@@ -77,18 +88,22 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function DashboardErrorComponent ({ error }: ErrorComponentProps) {
+function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
-function Index () {
+function Index() {
   const data = Route.useLoaderData();
-  const { sort, order } = Route.useSearch();
+  const { sort, order, path } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const queryApi = useQueryApi();
   const router = useRouter();
   const { toast } = useToast();
   const [deleteDialog, setDeleteDialog] = useState<IApp | null>(null);
+  const [folderDialog, setFolderDialog] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [draggedItem, setDraggedItem] = useState<IApp | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -120,13 +135,26 @@ function Index () {
 
   const handleDelete = async (app: IApp) => {
     try {
-      await queryApi(`${app.type === "dashboard" ? "dashboards" : "tasks"}/${app.id}`, {
+      const endpoint = app.type === "dashboard"
+        ? `dashboards/${app.id}`
+        : app.type === "folder"
+          ? `folders/${app.id}`
+          : `tasks/${app.id}`;
+
+      await queryApi(endpoint, {
         method: "DELETE",
       });
       router.invalidate();
+
+      const successMessage = app.type === "dashboard"
+        ? "Dashboard deleted successfully"
+        : app.type === "folder"
+          ? "Folder deleted successfully"
+          : "Task deleted successfully";
+
       toast({
         title: "Success",
-        description: app.type === "dashboard" ? "Dashboard deleted successfully" : "Task deleted successfully",
+        description: successMessage,
       });
     } catch (err) {
       if (isRedirect(err)) {
@@ -140,6 +168,195 @@ function Index () {
     }
   };
 
+  const handleCreateFolder = async () => {
+    if (!folderName.trim()) {
+      toast({
+        title: "Error",
+        description: "Folder name is required",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      await queryApi("folders", {
+        method: "POST",
+        body: {
+          name: folderName.trim(),
+          path: path || "/", // Use current path or root
+        },
+      });
+      setFolderDialog(false);
+      setFolderName("");
+      toast({
+        title: "Success",
+        description: "Folder created successfully",
+      });
+      // Refresh the list to show the new folder
+      router.invalidate();
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+
+      let errorMessage = "Unknown error";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        // Check if it's a duplicate folder error
+        if (errorMessage.includes("already exists")) {
+          errorMessage = `A folder with the name "${folderName.trim()}" already exists in this location. Please choose a different name.`;
+        }
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "error",
+      });
+    }
+  };
+
+  const generateBreadcrumbs = () => {
+    if (!path || path === "/") {
+      return [];
+    }
+
+    const pathParts = path.split("/").filter(part => part !== "");
+    const breadcrumbs = [];
+
+    // Add root breadcrumb
+    breadcrumbs.push({
+      name: "Home",
+      path: "/",
+      isRoot: true,
+    });
+
+    // Add path breadcrumbs
+    let currentPath = "";
+    for (let i = 0; i < pathParts.length; i++) {
+      currentPath += `/${pathParts[i]}`;
+      breadcrumbs.push({
+        name: pathParts[i],
+        path: currentPath + "/",
+        isRoot: false,
+      });
+    }
+
+    return breadcrumbs;
+  };
+
+  const handleBreadcrumbClick = (breadcrumbPath: string) => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        path: breadcrumbPath,
+      }),
+    });
+    // Use setTimeout to ensure navigation completes before invalidation
+    setTimeout(() => {
+      router.invalidate();
+    }, 0);
+  };
+
+  const handleDragStart = (e: React.DragEvent, item: IApp) => {
+    setDraggedItem(item);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", ""); // Required for some browsers
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverTarget(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetPath: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTarget(targetPath);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTarget(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetPath: string) => {
+    e.preventDefault();
+
+    if (!draggedItem) return;
+
+    // Prevent dropping folder into itself or its children
+    if (draggedItem.type === "folder") {
+      const draggedPath = draggedItem.path;
+      if (targetPath === draggedPath || targetPath.startsWith(draggedPath + "/")) {
+        toast({
+          title: "Error",
+          description: "Cannot drop a folder into itself or its subfolders",
+          variant: "error",
+        });
+        setDragOverTarget(null);
+        return;
+      }
+    }
+
+    try {
+      const requestBody = {
+        apps: draggedItem.type !== "folder" ? [draggedItem.id] : [],
+        folders: draggedItem.type === "folder" ? [draggedItem.id] : [],
+        to: targetPath,
+      };
+
+      await queryApi("move", {
+        method: "POST",
+        body: requestBody,
+      });
+
+      toast({
+        title: "Success",
+        description: `${draggedItem.type === "folder" ? "Folder" : "Item"} moved successfully`,
+      });
+
+      // Refresh the list
+      router.invalidate();
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "error",
+      });
+    }
+
+    setDragOverTarget(null);
+  };
+
+  // Touch support for mobile devices
+  const handleTouchStart = (e: React.TouchEvent, item: IApp) => {
+    // Prevent default to avoid scrolling
+    e.preventDefault();
+    setDraggedItem(item);
+  };
+
+  const handleTouchEnd = () => {
+    setDraggedItem(null);
+    setDragOverTarget(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent, targetPath: string) => {
+    if (!draggedItem) return;
+
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (element && element.closest('[data-drop-target]')) {
+      setDragOverTarget(targetPath);
+    } else {
+      setDragOverTarget(null);
+    }
+  };
+
   if (!data) {
     return <div className="p-2">Loading...</div>;
   }
@@ -147,20 +364,67 @@ function Index () {
   return (
     <MenuProvider isHome>
       <Helmet>
-        <title>Home</title>
+        <title>Overview</title>
         <meta name="description" content="Show a list of all dashboards and tasks" />
       </Helmet>
 
-      <div className="md:px-4 pb-4 min-h-dvh flex flex-col">
-        <div className="flex px-4 md:px-0">
+      <div className="pb-4 md:px-4 min-h-dvh flex flex-col">
+        <div className="flex pl-4 pr-2 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <h1 className="text-2xl font-semibold font-display flex-grow text-right md:text-left pb-2 pt-2.5">
+          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-2">
             <RiLayoutFill
-              className="size-5 inline hidden md:inline mr-1 -mt-1"
+              className="size-5 inline hidden md:inline "
               aria-hidden={true}
             />
-            Overview
-          </h1>
+            {path && path !== "/" ? (
+              <nav className="flex items-center gap-1 font-semibold font-display">
+                {generateBreadcrumbs().map((breadcrumb, index) => (
+                  <div key={breadcrumb.path} className="flex items-center gap-1">
+                    {index > 0 && (
+                      <RiArrowRightSLine
+                        className="size-4 text-ctext2 dark:text-dtext2"
+                        aria-hidden={true}
+                      />
+                    )}
+                    <button
+                      onClick={() => handleBreadcrumbClick(breadcrumb.path)}
+                      className={cx(`hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-2 -my-2 -mx-2`, {
+                        "bg-blue-100 dark:bg-blue-900 rounded px-1": dragOverTarget === breadcrumb.path,
+                      })}
+                      onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, breadcrumb.path)}
+                      onTouchMove={(e) => handleTouchMove(e, breadcrumb.path)}
+                      data-drop-target
+                      data-target-path={breadcrumb.path}
+                    >
+                      {breadcrumb.name}
+                    </button>
+                  </div>
+                ))}
+              </nav>
+            ) : (
+              <h1 className="font-semibold font-display text-right md:text-left">
+                Home
+              </h1>
+            )}
+          </div>
+          <div
+            className="flex"
+          >
+            <Tooltip
+              showArrow={false}
+              content="New Folder"
+            >
+              <Button
+                variant="secondary"
+                className="py-2 px-2.5"
+                onClick={() => setFolderDialog(true)}
+              >
+                <RiFolderAddFill className="size-4 shrink-0" aria-hidden={true} />
+              </Button>
+            </Tooltip>
+          </div>
         </div>
 
         <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-6">
@@ -228,132 +492,220 @@ function Index () {
                   {data.apps.map((app) => (
                     <TableRow
                       key={app.id}
-                      className="group transition-colors duration-200"
+                      className={`group transition-colors duration-200 ${draggedItem?.id === app.id ? "opacity-50" : ""
+                        }`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, app)}
+                      onDragEnd={handleDragEnd}
+                      onTouchStart={(e) => handleTouchStart(e, app)}
+                      onTouchEnd={handleTouchEnd}
                     >
                       {getSystemConfig().tasksEnabled && (
                         <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                          {app.type === "folder" ? (
+                            <Link
+                              to={"/"}
+                              search={{ path: app.path + app.name + "/" }}
+                              className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
+                                "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
+                              })}
+                              onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
+                              onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
+                              data-drop-target
+                              data-target-path={app.path + app.name + "/"}
+                            >
+                              <Tooltip
+                                showArrow={false}
+                                content={<span className="capitalize">{app.type}</span>}
+                              >
+                                <RiFolderFill
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                  aria-hidden={true}
+                                />
+                              </Tooltip>
+                            </Link>
+                          ) : (
+                            <Link
+                              to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
+                              params={{ id: app.id }}
+                              className="p-4 block"
+                            >
+                              <Tooltip
+                                showArrow={false}
+                                content={<span className="capitalize">{app.type}</span>}
+                              >
+                                {app.type === "dashboard" ? (
+                                  <RiBarChart2Line
+                                    className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                    aria-hidden={true}
+                                  />
+                                ) : (
+                                  <RiCodeSSlashFill
+                                    className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                    aria-hidden={true}
+                                  />
+                                )}
+                              </Tooltip>
+                            </Link>
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
+                        {app.type === "folder" ? (
+                          <Link
+                            to={"/"}
+                            search={{ path: app.path + app.name + "/" }}
+                            className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
+                              "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
+                            })}
+                            onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
+                            onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
+                            data-drop-target
+                            data-target-path={app.path}
+                          >
+                            <span className="group-hover:underline">{app.name}</span>
+                          </Link>
+                        ) : (
                           <Link
                             to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
                             params={{ id: app.id }}
                             className="p-4 block"
                           >
+                            <span className="group-hover:underline">{app.name}</span>
+                            {app.type === "task"
+                              ?
+                              app.taskInfo && (
+                                !(app.taskInfo.lastRunSuccess ?? true)
+                                  ? (
+                                    <RuntimeTooltip
+                                      lastRunAt={app.taskInfo.lastRunAt}
+                                      nextRunAt={app.taskInfo.nextRunAt}
+                                    >
+                                      <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                        Task Error
+                                      </span>
+                                    </RuntimeTooltip>
+                                  )
+                                  : app.taskInfo.nextRunAt != null && (
+                                    <RuntimeTooltip
+                                      lastRunAt={app.taskInfo.lastRunAt}
+                                    >
+                                      <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                        Next Run: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
+                                      </span>
+                                    </RuntimeTooltip>
+                                  )
+                              )
+                              : app.visibility === "public" ? (
+                                <Tooltip
+                                  showArrow={false}
+                                  content="This dashboard is public"
+                                >
+                                  <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                                </Tooltip>
+                              ) : app.visibility === "password-protected" && (
+                                <Tooltip
+                                  showArrow={false}
+                                  content={"This dashboard has a share link protected with a password"}
+                                >
+                                  <RiUserSharedLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                                </Tooltip>
+                              )
+                            }
+                          </Link>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
+                        {app.type === "folder" ? (
+                          <div className="block p-4">
                             <Tooltip
                               showArrow={false}
-                              content={<span className="capitalize">{app.type}</span>}
+                              content={new Date(app.createdAt).toLocaleString()}
                             >
-                              {app.type === "dashboard" ? (
-                                <RiBarChart2Line
-                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
-                                  aria-hidden={true}
-                                />
-                              ) : (
-                                <RiCodeSSlashFill
-                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
-                                  aria-hidden={true}
-                                />
-                              )}
+                              {new Date(app.createdAt).toLocaleDateString()}
+                            </Tooltip>
+                          </div>
+                        ) : (
+                          <Link
+                            to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
+                            params={{ id: app.id }}
+                            className="block p-4"
+                          >
+                            <Tooltip
+                              showArrow={false}
+                              content={new Date(app.createdAt).toLocaleString()}
+                            >
+                              {new Date(app.createdAt).toLocaleDateString()}
                             </Tooltip>
                           </Link>
-                        </TableCell>
-                      )}
-                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
-                        <Link
-                          to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
-                          params={{ id: app.id }}
-                          className="p-4 block"
-                        >
-                          <span className="group-hover:underline">{app.name}</span>
-                          {app.type === "task"
-                            ?
-                            app.taskInfo && (
-                              !(app.taskInfo.lastRunSuccess ?? true)
-                                ? (
-                                  <RuntimeTooltip
-                                    lastRunAt={app.taskInfo.lastRunAt}
-                                    nextRunAt={app.taskInfo.nextRunAt}
-                                  >
-                                    <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                      Task Error
-                                    </span>
-                                  </RuntimeTooltip>
-                                )
-                                : app.taskInfo.nextRunAt != null && (
-                                  <RuntimeTooltip
-                                    lastRunAt={app.taskInfo.lastRunAt}
-                                  >
-                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                      Next Run: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
-                                    </span>
-                                  </RuntimeTooltip>
-                                )
-                            )
-                            : app.visibility === "public" ? (
-                              <Tooltip
-                                showArrow={false}
-                                content="This dashboard is public"
-                              >
-                                <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
-                              </Tooltip>
-                            ) : app.visibility === "password-protected" && (
-                              <Tooltip
-                                showArrow={false}
-                                content={"This dashboard has a share link protected with a password"}
-                              >
-                                <RiUserSharedLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
-                              </Tooltip>
-                            )
-                          }
-                        </Link>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
-                        <Link
-                          to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
-                          params={{ id: app.id }}
-                          className="block p-4"
-                        >
-                          <Tooltip
-                            showArrow={false}
-                            content={new Date(app.createdAt).toLocaleString()}
+                        {app.type === "folder" ? (
+                          <div className="block p-4">
+                            <Tooltip
+                              showArrow={false}
+                              content={new Date(app.updatedAt).toLocaleString()}
+                            >
+                              {new Date(app.updatedAt).toLocaleDateString()}
+                            </Tooltip>
+                          </div>
+                        ) : (
+                          <Link
+                            to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
+                            params={{ id: app.id }}
+                            className="block p-4"
                           >
-                            {new Date(app.createdAt).toLocaleDateString()}
-                          </Tooltip>
-                        </Link>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
-                        <Link
-                          to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
-                          params={{ id: app.id }}
-                          className="block p-4"
-                        >
-                          <Tooltip
-                            showArrow={false}
-                            content={new Date(app.updatedAt).toLocaleString()}
-                          >
-                            {new Date(app.updatedAt).toLocaleDateString()}
-                          </Tooltip>
-                        </Link>
+                            <Tooltip
+                              showArrow={false}
+                              content={new Date(app.updatedAt).toLocaleString()}
+                            >
+                              {new Date(app.updatedAt).toLocaleDateString()}
+                            </Tooltip>
+                          </Link>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <div className="flex gap-4">
-                          <Link
-                            to={app.type === "dashboard" ? "/dashboards/$id/edit" : "/tasks/$id"}
-                            params={{ id: app.id }}
-                            className={cx(
-                              "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
-                              "hover:underline transition-colors duration-200",
-                            )}
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => {
-                              setDeleteDialog(app);
-                            }}
-                            className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        {app.type === "folder" ? (
+                          <div className="flex gap-4">
+                            <span className="text-ctext2 dark:text-dtext2 opacity-50">
+                              Edit
+                            </span>
+                            <button
+                              onClick={() => {
+                                setDeleteDialog(app);
+                              }}
+                              className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-4">
+                            <Link
+                              to={app.type === "dashboard" ? "/dashboards/$id/edit" : "/tasks/$id"}
+                              params={{ id: app.id }}
+                              className={cx(
+                                "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
+                                "hover:underline transition-colors duration-200",
+                              )}
+                            >
+                              Edit
+                            </Link>
+                            <button
+                              onClick={() => {
+                                setDeleteDialog(app);
+                              }}
+                              className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -362,46 +714,79 @@ function Index () {
             </TableRoot>
           )}
         </div>
-
-        <Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogDescription>
-                {deleteDialog && (
-                  deleteDialog.type === "dashboard"
-                    ? "Are you sure you want to delete the dashboard \"%%\"?"
-                    : "Are you sure you want to delete the task \"%%\"?"
-                ).replace(
-                  "%%",
-                  deleteDialog.name,
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => setDeleteDialog(null)} variant="secondary">
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  if (deleteDialog) {
-                    handleDelete(deleteDialog);
-                    setDeleteDialog(null);
-                  }
-                }}
-              >
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
-    </MenuProvider >
+
+      <Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              {deleteDialog && (
+                deleteDialog.type === "dashboard"
+                  ? "Are you sure you want to delete the dashboard \"%%\"?"
+                  : deleteDialog.type === "folder"
+                    ? "Are you sure you want to delete the folder \"%%\"?"
+                    : "Are you sure you want to delete the task \"%%\"?"
+              ).replace(
+                "%%",
+                deleteDialog.name,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setDeleteDialog(null)} variant="secondary">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteDialog) {
+                  handleDelete(deleteDialog);
+                  setDeleteDialog(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={folderDialog} onOpenChange={(open) => !open && setFolderDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>
+              Enter a name for the new folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Folder name"
+              onChange={(e) => setFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleCreateFolder();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setFolderDialog(false)} variant="secondary">
+              Cancel
+            </Button>
+            <Button onClick={handleCreateFolder}>
+              Create Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </MenuProvider>
   );
 }
 
-function RuntimeTooltip ({ lastRunAt, nextRunAt, children }: {
+function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
   lastRunAt?: number | string;
   nextRunAt?: number | string;
   children?: React.ReactNode;

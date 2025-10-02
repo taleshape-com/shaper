@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { cx, parseJwt } from "../../lib/utils";
 import {
   RiMenuLine,
-  RiHomeLine,
+  RiLayoutLine,
   RiFileAddLine,
   RiAdminLine,
   RiLogoutBoxRLine,
@@ -19,7 +19,7 @@ import { getSystemConfig } from "../../lib/system";
 
 const isLg = () => window.innerWidth >= 1024;
 
-export function MenuProvider ({
+export function MenuProvider({
   children,
   isHome = false,
   isAdmin = false,
@@ -106,8 +106,8 @@ export function MenuProvider ({
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <RiHomeLine className="size-4 inline mr-1.5 mb-1" />
-            Home
+            <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
+            Overview
           </Link>
           <Link
             to="/new"

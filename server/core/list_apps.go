@@ -50,7 +50,31 @@ type AppListResponse struct {
 	Apps []AppListItem `json:"apps"`
 }
 
-func ListApps(app *App, ctx context.Context, sort string, order string) (AppListResponse, error) {
+type FolderListItem struct {
+	ID        string    `json:"id"`
+	Path      string    `json:"path"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedBy *string   `json:"createdBy,omitempty"`
+	UpdatedBy *string   `json:"updatedBy,omitempty"`
+}
+
+type FolderDbRecord struct {
+	ID        string    `db:"id"`
+	Path      string    `db:"path"`
+	Name      string    `db:"name"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+	CreatedBy *string   `db:"created_by"`
+	UpdatedBy *string   `db:"updated_by"`
+}
+
+type FolderListResponse struct {
+	Folders []FolderListItem `json:"folders"`
+}
+
+func ListApps(app *App, ctx context.Context, sort string, order string, path string) (AppListResponse, error) {
 	var orderBy string
 	switch sort {
 	case "created":
@@ -66,10 +90,32 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 	}
 
 	dbApps := []AppDbRecord{}
-	optionalFilter := ""
-	if app.NoTasks {
-		optionalFilter = "WHERE type = 'dashboard'"
+	
+	// Build path filter
+	pathFilter := ""
+	if path != "" {
+		pathFilter = fmt.Sprintf("WHERE path = '%s'", path)
+	} else {
+		// When at root, show only items at root level (path = '/' or path = '')
+		pathFilter = "WHERE (path = '/' OR path = '')"
 	}
+	
+	// Build type filter
+	typeFilter := ""
+	if app.NoTasks {
+		if pathFilter != "" {
+			typeFilter = " AND type = 'dashboard'"
+		} else {
+			typeFilter = "WHERE type = 'dashboard'"
+		}
+	}
+	
+	// Combine filters
+	whereClause := ""
+	if pathFilter != "" || typeFilter != "" {
+		whereClause = pathFilter + typeFilter
+	}
+	
 	err := app.Sqlite.SelectContext(ctx, &dbApps,
 		fmt.Sprintf(`SELECT
 			a.id,
@@ -89,7 +135,25 @@ func ListApps(app *App, ctx context.Context, sort string, order string) (AppList
 			FROM apps a
 			LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
 			%s
-			ORDER BY %s %s`, optionalFilter, orderBy, order))
+		UNION ALL
+		SELECT
+			f.id,
+			f.path,
+			f.name,
+			'' as content,
+			f.created_at,
+			f.updated_at,
+			f.created_by,
+			f.updated_by,
+			NULL as visibility,
+			'folder' as type,
+			NULL as last_run_at,
+			NULL as last_run_success,
+			NULL as last_run_duration,
+			NULL as next_run_at
+			FROM folders f
+			%s
+			ORDER BY %s %s`, whereClause, whereClause, orderBy, order))
 	if err != nil {
 		err = fmt.Errorf("error listing apps: %w", err)
 	}

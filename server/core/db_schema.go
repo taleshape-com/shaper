@@ -131,5 +131,21 @@ func initSQLite(sdb *sqlx.DB) error {
 		return fmt.Errorf("error creating state_consumer table: %w", err)
 	}
 
+	// Create folders table
+	_, err = sdb.Exec(`
+	CREATE TABLE IF NOT EXISTS folders (
+		id TEXT PRIMARY KEY,
+		path TEXT NOT NULL,
+		name TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL,
+		created_by TEXT,
+		updated_by TEXT
+	)
+`)
+	if err != nil {
+		return fmt.Errorf("error creating apps table: %w", err)
+	}
+
 	return nil
 }
