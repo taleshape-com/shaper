@@ -473,9 +473,9 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 	}
 
 	for queryIndex, sqlString := range sqlQueries {
-		if queryIndex == len(sqlQueries)-1 {
-			// Ignore text after last semicolon
-			break
+		sqlString = strings.TrimSpace(sqlString)
+		if sqlString == "" {
+			continue
 		}
 		if nextIsDownload {
 			nextIsDownload = false

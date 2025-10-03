@@ -39,7 +39,7 @@ func DashboardContainsMatchingPdfDownload(app *App, ctx context.Context, parentD
 	for queryIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
-			break
+			continue
 		}
 		if nextIsDownload {
 			nextIsDownload = false
