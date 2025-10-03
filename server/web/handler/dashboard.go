@@ -219,14 +219,31 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		idParam := c.Param("id")
-		if id, hasId := claims["dashboardId"]; hasId && id != idParam {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
-		}
 		variables := map[string]any{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
 			variables = vars.(map[string]any)
+		}
+		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
+			parentId, ok := idClaim.(string)
+			if !ok {
+				c.Logger().Error("invalid dashboardId claim type:", slog.Any("type", idClaim))
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+			contains, err := core.DashboardContainsMatchingPdfDownload(app, c.Request().Context(), parentId, idParam, c.QueryParams(), variables)
+			if err != nil {
+				// internal server error
+				c.Logger().Error("error checking dashboard content:", slog.String("parent", parentId), slog.String("dashboard", idParam), slog.Any("error", err))
+				return c.JSONPretty(http.StatusInternalServerError, struct {
+					Error string `json:"error"`
+				}{Error: "Internal server error"}, "  ")
+			}
+			if !contains {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
 		}
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
@@ -381,16 +398,35 @@ func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 	return func(c echo.Context) error {
 		jwtToken := c.Get("user").(*jwt.Token)
 		claims := jwtToken.Claims.(jwt.MapClaims)
-		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
-		}
+		idParam := c.Param("id")
 		variables := map[string]any{}
 		if vars, hasVariables := claims["variables"]; hasVariables {
 			variables = vars.(map[string]any)
 		}
+		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
+			parentId, ok := idClaim.(string)
+			if !ok {
+				c.Logger().Error("invalid dashboardId claim type:", slog.Any("type", idClaim))
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+			contains, err := core.DashboardContainsMatchingPdfDownload(app, c.Request().Context(), parentId, idParam, c.QueryParams(), variables)
+			if err != nil {
+				// internal server error
+				c.Logger().Error("error checking dashboard content:", slog.String("parent", parentId), slog.String("dashboard", idParam), slog.Any("error", err))
+				return c.JSONPretty(http.StatusInternalServerError, struct {
+					Error string `json:"error"`
+				}{Error: "Internal server error"}, "  ")
+			}
+			if !contains {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+		}
 		filename := c.Param("filename")
+		fmt.Println("download pdf", idParam, filename)
 
 		c.Response().Header().Set(echo.HeaderContentType, "application/pdf")
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
@@ -409,7 +445,7 @@ func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 			writer,
 			internalUrl,
 			pdfDateFormat,
-			c.Param("id"),
+			idParam,
 			c.QueryParams(),
 			variables,
 			jwtToken,
