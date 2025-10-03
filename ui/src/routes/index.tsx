@@ -93,7 +93,7 @@ function DashboardErrorComponent({ error }: ErrorComponentProps) {
 
 function Index() {
   const data = Route.useLoaderData();
-  const { sort, order, path } = Route.useSearch();
+  const { sort, order, path = "/" } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const queryApi = useQueryApi();
   const router = useRouter();
@@ -216,10 +216,6 @@ function Index() {
   };
 
   const generateBreadcrumbs = () => {
-    if (!path || path === "/") {
-      return [];
-    }
-
     const pathParts = path.split("/").filter(part => part !== "");
     const breadcrumbs = [];
 
@@ -242,19 +238,6 @@ function Index() {
     }
 
     return breadcrumbs;
-  };
-
-  const handleBreadcrumbClick = (breadcrumbPath: string) => {
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        path: breadcrumbPath,
-      }),
-    });
-    // Use setTimeout to ensure navigation completes before invalidation
-    setTimeout(() => {
-      router.invalidate();
-    }, 0);
   };
 
   const handleDragStart = (e: React.DragEvent, item: IApp) => {
@@ -375,38 +358,33 @@ function Index() {
               className="size-5 inline hidden md:inline "
               aria-hidden={true}
             />
-            {path && path !== "/" ? (
-              <nav className="flex items-center gap-1 font-semibold font-display">
-                {generateBreadcrumbs().map((breadcrumb, index) => (
-                  <div key={breadcrumb.path} className="flex items-center gap-1">
-                    {index > 0 && (
-                      <RiArrowRightSLine
-                        className="size-4 text-ctext2 dark:text-dtext2"
-                        aria-hidden={true}
-                      />
-                    )}
-                    <button
-                      onClick={() => handleBreadcrumbClick(breadcrumb.path)}
-                      className={cx(`hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-2 -my-2 -mx-2`, {
-                        "bg-blue-100 dark:bg-blue-900 rounded px-1": dragOverTarget === breadcrumb.path,
-                      })}
-                      onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, breadcrumb.path)}
-                      onTouchMove={(e) => handleTouchMove(e, breadcrumb.path)}
-                      data-drop-target
-                      data-target-path={breadcrumb.path}
-                    >
-                      {breadcrumb.name}
-                    </button>
-                  </div>
-                ))}
-              </nav>
-            ) : (
-              <h1 className="font-semibold font-display text-right md:text-left">
-                Home
-              </h1>
-            )}
+            <nav className="flex items-center gap-1 font-semibold font-display">
+              {generateBreadcrumbs().map((breadcrumb, index) => (
+                <div key={breadcrumb.path} className="flex items-center gap-1">
+                  {index > 0 && (
+                    <RiArrowRightSLine
+                      className="size-4 text-ctext2 dark:text-dtext2"
+                      aria-hidden={true}
+                    />
+                  )}
+                  <Link
+                    to={"/"}
+                    search={breadcrumb.path === "/" ? undefined : { path: breadcrumb.path }}
+                    className={cx(`hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-2 -my-2 -mx-2`, {
+                      "bg-blue-100 dark:bg-blue-900 rounded px-1": dragOverTarget === breadcrumb.path,
+                    })}
+                    onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, breadcrumb.path)}
+                    onTouchMove={(e) => handleTouchMove(e, breadcrumb.path)}
+                    data-drop-target
+                    data-target-path={breadcrumb.path}
+                  >
+                    {breadcrumb.name}
+                  </Link>
+                </div>
+              ))}
+            </nav>
           </div>
           <div
             className="flex"
