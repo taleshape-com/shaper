@@ -90,7 +90,7 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 	}
 
 	dbApps := []AppDbRecord{}
-	
+
 	// Build path filter
 	pathFilter := ""
 	if path != "" {
@@ -99,7 +99,7 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 		// When at root, show only items at root level (path = '/' or path = '')
 		pathFilter = "WHERE (path = '/' OR path = '')"
 	}
-	
+
 	// Build type filter
 	typeFilter := ""
 	if app.NoTasks {
@@ -109,13 +109,14 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			typeFilter = "WHERE type = 'dashboard'"
 		}
 	}
-	
+
 	// Combine filters
 	whereClause := ""
 	if pathFilter != "" || typeFilter != "" {
 		whereClause = pathFilter + typeFilter
 	}
-	
+
+	// Starting type for folders with underscore to sort them always to the top
 	err := app.Sqlite.SelectContext(ctx, &dbApps,
 		fmt.Sprintf(`SELECT
 			a.id,
@@ -146,14 +147,14 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			f.created_by,
 			f.updated_by,
 			NULL as visibility,
-			'folder' as type,
+			'_folder' as type,
 			NULL as last_run_at,
 			NULL as last_run_success,
 			NULL as last_run_duration,
 			NULL as next_run_at
 			FROM folders f
 			%s
-			ORDER BY %s %s`, whereClause, whereClause, orderBy, order))
+			ORDER BY type, %s %s`, whereClause, whereClause, orderBy, order))
 	if err != nil {
 		err = fmt.Errorf("error listing apps: %w", err)
 	}

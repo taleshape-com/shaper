@@ -27,7 +27,6 @@ import {
   RiSortDesc,
   RiGlobalLine,
   RiCodeSSlashFill,
-  RiFile3Fill,
   RiBarChart2Line,
   RiUserSharedLine,
   RiFolderAddFill,
@@ -71,7 +70,7 @@ export const Route = createFileRoute("/")({
   }),
   loader: async ({
     context: { queryApi },
-    deps: { sort = "updated", order = "desc", path },
+    deps: { sort = "name", order = "asc", path },
   }) => {
     const params = new URLSearchParams();
     if (sort) params.set("sort", sort);
@@ -107,8 +106,8 @@ function Index() {
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
-      field === (sort ?? "updated")
-        ? (order ?? "desc") === "asc"
+      field === (sort ?? "name")
+        ? (order ?? "asc") === "asc"
           ? "desc"
           : "asc"
         : field === "name"
@@ -118,15 +117,15 @@ function Index() {
     navigate({
       search: (prev) => ({
         ...prev,
-        sort: field === "updated" ? undefined : field,
-        order: field === "updated" && newOrder === "desc" ? undefined : newOrder,
+        sort: field === "name" ? undefined : field,
+        order: field === "name" && newOrder === "asc" ? undefined : newOrder,
       }),
     });
   };
 
   const SortIcon = ({ field }: { field: "name" | "created" | "updated" }) => {
-    if (field !== (sort ?? "updated")) return null;
-    return (order ?? "desc") === "asc" ? (
+    if (field !== (sort ?? "name")) return null;
+    return (order ?? "asc") === "asc" ? (
       <RiSortAsc className="inline size-4" />
     ) : (
       <RiSortDesc className="inline size-4" />
@@ -137,7 +136,7 @@ function Index() {
     try {
       const endpoint = app.type === "dashboard"
         ? `dashboards/${app.id}`
-        : app.type === "folder"
+        : app.type === "_folder"
           ? `folders/${app.id}`
           : `tasks/${app.id}`;
 
@@ -148,7 +147,7 @@ function Index() {
 
       const successMessage = app.type === "dashboard"
         ? "Dashboard deleted successfully"
-        : app.type === "folder"
+        : app.type === "_folder"
           ? "Folder deleted successfully"
           : "Task deleted successfully";
 
@@ -285,7 +284,7 @@ function Index() {
     if (!draggedItem) return;
 
     // Prevent dropping folder into itself or its children
-    if (draggedItem.type === "folder") {
+    if (draggedItem.type === "_folder") {
       const draggedPath = draggedItem.path;
       if (targetPath === draggedPath || targetPath.startsWith(draggedPath + "/")) {
         toast({
@@ -300,8 +299,8 @@ function Index() {
 
     try {
       const requestBody = {
-        apps: draggedItem.type !== "folder" ? [draggedItem.id] : [],
-        folders: draggedItem.type === "folder" ? [draggedItem.id] : [],
+        apps: draggedItem.type !== "_folder" ? [draggedItem.id] : [],
+        folders: draggedItem.type === "_folder" ? [draggedItem.id] : [],
         to: targetPath,
       };
 
@@ -312,7 +311,7 @@ function Index() {
 
       toast({
         title: "Success",
-        description: `${draggedItem.type === "folder" ? "Folder" : "Item"} moved successfully`,
+        description: `${draggedItem.type === "_folder" ? "Folder" : "Item"} moved successfully`,
       });
 
       // Refresh the list
@@ -453,37 +452,30 @@ function Index() {
                   <TableRow>
                     {getSystemConfig().tasksEnabled && (
                       <TableHeaderCell
+                        className="text-ctext"
                       >
-                        <Tooltip
-                          showArrow={false}
-                          content="Type"
-                        >
-                          <RiFile3Fill
-                            className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 cursor-default"
-                            aria-hidden={true}
-                          />
-                        </Tooltip>
+                        Type
                       </TableHeaderCell>
                     )}
                     <TableHeaderCell
                       onClick={() => handleSort("name" as const)}
-                      className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
+                      className="text-ctext dark:text-dtext cursor-pointer hover:underline"
                     >
                       Name <SortIcon field="name" />
                     </TableHeaderCell>
                     <TableHeaderCell
-                      className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
+                      className="text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                       onClick={() => handleSort("created" as const)}
                     >
                       Created <SortIcon field="created" />
                     </TableHeaderCell>
                     <TableHeaderCell
-                      className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
+                      className="text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                       onClick={() => handleSort("updated" as const)}
                     >
                       Updated <SortIcon field="updated" />
                     </TableHeaderCell>
-                    <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
+                    <TableHeaderCell className="text-ctext dark:text-dtext hidden md:table-cell">
                       Actions
                     </TableHeaderCell>
                   </TableRow>
@@ -502,7 +494,7 @@ function Index() {
                     >
                       {getSystemConfig().tasksEnabled && (
                         <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
-                          {app.type === "folder" ? (
+                          {app.type === "_folder" ? (
                             <Link
                               to={"/"}
                               search={{ path: app.path + app.name + "/" }}
@@ -553,7 +545,7 @@ function Index() {
                         </TableCell>
                       )}
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
-                        {app.type === "folder" ? (
+                        {app.type === "_folder" ? (
                           <Link
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
@@ -620,15 +612,27 @@ function Index() {
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
-                        {app.type === "folder" ? (
-                          <div className="block p-4">
+                        {app.type === "_folder" ? (
+                          <Link
+                            to={"/"}
+                            search={{ path: app.path + app.name + "/" }}
+                            className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
+                              "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
+                            })}
+                            onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
+                            onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
+                            data-drop-target
+                            data-target-path={app.path}
+                          >
                             <Tooltip
                               showArrow={false}
                               content={new Date(app.createdAt).toLocaleString()}
                             >
                               {new Date(app.createdAt).toLocaleDateString()}
                             </Tooltip>
-                          </div>
+                          </Link>
                         ) : (
                           <Link
                             to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
@@ -645,15 +649,27 @@ function Index() {
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-ctext2 dark:text-dtext2 p-0">
-                        {app.type === "folder" ? (
-                          <div className="block p-4">
+                        {app.type === "_folder" ? (
+                          <Link
+                            to={"/"}
+                            search={{ path: app.path + app.name + "/" }}
+                            className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
+                              "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
+                            })}
+                            onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
+                            onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
+                            data-drop-target
+                            data-target-path={app.path}
+                          >
                             <Tooltip
                               showArrow={false}
                               content={new Date(app.updatedAt).toLocaleString()}
                             >
                               {new Date(app.updatedAt).toLocaleDateString()}
                             </Tooltip>
-                          </div>
+                          </Link>
                         ) : (
                           <Link
                             to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
@@ -670,7 +686,7 @@ function Index() {
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {app.type === "folder" ? (
+                        {app.type === "_folder" ? (
                           <div className="flex gap-4">
                             <span className="text-ctext2 dark:text-dtext2 opacity-50">
                               Edit
@@ -724,7 +740,7 @@ function Index() {
               {deleteDialog && (
                 deleteDialog.type === "dashboard"
                   ? "Are you sure you want to delete the dashboard \"%%\"?"
-                  : deleteDialog.type === "folder"
+                  : deleteDialog.type === "_folder"
                     ? "Are you sure you want to delete the folder \"%%\"?"
                     : "Are you sure you want to delete the task \"%%\"?"
               ).replace(

@@ -10,7 +10,7 @@ export interface IApp {
   createdBy?: string;
   updatedBy?: string;
   visibility?: "public" | "private" | "password-protected";
-  type: "dashboard" | "task" | "folder";
+  type: "dashboard" | "task" | "_folder";
   taskInfo?: ITaskInfo;
 }
 
