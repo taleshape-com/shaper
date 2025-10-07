@@ -445,10 +445,6 @@ function Index() {
         <div className="flex pl-4 pr-2 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
           <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-2">
-            <RiLayoutFill
-              className="size-5 inline hidden md:inline "
-              aria-hidden={true}
-            />
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (
                 <div key={breadcrumb.path} className="flex items-center gap-1">
@@ -466,9 +462,9 @@ function Index() {
                         : { path: breadcrumb.path }
                     }
                     className={cx(
-                      `hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-2 -my-2 -mx-2`,
+                      `hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -my-1 -mx-1 rounded`,
                       {
-                        "bg-blue-100 dark:bg-blue-900 rounded px-1":
+                        "outline-2 outline-dashed outline-cprimary dark:outline-dprimary":
                           dragOverTarget === breadcrumb.path,
                       },
                     )}
@@ -556,9 +552,10 @@ function Index() {
                   {data.apps.map((app) => (
                     <TableRow
                       key={app.id}
-                      className={`group transition-colors duration-200 ${
-                        draggedItem?.id === app.id ? "opacity-50" : ""
-                      }`}
+                      className={cx(`group transition-colors duration-200`, {
+                        "opacity-50": draggedItem?.id === app.id,
+                        "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2": app.type === "_folder" && app.path + app.name + "/" === dragOverTarget,
+                      })}
                       draggable
                       onDragStart={(e) => handleDragStart(e, app)}
                       onDragEnd={handleDragEnd}
@@ -566,16 +563,16 @@ function Index() {
                       onTouchEnd={handleTouchEnd}
                       {...(app.type === "_folder"
                         ? {
-                            onDragOver: (e: React.DragEvent) =>
-                              handleDragOver(e, app.path + app.name + "/", app),
-                            onDragLeave: handleDragLeave,
-                            onDrop: (e: React.DragEvent) =>
-                              handleDrop(e, app.path + app.name + "/", app),
-                            onTouchMove: (e: React.TouchEvent) =>
-                              handleTouchMove(e, app.path + app.name + "/"),
-                            "data-drop-target": true,
-                            "data-target-path": app.path + app.name + "/",
-                          }
+                          onDragOver: (e: React.DragEvent) =>
+                            handleDragOver(e, app.path + app.name + "/", app),
+                          onDragLeave: handleDragLeave,
+                          onDrop: (e: React.DragEvent) =>
+                            handleDrop(e, app.path + app.name + "/", app),
+                          onTouchMove: (e: React.TouchEvent) =>
+                            handleTouchMove(e, app.path + app.name + "/"),
+                          "data-drop-target": true,
+                          "data-target-path": app.path + app.name + "/",
+                        }
                         : {})}
                     >
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
