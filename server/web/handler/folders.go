@@ -36,12 +36,6 @@ func CreateFolder(app *core.App) echo.HandlerFunc {
 			}{Error: "Folder name is required"}, "  ")
 		}
 
-		if req.Path == "" {
-			return c.JSONPretty(http.StatusBadRequest, struct {
-				Error string `json:"error"`
-			}{Error: "Folder path is required"}, "  ")
-		}
-
 		result, err := core.CreateFolder(app, c.Request().Context(), req)
 		if err != nil {
 			c.Logger().Error("error creating folder:", slog.Any("error", err))
@@ -57,28 +51,6 @@ func CreateFolder(app *core.App) echo.HandlerFunc {
 		}
 
 		return c.JSONPretty(http.StatusCreated, result, "  ")
-	}
-}
-
-func ListFolders(app *core.App) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
-		}
-
-		sort := c.QueryParam("sort")
-		order := c.QueryParam("order")
-		result, err := core.ListFolders(app, c.Request().Context(), sort, order)
-		if err != nil {
-			c.Logger().Error("error listing folders:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest, struct {
-				Error string `json:"error"`
-			}{Error: err.Error()}, "  ")
-		}
-		return c.JSONPretty(http.StatusOK, result, "  ")
 	}
 }
 
@@ -134,12 +106,6 @@ func MoveItems(app *core.App) echo.HandlerFunc {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: "No items to move"}, "  ")
-		}
-
-		if req.To == "" {
-			return c.JSONPretty(http.StatusBadRequest, struct {
-				Error string `json:"error"`
-			}{Error: "Destination path is required"}, "  ")
 		}
 
 		err := core.MoveItems(app, c.Request().Context(), req)

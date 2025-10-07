@@ -11,14 +11,14 @@ import (
 )
 
 type CreateFolderRequest struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name           string  `json:"name"`
+	ParentFolderID *string `json:"parentFolderId,omitempty"`
 }
 
 type MoveItemsRequest struct {
-	Apps    []string `json:"apps"`
-	Folders []string `json:"folders"`
-	To      string   `json:"to"`
+	Apps       []string `json:"apps"`
+	Folders    []string `json:"folders"`
+	ToFolderID *string  `json:"toFolderId,omitempty"`
 }
 
 func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (FolderListItem, error) {
@@ -27,16 +27,20 @@ func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (Folde
 		return FolderListItem{}, fmt.Errorf("no actor in context")
 	}
 
-	// Check if a folder with the same path and name already exists
+	// Check if a folder with the same parent folder and name already exists
 	var count int
 	err := app.Sqlite.GetContext(ctx, &count, `
-		SELECT COUNT(*) FROM folders WHERE path = ? AND name = ?
-	`, req.Path, req.Name)
+		SELECT COUNT(*) FROM folders WHERE parent_folder_id IS ? AND name = ?
+	`, req.ParentFolderID, req.Name)
 	if err != nil {
 		return FolderListItem{}, fmt.Errorf("error checking for duplicate folder: %w", err)
 	}
 	if count > 0 {
-		return FolderListItem{}, fmt.Errorf("a folder with the name '%s' already exists in path '%s'", req.Name, req.Path)
+		parentDesc := "root"
+		if req.ParentFolderID != nil {
+			parentDesc = fmt.Sprintf("folder with ID '%s'", *req.ParentFolderID)
+		}
+		return FolderListItem{}, fmt.Errorf("a folder with the name '%s' already exists in %s", req.Name, parentDesc)
 	}
 
 	// Generate a unique ID for the folder
@@ -45,9 +49,9 @@ func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (Folde
 
 	// Insert the folder into the database
 	_, err = app.Sqlite.ExecContext(ctx, `
-		INSERT INTO folders (id, path, name, created_at, updated_at, created_by, updated_by)
+		INSERT INTO folders (id, parent_folder_id, name, created_at, updated_at, created_by, updated_by)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, id, req.Path, req.Name, now, now, actor.ID, actor.ID)
+	`, id, req.ParentFolderID, req.Name, now, now, actor.ID, actor.ID)
 
 	if err != nil {
 		return FolderListItem{}, fmt.Errorf("error creating folder: %w", err)
@@ -55,61 +59,14 @@ func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (Folde
 
 	// Return the created folder
 	return FolderListItem{
-		ID:        id,
-		Path:      req.Path,
-		Name:      req.Name,
-		CreatedAt: now,
-		UpdatedAt: now,
-		CreatedBy: &actor.ID,
-		UpdatedBy: &actor.ID,
+		ID:             id,
+		ParentFolderID: req.ParentFolderID,
+		Name:           req.Name,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		CreatedBy:      &actor.ID,
+		UpdatedBy:      &actor.ID,
 	}, nil
-}
-
-func ListFolders(app *App, ctx context.Context, sort string, order string) (FolderListResponse, error) {
-	var orderBy string
-	switch sort {
-	case "created":
-		orderBy = "created_at"
-	case "name":
-		orderBy = "name"
-	default:
-		orderBy = "updated_at"
-	}
-
-	if order != "asc" && order != "desc" {
-		order = "desc"
-	}
-
-	dbFolders := []FolderDbRecord{}
-	err := app.Sqlite.SelectContext(ctx, &dbFolders,
-		fmt.Sprintf(`SELECT
-			id,
-			path,
-			name,
-			created_at,
-			updated_at,
-			created_by,
-			updated_by
-			FROM folders
-			ORDER BY %s %s`, orderBy, order))
-	if err != nil {
-		err = fmt.Errorf("error listing folders: %w", err)
-	}
-
-	folders := make([]FolderListItem, len(dbFolders))
-	for i, f := range dbFolders {
-		folders[i] = FolderListItem{
-			ID:        f.ID,
-			Path:      f.Path,
-			Name:      f.Name,
-			CreatedAt: f.CreatedAt,
-			UpdatedAt: f.UpdatedAt,
-			CreatedBy: f.CreatedBy,
-			UpdatedBy: f.UpdatedBy,
-		}
-	}
-
-	return FolderListResponse{Folders: folders}, err
 }
 
 func DeleteFolder(app *App, ctx context.Context, id string) error {
@@ -147,9 +104,16 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 		return fmt.Errorf("no items to move")
 	}
 
-	// Validate destination path
-	if req.To == "" {
-		return fmt.Errorf("destination path is required")
+	// Validate that destination folder exists (if not moving to root)
+	if req.ToFolderID != nil {
+		var count int
+		err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM folders WHERE id = ?`, *req.ToFolderID)
+		if err != nil {
+			return fmt.Errorf("error checking destination folder: %w", err)
+		}
+		if count == 0 {
+			return fmt.Errorf("destination folder does not exist")
+		}
 	}
 
 	// Start a transaction to ensure atomicity
@@ -164,22 +128,22 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 		if appID == "" {
 			continue
 		}
-		
+
 		result, err := tx.ExecContext(ctx, `
-			UPDATE apps 
-			SET path = ?, updated_at = ?, updated_by = ?
+			UPDATE apps
+			SET folder_id = ?, updated_at = ?, updated_by = ?
 			WHERE id = ?
-		`, req.To, time.Now(), actor.ID, appID)
-		
+		`, req.ToFolderID, time.Now(), actor.ID, appID)
+
 		if err != nil {
 			return fmt.Errorf("error moving app %s: %w", appID, err)
 		}
-		
+
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
 			return fmt.Errorf("error getting rows affected for app %s: %w", appID, err)
 		}
-		
+
 		if rowsAffected == 0 {
 			return fmt.Errorf("app %s not found", appID)
 		}
@@ -190,55 +154,46 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 		if folderID == "" {
 			continue
 		}
-		
-		// Get the current folder path to update child paths
-		var currentPath string
-		err := tx.GetContext(ctx, &currentPath, `SELECT path FROM folders WHERE id = ?`, folderID)
-		if err != nil {
-			return fmt.Errorf("error getting current path for folder %s: %w", folderID, err)
+
+		// Check for circular references - prevent moving a folder into its own subtree
+		if req.ToFolderID != nil {
+			var isCircular bool
+			err := tx.GetContext(ctx, &isCircular, `
+				WITH RECURSIVE folder_ancestors(id) AS (
+					SELECT parent_folder_id FROM folders WHERE id = ?
+					UNION ALL
+					SELECT f.parent_folder_id FROM folders f
+					JOIN folder_ancestors fa ON f.id = fa.id
+					WHERE f.parent_folder_id IS NOT NULL
+				)
+				SELECT COUNT(*) > 0 FROM folder_ancestors WHERE id = ?
+			`, *req.ToFolderID, folderID)
+			if err != nil {
+				return fmt.Errorf("error checking for circular reference for folder %s: %w", folderID, err)
+			}
+			if isCircular {
+				return fmt.Errorf("cannot move folder into its own subtree")
+			}
 		}
-		
+
 		// Update the folder itself
 		result, err := tx.ExecContext(ctx, `
-			UPDATE folders 
-			SET path = ?, updated_at = ?, updated_by = ?
+			UPDATE folders
+			SET parent_folder_id = ?, updated_at = ?, updated_by = ?
 			WHERE id = ?
-		`, req.To, time.Now(), actor.ID, folderID)
-		
+		`, req.ToFolderID, time.Now(), actor.ID, folderID)
+
 		if err != nil {
 			return fmt.Errorf("error moving folder %s: %w", folderID, err)
 		}
-		
+
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
 			return fmt.Errorf("error getting rows affected for folder %s: %w", folderID, err)
 		}
-		
+
 		if rowsAffected == 0 {
 			return fmt.Errorf("folder %s not found", folderID)
-		}
-		
-		// Update all child folders and apps that are in subfolders
-		// This updates paths like "/old/path/subfolder" to "/new/path/subfolder"
-		_, err = tx.ExecContext(ctx, `
-			UPDATE folders 
-			SET path = REPLACE(path, ?, ?), updated_at = ?, updated_by = ?
-			WHERE path LIKE ? AND id != ?
-		`, currentPath, req.To, time.Now(), actor.ID, currentPath+"/%", folderID)
-		
-		if err != nil {
-			return fmt.Errorf("error updating child folder paths for folder %s: %w", folderID, err)
-		}
-		
-		// Update all child apps that are in subfolders
-		_, err = tx.ExecContext(ctx, `
-			UPDATE apps 
-			SET path = REPLACE(path, ?, ?), updated_at = ?, updated_by = ?
-			WHERE path LIKE ?
-		`, currentPath, req.To, time.Now(), actor.ID, currentPath+"/%")
-		
-		if err != nil {
-			return fmt.Errorf("error updating child app paths for folder %s: %w", folderID, err)
 		}
 	}
 

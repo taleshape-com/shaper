@@ -19,7 +19,7 @@ import { getSystemConfig } from "../../lib/system";
 
 const isLg = () => window.innerWidth >= 1024;
 
-export function MenuProvider({
+export function MenuProvider ({
   children,
   isHome = false,
   isAdmin = false,

@@ -43,7 +43,7 @@ type UpdateDashboardPasswordPayload struct {
 func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
 	err := app.Sqlite.GetContext(ctx, &dashboard,
-		`SELECT id, path, name, content, created_at, updated_at, created_by, updated_by, visibility
+		`SELECT id, folder_id, name, content, created_at, updated_at, created_by, updated_by, visibility
 		FROM apps
 		WHERE id = $1 AND type = 'dashboard'`, id)
 	if dashboard.Visibility == nil {

@@ -94,7 +94,6 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/apps", handler.ListApps(app))
 	apiWithAuth.POST("/folders", handler.CreateFolder(app))
-	apiWithAuth.GET("/folders", handler.ListFolders(app))
 	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
 	apiWithAuth.POST("/move", handler.MoveItems(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))

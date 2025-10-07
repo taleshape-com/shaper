@@ -4,6 +4,7 @@ export interface IApp {
   id: string;
   name: string;
   path: string;
+  folderId?: string;
   content: string;
   createdAt: string;
   updatedAt: string;
@@ -25,13 +26,45 @@ export type IDashboard = Omit<IApp, "type">;
 
 export type Column = {
   name: string;
-  type: "year" | "month" | "hour" | "date" | "timestamp" | "duration" | "time" | "number" | "string" | "boolean" | "object" | "array" | "percent";
+  type:
+    | "year"
+    | "month"
+    | "hour"
+    | "date"
+    | "timestamp"
+    | "duration"
+    | "time"
+    | "number"
+    | "string"
+    | "boolean"
+    | "object"
+    | "array"
+    | "percent";
   nullable: boolean;
-  tag: "index" | "category" | "value" | "label" | "hint" | "download" | "default" | "defaultFrom" | "defaultTo" | "compare" | "trend" | "color" | "";
+  tag:
+    | "index"
+    | "category"
+    | "value"
+    | "label"
+    | "hint"
+    | "download"
+    | "default"
+    | "defaultFrom"
+    | "defaultTo"
+    | "compare"
+    | "trend"
+    | "color"
+    | "";
 };
 
 export const isTimeType = (t: Column["type"]) => {
-  return t === "year" || t === "month" || t === "hour" || t === "date" || t === "timestamp";
+  return (
+    t === "year" ||
+    t === "month" ||
+    t === "hour" ||
+    t === "date" ||
+    t === "timestamp"
+  );
 };
 
 export type GaugeCategory = {
@@ -55,46 +88,49 @@ export type Result = {
   reloadAt: number;
   headerImage?: string;
   footerLink?: string;
-  sections: ({
-    type: "header";
-    title?: string;
-    queries: ({
-      render:
-      | ({
-        type:
-        | "dropdown"
-        | "dropdownMulti"
-        | "button"
-        | "datepicker"
-        | "daterangePicker";
-        label?: string;
-      });
-      columns: Column[];
-      rows: (string | number | boolean)[][];
-    })[];
-  } | {
-    type: "content";
-    queries: {
-      render: {
-        type:
-        | "table"
-        | "value"
-        | "placeholder"
-        | "linechart"
-        | "barchartHorizontal"
-        | "barchartHorizontalStacked"
-        | "barchartVertical"
-        | "barchartVerticalStacked";
-        label?: string;
-        markLines: MarkLine[];
+  sections: (
+    | {
+        type: "header";
+        title?: string;
+        queries: {
+          render: {
+            type:
+              | "dropdown"
+              | "dropdownMulti"
+              | "button"
+              | "datepicker"
+              | "daterangePicker";
+            label?: string;
+          };
+          columns: Column[];
+          rows: (string | number | boolean)[][];
+        }[];
       }
-      | ({
-        type: "gauge";
-        label?: string;
-        gaugeCategories: GaugeCategory[];
-      });
-      columns: Column[];
-      rows: (string | number | boolean)[][];
-    }[];
-  })[];
+    | {
+        type: "content";
+        queries: {
+          render:
+            | {
+                type:
+                  | "table"
+                  | "value"
+                  | "placeholder"
+                  | "linechart"
+                  | "barchartHorizontal"
+                  | "barchartHorizontalStacked"
+                  | "barchartVertical"
+                  | "barchartVerticalStacked";
+                label?: string;
+                markLines: MarkLine[];
+              }
+            | {
+                type: "gauge";
+                label?: string;
+                gaugeCategories: GaugeCategory[];
+              };
+          columns: Column[];
+          rows: (string | number | boolean)[][];
+        }[];
+      }
+  )[];
 };

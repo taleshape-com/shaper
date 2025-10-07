@@ -25,7 +25,6 @@ func initSQLite(sdb *sqlx.DB) error {
 	_, err = sdb.Exec(`
 		CREATE TABLE IF NOT EXISTS apps (
 			id TEXT PRIMARY KEY,
-			path TEXT NOT NULL,
 			name TEXT NOT NULL,
 			content TEXT NOT NULL,
 			created_at DATETIME NOT NULL,
@@ -34,12 +33,18 @@ func initSQLite(sdb *sqlx.DB) error {
 			updated_by TEXT,
 			visibility TEXT,
 			type TEXT NOT NULL,
-		  password_hash TEXT
+		  password_hash TEXT,
+			folder_id TEXT,
+			FOREIGN KEY(folder_id) REFERENCES folders(id)
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating apps table: %w", err)
 	}
+	// Ignore errors if column already exists
+	sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id)`)
+	// Ignore errors if column does not exist
+	sdb.Exec(`ALTER TABLE apps DROP COLUMN path`)
 
 	// Create api_keys table
 	_, err = sdb.Exec(`
@@ -135,12 +140,13 @@ func initSQLite(sdb *sqlx.DB) error {
 	_, err = sdb.Exec(`
 	CREATE TABLE IF NOT EXISTS folders (
 		id TEXT PRIMARY KEY,
-		path TEXT NOT NULL,
+		parent_folder_id TEXT,
 		name TEXT NOT NULL,
 		created_at DATETIME NOT NULL,
 		updated_at DATETIME NOT NULL,
 		created_by TEXT,
-		updated_by TEXT
+		updated_by TEXT,
+		FOREIGN KEY(parent_folder_id) REFERENCES folders(id)
 	)
 `)
 	if err != nil {

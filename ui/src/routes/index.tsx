@@ -33,7 +33,7 @@ import {
   RiFolderFill,
   RiArrowRightSLine,
 } from "@remixicon/react";
-import { getSystemConfig } from "../lib/system";
+
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
@@ -103,6 +103,25 @@ function Index() {
   const [folderName, setFolderName] = useState("");
   const [draggedItem, setDraggedItem] = useState<IApp | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+  // Helper function to find folder ID from path
+  const getFolderIdFromPath = (targetPath: string): string | null => {
+    if (targetPath === "/" || targetPath === "") {
+      return null; // Root level
+    }
+
+    // Find folder by reconstructing path from apps data
+    const folder = data?.apps.find(
+      (app) =>
+        app.type === "_folder" && app.path + app.name + "/" === targetPath,
+    );
+    return folder?.id || null;
+  };
+
+  // Helper function to get current folder ID from path
+  const getCurrentFolderId = (): string | null => {
+    return getFolderIdFromPath(path || "/");
+  };
 
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
@@ -184,7 +203,7 @@ function Index() {
         method: "POST",
         body: {
           name: folderName.trim(),
-          path: path || "/", // Use current path or root
+          parentFolderId: getCurrentFolderId(),
         },
       });
       setFolderDialog(false);
@@ -351,10 +370,12 @@ function Index() {
     }
 
     try {
+      const toFolderId = getFolderIdFromPath(targetPath);
+
       const requestBody = {
         apps: draggedItem.type !== "_folder" ? [draggedItem.id] : [],
         folders: draggedItem.type === "_folder" ? [draggedItem.id] : [],
-        to: targetPath,
+        toFolderId: toFolderId,
       };
 
       await queryApi("move", {
@@ -505,7 +526,9 @@ function Index() {
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                {"Create a first dashboard"}
+                {path === "/"
+                  ? "Create a first dashboard"
+                  : "Create a dashboard or task"}
               </p>
               <Link to="/new">
                 <Button>
@@ -552,9 +575,11 @@ function Index() {
                   {data.apps.map((app) => (
                     <TableRow
                       key={app.id}
-                      className={cx(`group transition-colors duration-200`, {
+                      className={cx("group transition-colors duration-200", {
                         "opacity-50": draggedItem?.id === app.id,
-                        "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2": app.type === "_folder" && app.path + app.name + "/" === dragOverTarget,
+                        "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":
+                          app.type === "_folder" &&
+                          app.path + app.name + "/" === dragOverTarget,
                       })}
                       draggable
                       onDragStart={(e) => handleDragStart(e, app)}
@@ -581,7 +606,7 @@ function Index() {
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
                             className={cx(
-                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              "p-4 block w-full text-left rounded transition-colors duration-200",
                               {
                                 "bg-blue-100 dark:bg-blue-900":
                                   dragOverTarget === app.path,
@@ -637,7 +662,7 @@ function Index() {
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
                             className={cx(
-                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              "p-4 block w-full text-left rounded transition-colors duration-200",
                               {
                                 "bg-blue-100 dark:bg-blue-900":
                                   dragOverTarget === app.path,
@@ -715,7 +740,7 @@ function Index() {
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
                             className={cx(
-                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              "p-4 block w-full text-left rounded transition-colors duration-200",
                               {
                                 "bg-blue-100 dark:bg-blue-900":
                                   dragOverTarget === app.path,
@@ -754,7 +779,7 @@ function Index() {
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
                             className={cx(
-                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              "p-4 block w-full text-left rounded transition-colors duration-200",
                               {
                                 "bg-blue-100 dark:bg-blue-900":
                                   dragOverTarget === app.path,
@@ -848,10 +873,10 @@ function Index() {
             <DialogDescription>
               {deleteDialog &&
                 (deleteDialog.type === "dashboard"
-                  ? 'Are you sure you want to delete the dashboard "%%"?'
+                  ? "Are you sure you want to delete the dashboard \"%%\"?"
                   : deleteDialog.type === "_folder"
-                    ? 'Are you sure you want to delete the folder "%%"?'
-                    : 'Are you sure you want to delete the task "%%"?'
+                    ? "Are you sure you want to delete the folder \"%%\"?"
+                    : "Are you sure you want to delete the task \"%%\"?"
                 ).replace("%%", deleteDialog.name)}
             </DialogDescription>
           </DialogHeader>

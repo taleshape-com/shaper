@@ -11,6 +11,7 @@ import (
 type AppListItem struct {
 	ID         string    `json:"id"`
 	Path       string    `json:"path"`
+	FolderID   *string   `json:"folderId,omitempty"`
 	Name       string    `json:"name"`
 	Content    string    `json:"content"`
 	CreatedAt  time.Time `json:"createdAt"`
@@ -25,6 +26,7 @@ type AppListItem struct {
 type AppDbRecord struct {
 	ID              string     `db:"id"`
 	Path            string     `db:"path"`
+	FolderID        *string    `db:"folder_id"`
 	Name            string     `db:"name"`
 	Content         string     `db:"content"`
 	CreatedAt       time.Time  `db:"created_at"`
@@ -51,23 +53,25 @@ type AppListResponse struct {
 }
 
 type FolderListItem struct {
-	ID        string    `json:"id"`
-	Path      string    `json:"path"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	CreatedBy *string   `json:"createdBy,omitempty"`
-	UpdatedBy *string   `json:"updatedBy,omitempty"`
+	ID             string    `json:"id"`
+	Path           string    `json:"path"`
+	ParentFolderID *string   `json:"parentFolderId,omitempty"`
+	Name           string    `json:"name"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+	CreatedBy      *string   `json:"createdBy,omitempty"`
+	UpdatedBy      *string   `json:"updatedBy,omitempty"`
 }
 
 type FolderDbRecord struct {
-	ID        string    `db:"id"`
-	Path      string    `db:"path"`
-	Name      string    `db:"name"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-	CreatedBy *string   `db:"created_by"`
-	UpdatedBy *string   `db:"updated_by"`
+	ID             string    `db:"id"`
+	Path           string    `db:"path"`
+	ParentFolderID *string   `db:"parent_folder_id"`
+	Name           string    `db:"name"`
+	CreatedAt      time.Time `db:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
+	CreatedBy      *string   `db:"created_by"`
+	UpdatedBy      *string   `db:"updated_by"`
 }
 
 type FolderListResponse struct {
@@ -91,36 +95,58 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 
 	dbApps := []AppDbRecord{}
 
-	// Build path filter
-	pathFilter := ""
-	if path != "" {
-		pathFilter = fmt.Sprintf("WHERE path = '%s'", path)
+	// Find folder_id from path using recursive CTE
+	var folderIDFilter string
+	var folderIDArgs []interface{}
+
+	if path == "/" || path == "" {
+		// Root level - items with folder_id = NULL
+		folderIDFilter = "WHERE a.folder_id IS NULL"
 	} else {
-		// When at root, show only items at root level (path = '/' or path = '')
-		pathFilter = "WHERE (path = '/' OR path = '')"
+		// Non-root level - need to find folder ID from path
+		folderIDFilter = `WHERE a.folder_id = (
+			WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
+				SELECT id, parent_folder_id, name, '/' || name || '/' as path
+				FROM folders
+				WHERE parent_folder_id IS NULL
+
+				UNION ALL
+
+				SELECT f.id, f.parent_folder_id, f.name, fp.path || f.name || '/' as path
+				FROM folders f
+				JOIN folder_path fp ON f.parent_folder_id = fp.id
+			)
+			SELECT id FROM folder_path WHERE path = ?
+		)`
+		folderIDArgs = append(folderIDArgs, path)
 	}
 
 	// Build type filter
 	typeFilter := ""
 	if app.NoTasks {
-		if pathFilter != "" {
-			typeFilter = " AND type = 'dashboard'"
-		} else {
-			typeFilter = "WHERE type = 'dashboard'"
-		}
+		typeFilter = " AND a.type = 'dashboard'"
 	}
 
 	// Combine filters
-	whereClause := ""
-	if pathFilter != "" || typeFilter != "" {
-		whereClause = pathFilter + typeFilter
-	}
+	whereClause := folderIDFilter + typeFilter
 
-	// Starting type for folders with underscore to sort them always to the top
-	err := app.Sqlite.SelectContext(ctx, &dbApps,
-		fmt.Sprintf(`SELECT
+	// Build the query with recursive CTE for folder paths
+	query := fmt.Sprintf(`
+		WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
+			SELECT id, parent_folder_id, name, '/' || name || '/' as path
+			FROM folders
+			WHERE parent_folder_id IS NULL
+
+			UNION ALL
+
+			SELECT f.id, f.parent_folder_id, f.name, fp.path || f.name || '/' as path
+			FROM folders f
+			JOIN folder_path fp ON f.parent_folder_id = fp.id
+		)
+		SELECT
 			a.id,
-			a.path,
+			COALESCE(fp.path, '/') as path,
+			a.folder_id,
 			a.name,
 			a.content,
 			a.created_at,
@@ -133,14 +159,18 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			t.last_run_success,
 			t.last_run_duration,
 			t.next_run_at
-			FROM apps a
-			LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
-			%s
+		FROM apps a
+		LEFT JOIN folder_path fp ON a.folder_id = fp.id
+		LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
+		%s
+
 		UNION ALL
+
 		SELECT
 			f.id,
-			f.path,
-			f.name,
+			COALESCE(fp.path, '/') as path,
+			f.parent_folder_id as folder_id,
+			f.name as name,
 			'' as content,
 			f.created_at,
 			f.updated_at,
@@ -152,17 +182,48 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			NULL as last_run_success,
 			NULL as last_run_duration,
 			NULL as next_run_at
-			FROM folders f
-			%s
-			ORDER BY type, %s %s`, whereClause, whereClause, orderBy, order))
+		FROM folders f
+		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
+		WHERE f.parent_folder_id %s
+		ORDER BY type, %s %s`, whereClause,
+		func() string {
+			if path == "/" || path == "" {
+				return "IS NULL"
+			} else {
+				return fmt.Sprintf(`= (
+					WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
+						SELECT id, parent_folder_id, name, '/' || name || '/' as path
+						FROM folders
+						WHERE parent_folder_id IS NULL
+
+						UNION ALL
+
+						SELECT f.id, f.parent_folder_id, f.name, fp.path || f.name || '/' as path
+						FROM folders f
+						JOIN folder_path fp ON f.parent_folder_id = fp.id
+					)
+					SELECT id FROM folder_path WHERE path = ?
+				)`)
+			}
+		}(), orderBy, order)
+
+	// Prepare arguments
+	args := folderIDArgs
+	if path != "/" && path != "" {
+		args = append(args, path) // For the folder query
+	}
+
+	err := app.Sqlite.SelectContext(ctx, &dbApps, query, args...)
 	if err != nil {
 		err = fmt.Errorf("error listing apps: %w", err)
 	}
+
 	apps := make([]AppListItem, len(dbApps))
 	for i, a := range dbApps {
 		apps[i] = AppListItem{
 			ID:         a.ID,
 			Path:       a.Path,
+			FolderID:   a.FolderID,
 			Name:       a.Name,
 			Content:    a.Content,
 			CreatedAt:  a.CreatedAt,
