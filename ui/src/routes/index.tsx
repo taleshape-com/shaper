@@ -134,22 +134,24 @@ function Index() {
 
   const handleDelete = async (app: IApp) => {
     try {
-      const endpoint = app.type === "dashboard"
-        ? `dashboards/${app.id}`
-        : app.type === "_folder"
-          ? `folders/${app.id}`
-          : `tasks/${app.id}`;
+      const endpoint =
+        app.type === "dashboard"
+          ? `dashboards/${app.id}`
+          : app.type === "_folder"
+            ? `folders/${app.id}`
+            : `tasks/${app.id}`;
 
       await queryApi(endpoint, {
         method: "DELETE",
       });
       router.invalidate();
 
-      const successMessage = app.type === "dashboard"
-        ? "Dashboard deleted successfully"
-        : app.type === "_folder"
-          ? "Folder deleted successfully"
-          : "Task deleted successfully";
+      const successMessage =
+        app.type === "dashboard"
+          ? "Dashboard deleted successfully"
+          : app.type === "_folder"
+            ? "Folder deleted successfully"
+            : "Task deleted successfully";
 
       toast({
         title: "Success",
@@ -216,7 +218,7 @@ function Index() {
   };
 
   const generateBreadcrumbs = () => {
-    const pathParts = path.split("/").filter(part => part !== "");
+    const pathParts = path.split("/").filter((part) => part !== "");
     const breadcrumbs = [];
 
     // Add root breadcrumb
@@ -251,8 +253,36 @@ function Index() {
     setDragOverTarget(null);
   };
 
-  const handleDragOver = (e: React.DragEvent, targetPath: string) => {
+  const handleDragOver = (
+    e: React.DragEvent,
+    targetPath: string,
+    targetItem?: IApp,
+  ) => {
     e.preventDefault();
+
+    if (!draggedItem) return;
+
+    // Prevent dropping item onto its current location
+    if (targetPath === draggedItem.path) {
+      e.dataTransfer.dropEffect = "none";
+      return;
+    }
+
+    // Prevent drag over on invalid targets
+    if (targetItem) {
+      // Prevent dragging onto itself
+      if (draggedItem.id === targetItem.id) {
+        e.dataTransfer.dropEffect = "none";
+        return;
+      }
+
+      // Prevent dragging onto non-folders
+      if (targetItem.type !== "_folder") {
+        e.dataTransfer.dropEffect = "none";
+        return;
+      }
+    }
+
     e.dataTransfer.dropEffect = "move";
     setDragOverTarget(targetPath);
   };
@@ -261,15 +291,55 @@ function Index() {
     setDragOverTarget(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, targetPath: string) => {
+  const handleDrop = async (
+    e: React.DragEvent,
+    targetPath: string,
+    targetItem?: IApp,
+  ) => {
     e.preventDefault();
 
     if (!draggedItem) return;
 
+    // Prevent dropping item onto its current location
+    if (targetPath === draggedItem.path) {
+      toast({
+        title: "Error",
+        description: "Item is already in this location",
+        variant: "error",
+      });
+      setDragOverTarget(null);
+      return;
+    }
+
+    // Prevent dropping item onto itself
+    if (targetItem && draggedItem.id === targetItem.id) {
+      toast({
+        title: "Error",
+        description: "Cannot drop an item onto itself",
+        variant: "error",
+      });
+      setDragOverTarget(null);
+      return;
+    }
+
+    // Prevent dropping onto non-folder items (only allow breadcrumb paths and folders)
+    if (targetItem && targetItem.type !== "_folder") {
+      toast({
+        title: "Error",
+        description: "Can only drop items into folders",
+        variant: "error",
+      });
+      setDragOverTarget(null);
+      return;
+    }
+
     // Prevent dropping folder into itself or its children
     if (draggedItem.type === "_folder") {
       const draggedPath = draggedItem.path;
-      if (targetPath === draggedPath || targetPath.startsWith(draggedPath + "/")) {
+      if (
+        targetPath === draggedPath ||
+        targetPath.startsWith(draggedPath + "/")
+      ) {
         toast({
           title: "Error",
           description: "Cannot drop a folder into itself or its subfolders",
@@ -326,13 +396,31 @@ function Index() {
     setDragOverTarget(null);
   };
 
-  const handleTouchMove = (e: React.TouchEvent, targetPath: string) => {
+  const handleTouchMove = (
+    e: React.TouchEvent,
+    targetPath: string,
+    targetItem?: IApp,
+  ) => {
     if (!draggedItem) return;
+
+    // Prevent dropping item onto its current location
+    if (targetPath === draggedItem.path) {
+      setDragOverTarget(null);
+      return;
+    }
+
+    // Apply same validation logic as handleDragOver
+    if (targetItem) {
+      if (draggedItem.id === targetItem.id || targetItem.type !== "_folder") {
+        setDragOverTarget(null);
+        return;
+      }
+    }
 
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-    if (element && element.closest('[data-drop-target]')) {
+    if (element && element.closest("[data-drop-target]")) {
       setDragOverTarget(targetPath);
     } else {
       setDragOverTarget(null);
@@ -347,7 +435,10 @@ function Index() {
     <MenuProvider isHome>
       <Helmet>
         <title>Overview</title>
-        <meta name="description" content="Show a list of all dashboards and tasks" />
+        <meta
+          name="description"
+          content="Show a list of all dashboards and tasks"
+        />
       </Helmet>
 
       <div className="pb-4 md:px-4 min-h-dvh flex flex-col">
@@ -369,10 +460,18 @@ function Index() {
                   )}
                   <Link
                     to={"/"}
-                    search={breadcrumb.path === "/" ? undefined : { path: breadcrumb.path }}
-                    className={cx(`hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-2 -my-2 -mx-2`, {
-                      "bg-blue-100 dark:bg-blue-900 rounded px-1": dragOverTarget === breadcrumb.path,
-                    })}
+                    search={
+                      breadcrumb.path === "/"
+                        ? undefined
+                        : { path: breadcrumb.path }
+                    }
+                    className={cx(
+                      `hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-2 -my-2 -mx-2`,
+                      {
+                        "bg-blue-100 dark:bg-blue-900 rounded px-1":
+                          dragOverTarget === breadcrumb.path,
+                      },
+                    )}
                     onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, breadcrumb.path)}
@@ -386,19 +485,17 @@ function Index() {
               ))}
             </nav>
           </div>
-          <div
-            className="flex"
-          >
-            <Tooltip
-              showArrow={false}
-              content="New Folder"
-            >
+          <div className="flex">
+            <Tooltip showArrow={false} content="New Folder">
               <Button
                 variant="secondary"
                 className="py-2 px-2.5"
                 onClick={() => setFolderDialog(true)}
               >
-                <RiFolderAddFill className="size-4 shrink-0" aria-hidden={true} />
+                <RiFolderAddFill
+                  className="size-4 shrink-0"
+                  aria-hidden={true}
+                />
               </Button>
             </Tooltip>
           </div>
@@ -414,11 +511,12 @@ function Index() {
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
                 {"Create a first dashboard"}
               </p>
-              <Link
-                to="/new"
-              >
+              <Link to="/new">
                 <Button>
-                  <RiAddFill className="-ml-1 mr-0.5 size-5 shrink-0" aria-hidden={true} />
+                  <RiAddFill
+                    className="-ml-1 mr-0.5 size-5 shrink-0"
+                    aria-hidden={true}
+                  />
                   New
                 </Button>
               </Link>
@@ -428,13 +526,9 @@ function Index() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    {getSystemConfig().tasksEnabled && (
-                      <TableHeaderCell
-                        className="text-ctext"
-                      >
-                        Type
-                      </TableHeaderCell>
-                    )}
+                    <TableHeaderCell className="text-ctext">
+                      Type
+                    </TableHeaderCell>
                     <TableHeaderCell
                       onClick={() => handleSort("name" as const)}
                       className="text-ctext dark:text-dtext cursor-pointer hover:underline"
@@ -462,130 +556,159 @@ function Index() {
                   {data.apps.map((app) => (
                     <TableRow
                       key={app.id}
-                      className={`group transition-colors duration-200 ${draggedItem?.id === app.id ? "opacity-50" : ""
-                        }`}
+                      className={`group transition-colors duration-200 ${
+                        draggedItem?.id === app.id ? "opacity-50" : ""
+                      }`}
                       draggable
                       onDragStart={(e) => handleDragStart(e, app)}
                       onDragEnd={handleDragEnd}
                       onTouchStart={(e) => handleTouchStart(e, app)}
                       onTouchEnd={handleTouchEnd}
+                      {...(app.type === "_folder"
+                        ? {
+                            onDragOver: (e: React.DragEvent) =>
+                              handleDragOver(e, app.path + app.name + "/", app),
+                            onDragLeave: handleDragLeave,
+                            onDrop: (e: React.DragEvent) =>
+                              handleDrop(e, app.path + app.name + "/", app),
+                            onTouchMove: (e: React.TouchEvent) =>
+                              handleTouchMove(e, app.path + app.name + "/"),
+                            "data-drop-target": true,
+                            "data-target-path": app.path + app.name + "/",
+                          }
+                        : {})}
                     >
-                      {getSystemConfig().tasksEnabled && (
-                        <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
-                          {app.type === "_folder" ? (
-                            <Link
-                              to={"/"}
-                              search={{ path: app.path + app.name + "/" }}
-                              className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
-                                "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
-                              })}
-                              onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
-                              onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
-                              data-drop-target
-                              data-target-path={app.path + app.name + "/"}
+                      <TableCell className="font-medium text-ctext dark:text-dtext !p-0 group-hover:underline">
+                        {app.type === "_folder" ? (
+                          <Link
+                            to={"/"}
+                            search={{ path: app.path + app.name + "/" }}
+                            className={cx(
+                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              {
+                                "bg-blue-100 dark:bg-blue-900":
+                                  dragOverTarget === app.path,
+                              },
+                            )}
+                          >
+                            <Tooltip
+                              showArrow={false}
+                              content={
+                                <span className="capitalize">{app.type}</span>
+                              }
                             >
-                              <Tooltip
-                                showArrow={false}
-                                content={<span className="capitalize">{app.type}</span>}
-                              >
-                                <RiFolderFill
+                              <RiFolderFill
+                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                aria-hidden={true}
+                              />
+                            </Tooltip>
+                          </Link>
+                        ) : (
+                          <Link
+                            to={
+                              app.type === "dashboard"
+                                ? "/dashboards/$id"
+                                : "/tasks/$id"
+                            }
+                            params={{ id: app.id }}
+                            className="p-4 block"
+                          >
+                            <Tooltip
+                              showArrow={false}
+                              content={
+                                <span className="capitalize">{app.type}</span>
+                              }
+                            >
+                              {app.type === "dashboard" ? (
+                                <RiBarChart2Line
                                   className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
                                   aria-hidden={true}
                                 />
-                              </Tooltip>
-                            </Link>
-                          ) : (
-                            <Link
-                              to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
-                              params={{ id: app.id }}
-                              className="p-4 block"
-                            >
-                              <Tooltip
-                                showArrow={false}
-                                content={<span className="capitalize">{app.type}</span>}
-                              >
-                                {app.type === "dashboard" ? (
-                                  <RiBarChart2Line
-                                    className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
-                                    aria-hidden={true}
-                                  />
-                                ) : (
-                                  <RiCodeSSlashFill
-                                    className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
-                                    aria-hidden={true}
-                                  />
-                                )}
-                              </Tooltip>
-                            </Link>
-                          )}
-                        </TableCell>
-                      )}
+                              ) : (
+                                <RiCodeSSlashFill
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1"
+                                  aria-hidden={true}
+                                />
+                              )}
+                            </Tooltip>
+                          </Link>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium text-ctext dark:text-dtext !p-0">
                         {app.type === "_folder" ? (
                           <Link
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
-                            className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
-                              "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
-                            })}
-                            onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
-                            onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
-                            data-drop-target
-                            data-target-path={app.path}
+                            className={cx(
+                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              {
+                                "bg-blue-100 dark:bg-blue-900":
+                                  dragOverTarget === app.path,
+                              },
+                            )}
                           >
-                            <span className="group-hover:underline">{app.name}</span>
+                            <span className="group-hover:underline">
+                              {app.name}
+                            </span>
                           </Link>
                         ) : (
                           <Link
-                            to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
+                            to={
+                              app.type === "dashboard"
+                                ? "/dashboards/$id"
+                                : "/tasks/$id"
+                            }
                             params={{ id: app.id }}
                             className="p-4 block"
                           >
-                            <span className="group-hover:underline">{app.name}</span>
-                            {app.type === "task"
-                              ?
-                              app.taskInfo && (
-                                !(app.taskInfo.lastRunSuccess ?? true)
-                                  ? (
-                                    <RuntimeTooltip
-                                      lastRunAt={app.taskInfo.lastRunAt}
-                                      nextRunAt={app.taskInfo.nextRunAt}
-                                    >
-                                      <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                        Task Error
-                                      </span>
-                                    </RuntimeTooltip>
-                                  )
-                                  : app.taskInfo.nextRunAt != null && (
-                                    <RuntimeTooltip
-                                      lastRunAt={app.taskInfo.lastRunAt}
-                                    >
-                                      <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
-                                        Next Run: <RelativeDate refresh date={new Date(app.taskInfo.nextRunAt)} />
-                                      </span>
-                                    </RuntimeTooltip>
-                                  )
-                              )
-                              : app.visibility === "public" ? (
-                                <Tooltip
-                                  showArrow={false}
-                                  content="This dashboard is public"
+                            <span className="group-hover:underline">
+                              {app.name}
+                            </span>
+                            {app.type === "task" ? (
+                              app.taskInfo &&
+                              (!(app.taskInfo.lastRunSuccess ?? true) ? (
+                                <RuntimeTooltip
+                                  lastRunAt={app.taskInfo.lastRunAt}
+                                  nextRunAt={app.taskInfo.nextRunAt}
                                 >
-                                  <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
-                                </Tooltip>
-                              ) : app.visibility === "password-protected" && (
+                                  <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                    Task Error
+                                  </span>
+                                </RuntimeTooltip>
+                              ) : (
+                                app.taskInfo.nextRunAt != null && (
+                                  <RuntimeTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                  >
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                      Next Run:{" "}
+                                      <RelativeDate
+                                        refresh
+                                        date={new Date(app.taskInfo.nextRunAt)}
+                                      />
+                                    </span>
+                                  </RuntimeTooltip>
+                                )
+                              ))
+                            ) : app.visibility === "public" ? (
+                              <Tooltip
+                                showArrow={false}
+                                content="This dashboard is public"
+                              >
+                                <RiGlobalLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
+                              </Tooltip>
+                            ) : (
+                              app.visibility === "password-protected" && (
                                 <Tooltip
                                   showArrow={false}
-                                  content={"This dashboard has a share link protected with a password"}
+                                  content={
+                                    "This dashboard has a share link protected with a password"
+                                  }
                                 >
                                   <RiUserSharedLine className="size-4 inline-block ml-2 -mt-0.5 fill-ctext dark:fill-dtext" />
                                 </Tooltip>
                               )
-                            }
+                            )}
                           </Link>
                         )}
                       </TableCell>
@@ -594,15 +717,13 @@ function Index() {
                           <Link
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
-                            className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
-                              "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
-                            })}
-                            onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
-                            onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
-                            data-drop-target
-                            data-target-path={app.path}
+                            className={cx(
+                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              {
+                                "bg-blue-100 dark:bg-blue-900":
+                                  dragOverTarget === app.path,
+                              },
+                            )}
                           >
                             <Tooltip
                               showArrow={false}
@@ -613,7 +734,11 @@ function Index() {
                           </Link>
                         ) : (
                           <Link
-                            to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
+                            to={
+                              app.type === "dashboard"
+                                ? "/dashboards/$id"
+                                : "/tasks/$id"
+                            }
                             params={{ id: app.id }}
                             className="block p-4"
                           >
@@ -631,15 +756,13 @@ function Index() {
                           <Link
                             to={"/"}
                             search={{ path: app.path + app.name + "/" }}
-                            className={cx(`p-4 block w-full text-left rounded transition-colors duration-200`, {
-                              "bg-blue-100 dark:bg-blue-900": dragOverTarget === app.path,
-                            })}
-                            onDragOver={(e) => handleDragOver(e, app.path + app.name + "/")}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, app.path + app.name + "/")}
-                            onTouchMove={(e) => handleTouchMove(e, app.path + app.name + "/")}
-                            data-drop-target
-                            data-target-path={app.path}
+                            className={cx(
+                              `p-4 block w-full text-left rounded transition-colors duration-200`,
+                              {
+                                "bg-blue-100 dark:bg-blue-900":
+                                  dragOverTarget === app.path,
+                              },
+                            )}
                           >
                             <Tooltip
                               showArrow={false}
@@ -650,7 +773,11 @@ function Index() {
                           </Link>
                         ) : (
                           <Link
-                            to={app.type === "dashboard" ? "/dashboards/$id" : "/tasks/$id"}
+                            to={
+                              app.type === "dashboard"
+                                ? "/dashboards/$id"
+                                : "/tasks/$id"
+                            }
                             params={{ id: app.id }}
                             className="block p-4"
                           >
@@ -681,7 +808,11 @@ function Index() {
                         ) : (
                           <div className="flex gap-4">
                             <Link
-                              to={app.type === "dashboard" ? "/dashboards/$id/edit" : "/tasks/$id"}
+                              to={
+                                app.type === "dashboard"
+                                  ? "/dashboards/$id/edit"
+                                  : "/tasks/$id"
+                              }
                               params={{ id: app.id }}
                               className={cx(
                                 "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
@@ -710,21 +841,21 @@ function Index() {
         </div>
       </div>
 
-      <Dialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+      <Dialog
+        open={deleteDialog !== null}
+        onOpenChange={(open) => !open && setDeleteDialog(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {deleteDialog && (
-                deleteDialog.type === "dashboard"
-                  ? "Are you sure you want to delete the dashboard \"%%\"?"
+              {deleteDialog &&
+                (deleteDialog.type === "dashboard"
+                  ? 'Are you sure you want to delete the dashboard "%%"?'
                   : deleteDialog.type === "_folder"
-                    ? "Are you sure you want to delete the folder \"%%\"?"
-                    : "Are you sure you want to delete the task \"%%\"?"
-              ).replace(
-                "%%",
-                deleteDialog.name,
-              )}
+                    ? 'Are you sure you want to delete the folder "%%"?'
+                    : 'Are you sure you want to delete the task "%%"?'
+                ).replace("%%", deleteDialog.name)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -746,7 +877,10 @@ function Index() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={folderDialog} onOpenChange={(open) => !open && setFolderDialog(false)}>
+      <Dialog
+        open={folderDialog}
+        onOpenChange={(open) => !open && setFolderDialog(false)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Folder</DialogTitle>
@@ -770,9 +904,7 @@ function Index() {
             <Button onClick={() => setFolderDialog(false)} variant="secondary">
               Cancel
             </Button>
-            <Button onClick={handleCreateFolder}>
-              Create Folder
-            </Button>
+            <Button onClick={handleCreateFolder}>Create Folder</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -780,7 +912,11 @@ function Index() {
   );
 }
 
-function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
+function RuntimeTooltip({
+  lastRunAt,
+  nextRunAt,
+  children,
+}: {
   lastRunAt?: number | string;
   nextRunAt?: number | string;
   children?: React.ReactNode;
@@ -798,10 +934,7 @@ function RuntimeTooltip({ lastRunAt, nextRunAt, children }: {
     </>
   );
   return (
-    <Tooltip
-      showArrow={false}
-      content={tooltipContent}
-    >
+    <Tooltip showArrow={false} content={tooltipContent}>
       {children}
     </Tooltip>
   );
