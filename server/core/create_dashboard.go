@@ -54,9 +54,9 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 	// Insert into DB
 	_, err = app.Sqlite.Exec(
 		`INSERT OR IGNORE INTO apps (
-			id, path, name, content, created_at, updated_at, created_by, updated_by, type
-		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'dashboard')`,
-		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
+			id, name, content, created_at, updated_at, created_by, updated_by, type
+		) VALUES ($1, $2, $3, $4, $4, $5, $5, 'dashboard')`,
+		payload.ID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert dashboard into DB", slog.Any("error", err))

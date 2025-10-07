@@ -21,6 +21,23 @@ func initSQLite(sdb *sqlx.DB) error {
 		return fmt.Errorf("error setting pragmas: %w", err)
 	}
 
+	// Create folders table first (since apps references it)
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS folders (
+			id TEXT PRIMARY KEY,
+			parent_folder_id TEXT,
+			name TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			created_by TEXT,
+			updated_by TEXT,
+			FOREIGN KEY(parent_folder_id) REFERENCES folders(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating folders table: %w", err)
+	}
+
 	// Create apps table
 	_, err = sdb.Exec(`
 		CREATE TABLE IF NOT EXISTS apps (
@@ -33,9 +50,9 @@ func initSQLite(sdb *sqlx.DB) error {
 			updated_by TEXT,
 			visibility TEXT,
 			type TEXT NOT NULL,
-		  password_hash TEXT,
+			password_hash TEXT,
 			folder_id TEXT,
-			FOREIGN KEY(folder_id) REFERENCES folders(id)
+			FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE
 		)
 	`)
 	if err != nil {
@@ -134,23 +151,6 @@ func initSQLite(sdb *sqlx.DB) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating state_consumer table: %w", err)
-	}
-
-	// Create folders table
-	_, err = sdb.Exec(`
-	CREATE TABLE IF NOT EXISTS folders (
-		id TEXT PRIMARY KEY,
-		parent_folder_id TEXT,
-		name TEXT NOT NULL,
-		created_at DATETIME NOT NULL,
-		updated_at DATETIME NOT NULL,
-		created_by TEXT,
-		updated_by TEXT,
-		FOREIGN KEY(parent_folder_id) REFERENCES folders(id)
-	)
-`)
-	if err != nil {
-		return fmt.Errorf("error creating apps table: %w", err)
 	}
 
 	return nil

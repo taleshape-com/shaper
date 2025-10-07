@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,7 +76,9 @@ func DeleteFolder(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("no actor in context")
 	}
 
-	// Delete the folder from the database
+	// Delete the folder - CASCADE constraints will automatically delete:
+	// - All apps in this folder and subfolders (via folder_id FK)
+	// - All subfolders recursively (via parent_folder_id FK)
 	result, err := app.Sqlite.ExecContext(ctx, `DELETE FROM folders WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("error deleting folder: %w", err)
@@ -88,6 +91,32 @@ func DeleteFolder(app *App, ctx context.Context, id string) error {
 
 	if rowsAffected == 0 {
 		return fmt.Errorf("folder not found")
+	}
+
+	// Find orphaned task_runs (those without matching apps) and unschedule them
+	var orphanedTaskIDs []string
+	err = app.Sqlite.SelectContext(ctx, &orphanedTaskIDs, `
+		SELECT task_id FROM task_runs
+		WHERE task_id NOT IN (SELECT id FROM apps WHERE type = 'task')
+	`)
+	if err != nil {
+		app.Logger.Error("failed to find orphaned task_runs", slog.Any("error", err))
+	} else {
+		// Unschedule orphaned tasks
+		for _, taskID := range orphanedTaskIDs {
+			unscheduleTask(app, taskID)
+		}
+
+		// Clean up orphaned task_runs
+		if len(orphanedTaskIDs) > 0 {
+			_, err = app.Sqlite.ExecContext(ctx, `
+				DELETE FROM task_runs
+				WHERE task_id NOT IN (SELECT id FROM apps WHERE type = 'task')
+			`)
+			if err != nil {
+				app.Logger.Error("failed to clean up orphaned task_runs", slog.Any("error", err))
+			}
+		}
 	}
 
 	return nil

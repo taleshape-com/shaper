@@ -875,7 +875,7 @@ function Index() {
                 (deleteDialog.type === "dashboard"
                   ? "Are you sure you want to delete the dashboard \"%%\"?"
                   : deleteDialog.type === "_folder"
-                    ? "Are you sure you want to delete the folder \"%%\"?"
+                    ? "Are you sure you want to delete the folder \"%%\" and all its contents?"
                     : "Are you sure you want to delete the task \"%%\"?"
                 ).replace("%%", deleteDialog.name)}
             </DialogDescription>
