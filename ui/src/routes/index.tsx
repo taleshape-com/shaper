@@ -611,7 +611,7 @@ function Index() {
 
         <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-4 h-[calc(100%-4rem)]">
           {data.apps.length === 0 ? (
-            <div className="my-4 flex flex-col items-center justify-center flex-grow">
+            <div className="h-full flex flex-col items-center justify-center">
               <RiLayoutFill
                 className="mx-auto size-9 fill-ctext dark:fill-dtext"
                 aria-hidden={true}

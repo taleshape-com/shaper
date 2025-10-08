@@ -230,6 +230,29 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 				return fmt.Errorf("cannot move folder into its own subtree")
 			}
 		}
+
+		// Check for duplicate folder names in destination
+		var folderName string
+		err = app.Sqlite.GetContext(ctx, &folderName, `SELECT name FROM folders WHERE id = ?`, folderID)
+		if err != nil {
+			return fmt.Errorf("error getting folder name: %w", err)
+		}
+
+		var duplicateCount int
+		err = app.Sqlite.GetContext(ctx, &duplicateCount, `
+			SELECT COUNT(*) FROM folders 
+			WHERE parent_folder_id IS ? AND name = ? AND id != ?
+		`, toFolderID, folderName, folderID)
+		if err != nil {
+			return fmt.Errorf("error checking for duplicate folder name: %w", err)
+		}
+		if duplicateCount > 0 {
+			destinationDesc := "root"
+			if toFolderID != nil {
+				destinationDesc = "this location"
+			}
+			return fmt.Errorf("a folder with the name '%s' already exists in %s", folderName, destinationDesc)
+		}
 	}
 
 	// Create the payload and submit to NATS

@@ -111,6 +111,12 @@ func MoveItems(app *core.App) echo.HandlerFunc {
 		err := core.MoveItems(app, c.Request().Context(), req)
 		if err != nil {
 			c.Logger().Error("error moving items:", slog.Any("error", err))
+			// Check if it's a duplicate folder error
+			if strings.Contains(err.Error(), "already exists") {
+				return c.JSONPretty(http.StatusConflict, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: err.Error()}, "  ")
