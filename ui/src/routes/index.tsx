@@ -32,6 +32,10 @@ import {
   RiFolderAddFill,
   RiFolderFill,
   RiArrowRightSLine,
+  RiDeleteBinLine,
+  RiPencilLine,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
 } from "@remixicon/react";
 
 import { useQueryApi } from "../hooks/useQueryApi";
@@ -126,9 +130,11 @@ function Index() {
   const SortIcon = ({ field }: { field: "name" | "created" | "updated" }) => {
     if (field !== (sort ?? "name")) return null;
     return (order ?? "asc") === "asc" ? (
-      <RiSortAsc className="inline size-4" />
+      <RiArrowDownSLine
+        className="inline size-4" />
     ) : (
-      <RiSortDesc className="inline size-4" />
+      <RiArrowUpSLine
+        className="inline size-4 -mt-1" />
     );
   };
 
@@ -545,8 +551,7 @@ function Index() {
                     >
                       Updated <SortIcon field="updated" />
                     </TableHeaderCell>
-                    <TableHeaderCell className="text-ctext dark:text-dtext hidden md:table-cell">
-                      Actions
+                    <TableHeaderCell className="text-ctext dark:text-dtext  w-16">
                     </TableHeaderCell>
                   </TableRow>
                 </TableHead>
@@ -554,12 +559,15 @@ function Index() {
                   {data.apps.map((app) => (
                     <TableRow
                       key={app.id}
-                      className={cx("group transition-colors duration-200", {
-                        "opacity-50": draggedItem?.id === app.id,
-                        "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":
-                          app.type === "_folder" &&
-                          app.path + app.name + "/" === dragOverTarget,
-                      })}
+                      className={cx("group",
+                        "[tbody_&]:odd:bg-cbgs [tbody_&]:odd:dark:bg-dbgs hover:bg-cbga hover:dark:bg-dbga [tbody_&]:odd:hover:bg-cbga [tbody_&]:odd:hover:dark:bg-dbga",
+                        "border-b-1 border-solid !border-cbga !dark:border-dbga",
+                        {
+                          "opacity-50": draggedItem?.id === app.id,
+                          "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":
+                            app.type === "_folder" &&
+                            app.path + app.name + "/" === dragOverTarget,
+                        })}
                       draggable
                       onDragStart={(e) => handleDragStart(e, app)}
                       onDragEnd={handleDragEnd}
@@ -791,23 +799,15 @@ function Index() {
                           </Link>
                         )}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {app.type === "_folder" ? (
-                          <div className="flex gap-4">
-                            <span className="text-ctext2 dark:text-dtext2 opacity-50">
-                              Edit
-                            </span>
-                            <button
-                              onClick={() => {
-                                setDeleteDialog(app);
-                              }}
-                              className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-4">
+                      <TableCell className="text-right">
+                        <div className="flex gap-4 justify-end">
+                          {app.type === "_folder" ? (
+                            <Tooltip showArrow={false} content="Rename">
+                              <RiPencilLine
+                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200"
+                              />
+                            </Tooltip>
+                          ) : (
                             <Link
                               to={
                                 app.type === "dashboard"
@@ -820,18 +820,26 @@ function Index() {
                                 "hover:underline transition-colors duration-200",
                               )}
                             >
-                              Edit
+                              <Tooltip showArrow={false} content="Edit">
+                                <RiPencilLine
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200"
+                                />
+                              </Tooltip>
                             </Link>
-                            <button
-                              onClick={() => {
-                                setDeleteDialog(app);
-                              }}
-                              className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
+                          )}
+                          <button
+                            onClick={() => {
+                              setDeleteDialog(app);
+                            }}
+                          >
+                            <Tooltip showArrow={false} content="Delete">
+                              <RiDeleteBinLine
+                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
+                                aria-hidden={true}
+                              />
+                            </Tooltip>
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
