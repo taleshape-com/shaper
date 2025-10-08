@@ -4,6 +4,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -107,12 +108,16 @@ func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (Folde
 	id := uuid.New().String()
 	now := time.Now()
 
-	// Insert the folder into the database
-	_, err = app.Sqlite.ExecContext(ctx, `
-		INSERT INTO folders (id, parent_folder_id, name, created_at, updated_at, created_by, updated_by)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, id, parentFolderID, req.Name, now, now, actor.ID, actor.ID)
+	// Create the payload and submit to NATS
+	payload := CreateFolderPayload{
+		ID:             id,
+		ParentFolderID: parentFolderID,
+		Name:           req.Name,
+		Timestamp:      now,
+		CreatedBy:      actor.String(),
+	}
 
+	err = app.SubmitState(ctx, "create_folder", payload)
 	if err != nil {
 		return FolderListItem{}, fmt.Errorf("error creating folder: %w", err)
 	}
@@ -135,47 +140,26 @@ func DeleteFolder(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("no actor in context")
 	}
 
-	// Delete the folder - CASCADE constraints will automatically delete:
-	// - All apps in this folder and subfolders (via folder_id FK)
-	// - All subfolders recursively (via parent_folder_id FK)
-	result, err := app.Sqlite.ExecContext(ctx, `DELETE FROM folders WHERE id = ?`, id)
+	// Check if folder exists before submitting the event
+	var exists bool
+	err := app.Sqlite.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM folders WHERE id = ?)`, id)
 	if err != nil {
-		return fmt.Errorf("error deleting folder: %w", err)
+		return fmt.Errorf("error checking folder existence: %w", err)
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("error getting rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if !exists {
 		return fmt.Errorf("folder not found")
 	}
 
-	// Find orphaned task_runs (those without matching apps) and unschedule them
-	var orphanedTaskIDs []string
-	err = app.Sqlite.SelectContext(ctx, &orphanedTaskIDs, `
-		SELECT task_id FROM task_runs
-		WHERE task_id NOT IN (SELECT id FROM apps WHERE type = 'task')
-	`)
-	if err != nil {
-		app.Logger.Error("failed to find orphaned task_runs", slog.Any("error", err))
-	} else {
-		// Unschedule orphaned tasks
-		for _, taskID := range orphanedTaskIDs {
-			unscheduleTask(app, taskID)
-		}
+	// Create the payload and submit to NATS
+	payload := DeleteFolderPayload{
+		ID:        id,
+		Timestamp: time.Now(),
+		DeletedBy: actor.String(),
+	}
 
-		// Clean up orphaned task_runs
-		if len(orphanedTaskIDs) > 0 {
-			_, err = app.Sqlite.ExecContext(ctx, `
-				DELETE FROM task_runs
-				WHERE task_id NOT IN (SELECT id FROM apps WHERE type = 'task')
-			`)
-			if err != nil {
-				app.Logger.Error("failed to clean up orphaned task_runs", slog.Any("error", err))
-			}
-		}
+	err = app.SubmitState(ctx, "delete_folder", payload)
+	if err != nil {
+		return fmt.Errorf("error deleting folder: %w", err)
 	}
 
 	return nil
@@ -198,49 +182,38 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 		return fmt.Errorf("error resolving destination path: %w", err)
 	}
 
-	// Start a transaction to ensure atomicity
-	tx, err := app.Sqlite.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("error starting transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Move apps
+	// Validate that all apps and folders exist before submitting the event
 	for _, appID := range req.Apps {
 		if appID == "" {
 			continue
 		}
-
-		result, err := tx.ExecContext(ctx, `
-			UPDATE apps
-			SET folder_id = ?, updated_at = ?, updated_by = ?
-			WHERE id = ?
-		`, toFolderID, time.Now(), actor.ID, appID)
-
+		var exists bool
+		err := app.Sqlite.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM apps WHERE id = ?)`, appID)
 		if err != nil {
-			return fmt.Errorf("error moving app %s: %w", appID, err)
+			return fmt.Errorf("error checking app existence: %w", err)
 		}
-
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("error getting rows affected for app %s: %w", appID, err)
-		}
-
-		if rowsAffected == 0 {
+		if !exists {
 			return fmt.Errorf("app %s not found", appID)
 		}
 	}
 
-	// Move folders
 	for _, folderID := range req.Folders {
 		if folderID == "" {
 			continue
+		}
+		var exists bool
+		err := app.Sqlite.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM folders WHERE id = ?)`, folderID)
+		if err != nil {
+			return fmt.Errorf("error checking folder existence: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("folder %s not found", folderID)
 		}
 
 		// Check for circular references - prevent moving a folder into its own subtree
 		if toFolderID != nil {
 			var isCircular bool
-			err := tx.GetContext(ctx, &isCircular, `
+			err := app.Sqlite.GetContext(ctx, &isCircular, `
 				WITH RECURSIVE folder_ancestors(id) AS (
 					SELECT parent_folder_id FROM folders WHERE id = ?
 					UNION ALL
@@ -257,32 +230,230 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 				return fmt.Errorf("cannot move folder into its own subtree")
 			}
 		}
+	}
 
-		// Update the folder itself
-		result, err := tx.ExecContext(ctx, `
-			UPDATE folders
-			SET parent_folder_id = ?, updated_at = ?, updated_by = ?
-			WHERE id = ?
-		`, toFolderID, time.Now(), actor.ID, folderID)
+	// Create the payload and submit to NATS
+	payload := MoveItemsPayload{
+		Apps:       req.Apps,
+		Folders:    req.Folders,
+		Path:       req.Path,
+		ToFolderID: toFolderID,
+		Timestamp:  time.Now(),
+		MovedBy:    actor.String(),
+	}
+
+	err = app.SubmitState(ctx, "move_items", payload)
+	if err != nil {
+		return fmt.Errorf("error moving items: %w", err)
+	}
+
+	return nil
+}
+
+// Event payloads for NATS
+type CreateFolderPayload struct {
+	ID             string    `json:"id"`
+	ParentFolderID *string   `json:"parentFolderId"`
+	Name           string    `json:"name"`
+	Timestamp      time.Time `json:"timestamp"`
+	CreatedBy      string    `json:"createdBy"`
+}
+
+type DeleteFolderPayload struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	DeletedBy string    `json:"deletedBy"`
+}
+
+type MoveItemsPayload struct {
+	Apps       []string  `json:"apps"`
+	Folders    []string  `json:"folders"`
+	Path       string    `json:"path"`
+	ToFolderID *string   `json:"toFolderId"`
+	Timestamp  time.Time `json:"timestamp"`
+	MovedBy    string    `json:"movedBy"`
+}
+
+// Event handlers
+func HandleCreateFolder(app *App, data []byte) bool {
+	var payload CreateFolderPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal create folder payload", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.Sqlite.Exec(
+		`INSERT OR IGNORE INTO folders (
+			id, parent_folder_id, name, created_at, updated_at, created_by, updated_by
+		) VALUES ($1, $2, $3, $4, $4, $5, $5)`,
+		payload.ID, payload.ParentFolderID, payload.Name, payload.Timestamp, payload.CreatedBy,
+	)
+	if err != nil {
+		app.Logger.Error("failed to insert folder into DB", slog.Any("error", err))
+		return false
+	}
+	return true
+}
+
+func HandleDeleteFolder(app *App, data []byte) bool {
+	var payload DeleteFolderPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal delete folder payload", slog.Any("error", err))
+		return false
+	}
+
+	// Delete the folder - CASCADE constraints will automatically delete:
+	// - All apps in this folder and subfolders (via folder_id FK)
+	// - All subfolders recursively (via parent_folder_id FK)
+	result, err := app.Sqlite.Exec(`DELETE FROM folders WHERE id = $1`, payload.ID)
+	if err != nil {
+		app.Logger.Error("failed to delete folder from DB", slog.Any("error", err))
+		return false
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		app.Logger.Error("failed to get rows affected", slog.Any("error", err))
+		return false
+	}
+
+	if rowsAffected == 0 {
+		app.Logger.Warn("folder not found for deletion", slog.String("folderId", payload.ID))
+		return true // Not an error, just already deleted
+	}
+
+	// Find orphaned task_runs (those without matching apps) and unschedule them
+	var orphanedTaskIDs []string
+	err = app.Sqlite.Select(&orphanedTaskIDs, `
+		SELECT task_id FROM task_runs
+		WHERE task_id NOT IN (SELECT id FROM apps WHERE type = 'task')
+	`)
+	if err != nil {
+		app.Logger.Error("failed to find orphaned task_runs", slog.Any("error", err))
+	} else {
+		// Unschedule orphaned tasks
+		for _, taskID := range orphanedTaskIDs {
+			unscheduleTask(app, taskID)
+		}
+
+		// Clean up orphaned task_runs
+		if len(orphanedTaskIDs) > 0 {
+			_, err = app.Sqlite.Exec(`
+				DELETE FROM task_runs
+				WHERE task_id NOT IN (SELECT id FROM apps WHERE type = 'task')
+			`)
+			if err != nil {
+				app.Logger.Error("failed to clean up orphaned task_runs", slog.Any("error", err))
+			}
+		}
+	}
+
+	return true
+}
+
+func HandleMoveItems(app *App, data []byte) bool {
+	var payload MoveItemsPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal move items payload", slog.Any("error", err))
+		return false
+	}
+
+	// Start a transaction to ensure atomicity
+	tx, err := app.Sqlite.Beginx()
+	if err != nil {
+		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
+		return false
+	}
+	defer tx.Rollback()
+
+	// Move apps
+	for _, appID := range payload.Apps {
+		if appID == "" {
+			continue
+		}
+
+		result, err := tx.Exec(`
+			UPDATE apps
+			SET folder_id = $1, updated_at = $2, updated_by = $3
+			WHERE id = $4
+		`, payload.ToFolderID, payload.Timestamp, payload.MovedBy, appID)
 
 		if err != nil {
-			return fmt.Errorf("error moving folder %s: %w", folderID, err)
+			app.Logger.Error("failed to move app", slog.String("appId", appID), slog.Any("error", err))
+			return false
 		}
 
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
-			return fmt.Errorf("error getting rows affected for folder %s: %w", folderID, err)
+			app.Logger.Error("failed to get rows affected for app", slog.String("appId", appID), slog.Any("error", err))
+			return false
 		}
 
 		if rowsAffected == 0 {
-			return fmt.Errorf("folder %s not found", folderID)
+			app.Logger.Warn("app not found for move", slog.String("appId", appID))
+		}
+	}
+
+	// Move folders
+	for _, folderID := range payload.Folders {
+		if folderID == "" {
+			continue
+		}
+
+		// Check for circular references - prevent moving a folder into its own subtree
+		if payload.ToFolderID != nil {
+			var isCircular bool
+			err := tx.Get(&isCircular, `
+				WITH RECURSIVE folder_ancestors(id) AS (
+					SELECT parent_folder_id FROM folders WHERE id = $1
+					UNION ALL
+					SELECT f.parent_folder_id FROM folders f
+					JOIN folder_ancestors fa ON f.id = fa.id
+					WHERE f.parent_folder_id IS NOT NULL
+				)
+				SELECT COUNT(*) > 0 FROM folder_ancestors WHERE id = $2
+			`, *payload.ToFolderID, folderID)
+			if err != nil {
+				app.Logger.Error("failed to check for circular reference", slog.String("folderId", folderID), slog.Any("error", err))
+				return false
+			}
+			if isCircular {
+				app.Logger.Error("cannot move folder into its own subtree", slog.String("folderId", folderID))
+				return false
+			}
+		}
+
+		// Update the folder itself
+		result, err := tx.Exec(`
+			UPDATE folders
+			SET parent_folder_id = $1, updated_at = $2, updated_by = $3
+			WHERE id = $4
+		`, payload.ToFolderID, payload.Timestamp, payload.MovedBy, folderID)
+
+		if err != nil {
+			app.Logger.Error("failed to move folder", slog.String("folderId", folderID), slog.Any("error", err))
+			return false
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			app.Logger.Error("failed to get rows affected for folder", slog.String("folderId", folderID), slog.Any("error", err))
+			return false
+		}
+
+		if rowsAffected == 0 {
+			app.Logger.Warn("folder not found for move", slog.String("folderId", folderID))
 		}
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction: %w", err)
+		app.Logger.Error("failed to commit transaction", slog.Any("error", err))
+		return false
 	}
 
-	return nil
+	return true
 }
