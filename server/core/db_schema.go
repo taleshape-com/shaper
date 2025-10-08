@@ -59,7 +59,7 @@ func initSQLite(sdb *sqlx.DB) error {
 		return fmt.Errorf("error creating apps table: %w", err)
 	}
 	// Ignore errors if column already exists
-	sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id)`)
+	sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE CASCADE`)
 	// Ignore errors if column does not exist
 	sdb.Exec(`ALTER TABLE apps DROP COLUMN path`)
 

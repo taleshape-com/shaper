@@ -3,7 +3,7 @@
 export interface IApp {
   id: string;
   name: string;
-  path: string;
+  path?: string;
   folderId?: string;
   content: string;
   createdAt: string;

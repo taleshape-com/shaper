@@ -51,15 +51,13 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create dashboard payload", slog.Any("error", err))
 		return false
 	}
-	
-	// Resolve path to folder ID, fallback to root if resolution fails
+
 	folderID, err := ResolveFolderPath(app, context.Background(), payload.Path)
 	if err != nil {
 		app.Logger.Warn("failed to resolve folder path, creating at root", slog.String("path", payload.Path), slog.Any("error", err))
 		folderID = nil
 	}
-	
-	// Insert into DB
+
 	_, err = app.Sqlite.Exec(
 		`INSERT OR IGNORE INTO apps (
 			id, folder_id, name, content, created_at, updated_at, created_by, updated_by, type
