@@ -112,7 +112,7 @@ export const Route = createFileRoute("/new")({
   component: NewDashboard,
 });
 
-function NewDashboard() {
+function NewDashboard () {
   const { vars, path } = Route.useSearch();
   const auth = useAuth();
   const queryApi = useQueryApi();
