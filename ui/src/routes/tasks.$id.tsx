@@ -33,6 +33,7 @@ import "../lib/editorInit";
 interface TaskData {
   id: string
   name: string
+  path: string
   content: string
   nextRunAt?: string
   lastRunAt?: string
@@ -202,7 +203,7 @@ function TaskEdit() {
   };
 
   return (
-    <MenuProvider>
+    <MenuProvider currentPath={task.path}>
       <Helmet>
         <title>{task.name}</title>
       </Helmet>

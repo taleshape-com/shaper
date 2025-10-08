@@ -7,6 +7,7 @@ import "time"
 type Dashboard struct {
 	ID         string    `db:"id" json:"id"`
 	FolderID   *string   `db:"folder_id" json:"folderId,omitempty"`
+	Path       string    `json:"path,omitempty"`
 	Name       string    `db:"name" json:"name"`
 	Content    string    `db:"content" json:"content"`
 	CreatedAt  time.Time `db:"created_at" json:"createdAt"`

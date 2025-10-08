@@ -27,7 +27,6 @@ import {
   RiCodeSSlashFill,
   RiBarChart2Line,
   RiUserSharedLine,
-  RiFolderAddFill,
   RiFolderFill,
   RiArrowRightSLine,
   RiDeleteBinLine,
@@ -547,7 +546,7 @@ function Index() {
   return (
     <MenuProvider isHome currentPath={path}>
       <Helmet>
-        <title>Overview</title>
+        <title>Browse</title>
         <meta
           name="description"
           content="Show a list of all dashboards and tasks"
@@ -603,7 +602,6 @@ function Index() {
                 onClick={() => setFolderDialog(true)}
               >
                 <RiFolderAddLine
-
                   className="size-4 shrink-0"
                   aria-hidden={true}
                 />

@@ -506,7 +506,6 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 		result, err := core.QueryDashboard(app, c.Request().Context(), core.DashboardQuery{
 			Content: request.Content,
 			ID:      request.DashboardId,
-			Name:    "Preview",
 		}, c.QueryParams(), variables)
 
 		if err != nil {

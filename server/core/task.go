@@ -16,6 +16,7 @@ import (
 type Task struct {
 	ID              string     `db:"id" json:"id"`
 	FolderID        *string    `db:"folder_id" json:"folderId,omitempty"`
+	Path            string     `json:"path,omitempty"`
 	Name            string     `db:"name" json:"name"`
 	Content         string     `db:"content" json:"content"`
 	CreatedAt       time.Time  `db:"created_at" json:"createdAt"`
@@ -72,6 +73,16 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	if err != nil {
 		return task, fmt.Errorf("failed to get task: %w", err)
 	}
+
+	// Resolve folder_id to path
+	path, err := ResolveFolderIDToPath(app, ctx, task.FolderID)
+	if err != nil {
+		// If path resolution fails, default to root
+		task.Path = "/"
+	} else {
+		task.Path = path
+	}
+
 	return task, nil
 }
 

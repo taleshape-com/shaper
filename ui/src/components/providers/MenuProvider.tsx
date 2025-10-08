@@ -16,6 +16,7 @@ import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
 import { getSystemConfig } from "../../lib/system";
+import { Tooltip } from "../tremor/Tooltip";
 
 const isLg = () => window.innerWidth >= 1024;
 
@@ -102,14 +103,17 @@ export function MenuProvider({
           )}
           <Link
             to="/"
+            search={{ path: currentPath }}
             disabled={isHome}
             className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
-            Overview
+            <Tooltip content={"Go to " + currentPath} showArrow={false}>
+              <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
+              Browse
+            </Tooltip>
           </Link>
           <Link
             to="/new"

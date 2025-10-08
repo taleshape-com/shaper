@@ -13,7 +13,7 @@ import {
   copyToClipboard,
 } from "../lib/utils";
 import { useAuth, getJwt } from "../lib/auth";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { Result } from "../lib/types";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
@@ -21,6 +21,7 @@ import { VariablesMenu } from "../components/VariablesMenu";
 import { PublicLink } from "../components/PublicLink";
 import { useToast } from "../hooks/useToast";
 import { Button } from "../components/tremor/Button";
+import { useQueryApi } from "../hooks/useQueryApi";
 
 export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
@@ -40,24 +41,45 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent ({ error }: ErrorComponentProps) {
+function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
       <p>{error.message}</p>
     </div>
   );
 }
-function DashboardViewComponent () {
+function DashboardViewComponent() {
   const { vars } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
   const navigate = useNavigate({ from: "/dashboards/$id" });
+  const queryApi = useQueryApi();
   const [title, setTitle] = useState("Dashboard");
   const [visibility, setVisibility] = useState<Result["visibility"]>(undefined);
+  const [path, setPath] = useState("/");
   const { toast } = useToast();
 
   // Ref for dashboard ID text selection
   const dashboardIdRef = useRef<HTMLElement>(null);
+
+  // Fetch dashboard query to get path
+  useEffect(() => {
+    const fetchDashboardQuery = async () => {
+      try {
+        const dashboard = await queryApi(`dashboards/${params.id}/query`);
+        if (dashboard.path) {
+          setPath(dashboard.path);
+        }
+        setTitle(dashboard.name);
+      } catch (err) {
+        if (isRedirect(err)) {
+          navigate(err.options);
+        }
+        // If fetching fails, keep default path "/"
+      }
+    };
+    fetchDashboardQuery();
+  }, [params.id, queryApi, navigate]);
 
   const handleRedirectError = useCallback(
     (err: Error) => {
@@ -148,12 +170,11 @@ function DashboardViewComponent () {
   );
 
   const onDataChange = useCallback((data: Result) => {
-    setTitle(data.name);
     setVisibility(data.visibility);
   }, []);
 
   return (
-    <MenuProvider currentPath="/">
+    <MenuProvider currentPath={path}>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={title} />

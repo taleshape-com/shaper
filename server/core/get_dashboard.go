@@ -51,7 +51,6 @@ var sideEffectSQLStatements = [][]string{
 type DashboardQuery struct {
 	Content    string
 	ID         string
-	Name       string
 	Visibility *string
 }
 
@@ -59,7 +58,6 @@ type DashboardQuery struct {
 // It executes the SQL and generates a dashboard definition from the results that can be rendered in the frontend.
 func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	result := GetResult{
-		Name:       dashboardQuery.Name,
 		Visibility: dashboardQuery.Visibility,
 		Sections:   []Section{},
 	}
@@ -403,7 +401,6 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	return QueryDashboard(app, ctx, DashboardQuery{
 		Content:    dashboard.Content,
 		ID:         dashboardId,
-		Name:       dashboard.Name,
 		Visibility: dashboard.Visibility,
 	}, queryParams, variables)
 }
