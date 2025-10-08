@@ -51,7 +51,6 @@ var sideEffectSQLStatements = [][]string{
 type DashboardQuery struct {
 	Content    string
 	ID         string
-	Name       string
 	Visibility *string
 }
 
@@ -59,7 +58,6 @@ type DashboardQuery struct {
 // It executes the SQL and generates a dashboard definition from the results that can be rendered in the frontend.
 func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	result := GetResult{
-		Name:       dashboardQuery.Name,
 		Visibility: dashboardQuery.Visibility,
 		Sections:   []Section{},
 	}
@@ -383,6 +381,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	if err := conn.Close(); err != nil {
 		return result, fmt.Errorf("Error closing conn: %v", err)
 	}
+	if len(result.Sections) > 0 {
+		firstSection := result.Sections[0]
+		if firstSection.Title != nil {
+			result.Name = *firstSection.Title
+		}
+	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
 	if headerImage != "" {
@@ -395,7 +399,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 }
 
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return GetResult{}, err
 	}
@@ -403,7 +407,6 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	return QueryDashboard(app, ctx, DashboardQuery{
 		Content:    dashboard.Content,
 		ID:         dashboardId,
-		Name:       dashboard.Name,
 		Visibility: dashboard.Visibility,
 	}, queryParams, variables)
 }

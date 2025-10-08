@@ -15,7 +15,7 @@ import (
 // When downloading a PDF we also need to allow access if the users has the permission to see the parent dashboard
 // TODO: This shares a lot of code with QueryDashboard
 func DashboardContainsMatchingPdfDownload(app *App, ctx context.Context, parentDashboardId string, pdfDashboardId string, queryParams url.Values, variables map[string]any) (bool, error) {
-	dashboardQuery, err := GetDashboardQuery(app, ctx, parentDashboardId)
+	dashboardQuery, err := GetDashboardInfo(app, ctx, parentDashboardId)
 	if err != nil {
 		return false, err
 	}

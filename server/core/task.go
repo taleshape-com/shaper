@@ -15,7 +15,8 @@ import (
 
 type Task struct {
 	ID              string     `db:"id" json:"id"`
-	Path            string     `db:"path" json:"path"`
+	FolderID        *string    `db:"folder_id" json:"folderId,omitempty"`
+	Path            string     `json:"path,omitempty"`
 	Name            string     `db:"name" json:"name"`
 	Content         string     `db:"content" json:"content"`
 	CreatedAt       time.Time  `db:"created_at" json:"createdAt"`
@@ -61,7 +62,7 @@ type DeleteTaskPayload struct {
 func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	var task Task
 	err := app.Sqlite.GetContext(ctx, &task,
-		`SELECT a.id, a.path, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
+		`SELECT a.id, a.folder_id, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
 						tr.next_run_at,
 						tr.last_run_at,
 		        tr.last_run_success,
@@ -72,10 +73,20 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	if err != nil {
 		return task, fmt.Errorf("failed to get task: %w", err)
 	}
+
+	// Resolve folder_id to path
+	path, err := ResolveFolderIDToPath(app, ctx, task.FolderID)
+	if err != nil {
+		// If path resolution fails, default to root
+		task.Path = "/"
+	} else {
+		task.Path = path
+	}
+
 	return task, nil
 }
 
-func CreateTask(app *App, ctx context.Context, name string, content string) (string, error) {
+func CreateTask(app *App, ctx context.Context, name string, content string, path string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -89,7 +100,7 @@ func CreateTask(app *App, ctx context.Context, name string, content string) (str
 	err := app.SubmitState(ctx, "create_task", CreateTaskPayload{
 		ID:        id,
 		Timestamp: time.Now(),
-		Path:      "/",
+		Path:      path,
 		Name:      name,
 		Content:   content,
 		CreatedBy: actor.String(),
@@ -104,14 +115,21 @@ func HandleCreateTask(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create task payload", slog.Any("error", err))
 		return false
 	}
+	// Resolve path to folder ID, fallback to root if resolution fails
+	folderID, err := ResolveFolderPath(app, context.Background(), payload.Path)
+	if err != nil {
+		app.Logger.Warn("failed to resolve folder path, creating at root", slog.String("path", payload.Path), slog.Any("error", err))
+		folderID = nil
+	}
+	
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
 	// Insert into DB
 	_, err = app.Sqlite.ExecContext(
 		ctx,
 		`INSERT OR IGNORE INTO apps (
-			id, path, name, content, created_at, updated_at, created_by, updated_by, type
+			id, folder_id, name, content, created_at, updated_at, created_by, updated_by, type
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'task')`,
-		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
+		payload.ID, folderID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert task into DB", slog.Any("error", err))

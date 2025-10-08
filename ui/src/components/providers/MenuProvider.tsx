@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { cx, parseJwt } from "../../lib/utils";
 import {
   RiMenuLine,
-  RiHomeLine,
+  RiLayoutLine,
   RiFileAddLine,
   RiAdminLine,
   RiLogoutBoxRLine,
@@ -16,6 +16,7 @@ import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
 import { getSystemConfig } from "../../lib/system";
+import { Tooltip } from "../tremor/Tooltip";
 
 const isLg = () => window.innerWidth >= 1024;
 
@@ -24,11 +25,13 @@ export function MenuProvider ({
   isHome = false,
   isAdmin = false,
   isNewPage = false,
+  currentPath = "/",
 }: {
   children: React.ReactNode;
   isHome?: boolean;
   isAdmin?: boolean;
   isNewPage?: boolean;
+  currentPath?: string;
 }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
@@ -100,17 +103,20 @@ export function MenuProvider ({
           )}
           <Link
             to="/"
-            disabled={isHome}
+            search={isHome ? undefined : { path: currentPath }}
             className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <RiHomeLine className="size-4 inline mr-1.5 mb-1" />
-            Home
+            <Tooltip content={"Go to " + (isHome ? "/" : currentPath)} showArrow={false}>
+              <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
+              Browse
+            </Tooltip>
           </Link>
           <Link
             to="/new"
+            search={{ path: currentPath }}
             disabled={isNewPage}
             className={cx("block px-4 py-3", {
               "hover:underline": !isNewPage,

@@ -27,6 +27,7 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 		var request struct {
 			Name    string `json:"name"`
 			Content string `json:"content"`
+			Path    string `json:"path"`
 		}
 		if err := c.Bind(&request); err != nil {
 			return c.JSONPretty(http.StatusBadRequest,
@@ -43,7 +44,16 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 				}{Error: "Dashboard name is required"}, "  ")
 		}
 
-		id, err := core.CreateDashboard(app, c.Request().Context(), request.Name, request.Content)
+		// Make sure folder exists
+		_, err := core.ResolveFolderPath(app, c.Request().Context(), request.Path)
+		if err != nil {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+		}
+
+		id, err := core.CreateDashboard(app, c.Request().Context(), request.Name, request.Content, request.Path)
 		if err != nil {
 			c.Logger().Error("error creating dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
@@ -60,7 +70,7 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func GetDashboardQuery(app *core.App) echo.HandlerFunc {
+func GetDashboardInfo(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		// Embedding JWTs that are fixed to a dashboardId are not allowed to edit the board
@@ -70,7 +80,7 @@ func GetDashboardQuery(app *core.App) echo.HandlerFunc {
 			}{Error: "Unauthorized"}, "  ")
 		}
 
-		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting dashboard query:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
@@ -496,7 +506,6 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 		result, err := core.QueryDashboard(app, c.Request().Context(), core.DashboardQuery{
 			Content: request.Content,
 			ID:      request.DashboardId,
-			Name:    "Preview",
 		}, c.QueryParams(), variables)
 
 		if err != nil {
@@ -511,7 +520,7 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 
 func GetDashboardStatus(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting dashboard status:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {

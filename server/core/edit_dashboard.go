@@ -40,12 +40,26 @@ type UpdateDashboardPasswordPayload struct {
 	UpdatedBy    string    `json:"updatedBy"`
 }
 
-func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
+func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
 	err := app.Sqlite.GetContext(ctx, &dashboard,
-		`SELECT id, path, name, content, created_at, updated_at, created_by, updated_by, visibility
+		`SELECT id, folder_id, name, content, created_at, updated_at, created_by, updated_by, visibility
 		FROM apps
 		WHERE id = $1 AND type = 'dashboard'`, id)
+	if err != nil {
+		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
+	}
+
+	// Resolve folder_id to path
+	path, err := ResolveFolderIDToPath(app, ctx, dashboard.FolderID)
+	if err != nil {
+		// If path resolution fails, default to root
+		app.Logger.Warn("failed to resolve folder ID to path, defaulting to root", slog.Any("folder_id", dashboard.FolderID), slog.Any("error", err))
+		dashboard.Path = "/"
+	} else {
+		dashboard.Path = path
+	}
+
 	if dashboard.Visibility == nil {
 		dashboard.Visibility = new(string)
 		*dashboard.Visibility = "private"
@@ -55,9 +69,6 @@ func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, err
 		dashboard.Visibility = nil
 	}
 
-	if err != nil {
-		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
-	}
 	return dashboard, nil
 }
 
