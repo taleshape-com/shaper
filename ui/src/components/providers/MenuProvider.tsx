@@ -12,7 +12,7 @@ import {
   RiExternalLinkLine,
 } from "@remixicon/react";
 import { logout, getJwt } from "../../lib/auth";
-import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
+import { isRedirect, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
 import { getSystemConfig } from "../../lib/system";
@@ -26,14 +26,17 @@ export function MenuProvider ({
   isAdmin = false,
   isNewPage = false,
   currentPath = "/",
+  appType,
 }: {
   children: React.ReactNode;
   isHome?: boolean;
   isAdmin?: boolean;
   isNewPage?: boolean;
   currentPath?: string;
+  appType?: "dashboard" | "task";
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
@@ -71,6 +74,31 @@ export function MenuProvider ({
   }, []);
 
   const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
+
+  // Determine the correct documentation URL based on current route
+  const getDocumentationUrl = () => {
+    const docsLink = "https://taleshape.com/shaper/docs";
+    const pathname = location.pathname;
+    // Dashboard-related routes (create, view, edit)
+    if (pathname.startsWith("/dashboards/") ||
+      pathname.startsWith("/dashboards_/")) {
+      return docsLink + "/dashboard-sql-reference/";
+    }
+    // Task-related routes (create, edit)
+    if (pathname.startsWith("/tasks/")) {
+      return docsLink + "/tasks-and-scheduling/";
+    }
+    // New page - check appType to determine which docs to show
+    if (pathname === "/new") {
+      if (appType === "task") {
+        return docsLink + "/tasks-and-scheduling/";
+      } else {
+        return docsLink + "/dashboard-sql-reference/";
+      }
+    }
+    // Default documentation URL
+    return docsLink;
+  };
 
   return (
     <MenuContext.Provider value={{
@@ -131,7 +159,7 @@ export function MenuProvider ({
 
         <div className="mt-auto pt-4 pb-4 space-y-2">
           <a
-            href="https://taleshape.com/shaper/docs"
+            href={getDocumentationUrl()}
             className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2 group hover:underline"
             target="shaper-docs"
           >

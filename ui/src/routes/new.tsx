@@ -373,7 +373,7 @@ function NewDashboard () {
   };
 
   return (
-    <MenuProvider isNewPage currentPath={path || "/"}>
+    <MenuProvider isNewPage currentPath={path || "/"} appType={appType}>
       <Helmet>
         <title>{appType === "task" ? "New Task" : "New Dashboard"}</title>
       </Helmet>
