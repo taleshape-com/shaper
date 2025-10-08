@@ -393,7 +393,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 }
 
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return GetResult{}, err
 	}

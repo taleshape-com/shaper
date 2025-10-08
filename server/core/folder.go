@@ -93,15 +93,15 @@ func ResolveFolderIDToPath(app *App, ctx context.Context, folderID *string) (str
 			Name           string  `db:"name"`
 			ParentFolderID *string `db:"parent_folder_id"`
 		}
-		
+
 		err := app.Sqlite.GetContext(ctx, &folderInfo, `
 			SELECT name, parent_folder_id FROM folders WHERE id = ?
 		`, *currentFolderID)
-		
+
 		if err != nil {
 			return "", fmt.Errorf("failed to get folder info: %w", err)
 		}
-		
+
 		pathComponents = append([]string{folderInfo.Name}, pathComponents...)
 		currentFolderID = folderInfo.ParentFolderID
 	}

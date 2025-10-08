@@ -66,7 +66,7 @@ function DashboardViewComponent() {
   useEffect(() => {
     const fetchDashboardQuery = async () => {
       try {
-        const dashboard = await queryApi(`dashboards/${params.id}/query`);
+        const dashboard = await queryApi(`dashboards/${params.id}/info`);
         if (dashboard.path) {
           setPath(dashboard.path);
         }

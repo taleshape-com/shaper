@@ -63,7 +63,7 @@ export const Route = createFileRoute("/dashboards_/$id/edit")({
 		return match.cause === "enter";
 	},
 	loader: async ({ params: { id }, context: { queryApi } }) => {
-		const data = await queryApi(`dashboards/${id}/query`);
+		const data = await queryApi(`dashboards/${id}/info`);
 		return data as IDashboard;
 	},
 	component: DashboardEditor,

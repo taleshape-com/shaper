@@ -147,7 +147,7 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing dashboardId"})
 		}
 
-		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), loginRequest.DashboardID)
+		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), loginRequest.DashboardID)
 		if err != nil {
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {

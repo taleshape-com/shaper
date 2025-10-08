@@ -70,7 +70,7 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func GetDashboardQuery(app *core.App) echo.HandlerFunc {
+func GetDashboardInfo(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		// Embedding JWTs that are fixed to a dashboardId are not allowed to edit the board
@@ -80,7 +80,7 @@ func GetDashboardQuery(app *core.App) echo.HandlerFunc {
 			}{Error: "Unauthorized"}, "  ")
 		}
 
-		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting dashboard query:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
@@ -520,7 +520,7 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 
 func GetDashboardStatus(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), c.Param("id"))
+		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
 			c.Logger().Error("error getting dashboard status:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {

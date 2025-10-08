@@ -36,7 +36,7 @@ func StreamQueryCSV(
 	variables map[string]any,
 	writer io.Writer,
 ) error {
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
@@ -155,7 +155,7 @@ func StreamQueryXLSX(
 	writer io.Writer,
 ) error {
 	// Get dashboard content
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}

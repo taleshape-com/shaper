@@ -40,7 +40,7 @@ type UpdateDashboardPasswordPayload struct {
 	UpdatedBy    string    `json:"updatedBy"`
 }
 
-func GetDashboardQuery(app *App, ctx context.Context, id string) (Dashboard, error) {
+func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, error) {
 	var dashboard Dashboard
 	err := app.Sqlite.GetContext(ctx, &dashboard,
 		`SELECT id, folder_id, name, content, created_at, updated_at, created_by, updated_by, visibility
