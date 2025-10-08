@@ -103,14 +103,13 @@ export function MenuProvider({
           )}
           <Link
             to="/"
-            search={{ path: currentPath }}
-            disabled={isHome}
+            search={isHome ? undefined : { path: currentPath }}
             className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <Tooltip content={"Go to " + currentPath} showArrow={false}>
+            <Tooltip content={"Go to " + (isHome ? "/" : currentPath)} showArrow={false}>
               <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
               Browse
             </Tooltip>

@@ -664,13 +664,12 @@ function Index() {
                       className={cx(
                         "group",
                         "[tbody_&]:odd:bg-cbgs [tbody_&]:odd:dark:bg-dbgs hover:bg-cbga hover:dark:bg-dbga [tbody_&]:odd:hover:bg-cbga [tbody_&]:odd:hover:dark:bg-dbga",
-                        "border-b-1 border-solid !border-cbga !dark:border-dbga",
                         {
                           "opacity-50": draggedItem?.id === app.id,
                           "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":
                             app.type === "_folder" &&
                             app.path + app.name + "/" === dragOverTarget,
-                          "!bg-cbga !dark:bg-dbga": draggedItem != null && app.type === '_folder' && draggedItem.id !== app.id,
+                          "bg-cbga dark:bg-dbga [tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga": draggedItem != null && app.type === '_folder' && draggedItem.id !== app.id,
                         },
                       )}
                       draggable
