@@ -271,15 +271,11 @@ function Index() {
   const generateBreadcrumbs = () => {
     const pathParts = path.split("/").filter((part) => part !== "");
     const breadcrumbs = [];
-
-    // Add root breadcrumb
     breadcrumbs.push({
       name: "Home",
       path: "/",
       isRoot: true,
     });
-
-    // Add path breadcrumbs
     let currentPath = "";
     for (let i = 0; i < pathParts.length; i++) {
       currentPath += `/${pathParts[i]}`;
@@ -289,7 +285,6 @@ function Index() {
         isRoot: false,
       });
     }
-
     return breadcrumbs;
   };
 
@@ -556,7 +551,7 @@ function Index() {
       <div className="pb-4 md:px-4 h-dvh flex flex-col">
         <div className="flex pl-4 pr-2 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-2 overflow-x-auto">
+          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-1 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (
                 <div key={breadcrumb.path} className="flex items-center gap-1">
@@ -574,11 +569,12 @@ function Index() {
                         : { path: breadcrumb.path }
                     }
                     className={cx(
-                      "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -my-1 -mx-1 rounded",
+                      "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 rounded",
                       "whitespace-nowrap",
                       {
-                        "outline-2 outline-dashed outline-cprimary dark:outline-dprimary":
+                        "outline-2 outline-dashed -outline-offset-2 outline-cprimary dark:outline-dprimary":
                           dragOverTarget === breadcrumb.path,
+                        "bg-cbga dark:bg-dbga": draggedItem != null && draggedItem.path !== breadcrumb.path,
                       },
                     )}
                     onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
@@ -674,6 +670,7 @@ function Index() {
                           "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":
                             app.type === "_folder" &&
                             app.path + app.name + "/" === dragOverTarget,
+                          "!bg-cbga !dark:bg-dbga": draggedItem != null && app.type === '_folder' && draggedItem.id !== app.id,
                         },
                       )}
                       draggable
