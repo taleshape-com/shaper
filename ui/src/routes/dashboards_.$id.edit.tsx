@@ -403,7 +403,7 @@ function DashboardEditor () {
   }, [previewDashboard]);
 
   return (
-    <MenuProvider>
+    <MenuProvider currentPath="/">
       <Helmet>
         <title>Edit Dashboard - {dashboard.name}</title>
       </Helmet>

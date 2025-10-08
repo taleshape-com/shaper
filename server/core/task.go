@@ -31,7 +31,7 @@ type Task struct {
 type CreateTaskPayload struct {
 	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
-	FolderID  *string   `json:"folderId,omitempty"`
+	Path      string    `json:"path"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
 	CreatedBy string    `json:"createdBy"`
@@ -75,7 +75,7 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	return task, nil
 }
 
-func CreateTask(app *App, ctx context.Context, name string, content string) (string, error) {
+func CreateTask(app *App, ctx context.Context, name string, content string, path string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -89,7 +89,7 @@ func CreateTask(app *App, ctx context.Context, name string, content string) (str
 	err := app.SubmitState(ctx, "create_task", CreateTaskPayload{
 		ID:        id,
 		Timestamp: time.Now(),
-		FolderID:  nil, // Root level
+		Path:      path,
 		Name:      name,
 		Content:   content,
 		CreatedBy: actor.String(),
@@ -104,6 +104,13 @@ func HandleCreateTask(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create task payload", slog.Any("error", err))
 		return false
 	}
+	// Resolve path to folder ID, fallback to root if resolution fails
+	folderID, err := ResolveFolderPath(app, context.Background(), payload.Path)
+	if err != nil {
+		app.Logger.Warn("failed to resolve folder path, creating at root", slog.String("path", payload.Path), slog.Any("error", err))
+		folderID = nil
+	}
+	
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
 	// Insert into DB
 	_, err = app.Sqlite.ExecContext(
@@ -111,7 +118,7 @@ func HandleCreateTask(app *App, data []byte) bool {
 		`INSERT OR IGNORE INTO apps (
 			id, folder_id, name, content, created_at, updated_at, created_by, updated_by, type
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'task')`,
-		payload.ID, payload.FolderID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
+		payload.ID, folderID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert task into DB", slog.Any("error", err))

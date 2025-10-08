@@ -19,16 +19,18 @@ import { getSystemConfig } from "../../lib/system";
 
 const isLg = () => window.innerWidth >= 1024;
 
-export function MenuProvider ({
+export function MenuProvider({
   children,
   isHome = false,
   isAdmin = false,
   isNewPage = false,
+  currentPath = "/",
 }: {
   children: React.ReactNode;
   isHome?: boolean;
   isAdmin?: boolean;
   isNewPage?: boolean;
+  currentPath?: string;
 }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
@@ -111,6 +113,7 @@ export function MenuProvider ({
           </Link>
           <Link
             to="/new"
+            search={{ path: currentPath }}
             disabled={isNewPage}
             className={cx("block px-4 py-3", {
               "hover:underline": !isNewPage,

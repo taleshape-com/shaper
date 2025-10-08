@@ -5,6 +5,7 @@ import {
   createFileRoute,
   isRedirect,
   useNavigate,
+  Link,
 } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
@@ -27,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/tremor/Dialog";
-import { RiCodeSSlashFill, RiBarChart2Line } from "@remixicon/react";
+import { RiCodeSSlashFill, RiBarChart2Line, RiArrowRightSLine } from "@remixicon/react";
 import { Input } from "../components/tremor/Input";
 import { VariablesMenu } from "../components/VariablesMenu";
 import { SqlEditor } from "../components/SqlEditor";
@@ -106,12 +107,13 @@ const clearStoredAppType = () => {
 export const Route = createFileRoute("/new")({
   validateSearch: z.object({
     vars: varsParamSchema,
+    path: z.string().optional(),
   }),
   component: NewDashboard,
 });
 
-function NewDashboard () {
-  const { vars } = Route.useSearch();
+function NewDashboard() {
+  const { vars, path } = Route.useSearch();
   const auth = useAuth();
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/new" });
@@ -270,6 +272,7 @@ function NewDashboard () {
           body: {
             name: dashboardName,
             content: editorQuery,
+            path: path || "/",
           },
         });
         // Clear localStorage after successful save
@@ -288,6 +291,7 @@ function NewDashboard () {
           body: {
             name: dashboardName,
             content: editorQuery,
+            path: path || "/",
           },
         });
         // Clear localStorage after successful save
@@ -348,15 +352,40 @@ function NewDashboard () {
     return editorQuery !== defaultContent;
   };
 
+  const generateBreadcrumbs = () => {
+    const pathParts = (path || "/").split("/").filter((part) => part !== "");
+    const breadcrumbs = [];
+
+    // Add root breadcrumb
+    breadcrumbs.push({
+      name: "Home",
+      path: "/",
+      isRoot: true,
+    });
+
+    // Add path breadcrumbs
+    let currentPath = "";
+    for (let i = 0; i < pathParts.length; i++) {
+      currentPath += `/${pathParts[i]}`;
+      breadcrumbs.push({
+        name: pathParts[i],
+        path: currentPath + "/",
+        isRoot: false,
+      });
+    }
+
+    return breadcrumbs;
+  };
+
   return (
-    <MenuProvider isNewPage>
+    <MenuProvider isNewPage currentPath={path || "/"}>
       <Helmet>
         <title>{appType === "task" ? "New Task" : "New Dashboard"}</title>
       </Helmet>
 
       <div className="h-dvh flex flex-col">
         <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
-          <div className="flex items-center p-2 border-b border-cb dark:border-none">
+          <div className="flex items-center px-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
               {appType === "dashboard" && (
                 <VariablesMenu onVariablesChange={previewDashboard} />
@@ -373,73 +402,103 @@ function NewDashboard () {
               )}
             </MenuTrigger>
 
-            <h1 className="flex items-center gap-3 flex-grow text-xl font-semibold font-display">
-              New
-              {getSystemConfig().tasksEnabled ? (
-                <Select value={appType} onValueChange={handleTypeChange}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dashboard">
-                      <RiBarChart2Line
-                        className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
+            <div className="flex-grow flex pb-2 pt-2 gap-2 overflow-x-auto">
+              <nav className="flex items-center gap-1 font-semibold font-display">
+                {generateBreadcrumbs().map((breadcrumb, index) => (
+                  <div key={breadcrumb.path} className="flex items-center gap-1">
+                    {index > 0 && (
+                      <RiArrowRightSLine
+                        className="size-4 text-ctext2 dark:text-dtext2"
                         aria-hidden={true}
                       />
-                      Dashboard
-                    </SelectItem>
-                    <SelectItem value="task">
-                      <RiCodeSSlashFill
-                        className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
-                        aria-hidden={true}
-                      />
-                      Task
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                " Dashboard"
-              )}
-            </h1>
+                    )}
+                    <Link
+                      to={"/"}
+                      search={
+                        breadcrumb.path === "/"
+                          ? undefined
+                          : { path: breadcrumb.path }
+                      }
+                      className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -my-1 -mx-1 rounded whitespace-nowrap"
+                    >
+                      {breadcrumb.name}
+                    </Link>
+                  </div>
+                ))}
+              </nav>
+              <h1 className="flex items-center gap-2 font-display">
+                <RiArrowRightSLine
+                  className="size-4 text-ctext2 dark:text-dtext2 mr-0.5"
+                  aria-hidden={true}
+                />
+                New
+                {getSystemConfig().tasksEnabled ? (
+                  <Select value={appType} onValueChange={handleTypeChange}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dashboard">
+                        <RiBarChart2Line
+                          className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
+                          aria-hidden={true}
+                        />
+                        Dashboard
+                      </SelectItem>
+                      <SelectItem value="task">
+                        <RiCodeSSlashFill
+                          className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
+                          aria-hidden={true}
+                        />
+                        Task
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  " Dashboard"
+                )}
+              </h1>
 
-            <div className="space-x-2">
-              <Tooltip
-                showArrow={false}
-                asChild
-                content={`Create ${appType === "task" ? "Task" : "Dashboard"}`}
-              >
-                <Button
-                  onClick={() => setShowCreateDialog(true)}
-                  disabled={creating}
-                  variant="secondary"
-                >
-                  Create
-                </Button>
-              </Tooltip>
-              <Tooltip showArrow={false} asChild content="Discard Changes">
-                <Button
-                  onClick={() => setShowDiscardDialog(true)}
-                  className={cx("ml-2", { hidden: !hasUnsavedChanges() })}
-                  disabled={!hasUnsavedChanges()}
-                  variant="destructive"
-                >
-                  Discard
-                </Button>
-              </Tooltip>
-              <Tooltip
-                showArrow={false}
-                asChild
-                content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
-              >
-                <Button
-                  onClick={handleRun}
-                  disabled={isPreviewLoading}
-                  isLoading={isPreviewLoading}
-                >
-                  Run
-                </Button>
-              </Tooltip>
             </div>
+
+            <Tooltip
+              showArrow={false}
+              asChild
+              content={`Create ${appType === "task" ? "Task" : "Dashboard"}`}
+            >
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                disabled={creating}
+                variant="secondary"
+                className="ml-4"
+              >
+                Create
+              </Button>
+            </Tooltip>
+            <Tooltip showArrow={false} asChild content="Discard Changes">
+              <Button
+                onClick={() => setShowDiscardDialog(true)}
+                className={cx("ml-2", { hidden: !hasUnsavedChanges() })}
+                disabled={!hasUnsavedChanges()}
+                variant="destructive"
+              >
+                Discard
+              </Button>
+            </Tooltip>
+            <Tooltip
+              showArrow={false}
+              asChild
+              content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
+            >
+              <Button
+                onClick={handleRun}
+                disabled={isPreviewLoading}
+                isLoading={isPreviewLoading}
+                className="ml-2"
+              >
+                Run
+              </Button>
+            </Tooltip>
           </div>
 
           <div className="flex-grow">

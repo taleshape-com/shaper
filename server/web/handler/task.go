@@ -73,6 +73,7 @@ func CreateTask(app *core.App) echo.HandlerFunc {
 		var request struct {
 			Name    string `json:"name"`
 			Content string `json:"content"`
+			Path    string `json:"path"`
 		}
 		if err := c.Bind(&request); err != nil {
 			return c.JSONPretty(http.StatusBadRequest,
@@ -89,7 +90,15 @@ func CreateTask(app *core.App) echo.HandlerFunc {
 				}{Error: "Task name is required"}, "  ")
 		}
 
-		id, err := core.CreateTask(app, c.Request().Context(), request.Name, request.Content)
+		_, err := core.ResolveFolderPath(app, c.Request().Context(), request.Path)
+		if err != nil {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+		}
+
+		id, err := core.CreateTask(app, c.Request().Context(), request.Name, request.Content, request.Path)
 		if err != nil {
 			c.Logger().Error("error creating task:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,

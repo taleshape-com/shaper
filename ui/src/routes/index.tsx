@@ -34,6 +34,7 @@ import {
   RiPencilLine,
   RiArrowDownSLine,
   RiArrowUpSLine,
+  RiFolderAddLine,
 } from "@remixicon/react";
 
 import { useQueryApi } from "../hooks/useQueryApi";
@@ -544,7 +545,7 @@ function Index() {
   }
 
   return (
-    <MenuProvider isHome>
+    <MenuProvider isHome currentPath={path}>
       <Helmet>
         <title>Overview</title>
         <meta
@@ -556,7 +557,7 @@ function Index() {
       <div className="pb-4 md:px-4 h-dvh flex flex-col">
         <div className="flex pl-4 pr-2 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-2">
+          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-2 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (
                 <div key={breadcrumb.path} className="flex items-center gap-1">
@@ -575,6 +576,7 @@ function Index() {
                     }
                     className={cx(
                       "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -my-1 -mx-1 rounded",
+                      "whitespace-nowrap",
                       {
                         "outline-2 outline-dashed outline-cprimary dark:outline-dprimary":
                           dragOverTarget === breadcrumb.path,
@@ -600,7 +602,8 @@ function Index() {
                 className="py-2 px-2.5"
                 onClick={() => setFolderDialog(true)}
               >
-                <RiFolderAddFill
+                <RiFolderAddLine
+
                   className="size-4 shrink-0"
                   aria-hidden={true}
                 />
@@ -621,7 +624,7 @@ function Index() {
                   ? "Create a first dashboard"
                   : "Create a dashboard or task"}
               </p>
-              <Link to="/new">
+              <Link to="/new" search={{ path }}>
                 <Button>
                   <RiAddFill
                     className="-ml-1 mr-0.5 size-5 shrink-0"

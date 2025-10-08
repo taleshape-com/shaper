@@ -24,10 +24,10 @@ type MoveItemsRequest struct {
 	Path    string   `json:"path"`
 }
 
-// resolveFolderPath resolves a folder path to a folder ID
+// ResolveFolderPath resolves a folder path to a folder ID
 // Returns nil for root path ("/") or empty path
 // Supports trailing slashes (e.g., "/Marketing/" is equivalent to "/Marketing")
-func resolveFolderPath(app *App, ctx context.Context, path string) (*string, error) {
+func ResolveFolderPath(app *App, ctx context.Context, path string) (*string, error) {
 	// Root path or empty path
 	if path == "" || path == "/" {
 		return nil, nil
@@ -83,7 +83,7 @@ func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (Folde
 	}
 
 	// Resolve parent path to folder ID
-	parentFolderID, err := resolveFolderPath(app, ctx, req.Path)
+	parentFolderID, err := ResolveFolderPath(app, ctx, req.Path)
 	if err != nil {
 		return FolderListItem{}, fmt.Errorf("error resolving parent path: %w", err)
 	}
@@ -177,7 +177,7 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 	}
 
 	// Resolve destination path to folder ID
-	toFolderID, err := resolveFolderPath(app, ctx, req.Path)
+	toFolderID, err := ResolveFolderPath(app, ctx, req.Path)
 	if err != nil {
 		return fmt.Errorf("error resolving destination path: %w", err)
 	}
@@ -240,7 +240,7 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 
 		var duplicateCount int
 		err = app.Sqlite.GetContext(ctx, &duplicateCount, `
-			SELECT COUNT(*) FROM folders 
+			SELECT COUNT(*) FROM folders
 			WHERE parent_folder_id IS ? AND name = ? AND id != ?
 		`, toFolderID, folderName, folderID)
 		if err != nil {
@@ -556,7 +556,7 @@ func HandleRenameFolder(app *App, data []byte) bool {
 	}
 
 	_, err = app.Sqlite.Exec(
-		`UPDATE folders 
+		`UPDATE folders
 		 SET name = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4`,
 		payload.Name, payload.Timestamp, payload.RenamedBy, payload.ID,

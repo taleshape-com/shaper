@@ -22,7 +22,7 @@ type CreateDashboardPayload struct {
 	CreatedBy string    `json:"createdBy"`
 }
 
-func CreateDashboard(app *App, ctx context.Context, name string, content string) (string, error) {
+func CreateDashboard(app *App, ctx context.Context, name string, content string, path string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -36,7 +36,7 @@ func CreateDashboard(app *App, ctx context.Context, name string, content string)
 	err := app.SubmitState(ctx, "create_dashboard", CreateDashboardPayload{
 		ID:        id,
 		Timestamp: time.Now(),
-		Path:      "/",
+		Path:      path,
 		Name:      name,
 		Content:   content,
 		CreatedBy: actor.String(),
@@ -51,12 +51,20 @@ func HandleCreateDashboard(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create dashboard payload", slog.Any("error", err))
 		return false
 	}
+	
+	// Resolve path to folder ID, fallback to root if resolution fails
+	folderID, err := ResolveFolderPath(app, context.Background(), payload.Path)
+	if err != nil {
+		app.Logger.Warn("failed to resolve folder path, creating at root", slog.String("path", payload.Path), slog.Any("error", err))
+		folderID = nil
+	}
+	
 	// Insert into DB
 	_, err = app.Sqlite.Exec(
 		`INSERT OR IGNORE INTO apps (
-			id, name, content, created_at, updated_at, created_by, updated_by, type
-		) VALUES ($1, $2, $3, $4, $4, $5, $5, 'dashboard')`,
-		payload.ID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
+			id, folder_id, name, content, created_at, updated_at, created_by, updated_by, type
+		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'dashboard')`,
+		payload.ID, folderID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert dashboard into DB", slog.Any("error", err))

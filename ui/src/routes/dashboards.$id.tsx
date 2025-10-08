@@ -153,7 +153,7 @@ function DashboardViewComponent () {
   }, []);
 
   return (
-    <MenuProvider>
+    <MenuProvider currentPath="/">
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={title} />
