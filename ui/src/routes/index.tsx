@@ -54,6 +54,7 @@ import {
 import { useToast } from "../hooks/useToast";
 import { RelativeDate } from "../components/RelativeDate";
 import { cx } from "../lib/utils";
+import { getSystemConfig } from "../lib/system";
 
 type DashboardListResponse = {
   apps: IApp[];
@@ -616,7 +617,7 @@ function Index () {
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
                 {path === "/"
                   ? "Create a first dashboard"
-                  : "Create a dashboard or task"}
+                  : getSystemConfig().tasksEnabled ? "Create a dashboard or task" : "Create a dashboard"}
               </p>
               <Link to="/new" search={{ path }}>
                 <Button>
