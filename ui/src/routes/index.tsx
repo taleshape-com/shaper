@@ -104,25 +104,6 @@ function Index() {
   const [draggedItem, setDraggedItem] = useState<IApp | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
-  // Helper function to find folder ID from path
-  const getFolderIdFromPath = (targetPath: string): string | null => {
-    if (targetPath === "/" || targetPath === "") {
-      return null; // Root level
-    }
-
-    // Find folder by reconstructing path from apps data
-    const folder = data?.apps.find(
-      (app) =>
-        app.type === "_folder" && app.path + app.name + "/" === targetPath,
-    );
-    return folder?.id || null;
-  };
-
-  // Helper function to get current folder ID from path
-  const getCurrentFolderId = (): string | null => {
-    return getFolderIdFromPath(path || "/");
-  };
-
   const handleSort = (field: "name" | "created" | "updated") => {
     const newOrder =
       field === (sort ?? "name")
@@ -203,7 +184,7 @@ function Index() {
         method: "POST",
         body: {
           name: folderName.trim(),
-          parentFolderId: getCurrentFolderId(),
+          path,
         },
       });
       setFolderDialog(false);
@@ -370,12 +351,10 @@ function Index() {
     }
 
     try {
-      const toFolderId = getFolderIdFromPath(targetPath);
-
       const requestBody = {
         apps: draggedItem.type !== "_folder" ? [draggedItem.id] : [],
         folders: draggedItem.type === "_folder" ? [draggedItem.id] : [],
-        toFolderId: toFolderId,
+        path: targetPath,
       };
 
       await queryApi("move", {
@@ -462,7 +441,7 @@ function Index() {
         />
       </Helmet>
 
-      <div className="pb-4 md:px-4 min-h-dvh flex flex-col">
+      <div className="pb-4 md:px-4 h-dvh flex flex-col">
         <div className="flex pl-4 pr-2 md:px-0">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
           <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-2">
@@ -518,7 +497,7 @@ function Index() {
           </div>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-6">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-4 h-[calc(100%-4rem)]">
           {data.apps.length === 0 ? (
             <div className="my-4 flex flex-col items-center justify-center flex-grow">
               <RiLayoutFill
@@ -541,7 +520,7 @@ function Index() {
               </Link>
             </div>
           ) : (
-            <TableRoot>
+            <TableRoot className="h-full overflow-y-auto">
               <Table>
                 <TableHead>
                   <TableRow>
@@ -873,10 +852,10 @@ function Index() {
             <DialogDescription>
               {deleteDialog &&
                 (deleteDialog.type === "dashboard"
-                  ? "Are you sure you want to delete the dashboard \"%%\"?"
+                  ? 'Are you sure you want to delete the dashboard "%%"?'
                   : deleteDialog.type === "_folder"
-                    ? "Are you sure you want to delete the folder \"%%\" and all its contents?"
-                    : "Are you sure you want to delete the task \"%%\"?"
+                    ? 'Are you sure you want to delete the folder "%%" and all its contents?'
+                    : 'Are you sure you want to delete the task "%%"?'
                 ).replace("%%", deleteDialog.name)}
             </DialogDescription>
           </DialogHeader>
@@ -906,22 +885,17 @@ function Index() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Folder</DialogTitle>
-            <DialogDescription>
-              Enter a name for the new folder.
-            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="Folder name"
-              onChange={(e) => setFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleCreateFolder();
-                }
-              }}
-              autoFocus
-            />
-          </div>
+          <Input
+            placeholder="Folder Name"
+            onChange={(e) => setFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleCreateFolder();
+              }
+            }}
+            autoFocus
+          />
           <DialogFooter>
             <Button onClick={() => setFolderDialog(false)} variant="secondary">
               Cancel
