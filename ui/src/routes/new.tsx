@@ -318,7 +318,7 @@ function NewDashboard() {
       setCreating(false);
       setShowCreateDialog(false);
     }
-  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName, appType]);
+  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName, appType, path]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {

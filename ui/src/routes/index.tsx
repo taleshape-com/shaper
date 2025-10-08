@@ -89,11 +89,11 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
-function Index() {
+function Index () {
   const data = Route.useLoaderData();
   const { sort, order, path = "/" } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
@@ -669,7 +669,7 @@ function Index() {
                           "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":
                             app.type === "_folder" &&
                             app.path + app.name + "/" === dragOverTarget,
-                          "bg-cbga dark:bg-dbga [tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga": draggedItem != null && app.type === '_folder' && draggedItem.id !== app.id,
+                          "bg-cbga dark:bg-dbga [tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga": draggedItem != null && app.type === "_folder" && draggedItem.id !== app.id,
                         },
                       )}
                       draggable
@@ -1051,7 +1051,7 @@ function Index() {
   );
 }
 
-function RuntimeTooltip({
+function RuntimeTooltip ({
   lastRunAt,
   nextRunAt,
   children,

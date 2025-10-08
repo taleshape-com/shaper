@@ -381,6 +381,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	if err := conn.Close(); err != nil {
 		return result, fmt.Errorf("Error closing conn: %v", err)
 	}
+	if len(result.Sections) > 0 {
+		firstSection := result.Sections[0]
+		if firstSection.Title != nil {
+			result.Name = *firstSection.Title
+		}
+	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
 	if headerImage != "" {

@@ -41,14 +41,14 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
       <p>{error.message}</p>
     </div>
   );
 }
-function DashboardViewComponent() {
+function DashboardViewComponent () {
   const { vars } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();

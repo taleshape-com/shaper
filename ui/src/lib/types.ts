@@ -81,6 +81,7 @@ export type MarkLine = {
 };
 
 export type Result = {
+  name: string;
   visibility?: "public" | "private" | "password-protected";
   minTimeValue: number;
   maxTimeValue: number;

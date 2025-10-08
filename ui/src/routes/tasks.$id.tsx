@@ -48,7 +48,7 @@ export const Route = createFileRoute("/tasks/$id")({
   component: TaskEdit,
 });
 
-function TaskEdit() {
+function TaskEdit () {
   const { id } = Route.useParams();
   const task = Route.useLoaderData();
   const queryApi = useQueryApi();
