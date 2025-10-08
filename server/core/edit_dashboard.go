@@ -54,6 +54,7 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 	path, err := ResolveFolderIDToPath(app, ctx, dashboard.FolderID)
 	if err != nil {
 		// If path resolution fails, default to root
+		app.Logger.Warn("failed to resolve folder ID to path, defaulting to root", slog.Any("folder_id", dashboard.FolderID), slog.Any("error", err))
 		dashboard.Path = "/"
 	} else {
 		dashboard.Path = path

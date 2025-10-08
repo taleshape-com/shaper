@@ -112,7 +112,7 @@ export const Route = createFileRoute("/new")({
   component: NewDashboard,
 });
 
-function NewDashboard () {
+function NewDashboard() {
   const { vars, path } = Route.useSearch();
   const auth = useAuth();
   const queryApi = useQueryApi();
@@ -355,15 +355,11 @@ function NewDashboard () {
   const generateBreadcrumbs = () => {
     const pathParts = (path || "/").split("/").filter((part) => part !== "");
     const breadcrumbs = [];
-
-    // Add root breadcrumb
     breadcrumbs.push({
       name: "Home",
       path: "/",
       isRoot: true,
     });
-
-    // Add path breadcrumbs
     let currentPath = "";
     for (let i = 0; i < pathParts.length; i++) {
       currentPath += `/${pathParts[i]}`;
@@ -373,7 +369,6 @@ function NewDashboard () {
         isRoot: false,
       });
     }
-
     return breadcrumbs;
   };
 

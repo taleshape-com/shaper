@@ -184,6 +184,15 @@ function Index () {
       return;
     }
 
+    if (folderName.includes("/")) {
+      toast({
+        title: "Error",
+        description: "Folder name cannot contain slashes",
+        variant: "error",
+      });
+      return;
+    }
+
     try {
       await queryApi("folders", {
         method: "POST",
@@ -227,6 +236,15 @@ function Index () {
       toast({
         title: "Error",
         description: "Folder name is required",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (renameName.includes("/")) {
+      toast({
+        title: "Error",
+        description: "Folder name cannot contain slashes",
         variant: "error",
       });
       return;

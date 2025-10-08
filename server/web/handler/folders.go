@@ -36,6 +36,13 @@ func CreateFolder(app *core.App) echo.HandlerFunc {
 			}{Error: "Folder name is required"}, "  ")
 		}
 
+		// Validate folder name doesn't contain slashes
+		if strings.Contains(req.Name, "/") {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Folder name cannot contain slashes"}, "  ")
+		}
+
 		result, err := core.CreateFolder(app, c.Request().Context(), req)
 		if err != nil {
 			c.Logger().Error("error creating folder:", slog.Any("error", err))
@@ -157,6 +164,13 @@ func RenameFolder(app *core.App) echo.HandlerFunc {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: "Folder name is required"}, "  ")
+		}
+
+		// Validate folder name doesn't contain slashes
+		if strings.Contains(req.Name, "/") {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Folder name cannot contain slashes"}, "  ")
 		}
 
 		err := core.RenameFolder(app, c.Request().Context(), id, req)

@@ -119,6 +119,11 @@ func CreateFolder(app *App, ctx context.Context, req CreateFolderRequest) (Folde
 		return FolderListItem{}, fmt.Errorf("no actor in context")
 	}
 
+	// Validate folder name doesn't contain slashes
+	if strings.Contains(req.Name, "/") {
+		return FolderListItem{}, fmt.Errorf("folder name cannot contain slashes")
+	}
+
 	// Resolve parent path to folder ID
 	parentFolderID, err := ResolveFolderPath(app, ctx, req.Path)
 	if err != nil {
@@ -318,6 +323,11 @@ func RenameFolder(app *App, ctx context.Context, id string, req RenameFolderRequ
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
+	}
+
+	// Validate folder name doesn't contain slashes
+	if strings.Contains(req.Name, "/") {
+		return fmt.Errorf("folder name cannot contain slashes")
 	}
 
 	// Check if folder exists
