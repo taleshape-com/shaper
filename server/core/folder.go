@@ -250,6 +250,65 @@ func MoveItems(app *App, ctx context.Context, req MoveItemsRequest) error {
 	return nil
 }
 
+type RenameFolderRequest struct {
+	Name string `json:"name"`
+}
+
+func RenameFolder(app *App, ctx context.Context, id string, req RenameFolderRequest) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
+
+	// Check if folder exists
+	var exists bool
+	err := app.Sqlite.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM folders WHERE id = ?)`, id)
+	if err != nil {
+		return fmt.Errorf("error checking folder existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("folder not found")
+	}
+
+	// Get the folder's parent to check for duplicate names
+	var parentFolderID *string
+	err = app.Sqlite.GetContext(ctx, &parentFolderID, `SELECT parent_folder_id FROM folders WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("error getting folder parent: %w", err)
+	}
+
+	// Check if a folder with the same parent folder and name already exists
+	var count int
+	err = app.Sqlite.GetContext(ctx, &count, `
+		SELECT COUNT(*) FROM folders WHERE parent_folder_id IS ? AND name = ? AND id != ?
+	`, parentFolderID, req.Name, id)
+	if err != nil {
+		return fmt.Errorf("error checking for duplicate folder name: %w", err)
+	}
+	if count > 0 {
+		parentDesc := "root"
+		if parentFolderID != nil {
+			parentDesc = "this location"
+		}
+		return fmt.Errorf("a folder with the name '%s' already exists in %s", req.Name, parentDesc)
+	}
+
+	// Create the payload and submit to NATS
+	payload := RenameFolderPayload{
+		ID:        id,
+		Name:      req.Name,
+		Timestamp: time.Now(),
+		RenamedBy: actor.String(),
+	}
+
+	err = app.SubmitState(ctx, "rename_folder", payload)
+	if err != nil {
+		return fmt.Errorf("error renaming folder: %w", err)
+	}
+
+	return nil
+}
+
 // Event payloads for NATS
 type CreateFolderPayload struct {
 	ID             string    `json:"id"`
@@ -272,6 +331,13 @@ type MoveItemsPayload struct {
 	ToFolderID *string   `json:"toFolderId"`
 	Timestamp  time.Time `json:"timestamp"`
 	MovedBy    string    `json:"movedBy"`
+}
+
+type RenameFolderPayload struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Timestamp time.Time `json:"timestamp"`
+	RenamedBy string    `json:"renamedBy"`
 }
 
 // Event handlers
@@ -455,5 +521,26 @@ func HandleMoveItems(app *App, data []byte) bool {
 		return false
 	}
 
+	return true
+}
+
+func HandleRenameFolder(app *App, data []byte) bool {
+	var payload RenameFolderPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal rename folder payload", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.Sqlite.Exec(
+		`UPDATE folders 
+		 SET name = $1, updated_at = $2, updated_by = $3
+		 WHERE id = $4`,
+		payload.Name, payload.Timestamp, payload.RenamedBy, payload.ID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to rename folder in DB", slog.Any("error", err))
+		return false
+	}
 	return true
 }

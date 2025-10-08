@@ -121,3 +121,54 @@ func MoveItems(app *core.App) echo.HandlerFunc {
 		}{OK: true}, "  ")
 	}
 }
+
+func RenameFolder(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		id := c.Param("id")
+		if id == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Folder ID is required"}, "  ")
+		}
+
+		var req core.RenameFolderRequest
+		if err := c.Bind(&req); err != nil {
+			c.Logger().Error("error binding request:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request body"}, "  ")
+		}
+
+		// Validate required fields
+		if req.Name == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Folder name is required"}, "  ")
+		}
+
+		err := core.RenameFolder(app, c.Request().Context(), id, req)
+		if err != nil {
+			c.Logger().Error("error renaming folder:", slog.Any("error", err))
+			// Check if it's a duplicate folder error
+			if strings.Contains(err.Error(), "already exists") {
+				return c.JSONPretty(http.StatusConflict, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, struct {
+			OK bool `json:"ok"`
+		}{OK: true}, "  ")
+	}
+}

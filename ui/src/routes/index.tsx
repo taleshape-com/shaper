@@ -103,6 +103,8 @@ function Index() {
   const [deleteDialog, setDeleteDialog] = useState<IApp | null>(null);
   const [folderDialog, setFolderDialog] = useState(false);
   const [folderName, setFolderName] = useState("");
+  const [renameDialog, setRenameDialog] = useState<IApp | null>(null);
+  const [renameName, setRenameName] = useState("");
   const [draggedItem, setDraggedItem] = useState<IApp | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
@@ -208,6 +210,53 @@ function Index() {
         // Check if it's a duplicate folder error
         if (errorMessage.includes("already exists")) {
           errorMessage = `A folder with the name "${folderName.trim()}" already exists in this location. Please choose a different name.`;
+        }
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "error",
+      });
+    }
+  };
+
+  const handleRenameFolder = async () => {
+    if (!renameDialog || !renameName.trim()) {
+      toast({
+        title: "Error",
+        description: "Folder name is required",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      await queryApi(`folders/${renameDialog.id}/name`, {
+        method: "POST",
+        body: {
+          name: renameName.trim(),
+        },
+      });
+      setRenameDialog(null);
+      setRenameName("");
+      toast({
+        title: "Success",
+        description: "Folder renamed successfully",
+      });
+      // Refresh the list to show the updated folder name
+      router.invalidate();
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+
+      let errorMessage = "Unknown error";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        // Check if it's a duplicate folder error
+        if (errorMessage.includes("already exists")) {
+          errorMessage = `A folder with the name "${renameName.trim()}" already exists in this location. Please choose a different name.`;
         }
       }
 
@@ -860,9 +909,16 @@ function Index() {
                       <TableCell className="text-right">
                         <div className="flex gap-4 justify-end">
                           {app.type === "_folder" ? (
-                            <Tooltip showArrow={false} content="Rename">
-                              <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
-                            </Tooltip>
+                            <button
+                              onClick={() => {
+                                setRenameDialog(app);
+                                setRenameName(app.name);
+                              }}
+                            >
+                              <Tooltip showArrow={false} content="Rename">
+                                <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
+                              </Tooltip>
+                            </button>
                           ) : (
                             <Link
                               to={
@@ -963,6 +1019,34 @@ function Index() {
               Cancel
             </Button>
             <Button onClick={handleCreateFolder}>Create Folder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!renameDialog}
+        onOpenChange={(open) => !open && setRenameDialog(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Folder</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Folder Name"
+            value={renameName}
+            onChange={(e) => setRenameName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleRenameFolder();
+              }
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button onClick={() => setRenameDialog(null)} variant="secondary">
+              Cancel
+            </Button>
+            <Button onClick={handleRenameFolder}>Rename Folder</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

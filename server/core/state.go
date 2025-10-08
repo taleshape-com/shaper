@@ -83,6 +83,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleDeleteFolder
 	case "move_items":
 		handler = HandleMoveItems
+	case "rename_folder":
+		handler = HandleRenameFolder
 	}
 	app.Logger.Debug("Handling shaper state change", slog.String("event", event))
 	ok := handler(app, data)
