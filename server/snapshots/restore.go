@@ -149,6 +149,13 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 		}
 	}
 
+	if config.DuckDBSecretDir != "" {
+		_, err := tempDB.Exec("SET secret_directory = ?", config.DuckDBSecretDir)
+		if err != nil {
+			return fmt.Errorf("failed to set DuckDB secret directory: %w", err)
+		}
+	}
+
 	if config.InitSQL != "" {
 		// Substitute environment variables in the SQL
 		sql, err := prepSQL(config.InitSQL)
