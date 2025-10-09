@@ -106,6 +106,7 @@ type Config struct {
 	SQLiteDB                   string
 	DuckDB                     string
 	DuckDBExtDir               string
+	DuckDBSecretDir            string
 	InitSQL                    string
 	InitSQLFile                string
 	SnapshotTime               string
@@ -170,6 +171,7 @@ func loadConfig() Config {
 	sqliteDB := flags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper_internal.sqlite)")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
+	duckdbSecretDir := flags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
 	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
@@ -329,6 +331,7 @@ func loadConfig() Config {
 		SQLiteDB:                   *sqliteDB,
 		DuckDB:                     *duckdb,
 		DuckDBExtDir:               *duckdbExtDir,
+		DuckDBSecretDir:            *duckdbSecretDir,
 		InitSQL:                    *initSQL,
 		InitSQLFile:                initSQLFilePath,
 		SnapshotTime:               *snapshotTime,
@@ -401,6 +404,7 @@ func Run(cfg Config) func(context.Context) {
 	snapshotConfig := snapshots.Config{
 		Logger:          logger,
 		DuckDBExtDir:    cfg.DuckDBExtDir,
+		DuckDBSecretDir: cfg.DuckDBSecretDir,
 		InitSQL:         cfg.InitSQL,
 		InitSQLFile:     cfg.InitSQLFile,
 		S3Bucket:        cfg.SnapshotS3Bucket,
@@ -445,6 +449,14 @@ func Run(cfg Config) func(context.Context) {
 			os.Exit(1)
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
+	}
+	if cfg.DuckDBSecretDir != "" {
+		_, err := duckdbSqlxDb.Exec("SET secret_directory = ?", cfg.DuckDBSecretDir)
+		if err != nil {
+			logger.Error("Failed to set DuckDB secret directory", slog.String("path", cfg.DuckDBSecretDir), slog.Any("error", err))
+			os.Exit(1)
+		}
+		logger.Info("Set DuckDB secret directory", slog.Any("path", cfg.DuckDBSecretDir))
 	}
 
 	if cfg.InitSQL != "" {

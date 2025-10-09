@@ -30,6 +30,7 @@ type Config struct {
 	DuckDB          *sqlx.DB
 	Nats            *nats.Conn
 	DuckDBExtDir    string
+	DuckDBSecretDir string
 	InitSQL         string
 	InitSQLFile     string
 	S3Bucket        string
