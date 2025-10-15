@@ -36,8 +36,8 @@ type Config struct {
 	S3Bucket        string
 	S3Region        string
 	S3Endpoint      string
-	S3AccessKey     string
-	S3SecretKey     string
+	S3AccessKey     string // Optional - if empty, will use credential chain
+	S3SecretKey     string // Optional - if empty, will use credential chain
 	EnableSnapshots bool
 	EnableRestore   bool
 	Stream          string
@@ -85,10 +85,7 @@ func Start(config Config) (*Service, error) {
 }
 
 func hasConfig(config Config) bool {
-	return config.S3Bucket != "" &&
-		config.S3Endpoint != "" &&
-		config.S3AccessKey != "" &&
-		config.S3SecretKey != ""
+	return config.S3Bucket != "" && config.S3Endpoint != ""
 }
 
 func (s *Service) setupStreamAndConsumer() error {
@@ -267,17 +264,69 @@ func createDuckDBSecret(ctx context.Context, duckDbx *sqlx.DB, secretName string
 	cleanEndpoint := strings.TrimPrefix(config.S3Endpoint, "http://")
 	cleanEndpoint = strings.TrimPrefix(cleanEndpoint, "https://")
 	useSSL := !strings.HasPrefix(config.S3Endpoint, "http://")
-	createSecretSQL := fmt.Sprintf(`
-		CREATE SECRET %s (
-			TYPE S3,
-			KEY_ID '%s',
-			SECRET '%s',
-			REGION '%s',
-			ENDPOINT '%s',
-			URL_STYLE 'path',
-			USE_SSL %t,
-			SCOPE '%s'
-		)`, secretName, config.S3AccessKey, config.S3SecretKey, config.S3Region, cleanEndpoint, useSSL, s3Path)
+	
+	// Determine URL style based on endpoint
+	// AWS S3 uses vhost style, other S3-compatible services use path style
+	urlStyle := "path" // default for non-AWS endpoints
+	if strings.Contains(cleanEndpoint, "s3.") && strings.Contains(cleanEndpoint, ".amazonaws.com") {
+		urlStyle = "vhost"
+	}
+	
+	// If access key and secret key are provided, create a secret with explicit credentials
+	if config.S3AccessKey != "" && config.S3SecretKey != "" {
+		var createSecretSQL string
+		if config.S3Region != "" {
+			createSecretSQL = fmt.Sprintf(`
+				CREATE OR REPLACE SECRET %s (
+					TYPE S3,
+					KEY_ID '%s',
+					SECRET '%s',
+					REGION '%s',
+					ENDPOINT '%s',
+					URL_STYLE '%s',
+					USE_SSL %t,
+					SCOPE '%s'
+				)`, secretName, config.S3AccessKey, config.S3SecretKey, config.S3Region, cleanEndpoint, urlStyle, useSSL, s3Path)
+		} else {
+			createSecretSQL = fmt.Sprintf(`
+				CREATE OR REPLACE SECRET %s (
+					TYPE S3,
+					KEY_ID '%s',
+					SECRET '%s',
+					ENDPOINT '%s',
+					URL_STYLE '%s',
+					USE_SSL %t,
+					SCOPE '%s'
+				)`, secretName, config.S3AccessKey, config.S3SecretKey, cleanEndpoint, urlStyle, useSSL, s3Path)
+		}
+		_, err := duckDbx.ExecContext(ctx, createSecretSQL)
+		return err
+	}
+	
+	// For credential chain, create a secret with PROVIDER credential_chain
+	var createSecretSQL string
+	if config.S3Region != "" {
+		createSecretSQL = fmt.Sprintf(`
+			CREATE OR REPLACE SECRET %s (
+				TYPE S3,
+				PROVIDER credential_chain,
+				REGION '%s',
+				ENDPOINT '%s',
+				URL_STYLE '%s',
+				USE_SSL %t,
+				SCOPE '%s'
+			)`, secretName, config.S3Region, cleanEndpoint, urlStyle, useSSL, s3Path)
+	} else {
+		createSecretSQL = fmt.Sprintf(`
+			CREATE OR REPLACE SECRET %s (
+				TYPE S3,
+				PROVIDER credential_chain,
+				ENDPOINT '%s',
+				URL_STYLE '%s',
+				USE_SSL %t,
+				SCOPE '%s'
+			)`, secretName, cleanEndpoint, urlStyle, useSSL, s3Path)
+	}
 	_, err := duckDbx.ExecContext(ctx, createSecretSQL)
 	return err
 }
