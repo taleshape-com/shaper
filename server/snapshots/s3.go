@@ -10,17 +10,39 @@ import (
 )
 
 func newMinioClient(endpoint, region, accessKey, secretKey string) (*minio.Client, error) {
+	// If no endpoint provided, assume AWS S3 and construct default endpoint
 	if endpoint == "" {
-		return nil, fmt.Errorf("S3 endpoint is required")
+		if region == "" {
+			// Try to discover region from environment
+			region = discoverAWSRegion()
+		}
+		endpoint = fmt.Sprintf("s3.%s.amazonaws.com", region)
 	}
+
 	// Remove http:// or https:// prefix if present
 	cleanEndpoint := strings.TrimPrefix(endpoint, "http://")
 	cleanEndpoint = strings.TrimPrefix(cleanEndpoint, "https://")
 	// Determine if SSL should be used based on the original endpoint
 	useSSL := !strings.HasPrefix(endpoint, "http://")
-	// Initialize MinIO client
+
+	// Use credential chain if access key and secret key are not provided
+	var creds *credentials.Credentials
+	if accessKey != "" && secretKey != "" {
+		// Use explicit credentials
+		creds = credentials.NewStaticV4(accessKey, secretKey, "")
+	} else {
+		// Use credential chain
+		creds = credentials.NewChainCredentials([]credentials.Provider{
+			&credentials.EnvAWS{},
+			&credentials.EnvMinio{},
+			&credentials.FileAWSCredentials{},
+			&credentials.FileMinioClient{},
+			&credentials.IAM{},
+		})
+	}
+
 	minioClient, err := minio.New(cleanEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+		Creds:  creds,
 		Secure: useSSL,
 		Region: region,
 	})

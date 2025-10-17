@@ -54,6 +54,11 @@ const USAGE = `Version: {{.Version}}
   Environment variables must be prefixed with SHAPER_ and use uppercase letters and underscores.
   For example, --nats-token turns into SHAPER_NATS_TOKEN.
 
+  For S3 snapshots, Shaper supports AWS credential chain and auto-discovery. You can use AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables, or use IAM roles, AWS credentials file,
+  or other standard AWS credential methods. Command line flags can override environment variables.
+  If no endpoint is specified, Shaper will automatically use AWS S3.
+
   The config file format is plain text, with one flag per line. The flag name and value are separated by whitespace.
 
   For more see: https://taleshape.com/shaper/docs
@@ -145,11 +150,11 @@ func loadConfig() Config {
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	snapshotS3Bucket := flags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
-	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (required for snapshots)")
-	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (required for snapshots)")
-	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (required for snapshots)")
+	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (optional, defaults to AWS S3 if not provided)")
+	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (optional, can use AWS_ACCESS_KEY_ID environment variable)")
+	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (optional, can use AWS_SECRET_ACCESS_KEY environment variable)")
 	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
-	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional)")
+	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional, can use AWS_REGION environment variable)")
 	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
 	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
