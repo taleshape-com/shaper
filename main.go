@@ -54,9 +54,10 @@ const USAGE = `Version: {{.Version}}
   Environment variables must be prefixed with SHAPER_ and use uppercase letters and underscores.
   For example, --nats-token turns into SHAPER_NATS_TOKEN.
 
-  For S3 snapshots, Shaper supports AWS credential chain. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-  environment variables, or use IAM roles or an AWS credentials file.
-  For Minio, Ionos, R2 and other S3 compatible services we recommend using the environment variables.
+  For S3 snapshots, Shaper supports AWS credential chain and auto-discovery. Set AWS_ACCESS_KEY_ID, 
+  AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables, or use IAM roles, AWS credentials file, 
+  or other standard AWS credential methods. If no endpoint is specified, Shaper will automatically use AWS S3.
+  For Minio, Ionos, R2 and other S3 compatible services, specify the endpoint and use environment variables.
 
   The config file format is plain text, with one flag per line. The flag name and value are separated by whitespace.
 
@@ -153,7 +154,7 @@ func loadConfig() Config {
 	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "DEPRECATED: S3 access key. Use AWS_ACCESS_KEY_ID environment variable instead")
 	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "DEPRECATED: S3 secret key. Use AWS_SECRET_ACCESS_KEY environment variable instead")
 	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
-	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional)")
+	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "DEPRECATED: AWS region for S3. Use AWS_REGION environment variable instead")
 	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
 	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
@@ -377,9 +378,10 @@ func Run(cfg Config) func(context.Context) {
 	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")
 
 	// Check for deprecated S3 credential flags and warn users
-	if cfg.SnapshotS3AccessKey != "" || cfg.SnapshotS3SecretKey != "" {
-		fmt.Printf("Warning: snapshot-s3-access-key and snapshot-s3-secret-key are deprecated.\n")
-		fmt.Printf("Please use AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables instead.\n")
+	if cfg.SnapshotS3AccessKey != "" || cfg.SnapshotS3SecretKey != "" || cfg.SnapshotS3Region != "" {
+		fmt.Printf("Warning: --snapshot-s3-access-key, --snapshot-s3-secret-key, and --snapshot-s3-region are deprecated.\n")
+		fmt.Printf("Please use AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables instead.\n")
+		fmt.Printf("For more information, see: https://taleshape.com/shaper/docs\n\n")
 	}
 
 	if cfg.Favicon != "" {
