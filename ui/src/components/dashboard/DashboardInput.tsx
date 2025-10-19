@@ -16,7 +16,7 @@ type InputProps = {
   vars?: Record<string, string | string[]>;
 };
 
-function DashboardInput({
+function DashboardInput ({
   label,
   data,
   headers,
