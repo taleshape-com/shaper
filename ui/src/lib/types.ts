@@ -99,7 +99,8 @@ export type Result = {
           | "dropdownMulti"
           | "button"
           | "datepicker"
-          | "daterangePicker";
+          | "daterangePicker"
+          | "input";
           label?: string;
         };
         columns: Column[];

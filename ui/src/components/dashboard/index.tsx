@@ -9,6 +9,7 @@ import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
 import DashboardDatePicker from "./DashboardDatePicker";
 import DashboardDateRangePicker from "./DashboardDateRangePicker";
+import DashboardInput from "./DashboardInput";
 import { Card } from "../tremor/Card";
 import { translate } from "../../lib/translate";
 import DashboardLineChart from "./DashboardLineChart";
@@ -304,6 +305,18 @@ const DataView = ({
               if (render.type === "daterangePicker") {
                 return (
                   <DashboardDateRangePicker
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
+                    vars={vars}
+                    onChange={onVarsChanged}
+                  />
+                );
+              }
+              if (render.type === "input") {
+                return (
+                  <DashboardInput
                     key={index}
                     label={render.label}
                     headers={columns}

@@ -48,6 +48,7 @@ var dbTypes = []struct {
 	{"COMPARE", "UNION(\"_shaper_compare_double\" DOUBLE)", "number"},
 	{"TREND", "UNION(\"_shaper_trend_double\" DOUBLE)", "number"},
 	{"PLACEHOLDER", "UNION(\"_shaper_placeholder_varchar\" VARCHAR)", "string"},
+	{"INPUT", "UNION(\"_shaper_input_varchar\" VARCHAR)", "string"},
 	{"PERCENT", "UNION(\"_shaper_percent_double\" DOUBLE)", "percent"},
 	{"RELOAD", "UNION(\"_shaper_reload_timestamp\" TIMESTAMP, \"_shaper_reload_timestamptz\" TIMESTAMPTZ, \"_shaper_reload_interval\" INTERVAL)", "timestamp"},
 	{"SCHEDULE", "UNION(\"_shaper_schedule_timestamp\" TIMESTAMP, \"_shaper_schedule_timestamptz\" TIMESTAMPTZ, \"_shaper_schedule_interval\" INTERVAL)", "timestamp"},
