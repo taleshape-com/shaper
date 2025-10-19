@@ -37,7 +37,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -142,7 +142,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -340,11 +340,11 @@ const DataView = ({
             "@lg:grid-cols-2 print:grid-cols-2":
               numQueriesInSection === 2 ||
               (numContentSections === 1 && numQueriesInSection === 4),
-            "@lg:grid-cols-3 print:grid-cols-3":
+            "@lg:grid-cols-3":
               numQueriesInSection > 4 ||
               numQueriesInSection === 3 ||
               (numQueriesInSection === 4 && numContentSections > 1),
-            "@xl:grid-cols-4 print:grid-cols-4":
+            "@xl:grid-cols-4":
               (numQueriesInSection === 4 && numContentSections > 1) ||
               numQueriesInSection === 7 ||
               numQueriesInSection === 8 ||
