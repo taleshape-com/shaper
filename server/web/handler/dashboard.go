@@ -436,7 +436,6 @@ func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 			}
 		}
 		filename := c.Param("filename")
-		fmt.Println("download pdf", idParam, filename)
 
 		c.Response().Header().Set(echo.HeaderContentType, "application/pdf")
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))

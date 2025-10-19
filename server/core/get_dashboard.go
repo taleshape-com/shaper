@@ -357,7 +357,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		wantedSectionType := "content"
-		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" {
+		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" || query.Render.Type == "input" {
 			wantedSectionType = "header"
 		}
 		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
@@ -456,6 +456,11 @@ func mapTag(index int, rInfo renderInfo) string {
 	if rInfo.Type == "gauge" {
 		if rInfo.ValueAxisIndex != nil && index == *rInfo.ValueAxisIndex {
 			return "value"
+		}
+	}
+	if rInfo.Type == "input" {
+		if rInfo.HintIndex != nil && index == *rInfo.HintIndex {
+			return "hint"
 		}
 	}
 	if rInfo.Type == "value" {
@@ -1025,6 +1030,15 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		return r
 	}
 
+	inputTag, inputTagIndex := findColumnByTag(columns, "INPUT")
+	if inputTag != nil && len(rows) == 1 {
+		return renderInfo{
+			Label:     labelValue,
+			Type:      "input",
+			HintIndex: &inputTagIndex,
+		}
+	}
+
 	// TODO: assert that COMPARE can only be used if both values are the same type
 	if len(rows) == 1 {
 		firstRow := rows[0]
@@ -1482,6 +1496,24 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			singleVars[toColumnName] = "TIMESTAMP '" + util.EscapeSQLString(toParam) + " 23:59:59.999999'"
 		}
 	}
+
+	// Fetch vars from input
+	if renderType == "input" {
+		columnName := ""
+		for _, col := range columns {
+			if col.Tag == "hint" {
+				columnName = col.Name
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing hint column for input")
+		}
+		param := queryParams.Get(columnName)
+		if param != "" {
+			singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
+		}
+	}
 	return nil
 }
 
@@ -1729,6 +1761,24 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		}
 		if toParam != "" {
 			downloadLinkParams.Add(toColumnName, toParam)
+		}
+	}
+
+	// Fetch vars from input
+	if renderType == "input" {
+		columnName := ""
+		for _, col := range columns {
+			if col.Tag == "hint" {
+				columnName = col.Name
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing hint column for input")
+		}
+		param := queryParams.Get(columnName)
+		if param != "" {
+			downloadLinkParams.Add(columnName, param)
 		}
 	}
 	return nil
