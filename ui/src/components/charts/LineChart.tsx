@@ -154,7 +154,7 @@ const LineChart = (props: LineChartProps) => {
                 color: textColorSecondary,
                 fontFamily: chartFont,
                 fontWeight: 500,
-                fontSize: 10.5,
+                fontSize: 11,
                 opacity: m.isYAxis ? 0.5 : 0.8,
                 width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
                 overflow: "truncate",
@@ -185,7 +185,6 @@ const LineChart = (props: LineChartProps) => {
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
-    const xLabelSpace = xData && chartWidth / xData.map(x => indexFormatter(indexType === "duration" ? new Date(x).getTime() : x, shortenLabel)).join("").length;
     let customValues = undefined;
     if (isTimestampData) {
       const numVals = Math.floor(xSpace / 130);
@@ -355,7 +354,7 @@ const LineChart = (props: LineChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
+          fontSize: 12,
           rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,

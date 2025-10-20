@@ -337,14 +337,16 @@ const DataView = ({
           key={sectionIndex}
           className={cx("grid grid-cols-1 ml-4", {
             "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+            "@sm:grid-cols-3 print:grid-cols-3":
+              numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
             "@lg:grid-cols-2 print:grid-cols-2":
               numQueriesInSection === 2 ||
               (numContentSections === 1 && numQueriesInSection === 4),
-            "@lg:grid-cols-3 print:grid-cols-3":
+            "@lg:grid-cols-3":
               numQueriesInSection > 4 ||
               numQueriesInSection === 3 ||
               (numQueriesInSection === 4 && numContentSections > 1),
-            "@xl:grid-cols-4 print:grid-cols-4":
+            "@xl:grid-cols-4":
               (numQueriesInSection === 4 && numContentSections > 1) ||
               numQueriesInSection === 7 ||
               numQueriesInSection === 8 ||

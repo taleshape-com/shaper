@@ -155,7 +155,7 @@ const BarChart = (props: BarChartProps) => {
                 color: textColorSecondary,
                 fontFamily: chartFont,
                 fontWeight: 500,
-                fontSize: 10.5,
+                fontSize: 11,
                 opacity: isGoalLine ? 0.5 : 0.8,
                 width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
                 overflow: "truncate",
@@ -186,16 +186,13 @@ const BarChart = (props: BarChartProps) => {
     const xData = layout === "horizontal" && !isTimestampData ? dataCopy.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = layout === "horizontal" ? xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true : false;
-    let totalLabelLen = 0;
     let maxLabelLen = 0;
     (xData ?? []).forEach(x => {
       const v = layout === "horizontal" ? indexFormatter(indexType === "duration" || indexType === "time" ? new Date(x).getTime() : x, shortenLabel) : valueFormatter(x, true);
-      totalLabelLen += v.length;
       if (v.length > maxLabelLen) {
         maxLabelLen = v.length;
       }
     });
-    const xLabelSpace = xData && chartWidth / totalLabelLen;
     const shouldRotateXLabel = !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12;
     let customValues = undefined;
     if (layout === "horizontal" && isTimestampData) {
@@ -386,7 +383,7 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          fontSize: xLabelSpace && xLabelSpace < 15 ? 10 : 12,
+          fontSize: 12,
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
           rotate: shouldRotateXLabel ? 45 : 0,
           hideOverlap: true,
@@ -452,7 +449,7 @@ const BarChart = (props: BarChartProps) => {
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          fontSize: dataCopy.length >= 14 ? 10 : dataCopy.length >= 12 ? 11 : 12,
+          fontSize: 12,
           showMinLabel: true,
           showMaxLabel: true,
           padding: [4, 8, 4, 8], // Add padding around labels
