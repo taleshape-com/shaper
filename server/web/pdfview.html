@@ -42,6 +42,9 @@
         dashboardId,
         vars: getVarsFromQuery(),
         getJwt: () => getJwtFromQuery(),
+        onTitleChanged(newTitle) {
+          document.title = newTitle;
+        },
       });
     </script>
   </body>
