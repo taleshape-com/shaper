@@ -456,6 +456,16 @@ function NewDashboard () {
 
             </div>
 
+            <Tooltip showArrow={false} asChild content="Discard Changes">
+              <Button
+                onClick={() => setShowDiscardDialog(true)}
+                className={cx("ml-4", { hidden: !hasUnsavedChanges() })}
+                disabled={!hasUnsavedChanges()}
+                variant="destructive"
+              >
+                Discard
+              </Button>
+            </Tooltip>
             <Tooltip
               showArrow={false}
               asChild
@@ -465,19 +475,9 @@ function NewDashboard () {
                 onClick={() => setShowCreateDialog(true)}
                 disabled={creating}
                 variant="secondary"
-                className="ml-4"
+                className={cx({ "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
               >
                 Create
-              </Button>
-            </Tooltip>
-            <Tooltip showArrow={false} asChild content="Discard Changes">
-              <Button
-                onClick={() => setShowDiscardDialog(true)}
-                className={cx("ml-2", { hidden: !hasUnsavedChanges() })}
-                disabled={!hasUnsavedChanges()}
-                variant="destructive"
-              >
-                Discard
               </Button>
             </Tooltip>
             <Tooltip
