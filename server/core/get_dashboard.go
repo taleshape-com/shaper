@@ -28,6 +28,8 @@ var sideEffectSQLStatements = [][]string{
 	{"SET"},
 	{"BEGIN"},
 	{"COMMIT"},
+	{"ROLLBACK"},
+	{"ABORT"},
 	{"CALL"},
 	{"RESET", "VARIABLE"},
 	{"CREATE", "TEMPORARY", "TABLE"},
