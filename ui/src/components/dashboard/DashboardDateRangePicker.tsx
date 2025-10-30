@@ -3,7 +3,7 @@
 import { Column, Result } from "../../lib/types";
 import { DateRangePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label";
-import { cx } from "../../lib/utils";
+import { cx, getLocalDate } from "../../lib/utils";
 import { translate } from "../../lib/translate";
 
 type PickerProps = {
@@ -107,12 +107,12 @@ function DashboardDateRangePicker ({
             apply: translate("Apply"),
           }}
           defaultValue={!fromDefaultValue && !toDefaultValue ? undefined : {
-            from: typeof fromDefaultValue === "boolean" || !fromDefaultValue ? undefined : new Date(fromDefaultValue),
-            to: typeof toDefaultValue === "boolean" || !toDefaultValue ? undefined : new Date(toDefaultValue),
+            from: typeof fromDefaultValue === "boolean" || !fromDefaultValue ? undefined : getLocalDate(fromDefaultValue),
+            to: typeof toDefaultValue === "boolean" || !toDefaultValue ? undefined : getLocalDate(toDefaultValue),
           }}
           value={!fromSelectedDate && !toSelectedDate ? undefined : {
-            from: fromSelectedDate ? new Date(fromSelectedDate) : typeof fromDefaultValue === "boolean" || !fromDefaultValue ? undefined : new Date(fromDefaultValue),
-            to: toSelectedDate ? new Date(toSelectedDate) : typeof toDefaultValue === "boolean" || !toDefaultValue ? undefined : new Date(toDefaultValue),
+            from: fromSelectedDate ? getLocalDate(fromSelectedDate) : typeof fromDefaultValue === "boolean" || !fromDefaultValue ? undefined : getLocalDate(fromDefaultValue),
+            to: toSelectedDate ? getLocalDate(toSelectedDate) : typeof toDefaultValue === "boolean" || !toDefaultValue ? undefined : getLocalDate(toDefaultValue),
           }}
           onChange={(value = { from: undefined, to: undefined }) => {
             const varsCopy = { ...vars };

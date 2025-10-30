@@ -124,3 +124,21 @@ export async function copyToClipboard (text: string): Promise<boolean> {
     }
   }
 }
+
+export function getLocalDate (input: string | number) {
+  const date = new Date(input);
+  const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
+  const localDate = new Date(date.toLocaleString("en-US"));
+  const offset = utcDate.getTime() - localDate.getTime();
+  date.setTime(date.getTime() + offset);
+  return date;
+}
+
+export function getUTCDate (input: Date) {
+  const date = new Date(input);
+  const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
+  const localDate = new Date(date.toLocaleString("en-US"));
+  const offset = utcDate.getTime() - localDate.getTime();
+  date.setTime(date.getTime() - offset);
+  return date;
+}
