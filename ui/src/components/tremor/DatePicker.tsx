@@ -21,24 +21,14 @@ import { format, type Locale } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { tv, VariantProps } from "tailwind-variants";
 
-import { cx, focusInput, focusRing, hasErrorInput } from "../../lib/utils";
+import { cx, focusInput, focusRing, getUTCDate, hasErrorInput } from "../../lib/utils";
 
 import { Calendar as CalendarPrimitive, type Matcher } from "./Calendar";
 import { Button } from "./Button";
+import { formatValue } from "../../lib/render";
 
 //#region TimeInput
 // ============================================================================
-
-const isBrowserLocaleClockType24h = () => {
-  const language =
-    typeof window !== "undefined" ? window.navigator.language : "en-US";
-
-  const hr = new Intl.DateTimeFormat(language, {
-    hour: "numeric",
-  }).format();
-
-  return Number.isInteger(Number(hr));
-};
 
 type TimeSegmentProps = {
   segment: DateSegment
@@ -407,25 +397,6 @@ PresetContainer.displayName = "DatePicker.PresetContainer";
 //#region Date Picker Shared
 // ============================================================================
 
-const formatDate = (
-  date: Date,
-  locale: Locale,
-  includeTime?: boolean,
-): string => {
-  const usesAmPm = !isBrowserLocaleClockType24h();
-  let dateString: string;
-
-  if (includeTime) {
-    dateString = usesAmPm
-      ? format(date, "dd MMM, yyyy h:mm a", { locale })
-      : format(date, "dd MMM, yyyy HH:mm", { locale });
-  } else {
-    dateString = format(date, "dd MMM, yyyy", { locale });
-  }
-
-  return dateString;
-};
-
 type CalendarProps = {
   fromYear?: number
   toYear?: number
@@ -593,8 +564,8 @@ const SingleDatePicker = ({
       return null;
     }
 
-    return formatDate(date, locale, showTimePicker);
-  }, [date, locale, showTimePicker]);
+    return formatValue(getUTCDate(date).getTime(), showTimePicker ? "timestamp" : "date", false, true);
+  }, [date, showTimePicker]);
 
   React.useEffect(() => {
     setDate(value ?? defaultValue ?? undefined);
@@ -897,9 +868,9 @@ const RangeDatePicker = ({
       return null;
     }
 
-    return `${range.from ? formatDate(range.from, locale, showTimePicker) : ""} - ${range.to ? formatDate(range.to, locale, showTimePicker) : ""
+    return `${range.from ? formatValue(getUTCDate(range.from).getTime(), showTimePicker ? "timestamp" : "date", false, true) : ""} - ${range.to ? formatValue(getUTCDate(range.to).getTime(), showTimePicker ? "timestamp" : "date", false, true) : ""
     }`;
-  }, [range, locale, showTimePicker]);
+  }, [range, showTimePicker]);
 
   return (
     <PopoverPrimitives.Root

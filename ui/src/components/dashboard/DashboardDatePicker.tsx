@@ -3,7 +3,7 @@
 import { Column, Result } from "../../lib/types";
 import { DatePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label";
-import { cx } from "../../lib/utils";
+import { cx, getLocalDate } from "../../lib/utils";
 import { translate } from "../../lib/translate";
 
 type PickerProps = {
@@ -37,9 +37,9 @@ function DashboardDatePicker ({
       <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
         <DatePicker
           id={label}
-          defaultValue={typeof defaultValue === "boolean" || !defaultValue ? undefined : new Date(defaultValue)}
+          defaultValue={typeof defaultValue === "boolean" || !defaultValue ? undefined : getLocalDate(defaultValue)}
           enableYearNavigation
-          value={selectedDate ? new Date(selectedDate) : undefined}
+          value={selectedDate ? getLocalDate(selectedDate) : undefined}
           placeholder={translate("Select date")}
           onChange={value => {
             if (!value) {

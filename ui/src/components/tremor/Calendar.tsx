@@ -9,7 +9,7 @@ import {
   RiArrowRightDoubleLine,
   RiArrowRightSLine,
 } from "@remixicon/react";
-import { addYears, format, isSameMonth } from "date-fns";
+import { addYears, isSameMonth } from "date-fns";
 import {
   DayPicker,
   useDayPicker,
@@ -22,6 +22,7 @@ import {
 } from "react-day-picker";
 
 import { cx, focusRing } from "../../lib/utils";
+import { formatValue } from "../../lib/render";
 
 interface NavigationButtonProps
   extends React.HTMLAttributes<HTMLButtonElement> {
@@ -229,7 +230,7 @@ const Calendar = ({
                 aria-live="polite"
                 className="text-sm font-medium capitalize tabular-nums text-gray-900 dark:text-gray-50"
               >
-                {format(props.displayMonth, "LLLL yyy", { locale })}
+                {formatValue(props.displayMonth.getTime(), "month")}
               </div>
 
               <div className="flex items-center gap-1">
