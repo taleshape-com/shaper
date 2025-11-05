@@ -121,7 +121,7 @@ func HandleCreateTask(app *App, data []byte) bool {
 		app.Logger.Warn("failed to resolve folder path, creating at root", slog.String("path", payload.Path), slog.Any("error", err))
 		folderID = nil
 	}
-	
+
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
 	// Insert into DB
 	_, err = app.Sqlite.ExecContext(
