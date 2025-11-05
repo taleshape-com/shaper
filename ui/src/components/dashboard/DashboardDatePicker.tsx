@@ -51,7 +51,7 @@ function DashboardDatePicker ({
               onChange(varsCopy);
               return;
             }
-            const dateString = `${value.getFullYear()}-${value.toLocaleDateString([], { month: "2-digit" })}-${value.toLocaleDateString([], { day: "2-digit" })}`;
+            const dateString = `${value.getFullYear()}-${value.toLocaleDateString("en-US", { month: "2-digit" })}-${value.toLocaleDateString("en-US", { day: "2-digit" })}`;
             onChange({ ...vars, [varName]: dateString });
           }}
           className={"min-w-28 my-1"}
