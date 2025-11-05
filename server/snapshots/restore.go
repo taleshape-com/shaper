@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/marcboeker/go-duckdb/v2"
 	"github.com/minio/minio-go/v7"
 	"github.com/nrednav/cuid2"
 )
