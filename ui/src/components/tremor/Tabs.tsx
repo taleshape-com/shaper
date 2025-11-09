@@ -57,42 +57,42 @@ const TabsList = React.forwardRef<
 
 TabsList.displayName = "TabsList";
 
-function getVariantStyles(tabVariant: TabsListVariant) {
+function getVariantStyles (tabVariant: TabsListVariant) {
   switch (tabVariant) {
-    case "line":
-      return cx(
-        // base
-        "-mb-px items-center justify-center whitespace-nowrap border-b-2 border-transparent px-3 py-2 rounded-t text-sm font-semibold transition-all",
-        // text color
-        "text-ctext2 dark:text-dtext2",
-        // hover
-        "hover:text-cprimary hover:dark:text-dprimary",
-        // border hover
-        "hover:border-cprimary hover:dark:border-dprimary",
-        // selected
-        "data-[state=active]:bg-cprimary data-[state=active]:text-ctextb",
-        "data-[state=active]:dark:bg-dprimary data-[state=active]:dark:text-dtextb",
-        "data-[state=active]:first:rounded-bl",
-        // disabled
-        "data-[disabled]:pointer-events-none",
-        "data-[disabled]:text-gray-300 data-[disabled]:dark:text-gray-700",
-      );
-    case "solid":
-      return cx(
-        // base
-        "inline-flex items-center justify-center whitespace-nowrap rounded px-3 py-1 text-sm font-medium ring-1 ring-inset transition-all",
-        // text color
-        "text-gray-500 dark:text-gray-400",
-        // hover
-        "hover:text-gray-700 hover:dark:text-gray-200",
-        // ring
-        "ring-transparent",
-        // selected
-        "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow",
-        "data-[state=active]:dark:bg-gray-950 data-[state=active]:dark:text-gray-50",
-        // disabled
-        "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:opacity-50 data-[disabled]:dark:text-gray-600",
-      );
+  case "line":
+    return cx(
+      // base
+      "-mb-px items-center justify-center whitespace-nowrap border-b-2 border-transparent px-3 py-2 rounded-t text-sm font-semibold transition-all",
+      // text color
+      "text-ctext2 dark:text-dtext2",
+      // hover
+      "hover:text-cprimary hover:dark:text-dprimary",
+      // border hover
+      "hover:border-cprimary hover:dark:border-dprimary",
+      // selected
+      "data-[state=active]:bg-cprimary data-[state=active]:text-ctextb",
+      "data-[state=active]:dark:bg-dprimary data-[state=active]:dark:text-dtextb",
+      "data-[state=active]:first:rounded-bl",
+      // disabled
+      "data-[disabled]:pointer-events-none",
+      "data-[disabled]:text-gray-300 data-[disabled]:dark:text-gray-700",
+    );
+  case "solid":
+    return cx(
+      // base
+      "inline-flex items-center justify-center whitespace-nowrap rounded px-3 py-1 text-sm font-medium ring-1 ring-inset transition-all",
+      // text color
+      "text-gray-500 dark:text-gray-400",
+      // hover
+      "hover:text-gray-700 hover:dark:text-gray-200",
+      // ring
+      "ring-transparent",
+      // selected
+      "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow",
+      "data-[state=active]:dark:bg-gray-950 data-[state=active]:dark:text-gray-50",
+      // disabled
+      "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:opacity-50 data-[disabled]:dark:text-gray-600",
+    );
   }
 }
 

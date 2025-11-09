@@ -35,8 +35,7 @@ type Config struct {
 	JSDir               string
 	JSKey               string
 	MaxStore            int64
-	DB                  *sqlx.DB
-	Schema              string
+	Sqlite              *sqlx.DB
 	IngestSubjectPrefix string
 }
 
@@ -44,8 +43,7 @@ type AuthCheckFunc func(context.Context, string) (bool, error)
 
 type ClientAuth struct {
 	Token               []byte
-	DB                  *sqlx.DB
-	Schema              string
+	Sqlite              *sqlx.DB
 	IngestSubjectPrefix string
 }
 
@@ -59,7 +57,7 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 		return true
 	}
 
-	valid, err := core.ValidateAPIKey(c.DB, c.Schema, context.Background(), opts.Token)
+	valid, err := core.ValidateAPIKey(c.Sqlite, context.Background(), opts.Token)
 	if err != nil {
 		return false
 	}
@@ -132,8 +130,7 @@ func New(config Config) (Comms, error) {
 		NoSigs: true,
 		CustomClientAuthentication: ClientAuth{
 			Token:               []byte(config.Token),
-			DB:                  config.DB,
-			Schema:              config.Schema,
+			Sqlite:              config.Sqlite,
 			IngestSubjectPrefix: config.IngestSubjectPrefix,
 		},
 	}

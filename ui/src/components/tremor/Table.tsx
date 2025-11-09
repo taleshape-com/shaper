@@ -10,17 +10,10 @@ const TableRoot = React.forwardRef<
 >(({ className, children, ...props }, forwardedRef) => (
   <div
     ref={forwardedRef}
-    // Activate if table is used in a float environment
-    // className="flow-root"
-    className="h-full"
+    className={cx("w-full whitespace-nowrap", className)}
+    {...props}
   >
-    <div
-      // make table scrollable on mobile
-      className={cx("w-full overflow-auto whitespace-nowrap", className)}
-      {...props}
-    >
-      {children}
-    </div>
+    {children}
   </div>
 ));
 
@@ -48,7 +41,7 @@ const TableHead = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, forwardedRef) => (
-  <thead ref={forwardedRef} className={cx(className)} {...props} />
+  <thead ref={forwardedRef} className={cx("sticky top-0 bg-cbgs dark:bg-dbgs border-b border-cbga dark:border-dbga", className)} {...props} />
 ));
 
 TableHead.displayName = "TableHead";

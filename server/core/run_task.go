@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/marcboeker/go-duckdb/v2"
+	"github.com/duckdb/duckdb-go/v2"
 )
 
 type TaskQueryResult struct {
@@ -51,13 +51,13 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 
 	cleanContent := util.StripSQLComments(content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return result, err
 	}
 	result.TotalQueries = len(sqls)
 
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}

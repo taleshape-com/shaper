@@ -97,7 +97,6 @@ interface ButtonProps
   VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isLoading?: boolean;
-  loadingText?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -105,7 +104,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     {
       asChild,
       isLoading = false,
-      loadingText,
       className,
       disabled,
       variant,
@@ -130,7 +128,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               aria-hidden="true"
             />
             <span className={cx({ "opacity-0": isLoading })}>
-              {loadingText ? loadingText : children}
+              {children}
             </span>
           </span>
         ) : (

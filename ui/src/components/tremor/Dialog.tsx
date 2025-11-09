@@ -52,13 +52,13 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitives.Content>
 >(({ className, ...props }, forwardedRef) => {
   return (
-    <DialogPortal>
-      <DialogOverlay>
+    <DialogPortal container={document.querySelector(".shaper-scope") === document.querySelector("html") ? document.body : document.querySelector(".shaper-scope")}>
+      <DialogOverlay className="absolute">
         <DialogPrimitives.Content
           ref={forwardedRef}
           className={cx(
             // base
-            "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md p-6 space-y-4",
+            "absolute left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md p-6 space-y-4",
             // background color
             "bg-cbg dark:bg-dbg",
             // transition
@@ -111,7 +111,7 @@ const DialogDescription = React.forwardRef<
   return (
     <DialogPrimitives.Description
       ref={forwardedRef}
-      className={cx("text-ctext2 dark:text-ctext2", className)}
+      className={cx("text-ctext2 dark:text-dtext2", className)}
       {...props}
     />
   );

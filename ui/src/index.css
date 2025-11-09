@@ -9,24 +9,28 @@
   src: url('./assets/fonts/DMSans-Regular.woff2') format('woff2');
   font-style: normal;
   font-weight: 400;
+  font-display: block;
 }
 @font-face {
   font-family: 'DMSans';
   src: url('./assets/fonts/DMSans-Medium.woff2') format('woff2');
   font-style: normal;
   font-weight: 500;
+  font-display: block;
 }
 @font-face {
   font-family: 'DMSans';
   src: url('./assets/fonts/DMSans-SemiBold.woff2') format('woff2');
   font-style: normal;
   font-weight: 600;
+  font-display: block;
 }
 @font-face {
   font-family: 'DMSans';
   src: url('./assets/fonts/DMSans-Bold.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
+  font-display: block;
 }
 
 
@@ -35,22 +39,22 @@
   src: url('./assets/fonts/SourceSansPro-Regular.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 500;
+  font-display: block;
 }
 @font-face {
   font-family: 'SourceSansPro';
   src: url('./assets/fonts/SourceSansPro-Bold.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;
+  font-display: block;
 }
 
 
 :root {
   --shaper-font: DMSans;
   --shaper-display-font: SourceSansPro;
-  --shaper-reference-line-color: rgb(244 114 182 / .5);
+  --shaper-reference-line-color: #b5b5b5;
 
-  --shaper-primary-color: #567ef7;
-  --shaper-primary-color-alternate: #2857c8;
   --shaper-color-two: #abdaf7;
   --shaper-color-three: #f079c7;
   --shaper-color-four: #ce1e1e;
@@ -60,6 +64,9 @@
   --shaper-color-eight: #4d4dff;
   --shaper-color-nine: #c992ff;
   --shaper-color-ten: #c4c4c4;
+
+  --shaper-primary-color: #567ef7;
+  --shaper-primary-color-alternate: #2857c8;
   --shaper-text-color: #3d3f45;
   --shaper-text-color-secondary: #545964;
   --shaper-text-color-invert: #fff;
@@ -87,6 +94,28 @@
   --shaper-dark-mode-error-color-alternate: #d23537;
 }
 
+.shaper-scope {
+  position: relative
+}
+
 .shaper-scope .\@container {
   container-type: size;
 }
+
+@page {
+  size: A4;
+  margin-left: 7.048mm;
+  margin-right: 7.048mm;
+  margin-top: 6.62mm;
+  margin-bottom: 14.62mm;
+}
+
+@media print {
+  .shaper-scope body {
+    width: 1020px;
+  }
+  .shaper-scope .\@container {
+    container-type: unset;
+  }
+}
+

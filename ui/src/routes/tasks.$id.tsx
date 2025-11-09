@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { createFileRoute, isRedirect, useNavigate, useRouter } from '@tanstack/react-router'
-import { useCallback, useState, useEffect } from 'react'
-import { Helmet } from 'react-helmet'
+import { createFileRoute, isRedirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { useCallback, useState, useEffect } from "react";
+import { Helmet } from "react-helmet";
 import { RiPencilLine, RiCloseLine } from "@remixicon/react";
 import {
   cx,
   focusRing,
   isMac,
-} from '../lib/utils'
-import { translate } from '../lib/translate'
-import { editorStorage } from '../lib/editorStorage'
-import { Button } from '../components/tremor/Button'
-import { useQueryApi } from '../hooks/useQueryApi'
-import { MenuProvider } from '../components/providers/MenuProvider'
-import { MenuTrigger } from '../components/MenuTrigger'
-import { useToast } from '../hooks/useToast'
-import { Tooltip } from '../components/tremor/Tooltip'
+} from "../lib/utils";
+import { editorStorage } from "../lib/editorStorage";
+import { Button } from "../components/tremor/Button";
+import { useQueryApi } from "../hooks/useQueryApi";
+import { MenuProvider } from "../components/providers/MenuProvider";
+import { MenuTrigger } from "../components/MenuTrigger";
+import { useToast } from "../hooks/useToast";
+import { Tooltip } from "../components/tremor/Tooltip";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/tremor/Dialog'
+} from "../components/tremor/Dialog";
 import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import { TaskResults, TaskResult } from "../components/TaskResults";
@@ -34,113 +33,115 @@ import "../lib/editorInit";
 interface TaskData {
   id: string
   name: string
+  path: string
   content: string
-  nextRunAt?: number
-  lastRunAt?: number
+  nextRunAt?: string
+  lastRunAt?: string
   lastRunSuccess?: boolean
   lastRunDuration?: number
 }
 
-export const Route = createFileRoute('/tasks/$id')({
+export const Route = createFileRoute("/tasks/$id")({
   loader: async ({ context: { queryApi }, params: { id } }) => {
-    return queryApi(`tasks/${id}`) as Promise<TaskData>
+    return queryApi(`tasks/${id}`) as Promise<TaskData>;
   },
   component: TaskEdit,
-})
+});
 
-function TaskEdit() {
-  const { id } = Route.useParams()
-  const task = Route.useLoaderData()
-  const queryApi = useQueryApi()
-  const navigate = useNavigate()
-  const router = useRouter()
-  const [editorQuery, setEditorQuery] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined)
-  const [previewError, setPreviewError] = useState<string | null>(null)
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [editingName, setEditingName] = useState(false)
-  const [name, setName] = useState(task.name)
-  const [savingName, setSavingName] = useState(false)
-  const { toast } = useToast()
+function TaskEdit () {
+  const { id } = Route.useParams();
+  const task = Route.useLoaderData();
+  const queryApi = useQueryApi();
+  const navigate = useNavigate();
+  const router = useRouter();
+  const [editorQuery, setEditorQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [name, setName] = useState(task.name);
+  const [savingName, setSavingName] = useState(false);
+  const { toast } = useToast();
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
-    const unsavedContent = editorStorage.getChanges(id)
+    const unsavedContent = editorStorage.getChanges(id, "task");
     if (unsavedContent && unsavedContent !== task.content) {
-      setEditorQuery(unsavedContent)
+      setEditorQuery(unsavedContent);
     } else {
-      setEditorQuery(task.content)
+      setEditorQuery(task.content);
     }
-  }, [task, id])
+  }, [task, id]);
 
   const handleRun = useCallback(async () => {
-    setPreviewError(null)
-    setIsPreviewLoading(true)
+    setPreviewError(null);
+    setIsPreviewLoading(true);
     try {
-      const data = await queryApi('run/task', {
-        method: 'POST',
+      const data = await queryApi("run/task", {
+        method: "POST",
         body: {
           content: editorQuery,
         },
-      })
-      setTaskData(data)
+      });
+      setTaskData(data);
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err.options)
+        return navigate(err.options);
       }
-      setPreviewError(err instanceof Error ? err.message : 'Unknown error')
+      setPreviewError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setIsPreviewLoading(false)
+      setIsPreviewLoading(false);
     }
-  }, [queryApi, editorQuery, navigate])
+  }, [queryApi, editorQuery, navigate]);
 
   const handleQueryChange = useCallback((value: string | undefined) => {
-    const newQuery = value || ''
+    const newQuery = value || "";
 
     // Save to localStorage
-    if (task && newQuery !== task.content && newQuery.trim() !== '') {
-      editorStorage.saveChanges(id, newQuery)
+    if (task && newQuery !== task.content && newQuery.trim() !== "") {
+      editorStorage.saveChanges(id, newQuery, "task");
     } else {
-      editorStorage.clearChanges(id)
+      editorStorage.clearChanges(id, "task");
     }
-    setEditorQuery(newQuery)
-  }, [task, id])
+    setEditorQuery(newQuery);
+  }, [task, id]);
 
   const handleSave = useCallback(async () => {
-    setSaving(true)
+    setSaving(true);
     try {
       await queryApi(`tasks/${id}/content`, {
-        method: 'POST',
+        method: "POST",
         body: {
           content: editorQuery,
         },
-      })
+      });
 
       // Clear localStorage after successful save
-      editorStorage.clearChanges(id)
+      editorStorage.clearChanges(id, "task");
 
       toast({
-        title: translate('Success'),
-        description: translate('Task saved successfully'),
-        variant: 'success',
-      })
+        title: "Success",
+        description: "Task saved successfully",
+        variant: "success",
+      });
 
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
-        return navigate(err.options)
+        return navigate(err.options);
       }
       toast({
-        title: translate('Error'),
-        description: err instanceof Error ? err.message : translate('An error occurred'),
-        variant: 'error',
-      })
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred",
+        variant: "error",
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }, [queryApi, id, editorQuery, navigate, toast, router])
+  }, [queryApi, id, editorQuery, navigate, toast, router]);
 
   const handleSaveName = async (newName: string) => {
     if (newName === task.name) {
@@ -150,7 +151,7 @@ function TaskEdit() {
     setSavingName(true);
     try {
       await queryApi(`tasks/${id}/name`, {
-        method: 'POST',
+        method: "POST",
         body: { name: newName },
       });
       setName(newName);
@@ -160,44 +161,49 @@ function TaskEdit() {
         return navigate(err.options);
       }
       toast({
-        title: translate('Error'),
-        description: err instanceof Error ? err.message : translate('An error occurred'),
-        variant: 'error',
-      })
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred",
+        variant: "error",
+      });
       // Revert name on error
       setName(task.name);
     } finally {
       setSavingName(false);
       setEditingName(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
       await queryApi(`tasks/${id}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
       // Navigate back to task list
       toast({
-        title: translate('Success'),
-        description: translate('Task deleted successfully'),
-      })
-      navigate({ to: '/' });
+        title: "Success",
+        description: "Task deleted successfully",
+      });
+      navigate({ to: "/" });
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       toast({
-        title: translate('Error'),
-        description: err instanceof Error ? err.message : translate('An error occurred'),
-        variant: 'error',
-      })
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred",
+        variant: "error",
+      });
     }
-  }
+  };
 
+  const handleDiscardChanges = () => {
+    editorStorage.clearChanges(id, "task");
+    setEditorQuery(task.content);
+    setShowDiscardDialog(false);
+  };
 
   return (
-    <MenuProvider>
+    <MenuProvider currentPath={task.path}>
       <Helmet>
         <title>{task.name}</title>
       </Helmet>
@@ -228,7 +234,7 @@ function TaskEdit() {
                   variant='destructive'
                   className='mt-4'
                 >
-                  {translate('Delete Task')}
+                  Delete Task
                 </Button>
               </div>
             </MenuTrigger>
@@ -236,10 +242,10 @@ function TaskEdit() {
             {editingName ? (
               <form
                 onSubmit={(e) => {
-                  e.preventDefault()
+                  e.preventDefault();
                   const input = e.currentTarget.querySelector("input");
                   if (input && !savingName) {
-                    handleSaveName(name)
+                    handleSaveName(name);
                   }
                 }}
                 className="flex flex-grow"
@@ -261,9 +267,9 @@ function TaskEdit() {
                   type='reset'
                   className='ml-2'
                   onClick={(e) => {
-                    e.preventDefault()
-                    setEditingName(false)
-                    setName(task.name)
+                    e.preventDefault();
+                    setEditingName(false);
+                    setName(task.name);
                   }}
                 >
                   <RiCloseLine className="size-5" />
@@ -275,7 +281,7 @@ function TaskEdit() {
                   disabled={savingName}
                   isLoading={savingName}
                 >
-                  {translate('Save')}
+                  Save
                 </Button>
               </form>
             ) : (
@@ -283,7 +289,7 @@ function TaskEdit() {
                 <Tooltip
                   showArrow={false}
                   asChild
-                  content={translate("Click to edit task name")}
+                  content="Click to edit task name"
                 >
                   <h1
                     className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
@@ -300,6 +306,20 @@ function TaskEdit() {
               <Tooltip
                 showArrow={false}
                 asChild
+                content='Discard Changes'
+              >
+                <Button
+                  onClick={() => setShowDiscardDialog(true)}
+                  className={cx("ml-2", { "hidden": editorQuery === task?.content })}
+                  disabled={editorQuery === task?.content}
+                  variant='destructive'
+                >
+                  Discard
+                </Button>
+              </Tooltip>
+              <Tooltip
+                showArrow={false}
+                asChild
                 content='Save Task'
               >
                 <Button
@@ -309,20 +329,20 @@ function TaskEdit() {
                   isLoading={saving}
                   variant='secondary'
                 >
-                  {translate('Save')}
+                  Save
                 </Button>
               </Tooltip>
               <Tooltip
                 showArrow={false}
                 asChild
-                content={`Press ${isMac() ? '⌘' : 'Ctrl'} + Enter to run`}
+                content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
               >
                 <Button
                   onClick={handleRun}
                   disabled={isPreviewLoading}
                   isLoading={isPreviewLoading}
                 >
-                  {translate('Run')}
+                  Run
                 </Button>
               </Tooltip>
             </div>
@@ -351,30 +371,52 @@ function TaskEdit() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {translate('Are you sure you want to delete the task "%%"?').replace(
-                '%%',
+              {"Are you sure you want to delete the task \"%%\"?".replace(
+                "%%",
                 task.name,
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDeleteDialog(false)}>
-              {translate('Cancel')}
+              Cancel
             </Button>
             <Button
               variant='destructive'
               onClick={() => {
-                handleDelete()
+                handleDelete();
                 setShowDeleteDialog(false);
               }}
             >
-              {translate('Delete')}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to discard your unsaved changes? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowDiscardDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDiscardChanges}
+            >
+              Discard
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </MenuProvider>
-  )
+  );
 }

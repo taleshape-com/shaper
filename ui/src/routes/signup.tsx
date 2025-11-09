@@ -3,7 +3,6 @@
 import * as React from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
-import { translate } from "../lib/translate";
 import { Helmet } from "react-helmet";
 import { Button } from "../components/tremor/Button";
 import { Input } from "../components/tremor/Input";
@@ -30,7 +29,7 @@ export const Route = createFileRoute("/signup")({
         headers: {
           "Content-Type": "application/json",
         },
-      })
+      });
       const data = await response.json();
       if (response.status !== 200) {
         return { error: data.error } as { invite?: Invite; error?: string };
@@ -44,7 +43,7 @@ export const Route = createFileRoute("/signup")({
   component: SignupComponent,
 });
 
-function SignupComponent() {
+function SignupComponent () {
   const navigate = useNavigate({ from: "/signup" });
   const { toast } = useToast();
   const data = Route.useLoaderData();
@@ -59,8 +58,8 @@ function SignupComponent() {
 
     if (password !== confirmPassword) {
       toast({
-        title: translate("Error"),
-        description: translate("Passwords do not match"),
+        title: "Error",
+        description: "Passwords do not match",
         variant: "error",
       });
       return;
@@ -83,18 +82,18 @@ function SignupComponent() {
       }
 
       toast({
-        title: translate("Success"),
-        description: translate("Account created successfully"),
+        title: "Success",
+        description: "Account created successfully",
       });
 
       navigate({ to: "/login", replace: true });
     } catch (error) {
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     }
@@ -104,15 +103,11 @@ function SignupComponent() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cbg dark:bg-dbg">
         <div className="w-full max-w-md space-y-4 p-6">
-          <h1 className="text-2xl font-semibold text-center text-ctext dark:text-dtext">
-            {translate("Invalid Invite")}
-          </h1>
-          <p className="text-center text-ctext2 dark:text-dtext2">
-            {translate("No invite code provided")}
-          </p>
+          <h1 className="text-2xl font-semibold text-center text-ctext dark:text-dtext">Invalid Invite</h1>
+          <p className="text-center text-ctext2 dark:text-dtext2">No invite code provided</p>
           <div className="text-center">
             <Button asChild>
-              <a href="/login">{translate("Go to Login")}</a>
+              <a href="/login">Go to Login</a>
             </Button>
           </div>
         </div>
@@ -124,23 +119,15 @@ function SignupComponent() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cbg dark:bg-dbg">
         <div className="w-full max-w-md space-y-4 p-6">
-          <h1 className="text-2xl font-semibold text-center text-ctext dark:text-dtext">
-            {translate("Invalid Invite")}
-          </h1>
+          <h1 className="text-2xl font-semibold text-center text-ctext dark:text-dtext">Invalid Invite</h1>
           {data.error === "invite has expired" ? (
-            <p className="text-center text-ctext2 dark:text-dtext2">
-              {translate("This invite has expired")}
-            </p>
+            <p className="text-center text-ctext2 dark:text-dtext2">This invite has expired</p>
           ) : (
-            <p className="text-center text-ctext2 dark:text-dtext2">
-              {translate(
-                "This invite code is invalid or has already been used",
-              )}
-            </p>
+            <p className="text-center text-ctext2 dark:text-dtext2">This invite code is invalid or has already been used</p>
           )}
           <div className="text-center">
             <Button asChild>
-              <a href="/login">{translate("Go to Login")}</a>
+              <a href="/login">Go to Login</a>
             </Button>
           </div>
         </div>
@@ -151,16 +138,16 @@ function SignupComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-cbg dark:bg-dbg">
       <Helmet>
-        <title>{translate("Sign Up")}</title>
+        <title>Sign Up</title>
       </Helmet>
 
       <div className="w-full max-w-md space-y-8 p-6">
         <div>
           <h1 className="text-2xl font-semibold text-center text-ctext dark:text-dtext">
-            {translate("Create Account")}
+            Create Account
           </h1>
           <p className="mt-2 text-center text-ctext2 dark:text-dtext2">
-            {translate("Sign up with invite for")} {data?.invite?.email}
+            Sign up with invite for <span className="font-semibold">{data?.invite?.email}</span>
           </p>
         </div>
 
@@ -172,7 +159,7 @@ function SignupComponent() {
         >
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">{translate("Name")}</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 name="name"
@@ -184,7 +171,7 @@ function SignupComponent() {
             </div>
 
             <div>
-              <Label htmlFor="password">{translate("Password")}</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 name="password"
@@ -197,9 +184,7 @@ function SignupComponent() {
             </div>
 
             <div>
-              <Label htmlFor="confirmPassword">
-                {translate("Confirm Password")}
-              </Label>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -213,17 +198,14 @@ function SignupComponent() {
           </div>
 
           <div>
-            <Button type="submit" className="w-full">
-              {translate("Create Account")}
-            </Button>
+            <Button type="submit" className="w-full">Create Account</Button>
           </div>
         </form>
 
         <p className="text-center text-sm text-ctext2 dark:text-dtext2">
-          {translate("Already have an account?")}{" "}
-          <a href="/login" className="text-cpri dark:text-dpri hover:underline">
-            {translate("Sign in")}
-          </a>
+          Already have an account?{" "}
+          <br />
+          <a href="/login" className="text-cpri dark:text-dpri underline hover:font-semibold">Sign in</a>
         </p>
       </div>
     </div>

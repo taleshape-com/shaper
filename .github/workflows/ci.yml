@@ -29,7 +29,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "npm"
@@ -39,7 +39,7 @@ jobs:
         run: |
           NODE_ENV=production npm run all
       - name: Upload frontend build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: frontend-dist
           path: dist/
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
@@ -91,13 +91,13 @@ jobs:
           apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
 
       - name: Download frontend build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: frontend-dist
           path: dist/
@@ -117,7 +117,7 @@ jobs:
           sha256sum shaper-linux-* > checksums-linux.txt
 
       - name: Upload Linux binaries and checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-binaries
           path: |
@@ -147,13 +147,13 @@ jobs:
           done
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
 
       - name: Download frontend build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: frontend-dist
           path: dist/
@@ -173,7 +173,7 @@ jobs:
           shasum -a 256 shaper-darwin-* > checksums-darwin.txt
 
       - name: Upload macOS binaries and checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: darwin-binaries
           path: |
@@ -195,13 +195,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download Linux binaries and checksums
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-binaries
           path: bin
 
       - name: Download macOS binaries and checksums
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: darwin-binaries
           path: bin
@@ -234,7 +234,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download Linux binaries
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-binaries
           path: bin/
@@ -290,13 +290,13 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download Linux binaries and checksums
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-binaries
           path: bin
 
       - name: Download macOS binaries and checksums
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: darwin-binaries
           path: bin
@@ -306,7 +306,7 @@ jobs:
           cat bin/checksums-*.txt | sort | uniq > npm-package/bin/SHA256SUMS
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"

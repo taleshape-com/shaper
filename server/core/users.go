@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
@@ -50,7 +51,7 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 
 	// Check if any users exist
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`)
 	if err != nil {
 		return "", fmt.Errorf("failed to check existing users: %w", err)
 	}
@@ -92,8 +93,8 @@ func HandleCreateUser(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.DB.Exec(
-		`INSERT INTO "`+app.Schema+`".users (
+	_, err = app.Sqlite.Exec(
+		`INSERT OR IGNORE INTO users (
 			id, email, name, password_hash, created_at, updated_at, created_by, updated_by
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
 		payload.ID, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp, payload.CreatedBy,
@@ -106,7 +107,8 @@ func HandleCreateUser(app *App, data []byte) bool {
 		app.LoginRequired = true
 		err := LoadJWTSecret(app)
 		if err != nil {
-			panic(err)
+			app.Logger.Error("Failed to load JWT secret", slog.Any("error", err))
+			return false
 		}
 	}
 	return true
@@ -126,8 +128,8 @@ func DeleteInvite(app *App, ctx context.Context, code string) error {
 	}
 	// Check if invite exists
 	var exists bool
-	err := app.DB.GetContext(ctx, &exists,
-		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE code = $1)`,
+	err := app.Sqlite.GetContext(ctx, &exists,
+		`SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1)`,
 		code)
 	if err != nil {
 		return fmt.Errorf("failed to check invite existence: %w", err)
@@ -153,8 +155,8 @@ func HandleDeleteInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.DB.Exec(
-		`DELETE FROM "`+app.Schema+`".invites WHERE code = $1`,
+	_, err = app.Sqlite.Exec(
+		`DELETE FROM invites WHERE code = $1`,
 		payload.Code,
 	)
 	if err != nil {
@@ -186,20 +188,20 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 	}
 
 	users := []User{}
-	err := app.DB.SelectContext(ctx, &users,
+	err := app.Sqlite.SelectContext(ctx, &users,
 		fmt.Sprintf(`SELECT *
-		 FROM %s.users
+		 FROM users
 		 WHERE deleted_at IS NULL
-		 ORDER BY %s %s`, app.Schema, orderBy, order))
+		 ORDER BY %s %s`, orderBy, order))
 	if err != nil {
 		return UserList{}, fmt.Errorf("error listing users: %w", err)
 	}
 
 	// Get invites ordered by creation date
 	invites := []Invite{}
-	err = app.DB.SelectContext(ctx, &invites,
+	err = app.Sqlite.SelectContext(ctx, &invites,
 		`SELECT code, email, created_at
-		 FROM "`+app.Schema+`".invites
+		 FROM invites
 		 ORDER BY created_at DESC`)
 	if err != nil {
 		return UserList{}, fmt.Errorf("error listing invites: %w", err)
@@ -224,7 +226,7 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE id = $1 AND deleted_at IS NULL`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM users WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query user: %w", err)
 	}
@@ -233,7 +235,7 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 	}
 
 	// Don't allow deleting the last active user
-	err = app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM "`+app.Schema+`".users WHERE deleted_at IS NULL`)
+	err = app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`)
 	if err != nil {
 		return fmt.Errorf("failed to check remaining users: %w", err)
 	}
@@ -246,7 +248,10 @@ func DeleteUser(app *App, ctx context.Context, id string) error {
 		Timestamp: time.Now(),
 		DeletedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit delete user state: %w", err)
+	}
+	return nil
 }
 
 func HandleDeleteUser(app *App, data []byte) bool {
@@ -257,7 +262,7 @@ func HandleDeleteUser(app *App, data []byte) bool {
 		return false
 	}
 
-	tx, err := app.DB.Begin()
+	tx, err := app.Sqlite.Begin()
 	if err != nil {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
@@ -266,7 +271,7 @@ func HandleDeleteUser(app *App, data []byte) bool {
 
 	// Delete user's sessions first
 	_, err = tx.Exec(
-		`DELETE FROM "`+app.Schema+`".sessions WHERE user_id = $1`,
+		`DELETE FROM sessions WHERE user_id = $1`,
 		payload.ID,
 	)
 	if err != nil {
@@ -276,7 +281,7 @@ func HandleDeleteUser(app *App, data []byte) bool {
 
 	// Then soft delete the user
 	_, err = tx.Exec(
-		`UPDATE "`+app.Schema+`".users SET deleted_at = $1, deleted_by = $2 WHERE id = $3`,
+		`UPDATE users SET deleted_at = $1, deleted_by = $2 WHERE id = $3`,
 		payload.Timestamp,
 		payload.DeletedBy,
 		payload.ID,
@@ -307,8 +312,8 @@ func isInviteExpired(createdAt time.Time, expiration time.Duration) bool {
 
 func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 	var invite Invite
-	err := app.DB.GetContext(ctx, &invite,
-		`SELECT code, email, created_at FROM "`+app.Schema+`".invites WHERE code = $1`,
+	err := app.Sqlite.GetContext(ctx, &invite,
+		`SELECT code, email, created_at FROM invites WHERE code = $1`,
 		code)
 	if err != nil {
 		return nil, fmt.Errorf("invite not found")
@@ -338,8 +343,8 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 
 	// Check if email is already registered
 	var existingUser bool
-	err := app.DB.GetContext(ctx, &existingUser,
-		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".users WHERE email = $1 AND deleted_at IS NULL)`,
+	err := app.Sqlite.GetContext(ctx, &existingUser,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE email = $1 AND deleted_at IS NULL)`,
 		email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
@@ -350,8 +355,8 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 
 	// Check if there's already a pending invite
 	var existingInvite bool
-	err = app.DB.GetContext(ctx, &existingInvite,
-		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE email = $1)`,
+	err = app.Sqlite.GetContext(ctx, &existingInvite,
+		`SELECT EXISTS(SELECT 1 FROM invites WHERE email = $1)`,
 		email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing invite: %w", err)
@@ -362,8 +367,8 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 
 	code := generateInviteCode()
 	var exists bool
-	err = app.DB.GetContext(ctx, &exists,
-		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".invites WHERE code = $1)`,
+	err = app.Sqlite.GetContext(ctx, &exists,
+		`SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1)`,
 		code)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check invite code uniqueness: %w", err)
@@ -399,8 +404,8 @@ func HandleCreateInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.DB.Exec(
-		`INSERT INTO "`+app.Schema+`".invites (
+	_, err = app.Sqlite.Exec(
+		`INSERT OR IGNORE INTO invites (
 			code, email, created_at, created_by
 		) VALUES ($1, $2, $3, $4)`,
 		payload.Code, payload.Email, payload.Timestamp, payload.CreatedBy,
@@ -423,7 +428,9 @@ func generateInviteCode() string {
 		// Use crypto/rand for secure random numbers
 		randomNum, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
-			panic(err) // This should never happen in practice
+			// This should never happen in practice - indicates a serious system error
+			fmt.Printf("Error generating random string: %v\n", err)
+			os.Exit(1)
 		}
 		b[i] = charset[randomNum.Int64()]
 	}
@@ -442,8 +449,8 @@ type ClaimInvitePayload struct {
 func ClaimInvite(app *App, ctx context.Context, code string, name string, password string) error {
 	// Get invite details
 	var invite Invite
-	err := app.DB.GetContext(ctx, &invite,
-		`SELECT * FROM "`+app.Schema+`".invites WHERE code = $1`,
+	err := app.Sqlite.GetContext(ctx, &invite,
+		`SELECT * FROM invites WHERE code = $1`,
 		code)
 	if err != nil {
 		return fmt.Errorf("invalid invite code")
@@ -454,8 +461,8 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 
 	// Check if email is already registered
 	var existingUser bool
-	err = app.DB.GetContext(ctx, &existingUser,
-		`SELECT EXISTS(SELECT 1 FROM "`+app.Schema+`".users WHERE email = $1 AND deleted_at IS NULL)`,
+	err = app.Sqlite.GetContext(ctx, &existingUser,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE email = $1 AND deleted_at IS NULL)`,
 		invite.Email)
 	if err != nil {
 		return fmt.Errorf("failed to check existing user: %w", err)
@@ -481,7 +488,10 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 	}
 
 	err = app.SubmitState(ctx, "claim_invite", payload)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit claim invite state: %w", err)
+	}
+	return nil
 }
 
 func HandleClaimInvite(app *App, data []byte) bool {
@@ -492,7 +502,7 @@ func HandleClaimInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	tx, err := app.DB.Begin()
+	tx, err := app.Sqlite.Begin()
 	if err != nil {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
@@ -501,7 +511,7 @@ func HandleClaimInvite(app *App, data []byte) bool {
 
 	// Create the user
 	_, err = tx.Exec(
-		`INSERT INTO "`+app.Schema+`".users (
+		`INSERT OR IGNORE INTO users (
 			id, email, name, password_hash, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $5)`,
 		payload.UserId, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp,
@@ -513,7 +523,7 @@ func HandleClaimInvite(app *App, data []byte) bool {
 
 	// Delete the invite
 	_, err = tx.Exec(
-		`DELETE FROM "`+app.Schema+`".invites WHERE code = $1`,
+		`DELETE FROM invites WHERE code = $1`,
 		payload.Code,
 	)
 	if err != nil {
@@ -536,10 +546,10 @@ type InviteList struct {
 
 func ListInvites(app *App, ctx context.Context) (InviteList, error) {
 	var invites []Invite
-	err := app.DB.SelectContext(ctx,
+	err := app.Sqlite.SelectContext(ctx,
 		&invites,
 		`SELECT code, email, created_at
-			 FROM "`+app.Schema+`".invites
+			 FROM invites
 			 ORDER BY created_at DESC`)
 	if err != nil {
 		return InviteList{}, fmt.Errorf("failed to list invites: %w", err)

@@ -30,8 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/nrednav/cuid2"
@@ -83,7 +83,7 @@ type TableCache struct {
 	lastUpdate time.Time
 }
 
-func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, nc *nats.Conn, streamName string, streamMaxAge time.Duration, consumerName string) (Ingest, error) {
+func Start(subjectPrefix string, dbConnector *duckdb.Connector, duckDbx *sqlx.DB, logger *slog.Logger, nc *nats.Conn, streamName string, streamMaxAge time.Duration, consumerName string) (Ingest, error) {
 	js, err := jetstream.New(nc)
 	if err != nil {
 		return Ingest{}, err
@@ -95,7 +95,7 @@ func Start(subjectPrefix string, dbConnector *duckdb.Connector, db *sqlx.DB, log
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go processMessages(ctx, js, consumer, logger, dbConnector, db, subjectPrefix, streamName, streamMaxAge, consumerName)
+	go processMessages(ctx, js, consumer, logger, dbConnector, duckDbx, subjectPrefix, streamName, streamMaxAge, consumerName)
 	return Ingest{
 		ingestCancelFunc: cancel,
 		subjectPrefix:    subjectPrefix,
@@ -127,14 +127,14 @@ func setupStreamAndConsumer(js jetstream.JetStream, subjectPrefix string, stream
 	return consumer, nil
 }
 
-func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, subjectPrefix string, streamName string, streamMaxAge time.Duration, consumerName string) {
+func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, duckDbx *sqlx.DB, subjectPrefix string, streamName string, streamMaxAge time.Duration, consumerName string) {
 	tableCache := make(map[string]TableCache)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			err := handleMessageBatches(ctx, consumer, logger, dbConnector, db, tableCache, subjectPrefix)
+			err := handleMessageBatches(ctx, consumer, logger, dbConnector, duckDbx, tableCache, subjectPrefix)
 			if err != nil {
 				logger.Error("Message handling failed, attempting to recreate consumer", slog.Any("error", err), slog.Duration("sleep", SLEEP_ON_ERROR))
 				time.Sleep(SLEEP_ON_ERROR)
@@ -152,7 +152,7 @@ func processMessages(ctx context.Context, js jetstream.JetStream, consumer jetst
 	}
 }
 
-func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, db *sqlx.DB, tableCache map[string]TableCache, subjectPrefix string) error {
+func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slog.Logger, dbConnector *duckdb.Connector, duckDbx *sqlx.DB, tableCache map[string]TableCache, subjectPrefix string) error {
 	batch := make([]jetstream.Msg, 0, BATCH_SIZE)
 	msgChan := make(chan jetstream.Msg, BATCH_SIZE)
 	errChan := make(chan error, 1)
@@ -178,7 +178,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			default:
 				msg, err := msgs.Next()
 				if err != nil {
-					if err == context.Canceled {
+					if err == context.Canceled || err.Error() == "nats: messages iterator closed: nats: connection closed" {
 						return
 					}
 					logger.Error("Failed to get next message", slog.Any("error", err))
@@ -204,16 +204,16 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 	for {
 		select {
 		case err := <-errChan:
-			return err
+			return fmt.Errorf("ingest error: %w", err)
 		case msg, ok := <-msgChan:
 			if !ok {
 				// Channel closed, process remaining messages and return
 				if len(batch) > 0 {
 					processStartTime := time.Now()
-					if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
+					if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 						return fmt.Errorf("failed to process final batch: %w", err)
 					}
-					logger.Info("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					logger.Debug("Processed final ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				wg.Wait()
 				return nil
@@ -230,10 +230,10 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process if batch is full
 			if len(batch) >= BATCH_SIZE {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
-					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					logger.Debug("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 				// Stop timer after processing
@@ -246,10 +246,10 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 			// Process non-empty batch
 			if len(batch) > 0 {
 				processStartTime := time.Now()
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process batch", slog.Any("error", err), slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				} else {
-					logger.Info("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
+					logger.Debug("Processed ingest batch", slog.Int("size", len(batch)), slog.Duration("duration", time.Since(processStartTime)))
 				}
 				batch = make([]jetstream.Msg, 0, BATCH_SIZE)
 			}
@@ -257,7 +257,7 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 		case <-ctx.Done():
 			// Process remaining messages before shutting down
 			if len(batch) > 0 {
-				if err := processBatch(context.Background(), batch, tableCache, dbConnector, db, logger, subjectPrefix); err != nil {
+				if err := processBatch(context.Background(), batch, tableCache, dbConnector, duckDbx, logger, subjectPrefix); err != nil {
 					logger.Error("Failed to process final batch", slog.Any("error", err))
 				}
 			}
@@ -269,9 +269,9 @@ func handleMessageBatches(ctx context.Context, c jetstream.Consumer, logger *slo
 
 const tableColumnsQuery = "SELECT column_name, \"null\", column_type FROM (DESCRIBE (FROM query_table($1)))"
 
-func getTableColumns(ctx context.Context, db *sqlx.DB, tableName string) ([]ColInfo, error) {
+func getTableColumns(ctx context.Context, duckDbx *sqlx.DB, tableName string) ([]ColInfo, error) {
 	var columns []ColInfo
-	err := db.SelectContext(ctx, &columns, tableColumnsQuery, tableName)
+	err := duckDbx.SelectContext(ctx, &columns, tableColumnsQuery, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get table columns: %w", err)
 	}
@@ -302,7 +302,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 	// Ensure we're at the beginning of an object
 	t, err := dec.Token()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read JSON token: %w", err)
 	}
 	if t != json.Delim('{') {
 		return fmt.Errorf("expected start of object, got %v", t)
@@ -313,7 +313,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 		// Read the key
 		key, err := dec.Token()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read JSON key token: %w", err)
 		}
 
 		// Keys must be strings
@@ -328,7 +328,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 		// Read the value
 		var value any
 		if err := dec.Decode(&value); err != nil {
-			return err
+			return fmt.Errorf("failed to decode JSON value for key %s: %w", keyStr, err)
 		}
 
 		// Store in the map
@@ -337,7 +337,7 @@ func (o *OrderedJSON) UnmarshalJSON(data []byte) error {
 
 	// Ensure we're at the end of an object
 	if _, err := dec.Token(); err != nil {
-		return err
+		return fmt.Errorf("failed to read closing JSON token: %w", err)
 	}
 
 	return nil
@@ -496,7 +496,7 @@ func determineColumnType(samples []any) string {
 	return SQL_TYPE_JSON
 }
 
-func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes map[string]string, columnOrder []string) error {
+func createTable(ctx context.Context, duckDbx *sqlx.DB, tableName string, columnTypes map[string]string, columnOrder []string) error {
 	if len(columnTypes) == 0 {
 		return fmt.Errorf("cannot create table with no columns")
 	}
@@ -525,7 +525,7 @@ func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes
 	sb.WriteString("\n)")
 
 	// Execute the CREATE TABLE statement
-	_, err := db.ExecContext(ctx, sb.String())
+	_, err := duckDbx.ExecContext(ctx, sb.String())
 	if err != nil {
 		return fmt.Errorf("failed to create table: %w", err)
 	}
@@ -534,7 +534,7 @@ func createTable(ctx context.Context, db *sqlx.DB, tableName string, columnTypes
 }
 
 // TODO: Make sure we handle all special characters that are allowed in NATS subjects as table names
-func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, db *sqlx.DB, logger *slog.Logger, subjectPrefix string) error {
+func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[string]TableCache, dbConnector *duckdb.Connector, duckDbx *sqlx.DB, logger *slog.Logger, subjectPrefix string) error {
 	// Group messages by table
 	tableMessages := make(map[string][]jetstream.Msg)
 	for _, msg := range batch {
@@ -551,11 +551,11 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		}
 
 		// Try to get table columns - will fail if table doesn't exist
-		columns, err := getTableColumns(ctx, db, tableName)
+		columns, err := getTableColumns(ctx, duckDbx, tableName)
 		if err != nil {
 			// Table likely doesn't exist, so create it
 			logger.Info("Creating table", slog.String("table", tableName), slog.Any("order", columnOrder), slog.Any("types", columnTypes))
-			err = createTable(ctx, db, tableName, columnTypes, columnOrder)
+			err = createTable(ctx, duckDbx, tableName, columnTypes, columnOrder)
 			if err != nil {
 				return fmt.Errorf("failed to create table %s: %w", tableName, err)
 			}
@@ -580,7 +580,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 					escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
 					logger.Info("Adding new column", slog.String("table", tableName), slog.String("column", column), slog.String("type", dataType))
 					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", escapedTableName, escapedColumnName, dataType)
-					if _, err := db.ExecContext(ctx, alterSQL); err != nil {
+					if _, err := duckDbx.ExecContext(ctx, alterSQL); err != nil {
 						return fmt.Errorf("failed to add new column %s: %w", column, err)
 					}
 				}
@@ -594,7 +594,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		}
 
 		// Now get the updated columns
-		columns, err = getTableColumns(ctx, db, tableName)
+		columns, err = getTableColumns(ctx, duckDbx, tableName)
 		if err != nil {
 			return fmt.Errorf("failed to get table columns: %w", err)
 		}
@@ -779,9 +779,9 @@ func parseTimestamp(value string) (time.Time, error) {
 	formats := []string{
 		time.RFC3339,
 		time.RFC3339Nano,
+		"2006-01-02 15:04:05.000Z07:00",
 		"2006-01-02 15:04:05",
 		"2006-01-02T15:04:05",
-		"2006-01-02 15:04:05.000Z07:00",
 	}
 
 	for _, format := range formats {

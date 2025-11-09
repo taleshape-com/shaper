@@ -136,14 +136,9 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 
 func PublicAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if app.NoPublicSharing {
-			c.Logger().Warn("public sharing disabled")
-			return c.JSONPretty(http.StatusNotFound, struct {
-				Error string `json:"error"`
-			}{Error: "not found"}, "  ")
-		}
 		var loginRequest struct {
 			DashboardID string `json:"dashboardId"`
+			Password    string `json:"password,omitempty"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -152,17 +147,43 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing dashboardId"})
 		}
 
-		dashboard, err := core.GetDashboardQuery(app, c.Request().Context(), loginRequest.DashboardID)
+		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), loginRequest.DashboardID)
 		if err != nil {
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
 			}{Error: "not found"}, "  ")
 		}
-		if dashboard.Visibility == nil || *dashboard.Visibility != "public" {
+		if dashboard.Visibility == nil ||
+			(*dashboard.Visibility == "private") ||
+			(app.NoPublicSharing && *dashboard.Visibility == "public") ||
+			(app.NoPasswordProtectedSharing && *dashboard.Visibility == "password-protected") {
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
 			}{Error: "not found"}, "  ")
+		}
+
+		// If dashboard is password-protected, verify the password
+		if *dashboard.Visibility == "password-protected" {
+			if loginRequest.Password == "" {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Password required"}, "  ")
+			}
+
+			isValid, err := core.VerifyDashboardPassword(app, c.Request().Context(), loginRequest.DashboardID, loginRequest.Password)
+			if err != nil {
+				c.Logger().Error("error verifying password:", slog.Any("error", err))
+				return c.JSONPretty(http.StatusInternalServerError, struct {
+					Error string `json:"error"`
+				}{Error: "Internal server error"}, "  ")
+			}
+
+			if !isValid {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Invalid password"}, "  ")
+			}
 		}
 
 		// Add user or API key info to claims

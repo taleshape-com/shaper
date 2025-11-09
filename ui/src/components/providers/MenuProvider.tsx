@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { cx, parseJwt } from "../../lib/utils";
 import {
   RiMenuLine,
-  RiHomeLine,
+  RiLayoutLine,
   RiFileAddLine,
   RiAdminLine,
   RiLogoutBoxRLine,
@@ -12,28 +12,33 @@ import {
   RiExternalLinkLine,
 } from "@remixicon/react";
 import { logout, getJwt } from "../../lib/auth";
-import { isRedirect, Link, useNavigate } from "@tanstack/react-router";
-import { translate } from "../../lib/translate";
+import { isRedirect, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { Button } from "../../components/tremor/Button";
 import { MenuContext } from "../../contexts/MenuContext";
 import { getSystemConfig } from "../../lib/system";
+import { Tooltip } from "../tremor/Tooltip";
 
 const isLg = () => window.innerWidth >= 1024;
 
-export function MenuProvider({
+export function MenuProvider ({
   children,
   isHome = false,
   isAdmin = false,
   isNewPage = false,
+  currentPath = "/",
+  appType,
 }: {
   children: React.ReactNode;
   isHome?: boolean;
   isAdmin?: boolean;
   isNewPage?: boolean;
+  currentPath?: string;
+  appType?: "dashboard" | "task";
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
-  const [defaultOpen, setDefaultOpen] = useState(isLg())
+  const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
   const [title, setTitle] = useState<string | undefined>(undefined);
   const [userName, setUserName] = useState<string>("");
@@ -70,6 +75,31 @@ export function MenuProvider({
 
   const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
 
+  // Determine the correct documentation URL based on current route
+  const getDocumentationUrl = () => {
+    const docsLink = "https://taleshape.com/shaper/docs";
+    const pathname = location.pathname;
+    // Dashboard-related routes (create, view, edit)
+    if (pathname.startsWith("/dashboards/") ||
+      pathname.startsWith("/dashboards_/")) {
+      return docsLink + "/dashboard-sql-reference/";
+    }
+    // Task-related routes (create, edit)
+    if (pathname.startsWith("/tasks/")) {
+      return docsLink + "/tasks-and-scheduling/";
+    }
+    // New page - check appType to determine which docs to show
+    if (pathname === "/new") {
+      if (appType === "task") {
+        return docsLink + "/tasks-and-scheduling/";
+      } else {
+        return docsLink + "/dashboard-sql-reference/";
+      }
+    }
+    // Default documentation URL
+    return docsLink;
+  };
+
   return (
     <MenuContext.Provider value={{
       isMenuOpen: actuallyOpen,
@@ -80,6 +110,7 @@ export function MenuProvider({
       <div
         className={cx(
           "fixed top-0 bottom-0 left-0 z-50 overflow-y-auto shadow-sm shadow-cb dark:shadow-db bg-cbg dark:bg-dbg w-full sm:w-56 flex flex-col",
+          "print:hidden",
           {
             "hidden": !actuallyOpen,
           },
@@ -100,17 +131,20 @@ export function MenuProvider({
           )}
           <Link
             to="/"
-            disabled={isHome}
+            search={isHome ? undefined : { path: currentPath }}
             className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
             })}
           >
-            <RiHomeLine className="size-4 inline mr-1.5 mb-1" />
-            {translate("Home")}
+            <Tooltip content={"Go to " + (isHome ? "/" : currentPath)} showArrow={false}>
+              <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
+              Browse
+            </Tooltip>
           </Link>
           <Link
             to="/new"
+            search={{ path: currentPath }}
             disabled={isNewPage}
             className={cx("block px-4 py-3", {
               "hover:underline": !isNewPage,
@@ -118,27 +152,34 @@ export function MenuProvider({
             })}
           >
             <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
-            {translate("New")}
+            New
           </Link>
           {extraContent}
         </div>
 
         <div className="mt-auto pt-4 pb-4 space-y-2">
           <a
-            href="https://taleshape.com/shaper/docs"
+            href={getDocumentationUrl()}
             className="block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm text-ctext2 dark:text-dtext2 group hover:underline"
             target="shaper-docs"
           >
             <RiBook2Line className="size-4 inline mr-1.5 mb-1" />
-            {translate("Docs")}
+            Docs
             <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
-          <Link to="/admin" disabled={isAdmin} className={cx(
-            "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
-            { "text-ctext2 dark:text-dtext2": !isAdmin }
-          )}>
+          <Link
+            to="/admin"
+            disabled={isAdmin}
+            className={cx(
+              "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
+              {
+                "text-ctext2 dark:text-dtext2": !isAdmin,
+                "underline cursor-default": isAdmin,
+              },
+            )}
+          >
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
-            {translate("Admin")}
+            Admin
           </Link>
           {getSystemConfig().loginRequired && (
             <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
@@ -152,14 +193,14 @@ export function MenuProvider({
                 variant="light"
               >
                 <RiLogoutBoxRLine className="size-4 inline mr-0.5 -ml-0.5 -mt-0.5" />
-                {translate("Logout")}
+                Logout
               </Button>
             </div>
           )}
         </div>
       </div>
 
-      <div className={cx({ "sm:ml-56 overflow-auto": actuallyOpen })}>
+      <div className={cx({ "sm:ml-56 print:ml-0": actuallyOpen })}>
         {children}
       </div>
     </MenuContext.Provider>

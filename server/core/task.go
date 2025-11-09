@@ -14,18 +14,19 @@ import (
 )
 
 type Task struct {
-	ID        string    `db:"id" json:"id"`
-	Path      string    `db:"path" json:"path"`
-	Name      string    `db:"name" json:"name"`
-	Content   string    `db:"content" json:"content"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
-	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
-	UpdatedBy *string   `db:"updated_by" json:"updatedBy,omitempty"`
-	NextRunAt *int64 `db:"next_run_at" json:"nextRunAt,omitempty"`
-	LastRunAt *int64 `db:"last_run_at" json:"lastRunAt,omitempty"`
-	LastRunSuccess *bool `db:"last_run_success" json:"lastRunSuccess,omitempty"`
-	LastRunDuration *int64 `db:"last_run_duration" json:"lastRunDuration,omitempty"`
+	ID              string     `db:"id" json:"id"`
+	FolderID        *string    `db:"folder_id" json:"folderId,omitempty"`
+	Path            string     `json:"path,omitempty"`
+	Name            string     `db:"name" json:"name"`
+	Content         string     `db:"content" json:"content"`
+	CreatedAt       time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time  `db:"updated_at" json:"updatedAt"`
+	CreatedBy       *string    `db:"created_by" json:"createdBy,omitempty"`
+	UpdatedBy       *string    `db:"updated_by" json:"updatedBy,omitempty"`
+	NextRunAt       *time.Time `db:"next_run_at" json:"nextRunAt,omitempty"`
+	LastRunAt       *time.Time `db:"last_run_at" json:"lastRunAt,omitempty"`
+	LastRunSuccess  *bool      `db:"last_run_success" json:"lastRunSuccess,omitempty"`
+	LastRunDuration *int64     `db:"last_run_duration" json:"lastRunDuration,omitempty"`
 }
 
 type CreateTaskPayload struct {
@@ -60,22 +61,32 @@ type DeleteTaskPayload struct {
 
 func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	var task Task
-	err := app.DB.GetContext(ctx, &task,
-		`SELECT a.* EXCLUDE (type, visibility), 
-		        epoch_ms(tr.next_run_at) AS next_run_at, 
-		        epoch_ms(tr.last_run_at) AS last_run_at, 
-		        tr.last_run_success, 
-		        round(epoch(tr.last_run_duration) * 1000) AS last_run_duration
-		 FROM `+app.Schema+`.apps a
-		 LEFT JOIN `+app.Schema+`.task_runs tr ON tr.task_id = a.id
+	err := app.Sqlite.GetContext(ctx, &task,
+		`SELECT a.id, a.folder_id, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
+						tr.next_run_at,
+						tr.last_run_at,
+		        tr.last_run_success,
+		        tr.last_run_duration
+		 FROM apps a
+		 LEFT JOIN task_runs tr ON tr.task_id = a.id
 		 WHERE a.id = $1 AND a.type = 'task'`, id)
 	if err != nil {
 		return task, fmt.Errorf("failed to get task: %w", err)
 	}
+
+	// Resolve folder_id to path
+	path, err := ResolveFolderIDToPath(app, ctx, task.FolderID)
+	if err != nil {
+		// If path resolution fails, default to root
+		task.Path = "/"
+	} else {
+		task.Path = path
+	}
+
 	return task, nil
 }
 
-func CreateTask(app *App, ctx context.Context, name string, content string) (string, error) {
+func CreateTask(app *App, ctx context.Context, name string, content string, path string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -89,7 +100,7 @@ func CreateTask(app *App, ctx context.Context, name string, content string) (str
 	err := app.SubmitState(ctx, "create_task", CreateTaskPayload{
 		ID:        id,
 		Timestamp: time.Now(),
-		Path:      "/",
+		Path:      path,
 		Name:      name,
 		Content:   content,
 		CreatedBy: actor.String(),
@@ -104,14 +115,21 @@ func HandleCreateTask(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create task payload", slog.Any("error", err))
 		return false
 	}
+	// Resolve path to folder ID, fallback to root if resolution fails
+	folderID, err := ResolveFolderPath(app, context.Background(), payload.Path)
+	if err != nil {
+		app.Logger.Warn("failed to resolve folder path, creating at root", slog.String("path", payload.Path), slog.Any("error", err))
+		folderID = nil
+	}
+
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.CreatedBy))
 	// Insert into DB
-	_, err = app.DB.ExecContext(
+	_, err = app.Sqlite.ExecContext(
 		ctx,
-		`INSERT OR IGNORE INTO `+app.Schema+`.apps (
-			id, path, name, content, created_at, updated_at, created_by, updated_by, type
+		`INSERT OR IGNORE INTO apps (
+			id, folder_id, name, content, created_at, updated_at, created_by, updated_by, type
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6, 'task')`,
-		payload.ID, payload.Path, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
+		payload.ID, folderID, payload.Name, payload.Content, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert task into DB", slog.Any("error", err))
@@ -127,7 +145,7 @@ func SaveTaskContent(app *App, ctx context.Context, id string, content string) e
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to load task: %w", err)
 	}
@@ -140,7 +158,10 @@ func SaveTaskContent(app *App, ctx context.Context, id string, content string) e
 		Content:   content,
 		UpdatedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit task content update: %w", err)
+	}
+	return nil
 }
 
 func HandleUpdateTaskContent(app *App, data []byte) bool {
@@ -151,9 +172,9 @@ func HandleUpdateTaskContent(app *App, data []byte) bool {
 		return false
 	}
 	ctx := ContextWithActor(context.Background(), ActorFromString(payload.UpdatedBy))
-	_, err = app.DB.ExecContext(
+	_, err = app.Sqlite.ExecContext(
 		ctx,
-		`UPDATE `+app.Schema+`.apps
+		`UPDATE apps
 		 SET content = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'task'`,
 		payload.Content, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -171,7 +192,7 @@ func SaveTaskName(app *App, ctx context.Context, id string, name string) error {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to query task: %w", err)
 	}
@@ -184,7 +205,10 @@ func SaveTaskName(app *App, ctx context.Context, id string, name string) error {
 		Name:      name,
 		UpdatedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit task name update: %w", err)
+	}
+	return nil
 }
 
 func HandleUpdateTaskName(app *App, data []byte) bool {
@@ -194,8 +218,8 @@ func HandleUpdateTaskName(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal update task name payload", slog.Any("error", err))
 		return false
 	}
-	_, err = app.DB.Exec(
-		`UPDATE `+app.Schema+`.apps
+	_, err = app.Sqlite.Exec(
+		`UPDATE apps
 		 SET name = $1, updated_at = $2, updated_by = $3
 		 WHERE id = $4 AND type = 'task'`,
 		payload.Name, payload.TimeStamp, payload.UpdatedBy, payload.ID)
@@ -212,7 +236,7 @@ func DeleteTask(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("no actor in context")
 	}
 	var count int
-	err := app.DB.GetContext(ctx, &count, `SELECT COUNT(*) FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, id)
+	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'task'`, id)
 	if err != nil {
 		return fmt.Errorf("failed to load task: %w", err)
 	}
@@ -224,21 +248,29 @@ func DeleteTask(app *App, ctx context.Context, id string) error {
 		TimeStamp: time.Now(),
 		DeletedBy: actor.String(),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to submit task deletion: %w", err)
+	}
+	return nil
 }
 
 func HandleDeleteTask(app *App, data []byte) bool {
 	var payload DeleteTaskPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal delete task payload", slog.Any("error", err))
+		app.Logger.WithGroup("tasks").Error("failed to unmarshal delete task payload", slog.Any("error", err))
 		return false
 	}
 	unscheduleTask(app, payload.ID)
-	_, err = app.DB.Exec(
-		`DELETE FROM `+app.Schema+`.apps WHERE id = $1 AND type = 'task'`, payload.ID)
+	_, err = app.Sqlite.Exec(
+		`DELETE FROM apps WHERE id = $1 AND type = 'task'`, payload.ID)
 	if err != nil {
-		app.Logger.Error("failed to execute DELETE statement", slog.Any("error", err))
+		app.Logger.WithGroup("tasks").Error("failed to execute DELETE statement for task", slog.Any("error", err))
+		return false
+	}
+	_, err = app.Sqlite.Exec(`DELETE FROM task_runs WHERE task_id = $1`, payload.ID)
+	if err != nil {
+		app.Logger.WithGroup("tasks").Error("failed to execute DELETE statement for task_runs", slog.Any("error", err))
 		return false
 	}
 	return true

@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { Column, Result } from "../../lib/types";
-import { DateRangePicker } from "../tremor/DatePicker"
-import { Label } from "../tremor/Label"
-import { cx } from "../../lib/utils";
+import { DateRangePicker } from "../tremor/DatePicker";
+import { Label } from "../tremor/Label";
+import { cx, getLocalDate } from "../../lib/utils";
 import { translate } from "../../lib/translate";
 
 type PickerProps = {
   label?: string;
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows']
+  data: Result["sections"][0]["queries"][0]["rows"]
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
 };
 
-function DashboardDateRangePicker({
+function DashboardDateRangePicker ({
   label,
   data,
   headers,
@@ -27,9 +27,9 @@ function DashboardDateRangePicker({
   }
   const defaultFromValueHeader = headers[defaultFromValue];
   const fromVarName = defaultFromValueHeader.name;
-  const fromVarField = (vars ?? {})[fromVarName]
-  const fromDefaultValue = data[0][defaultFromValue]
-  const fromSelectedDate = Array.isArray(fromVarField) ? fromVarField[0] : fromVarField
+  const fromVarField = (vars ?? {})[fromVarName];
+  const fromDefaultValue = data[0][defaultFromValue];
+  const fromSelectedDate = Array.isArray(fromVarField) ? fromVarField[0] : fromVarField;
 
   const toDefaultValueIndex = headers.findIndex((header) => header.tag === "defaultTo");
   if (toDefaultValueIndex === -1) {
@@ -37,9 +37,9 @@ function DashboardDateRangePicker({
   }
   const toDefaultValueHeader = headers[toDefaultValueIndex];
   const toVarName = toDefaultValueHeader.name;
-  const toVarField = (vars ?? {})[toVarName]
-  const toDefaultValue = data[0][toDefaultValueIndex]
-  const toSelectedDate = Array.isArray(toVarField) ? toVarField[0] : toVarField
+  const toVarField = (vars ?? {})[toVarName];
+  const toDefaultValue = data[0][toDefaultValueIndex];
+  const toSelectedDate = Array.isArray(toVarField) ? toVarField[0] : toVarField;
 
   const presets = [
     {
@@ -91,42 +91,42 @@ function DashboardDateRangePicker({
         to: new Date(),
       },
     },
-  ]
+  ];
 
   return (
     <>
-      {label && <Label htmlFor={label} className="ml-3 pr-1">{label}:</Label>}
-      <div className={cx("select-none", { ["ml-2"]: !label })}>
+      {label && <Label htmlFor={label} className="ml-3 pr-1 print:hidden">{label}:</Label>}
+      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
         <DateRangePicker
           id={label}
           presets={presets}
           enableYearNavigation
-          placeholder={translate('Select date range')}
+          placeholder={translate("Select date range")}
           translations={{
-            cancel: translate('Cancel'),
-            apply: translate('Apply'),
+            cancel: translate("Cancel"),
+            apply: translate("Apply"),
           }}
           defaultValue={!fromDefaultValue && !toDefaultValue ? undefined : {
-            from: typeof fromDefaultValue === 'boolean' || !fromDefaultValue ? undefined : new Date(fromDefaultValue),
-            to: typeof toDefaultValue === 'boolean' || !toDefaultValue ? undefined : new Date(toDefaultValue),
+            from: typeof fromDefaultValue === "boolean" || !fromDefaultValue ? undefined : getLocalDate(fromDefaultValue),
+            to: typeof toDefaultValue === "boolean" || !toDefaultValue ? undefined : getLocalDate(toDefaultValue),
           }}
           value={!fromSelectedDate && !toSelectedDate ? undefined : {
-            from: fromSelectedDate ? new Date(fromSelectedDate) : typeof fromDefaultValue === 'boolean' || !fromDefaultValue ? undefined : new Date(fromDefaultValue),
-            to: toSelectedDate ? new Date(toSelectedDate) : typeof toDefaultValue === 'boolean' || !toDefaultValue ? undefined : new Date(toDefaultValue),
+            from: fromSelectedDate ? getLocalDate(fromSelectedDate) : typeof fromDefaultValue === "boolean" || !fromDefaultValue ? undefined : getLocalDate(fromDefaultValue),
+            to: toSelectedDate ? getLocalDate(toSelectedDate) : typeof toDefaultValue === "boolean" || !toDefaultValue ? undefined : getLocalDate(toDefaultValue),
           }}
           onChange={(value = { from: undefined, to: undefined }) => {
-            const varsCopy = { ...vars }
+            const varsCopy = { ...vars };
             if (value.from === undefined) {
-              delete varsCopy[fromVarName]
+              delete varsCopy[fromVarName];
             } else {
-              const fromDateString = `${value.from.getFullYear()}-${value.from.toLocaleDateString([], { month: "2-digit" })}-${value.from.toLocaleDateString([], { day: "2-digit" })}`
-              varsCopy[fromVarName] = fromDateString
+              const fromDateString = `${value.from.getFullYear()}-${value.from.toLocaleDateString("en-US", { month: "2-digit" })}-${value.from.toLocaleDateString("en-US", { day: "2-digit" })}`;
+              varsCopy[fromVarName] = fromDateString;
             }
             if (value.to === undefined) {
-              delete varsCopy[toVarName]
+              delete varsCopy[toVarName];
             } else {
-              const toDateString = `${value.to.getFullYear()}-${value.to.toLocaleDateString([], { month: "2-digit" })}-${value.to.toLocaleDateString([], { day: "2-digit" })}`
-              varsCopy[toVarName] = toDateString
+              const toDateString = `${value.to.getFullYear()}-${value.to.toLocaleDateString("en-US", { month: "2-digit" })}-${value.to.toLocaleDateString("en-US", { day: "2-digit" })}`;
+              varsCopy[toVarName] = toDateString;
             }
             onChange(varsCopy);
           }}
@@ -138,6 +138,3 @@ function DashboardDateRangePicker({
 }
 
 export default DashboardDateRangePicker;
-
-
-

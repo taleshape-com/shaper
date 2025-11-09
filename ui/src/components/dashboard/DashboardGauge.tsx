@@ -3,21 +3,21 @@
 import React, { useCallback, useRef } from "react";
 import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
-import * as echarts from 'echarts';
-import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor } from '../../lib/chartUtils';
-import { DarkModeContext } from '../../contexts/DarkModeContext';
+import type { ECharts } from "echarts/core";
+import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor, getDisplayFont } from "../../lib/chartUtils";
+import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { formatValue } from "../../lib/render";
-
 
 type DashboardGaugeProps = {
   chartId: string;
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows'];
+  data: Result["sections"][0]["queries"][0]["rows"];
   gaugeCategories: GaugeCategory[];
   label?: string;
 };
 
 const barWidth = 42;
+const chartPadding = 16;
 
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   chartId,
@@ -26,17 +26,17 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   gaugeCategories,
   label,
 }) => {
-  const chartRef = useRef<echarts.ECharts | null>(null);
+  const chartRef = useRef<ECharts | null>(null);
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [chartSize, setChartSize] = React.useState<{ width: number, height: number }>({ width: 0, height: 0 });
 
-
-  const chartOptions = React.useMemo((): echarts.EChartsOption => {
+  const chartOptions = React.useMemo(() => {
     const theme = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
+    const displayFont = getDisplayFont();
 
     // Find the value column
-    const valueIndex = headers.findIndex(h => h.tag === 'value');
+    const valueIndex = headers.findIndex(h => h.tag === "value");
     const valueHeader = headers[valueIndex];
     const value = data[0][valueIndex];
 
@@ -66,21 +66,21 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     // Color stops for axisLine
     const colorStops = gaugeCategoriesWithColor.map(cat => [
       (cat.to - min) / (max - min),
-      cat.color!
+      cat.color!,
     ]) as [number, string][];
 
     // Helper to check if a value is a boundary (with float tolerance)
-    function isBoundary(val: number) {
+    function isBoundary (val: number) {
       return boundaryValues.some(b => Math.abs(b - val) < 1e-6);
     }
 
     // axisLabel formatter: only show value at boundaries
-    function valueLabelFormatter(v: number) {
-      return isBoundary(v) ? formatValue(v, valueHeader.type, true).toString() : '';
+    function valueLabelFormatter (v: number) {
+      return isBoundary(v) ? formatValue(v, valueHeader.type, true).toString() : "";
     }
 
     // Helper to calculate GCD
-    function gcd(a: number, b: number): number {
+    function gcd (a: number, b: number): number {
       return b === 0 ? a : gcd(b, a % b);
     }
 
@@ -96,8 +96,16 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       return boundaryValues[i] + d / 2;
     });
 
+    const labelTopOffset = label ? 20 + 15 * (Math.ceil(label.length / (0.125 * chartSize.width)) - 1) : 0;
+
+    const radius = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 540 ? 0.52 : 0.40);
+    const centerPx = [
+      chartSize.width / 2,
+      chartSize.height / 2 + radius / 2,
+    ];
+
     const baseSeries = {
-      type: 'gauge' as const,
+      type: "gauge" as const,
       min,
       max,
       axisTick: {
@@ -111,49 +119,59 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       },
       data: [
         {
-          value: typeof value === 'number' ? value : Number(value),
-          name: label || valueHeader?.name || '',
-        }
+          value: typeof value === "number" ? value : Number(value),
+          name: label || valueHeader?.name || "",
+        },
       ],
       startAngle: 180,
       endAngle: 0,
-      center: ['50%', chartSize.width > chartSize.height ? '75%' : '68%'],
-      radius: chartSize.width > 340 ? '110%' : '86%',
+      center: [centerPx[0], centerPx[1] + labelTopOffset],
+      radius,
     };
-
-    const gaugeRadius = chartSize.width > 340 ? 1.1 : 0.86;
-    const centerY = chartSize.width > chartSize.height ? 0.75 : 0.68;
-    const centerPx = [0.5 * chartSize.width, centerY * Math.min(chartSize.width, chartSize.height)];
-    const r = (Math.min(chartSize.width, chartSize.height) / 2) * gaugeRadius + 9;
 
     // Using custom graphics to draw labels size with axisLabel we cannot control the individual alignment to ensure they don't overlap with the bar
     const graphics = (chartSize.width > 0 && chartSize.height > 0)
       ? centerValues.map((v, i) => {
         const relative = (v - min) / (max - min);
         const angle = Math.PI - (relative) * Math.PI; // 180° to 0°
-        const x = centerPx[0] + r * Math.cos(angle);
-        const y = centerPx[1] - r * Math.sin(angle);
+        const x = centerPx[0] + (radius + 9) * Math.cos(angle);
+        const y = centerPx[1] - (radius + 9) * Math.sin(angle) + labelTopOffset;
         return {
-          type: 'text',
+          type: "text",
           x,
           y,
           style: {
-            text: gaugeCategoriesWithColor[i].label ?? '',
+            text: gaugeCategoriesWithColor[i].label ?? "",
             fill: theme.textColorSecondary,
             font: `500 12px ${chartFont}`,
-            textAlign: relative < 0.4 ? 'right' : relative > 0.6 ? 'left' : 'center',
-            textVerticalAlign: 'middle',
+            textAlign: relative < 0.4 ? "right" : relative > 0.6 ? "left" : "center",
+            textVerticalAlign: "middle",
           },
           z: 100,
-          cursor: 'default',
+          cursor: "default",
         };
       })
       : [];
 
-    const pointerOffset = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 340 ? 1.1 : 0.86) * -0.5 + barWidth;
+    const pointerOffset = barWidth - radius;
 
     return {
       animation: false,
+      title: {
+        text: label,
+        textStyle: {
+          fontSize: 16,
+          lineHeight: 16,
+          fontFamily: displayFont,
+          fontWeight: 600,
+          color: theme.textColor,
+          width: chartSize.width - 10 - 2 * chartPadding,
+          overflow: "break",
+        },
+        textAlign: "center",
+        left: "50%",
+        top: chartPadding,
+      },
       series: [
         {
           ...baseSeries,
@@ -178,26 +196,26 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
             width: barWidth,
             itemStyle: {
               color: theme.primaryColor,
-            }
+            },
           },
           pointer: {
             show: gaugeCategories.length >= 2,
-            icon: 'triangle',
+            icon: "triangle",
             length: 16,
             width: 14,
             offsetCenter: [0, pointerOffset],
             itemStyle: {
               color: theme.textColor,
-            }
+            },
           },
           detail: {
             valueAnimation: false,
             fontSize: chartSize.width > 300 ? 36 : 24,
             fontFamily: chartFont,
-            offsetCenter: [0, '-26%'],
+            offsetCenter: [0, "-26%"],
             color: theme.textColor,
             fontWeight: 600,
-            formatter: function(v: number) {
+            formatter: function (v: number) {
               return formatValue(v, valueHeader.type, true).toString();
             },
           },
@@ -214,19 +232,19 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     chartSize,
   ]);
 
-  const handleChartReady = useCallback((chart: echarts.ECharts) => {
+  const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartSize({ width: chart.getWidth(), height: chart.getHeight() });
   }, []);
 
-  const handleChartResize = useCallback((chart: echarts.ECharts) => {
+  const handleChartResize = useCallback((chart: ECharts) => {
     setChartSize({ width: chart.getWidth(), height: chart.getHeight() });
   }, []);
 
   return (
     <div className="w-full h-full relative select-none overflow-hidden">
       <EChart
-        className="absolute inset-0"
+        className="relative h-full w-full"
         option={chartOptions}
         onChartReady={handleChartReady}
         onResize={handleChartResize}

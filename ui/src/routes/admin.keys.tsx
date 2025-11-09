@@ -20,7 +20,6 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { useToast } from "../hooks/useToast";
-import { translate } from "../lib/translate";
 import {
   Table,
   TableBody,
@@ -56,7 +55,7 @@ export const Route = createFileRoute("/admin/keys")({
   component: Admin,
 });
 
-function Admin() {
+function Admin () {
   const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
@@ -72,8 +71,8 @@ function Admin() {
         method: "DELETE",
       });
       toast({
-        title: translate("Success"),
-        description: translate("API key deleted successfully"),
+        title: "Success",
+        description: "API key deleted successfully",
       });
       router.invalidate();
     } catch (error) {
@@ -81,11 +80,11 @@ function Admin() {
         return navigate(error.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     }
@@ -104,11 +103,11 @@ function Admin() {
         return navigate(error.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     }
@@ -119,19 +118,19 @@ function Admin() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold mb-4">
           <RiKeyFill className="size-4 inline mr-1 -mt-0.5" />
-          {translate("API Keys")}
+          API Keys
         </h2>
         <Button onClick={() => setShowNewKeyDialog(true)}>
           <RiAddFill
             className="-ml-1 mr-0.5 size-4 shrink-0"
             aria-hidden={true}
           />
-          {translate("New")}
+          New
         </Button>
       </div>
 
       {!data ? (
-        <p>{translate("Loading API keys...")}</p>
+        <p>Loading API keys...</p>
       ) : data.keys.length === 0 ? (
         <div className="mt-4 flex flex-col h-44 items-center justify-center rounded-sm p-4 text-center">
           <RiTableFill
@@ -139,7 +138,7 @@ function Admin() {
             aria-hidden={true}
           />
           <p className="mt-2 text-ctext2 dark:text-dtext2 font-medium">
-            {translate("No API keys found")}
+            No API keys found
           </p>
         </div>
       ) : (
@@ -147,13 +146,9 @@ function Admin() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                  {translate("Name")}
-                </TableHeaderCell>
-                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">
-                  {translate("Created")}
-                </TableHeaderCell>
-                <TableHeaderCell>{translate("Actions")}</TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext">Name</TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">Created</TableHeaderCell>
+                <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -175,7 +170,7 @@ function Admin() {
                       className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                       onClick={() => setDeleteKeyDialog(key)}
                     >
-                      {translate("Delete")}
+                      Delete
                     </button>
                   </TableCell>
                 </TableRow>
@@ -188,18 +183,16 @@ function Admin() {
       <Dialog open={deleteKeyDialog !== null} onOpenChange={(open) => !open && setDeleteKeyDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {deleteKeyDialog && translate('Are you sure you want to delete this API key "%%"?').replace(
+              {deleteKeyDialog && ("Are you sure you want to delete this API key \"%%\"?").replace(
                 "%%",
                 deleteKeyDialog.name,
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setDeleteKeyDialog(null)} variant="secondary">
-              {translate("Cancel")}
-            </Button>
+            <Button onClick={() => setDeleteKeyDialog(null)} variant="secondary">Cancel</Button>
             <Button
               variant="destructive"
               onClick={() => {
@@ -209,7 +202,7 @@ function Admin() {
                 }
               }}
             >
-              {translate("Delete")}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -225,13 +218,11 @@ function Admin() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {newKey
-                ? translate("API Key Created")
-                : translate("Create New API Key")}
+              {newKey ? "API Key Created" : "Create New API Key"}
             </DialogTitle>
             {!newKey && (
               <DialogDescription>
-                {translate("Enter a name to identify this API key")}
+                Enter a name to identify this API key
               </DialogDescription>
             )}
           </DialogHeader>
@@ -239,7 +230,7 @@ function Admin() {
           {newKey ? (
             <div className="space-y-4">
               <div>
-                <Label>{translate("Your new API key")}:</Label>
+                <Label>Your new API key:</Label>
                 <div className="flex items-center gap-2 mt-2">
                   <code className="bg-cbga dark:bg-dbga p-2 rounded flex-grow overflow-hidden text-ellipsis">
                     {newKey.key}
@@ -248,21 +239,19 @@ function Admin() {
                     onClick={() => {
                       navigator.clipboard.writeText(newKey.key);
                       toast({
-                        title: translate("Success"),
-                        description: translate("API key copied to clipboard"),
+                        title: "Success",
+                        description: "API key copied to clipboard",
                       });
                     }}
                     variant="primary"
                   >
-                    {translate("Copy")}
+                    Copy
                   </Button>
                 </div>
               </div>
 
               <p className="text-sm text-cerr dark:text-derr">
-                {translate(
-                  "Make sure to copy this key now. You won't be able to see it again!",
-                )}
+                Make sure to copy this key now. You won't be able to see it again!
               </p>
 
               <DialogFooter>
@@ -273,7 +262,7 @@ function Admin() {
                     setNewKey(null);
                   }}
                 >
-                  {translate("Close")}
+                  Close
                 </Button>
               </DialogFooter>
             </div>
@@ -289,20 +278,16 @@ function Admin() {
               <Input
                 id="name"
                 name="name"
-                placeholder={translate("Enter key name")}
+                placeholder="Enter key name"
                 required
                 autoFocus
               />
 
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="secondary">
-                    {translate("Cancel")}
-                  </Button>
+                  <Button type="button" variant="secondary">Cancel</Button>
                 </DialogClose>
-                <Button type="submit" className="mb-4 sm:mb-0">
-                  {translate("Create Key")}
-                </Button>
+                <Button type="submit" className="mb-4 sm:mb-0">Create Key</Button>
               </DialogFooter>
             </form>
           )}

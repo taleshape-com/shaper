@@ -50,7 +50,7 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string) {
+func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
 	apiWithAuth := e.Group("/api",
 		echojwt.WithConfig(echojwt.Config{
 			TokenLookup: "header:Authorization",
@@ -66,10 +66,13 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidateAPIKey(app.DB, app.Schema, c.Request().Context(), key)
+			return core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
 		},
 	}
 
+	e.HEAD("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	e.GET("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
@@ -87,17 +90,23 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
-	e.GET("/api/public/:id/status", handler.GetPublicStatus(app))
+	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/apps", handler.ListApps(app))
+	apiWithAuth.POST("/folders", handler.CreateFolder(app))
+	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
+	apiWithAuth.POST("/folders/:id/name", handler.RenameFolder(app))
+	apiWithAuth.POST("/move", handler.MoveItems(app))
 	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))
-	apiWithAuth.GET("/dashboards/:id/query", handler.GetDashboardQuery(app))
+	apiWithAuth.GET("/dashboards/:id/info", handler.GetDashboardInfo(app))
 	apiWithAuth.POST("/dashboards/:id/query", handler.SaveDashboardQuery(app))
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
+	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
+	apiWithAuth.GET("/dashboards/:id/pdf/:filename", handler.DownloadPdf(app, internalUrl, pdfDateFormat))
 	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
 	if !app.NoTasks {
 		apiWithAuth.POST("/tasks", handler.CreateTask(app))
@@ -131,6 +140,12 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}))
 
 	e.GET("/view/:id", serveViewHTML(frontendFS, modTime), CacheControl(CacheConfig{
+		MaxAge: 24 * time.Hour, // 1 day
+		Public: true,
+		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
+	}))
+
+	e.GET("/_internal/pdfview/:id", servePdfViewHTML(frontendFS, modTime), CacheControl(CacheConfig{
 		MaxAge: 24 * time.Hour, // 1 day
 		Public: true,
 		// TODO: Once we version this file properly can set Immutable: true, and cache for a year

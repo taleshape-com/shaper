@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/marcboeker/go-duckdb/v2"
+	"github.com/duckdb/duckdb-go/v2"
 )
 
-const QUERY_MAX_ROWS = 10000
+const QUERY_MAX_ROWS = 3000
 
 // These SQL statements are used only for their side effects and not to display anything.
 // They are not visible in the dashboard output.
@@ -25,6 +25,12 @@ var sideEffectSQLStatements = [][]string{
 	{"ATTACH"},
 	{"USE"},
 	{"SET", "VARIABLE"},
+	{"SET"},
+	{"BEGIN"},
+	{"COMMIT"},
+	{"ROLLBACK"},
+	{"ABORT"},
+	{"CALL"},
 	{"RESET", "VARIABLE"},
 	{"CREATE", "TEMPORARY", "TABLE"},
 	{"CREATE", "TEMPORARY", "VIEW"},
@@ -51,7 +57,6 @@ var sideEffectSQLStatements = [][]string{
 type DashboardQuery struct {
 	Content    string
 	ID         string
-	Name       string
 	Visibility *string
 }
 
@@ -59,29 +64,32 @@ type DashboardQuery struct {
 // It executes the SQL and generates a dashboard definition from the results that can be rendered in the frontend.
 func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	result := GetResult{
-		Name:       dashboardQuery.Name,
 		Visibility: dashboardQuery.Visibility,
 		Sections:   []Section{},
 	}
 	nextLabel := ""
 	hideNextContentSection := false
 	nextIsDownload := false
+	nextMarkLines := []MarkLine{}
 	cleanContent := util.StripSQLComments(dashboardQuery.Content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return result, err
 	}
 
-	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
 	if err != nil {
 		return result, err
 	}
+	// Used to set params for download links
+	downloadLinkParams := url.Values{}
 
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
+	headerImage := ""
+	footerLink := ""
 
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -89,7 +97,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	for queryIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
-			break
+			continue
 		}
 		if nextIsDownload {
 			nextIsDownload = false
@@ -150,10 +158,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isSectionTitle(colTypes, query.Rows) {
-			result.Sections = append(result.Sections, Section{
-				Type:    "header",
-				Queries: []Query{},
-			})
+			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil {
+				result.Sections = append(result.Sections, Section{
+					Type:    "header",
+					Queries: []Query{},
+				})
+			}
 			hideNextContentSection = false
 			lastSection := &result.Sections[len(result.Sections)-1]
 			if len(query.Rows) == 0 {
@@ -182,14 +192,29 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel)
+		if isHeaderImage(colTypes, query.Rows) {
+			headerImage = getSingleValue(query.Rows)
+			continue
+		}
+		if isFooterLink(colTypes, query.Rows) {
+			footerLink = getSingleValue(query.Rows)
+			continue
+		}
+
+		if lines, ok := getMarkLines(colTypes, query.Rows); ok {
+			nextMarkLines = append(nextMarkLines, lines...)
+			continue
+		}
+
+		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextMarkLines)
 		query.Render = Render{
 			Type:            rInfo.Type,
 			Label:           rInfo.Label,
 			GaugeCategories: rInfo.GaugeCategories,
+			MarkLines:       rInfo.MarkLines,
 		}
 
-		if rInfo.Download != "" {
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
 			nextIsDownload = true
 		}
 
@@ -212,17 +237,38 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				Tag:      tag,
 			}
 			query.Columns = append(query.Columns, col)
-			if (rInfo.Download == "csv" || rInfo.Download == "xlsx") && len(query.Rows) > 0 {
-				filename := query.Rows[0][colIndex].(duckdb.Union).Value.(string)
-				queryString := ""
-				if len(queryParams) > 0 {
-					queryString = "?" + queryParams.Encode()
+			if tag == "download" && len(query.Rows) > 0 {
+				v := query.Rows[0][colIndex]
+				filename := ""
+				if v != nil {
+					filename = v.(duckdb.Union).Value.(string)
 				}
-				query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				queryString := ""
+				if len(downloadLinkParams) > 0 {
+					queryString = "?" + downloadLinkParams.Encode()
+				}
+				if rInfo.Download == "pdf" {
+					id := dashboardQuery.ID
+					if rInfo.DownloadIdIndex != nil {
+						v := query.Rows[0][*rInfo.DownloadIdIndex]
+						if v == nil {
+							id = ""
+						} else {
+							id = v.(duckdb.Union).Value.(string)
+						}
+					}
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
+				} else {
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+				}
 			}
 		}
 
 		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		if err != nil {
+			return result, err
+		}
+		err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
 		}
@@ -236,10 +282,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				}
 				if t, ok := cell.(time.Time); ok {
 					if colType == "time" {
-						// Convert time to ms since midnight
-						seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
-						ms := int64(seconds*1000) + int64(t.Nanosecond()/1000000)
-						row[i] = ms
+						row[i] = formatTime(t)
 						continue
 					}
 					ms := t.UnixMilli()
@@ -320,7 +363,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		wantedSectionType := "content"
-		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" {
+		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" || query.Render.Type == "input" {
 			wantedSectionType = "header"
 		}
 		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
@@ -339,17 +382,30 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		nextLabel = ""
+		nextMarkLines = []MarkLine{}
 	}
 	if err := conn.Close(); err != nil {
 		return result, fmt.Errorf("Error closing conn: %v", err)
 	}
+	if len(result.Sections) > 0 {
+		firstSection := result.Sections[0]
+		if firstSection.Title != nil {
+			result.Name = *firstSection.Title
+		}
+	}
 	result.MinTimeValue = minTimeValue
 	result.MaxTimeValue = maxTimeValue
+	if headerImage != "" {
+		result.HeaderImage = &headerImage
+	}
+	if footerLink != "" {
+		result.FooterLink = &footerLink
+	}
 	return result, err
 }
 
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return GetResult{}, err
 	}
@@ -357,7 +413,6 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	return QueryDashboard(app, ctx, DashboardQuery{
 		Content:    dashboard.Content,
 		ID:         dashboardId,
-		Name:       dashboard.Name,
 		Visibility: dashboard.Visibility,
 	}, queryParams, variables)
 }
@@ -401,12 +456,17 @@ func mapTag(index int, rInfo renderInfo) string {
 			return "defaultTo"
 		}
 	}
-	if rInfo.Download != "" {
+	if rInfo.Download != "" && (rInfo.DownloadIdIndex == nil || index != *rInfo.DownloadIdIndex) {
 		return "download"
 	}
 	if rInfo.Type == "gauge" {
 		if rInfo.ValueAxisIndex != nil && index == *rInfo.ValueAxisIndex {
 			return "value"
+		}
+	}
+	if rInfo.Type == "input" {
+		if rInfo.HintIndex != nil && index == *rInfo.HintIndex {
+			return "hint"
 		}
 	}
 	if rInfo.Type == "value" {
@@ -468,6 +528,8 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "duration", nil
 	case "TIME":
 		return "time", nil
+	case "JSON":
+		return "object", nil
 	case "UUID":
 		return "string", nil
 	case "UINTEGER":
@@ -525,14 +587,14 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 		}
 	}
 	if unionDefinition == "" {
-		return nil, 0
+		return nil, -1
 	}
 	for i, c := range columns {
 		if c.DatabaseTypeName() == unionDefinition {
 			return c, i
 		}
 	}
-	return nil, 0
+	return nil, -1
 }
 
 // Some SQL statements are only used for their side effects and should not be shown on the dashboard.
@@ -580,6 +642,65 @@ func isPlaceholder(columns []*sql.ColumnType, rows Rows) bool {
 	return (len(rows) == 1 && len(rows[0]) == 1)
 }
 
+func getMarkLines(columns []*sql.ColumnType, rows Rows) ([]MarkLine, bool) {
+	axis := ""
+	valueIndex := -1
+	if col, i := findColumnByTag(columns, "XLINE"); col != nil {
+		axis = "x"
+		valueIndex = i
+	} else if col, i := findColumnByTag(columns, "YLINE"); col != nil {
+		axis = "y"
+		valueIndex = i
+	}
+	_, labelIndex := findColumnByTag(columns, "LABEL")
+	lines := []MarkLine{}
+	if axis == "" || valueIndex == -1 {
+		return lines, false
+	}
+	for _, row := range rows {
+		if len(row) <= valueIndex {
+			continue
+		}
+		v := row[valueIndex]
+		if v == nil {
+			continue
+		}
+		u, ok := v.(duckdb.Union)
+		if !ok || u.Value == nil {
+			continue
+		}
+		line := MarkLine{IsYaxis: axis == "y"}
+		// Format values according to same logic as chart values
+		switch val := u.Value.(type) {
+		case string:
+			line.Value = val
+		case float64:
+			if math.IsNaN(val) || math.IsInf(val, 0) {
+				continue
+			}
+			line.Value = val
+		case time.Time:
+			if strings.HasSuffix(u.Tag, "_time") {
+				line.Value = formatTime(val)
+			} else {
+				line.Value = val.UnixMilli()
+			}
+		case duckdb.Interval:
+			line.Value = formatInterval(val)
+		}
+		// Set label if specified
+		if labelIndex != -1 && labelIndex < len(row) {
+			if u, ok := row[labelIndex].(duckdb.Union); ok {
+				if l, ok := u.Value.(string); ok {
+					line.Label = l
+				}
+			}
+		}
+		lines = append(lines, line)
+	}
+	return lines, true
+}
+
 func getDownloadType(columns []*sql.ColumnType) string {
 	csvColumn, _ := findColumnByTag(columns, "DOWNLOAD_CSV")
 	if csvColumn != nil {
@@ -589,10 +710,14 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	if xlsxColumn != nil {
 		return "xlsx"
 	}
+	pdfColumn, _ := findColumnByTag(columns, "DOWNLOAD_PDF")
+	if pdfColumn != nil {
+		return "pdf"
+	}
 	return ""
 }
 
-func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines []MarkLine) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
@@ -617,6 +742,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Type:           "linechart",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &linechartIndex,
+			MarkLines:      markLines,
 		}
 		if lineCat != nil {
 			r.CategoryIndex = &lineCatIndex
@@ -645,6 +771,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Type:           "barchartHorizontal",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartIndex,
+			MarkLines:      markLines,
 		}
 		if barCat != nil {
 			r.CategoryIndex = &barCatIndex
@@ -669,6 +796,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
+			MarkLines:      markLines,
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -683,6 +811,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			Type:           "barchartVertical",
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartIndex,
+			MarkLines:      markLines,
 		}
 		if barCat != nil {
 			r.CategoryIndex = &barCatIndex
@@ -699,6 +828,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
+			MarkLines:      markLines,
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -760,10 +890,17 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 
 	downloadType := getDownloadType(columns)
 	if downloadType != "" {
+		var downloadIdIndex *int
+		if downloadType == "pdf" {
+			if idCol, idColIndex := findColumnByTag(columns, "ID"); idCol != nil {
+				downloadIdIndex = &idColIndex
+			}
+		}
 		return renderInfo{
-			Label:    labelValue,
-			Type:     "button",
-			Download: downloadType,
+			Label:           labelValue,
+			Type:            "button",
+			Download:        downloadType,
+			DownloadIdIndex: downloadIdIndex,
 		}
 	}
 
@@ -897,6 +1034,15 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string) renderInf
 			GaugeCategories: categories,
 		}
 		return r
+	}
+
+	inputTag, inputTagIndex := findColumnByTag(columns, "INPUT")
+	if inputTag != nil && len(rows) == 1 {
+		return renderInfo{
+			Label:     labelValue,
+			Type:      "input",
+			HintIndex: &inputTagIndex,
+		}
 	}
 
 	// TODO: assert that COMPARE can only be used if both values are the same type
@@ -1074,11 +1220,17 @@ func getAxisType(rows Rows, index int) (string, error) {
 		if !ok {
 			return "", fmt.Errorf("invalid union value for axis value, got: %v (type %T, column %v)", row[index], row[index], index)
 		}
-		if _, ok := union.Value.(float64); !ok {
-			return "string", nil
+		if strings.HasSuffix(union.Tag, "_interval") {
+			return "duration", nil
+		}
+		if strings.HasSuffix(union.Tag, "_time") {
+			return "time", nil
+		}
+		if strings.HasSuffix(union.Tag, "_double") {
+			return "number", nil
 		}
 	}
-	return "number", nil
+	return "string", nil
 }
 
 // TODO: assert that variable names are alphanumeric
@@ -1186,6 +1338,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
 		params := queryParams[columnName]
+		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
 			paramsToCheck := map[string]bool{}
 			for _, param := range params {
@@ -1224,8 +1377,8 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				params = cleanedParams
 			}
 		}
-		if len(params) == 0 {
-			// Set default value to all rows
+		if len(params) == 0 && !paramWasProvided {
+			// Set default value to all rows only when no parameter was provided
 			for i, row := range data {
 				union, ok := row[columnIndex].(duckdb.Union)
 				if !ok {
@@ -1243,6 +1396,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 				}
 			}
 		}
+		// If paramWasProvided but params is empty, we keep it as empty array
 		multiVars[columnName] = params
 	}
 
@@ -1348,6 +1502,291 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 			singleVars[toColumnName] = "TIMESTAMP '" + util.EscapeSQLString(toParam) + " 23:59:59.999999'"
 		}
 	}
+
+	// Fetch vars from input
+	if renderType == "input" {
+		columnName := ""
+		for _, col := range columns {
+			if col.Tag == "hint" {
+				columnName = col.Name
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing hint column for input")
+		}
+		param := queryParams.Get(columnName)
+		if param != "" {
+			singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
+		}
+	}
+	return nil
+}
+
+// TODO: This shares a lot of code with collectVars
+func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+	// Fetch vars from dropdown
+	if renderType == "dropdown" {
+		columnName := ""
+		columnIndex := -1
+		for i, col := range columns {
+			if col.Tag == "value" {
+				columnName = col.Name
+				columnIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing value column for dropdown")
+		}
+		param := queryParams.Get(columnName)
+		if param != "" {
+			// Check if param actually exists in the dropdown
+			isValidVar := false
+			for i, row := range data {
+				union, ok := row[columnIndex].(duckdb.Union)
+				if !ok {
+					return fmt.Errorf("invalid union value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				}
+				val, ok := union.Value.(string)
+				if !ok {
+					if union.Value == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				if val == param {
+					isValidVar = true
+					break
+				}
+			}
+			if !isValidVar {
+				// Ignore invalid param
+				param = ""
+			}
+		}
+		if param == "" {
+			if len(data) == 0 {
+				// No vars for dropdown without options
+				return nil
+			}
+			// Set default value to first row
+			union, ok := data[0][columnIndex].(duckdb.Union)
+			if !ok {
+				return fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+			}
+			param, ok = union.Value.(string)
+			if !ok {
+				if union.Value == nil {
+					param = ""
+				} else {
+					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+				}
+			}
+		}
+		downloadLinkParams.Add(columnName, param)
+	}
+
+	// Fetch vars from dropdownMulti
+	if renderType == "dropdownMulti" {
+		columnName := ""
+		columnIndex := -1
+		for i, col := range columns {
+			if col.Tag == "value" {
+				columnName = col.Name
+				columnIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing value column for dropdownMulti")
+		}
+		params := queryParams[columnName]
+		paramWasProvided := queryParams.Has(columnName)
+		if len(params) > 0 {
+			paramsToCheck := map[string]bool{}
+			for _, param := range params {
+				paramsToCheck[param] = true
+			}
+			for i, row := range data {
+				union, ok := row[columnIndex].(duckdb.Union)
+				var val string
+				if !ok {
+					return fmt.Errorf("invalid union value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				}
+				val, ok = union.Value.(string)
+				if !ok {
+					if union.Value == nil {
+						val = ""
+					} else {
+						return fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					}
+				}
+				if paramsToCheck[val] {
+					delete(paramsToCheck, val)
+					if len(paramsToCheck) == 0 {
+						break
+					}
+				}
+			}
+			if len(paramsToCheck) > 0 {
+				// Remove invalid params
+				cleanedParams := make([]string, 0, len(params)-len(paramsToCheck))
+				for _, param := range params {
+					if paramsToCheck[param] {
+						continue
+					}
+					cleanedParams = append(cleanedParams, param)
+				}
+				params = cleanedParams
+			}
+		}
+		if len(params) == 0 && !paramWasProvided {
+			// Set default value to all rows only when no parameter was provided
+			for i, row := range data {
+				union, ok := row[columnIndex].(duckdb.Union)
+				if !ok {
+					return fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+				} else {
+					val, ok := union.Value.(string)
+					if !ok {
+						if union.Value == nil {
+							val = ""
+						} else {
+							return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+						}
+					}
+					params = append(params, val)
+				}
+			}
+		}
+		// If paramWasProvided but params is empty, we keep it as empty array
+		for _, param := range params {
+			downloadLinkParams.Add(columnName, param)
+		}
+	}
+
+	// Fetch vars from datepicker
+	if renderType == "datepicker" {
+		if len(data) == 0 {
+			return nil
+		}
+		columnName := ""
+		defaultValueIndex := -1
+		for i, col := range columns {
+			if col.Tag == "default" {
+				columnName = col.Name
+				defaultValueIndex = i
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing datepicker column")
+		}
+		param := queryParams.Get(columnName)
+		if param == "" {
+			// Set default value
+			if defaultValueIndex != -1 {
+				val := data[0][defaultValueIndex].(duckdb.Union).Value
+				if val != nil {
+					date := val.(time.Time)
+					param = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if param is a valid date
+			if !isDateString(param) {
+				return fmt.Errorf("invalid date for datepicker query param '%s': %s", columnName, param)
+			}
+		}
+		if param != "" {
+			downloadLinkParams.Add(columnName, param)
+		}
+	}
+
+	// Fetch vars from daterangePicker
+	if renderType == "daterangePicker" {
+		if len(data) == 0 {
+			return nil
+		}
+		fromColumnName := ""
+		toColumnName := ""
+		fromDefaultValueIndex := -1
+		toDefaultValueIndex := -1
+		for i, col := range columns {
+			if col.Tag == "defaultFrom" {
+				fromColumnName = col.Name
+				fromDefaultValueIndex = i
+			}
+			if col.Tag == "defaultTo" {
+				toColumnName = col.Name
+				toDefaultValueIndex = i
+			}
+		}
+		if fromColumnName == "" {
+			return fmt.Errorf("missing DATEPICKER_FROM column")
+		}
+		if toColumnName == "" {
+			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		fromParam := queryParams.Get(fromColumnName)
+		if fromParam == "" {
+			// Set default value
+			if fromDefaultValueIndex != -1 {
+				val := data[0][fromDefaultValueIndex].(duckdb.Union).Value
+				if val != nil {
+					date := val.(time.Time)
+					fromParam = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if fromParam is a valid date
+			if !isDateString(fromParam) {
+				return fmt.Errorf("invalid date for datepicker query fromParam '%s': %s", fromColumnName, fromParam)
+			}
+		}
+		if fromParam != "" {
+			downloadLinkParams.Add(fromColumnName, fromParam)
+		}
+		toParam := queryParams.Get(toColumnName)
+		if toParam == "" {
+			// Set default value
+			if toDefaultValueIndex != -1 {
+				val := data[0][toDefaultValueIndex].(duckdb.Union).Value
+				if val != nil {
+					date := val.(time.Time)
+					toParam = date.Format(time.DateOnly)
+				}
+			}
+		} else {
+			// Check if toParam is a valid date
+			if !isDateString(toParam) {
+				return fmt.Errorf("invalid date for datepicker query toParam '%s': %s", toColumnName, toParam)
+			}
+		}
+		if toParam != "" {
+			downloadLinkParams.Add(toColumnName, toParam)
+		}
+	}
+
+	// Fetch vars from input
+	if renderType == "input" {
+		columnName := ""
+		for _, col := range columns {
+			if col.Tag == "hint" {
+				columnName = col.Name
+				break
+			}
+		}
+		if columnName == "" {
+			return fmt.Errorf("missing hint column for input")
+		}
+		param := queryParams.Get(columnName)
+		if param != "" {
+			downloadLinkParams.Add(columnName, param)
+		}
+	}
 	return nil
 }
 
@@ -1394,75 +1833,10 @@ func formatInterval(v any) int64 {
 	return ms
 }
 
-// Split by ; and handle ; inside single and double quotes
-func splitSQLQueries(sql string) ([]string, error) {
-	var queries []string
-	var currentQuery strings.Builder
-	var inSingleQuote bool
-	var inDoubleQuote bool
-	var lineNum int = 1
-	var quoteStartLine int
-
-	for i := 0; i < len(sql); i++ {
-		c := sql[i]
-		currentQuery.WriteByte(c)
-
-		// Track line numbers
-		if c == '\n' {
-			lineNum++
-		}
-
-		// Handle single quotes
-		if c == '\'' && !inDoubleQuote {
-			if i+1 < len(sql) && sql[i+1] == '\'' {
-				currentQuery.WriteByte(sql[i+1])
-				i++
-				continue
-			}
-			if !inSingleQuote {
-				quoteStartLine = lineNum
-			}
-			inSingleQuote = !inSingleQuote
-			continue
-		}
-
-		// Handle double quotes
-		if c == '"' && !inSingleQuote {
-			if i+1 < len(sql) && sql[i+1] == '"' {
-				currentQuery.WriteByte(sql[i+1])
-				i++
-				continue
-			}
-			if !inDoubleQuote {
-				quoteStartLine = lineNum
-			}
-			inDoubleQuote = !inDoubleQuote
-			continue
-		}
-
-		// Handle semicolon
-		if c == ';' && !inSingleQuote && !inDoubleQuote {
-			query := strings.TrimSpace(currentQuery.String())
-			if len(query) > 0 {
-				queries = append(queries, query[:len(query)-1]) // Remove the semicolon
-			}
-			currentQuery.Reset()
-		}
-	}
-
-	if inSingleQuote {
-		return nil, fmt.Errorf("unclosed single quote starting in line %d", quoteStartLine+1)
-	}
-	if inDoubleQuote {
-		return nil, fmt.Errorf("unclosed double quote starting in line %d", quoteStartLine+1)
-	}
-
-	lastQuery := strings.TrimSpace(currentQuery.String())
-	if lastQuery != "" {
-		queries = append(queries, lastQuery)
-	}
-
-	return queries, nil
+// Convert time to ms since midnight
+func formatTime(t time.Time) int64 {
+	seconds := t.Hour()*3600 + t.Minute()*60 + t.Second()
+	return int64(seconds*1000) + int64(t.Nanosecond()/1000000)
 }
 
 // Must be a single column and a single row.
@@ -1499,6 +1873,42 @@ func getReloadValue(rows Rows) int64 {
 		return 0
 	}
 	return 0
+}
+
+func isHeaderImage(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "HEADER_IMAGE")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
+}
+func isFooterLink(columns []*sql.ColumnType, rows Rows) bool {
+	col, _ := findColumnByTag(columns, "FOOTER_LINK")
+	if col == nil {
+		return false
+	}
+	return len(rows) == 1 && len(rows[0]) == 1
+}
+
+func getSingleValue(rows Rows) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	row := rows[0]
+	if len(row) == 0 {
+		return ""
+	}
+	val := rows[0][0]
+	if len(row) == 0 || val == nil {
+		return ""
+	}
+	if union, ok := val.(duckdb.Union); ok {
+		if str, ok := union.Value.(string); ok {
+			return str
+		}
+		return ""
+	}
+	return ""
 }
 
 func lessThanTwoUniqueRangeValues(r []any) bool {

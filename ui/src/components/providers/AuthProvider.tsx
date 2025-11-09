@@ -25,7 +25,7 @@ const getSessionToken = async (email: string, password: string) => {
   return data.token;
 };
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider ({ children }: { children: React.ReactNode }) {
   const [variables, setVariables] = useState<Variables>(
     getVariables(getVariablesString()),
   );
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem(localStorageTokenKey);
       return await updateJwtWithVars(token ?? "", vars);
     } catch (error) {
-      console.error(error)
+      console.error(error);
       return false;
     }
   }, [updateJwtWithVars]);

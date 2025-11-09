@@ -3,6 +3,8 @@
 package main
 
 import (
+	_ "modernc.org/sqlite"
+
 	"context"
 	"database/sql"
 	"embed"
@@ -14,6 +16,8 @@ import (
 	"shaper/server/comms"
 	"shaper/server/core"
 	"shaper/server/ingest"
+	"shaper/server/metrics"
+	"shaper/server/snapshots"
 	"shaper/server/util"
 	"shaper/server/util/signals"
 	"shaper/server/web"
@@ -21,8 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/nrednav/cuid2"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
@@ -50,6 +54,11 @@ const USAGE = `Version: {{.Version}}
   Environment variables must be prefixed with SHAPER_ and use uppercase letters and underscores.
   For example, --nats-token turns into SHAPER_NATS_TOKEN.
 
+  For S3 snapshots, Shaper supports AWS credential chain and auto-discovery. You can use AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables, or use IAM roles, AWS credentials file,
+  or other standard AWS credential methods. Command line flags can override environment variables.
+  If no endpoint is specified, Shaper will automatically use AWS S3.
+
   The config file format is plain text, with one flag per line. The flag name and value are separated by whitespace.
 
   For more see: https://taleshape.com/shaper/docs
@@ -57,19 +66,26 @@ const USAGE = `Version: {{.Version}}
 `
 
 type Config struct {
+	DeprecatedSchema           string
+	LogLevel                   string
 	SessionExp                 time.Duration
 	InviteExp                  time.Duration
 	Address                    string
 	DataDir                    string
-	Schema                     string
 	ExecutableModTime          time.Time
 	BasePath                   string
 	CustomCSS                  string
 	Favicon                    string
 	JWTExp                     time.Duration
 	NoPublicSharing            bool
+	NoPasswordProtectedSharing bool
 	NoTasks                    bool
 	NodeIDFile                 string
+	TLSDomain                  string
+	TLSEmail                   string
+	TLSCache                   string
+	HTTPSHost                  string
+	PdfDateFormat              string
 	NatsServers                string
 	NatsHost                   string
 	NatsPort                   int
@@ -83,7 +99,6 @@ type Config struct {
 	IngestStreamMaxAge         time.Duration
 	StateStreamMaxAge          time.Duration
 	IngestConsumerNameFile     string
-	StateConsumerNameFile      string
 	IngestSubjectPrefix        string
 	StateSubjectPrefix         string
 	TasksStreamName            string
@@ -92,12 +107,24 @@ type Config struct {
 	TaskResultsStreamName      string
 	TaskResultsSubjectPrefix   string
 	TaskResultsStreamMaxAge    time.Duration
-	TaskResultConsumerNameFile string
 	TaskBroadcastSubject       string
+	SQLiteDB                   string
 	DuckDB                     string
 	DuckDBExtDir               string
+	DuckDBSecretDir            string
 	InitSQL                    string
 	InitSQLFile                string
+	SnapshotTime               string
+	SnapshotS3Bucket           string
+	SnapshotS3Region           string
+	SnapshotS3Endpoint         string
+	SnapshotS3AccessKey        string
+	SnapshotS3SecretKey        string
+	SnapshotStream             string
+	SnapshotConsumerName       string
+	SnapshotSubjectPrefix      string
+	NoSnapshots                bool
+	NoAutoRestore              bool
 }
 
 func main() {
@@ -108,21 +135,37 @@ func main() {
 func loadConfig() Config {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error getting home directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	flags := ff.NewFlagSet(APP_NAME)
 	help := flags.Bool('h', "help", "show help")
 	version := flags.Bool('v', "version", "show version")
-	addr := flags.StringLong("addr", "localhost:5454", "server address")
+	logLevel := flags.StringLong("log-level", "info", "log level: debug, info, warn, error")
+	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
+	snapshotS3Bucket := flags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
+	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (optional, defaults to AWS S3 if not provided)")
+	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (optional, can use AWS_ACCESS_KEY_ID environment variable)")
+	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (optional, can use AWS_SECRET_ACCESS_KEY environment variable)")
+	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
+	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional, can use AWS_REGION environment variable)")
+	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
+	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
+	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
+	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
+	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
+	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
+	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
 	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
+	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
 	natsToken := flags.String('t', "nats-token", "", "NATS authentication token")
@@ -130,9 +173,11 @@ func loadConfig() Config {
 	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
 	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
 	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
+	sqliteDB := flags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper_internal.sqlite)")
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
-	schema := flags.StringLong("schema", "_shaper", "DB schema name for internal tables")
+	duckdbSecretDir := flags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
+	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
@@ -147,15 +192,18 @@ func loadConfig() Config {
 	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
 	taskResultsStreamMaxAge := flags.DurationLong("task-results-max-age", 0, "Maximum age of messages in the task-results stream. Set to 0 for indefinite retention")
 	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
-	stateConsumerNameFile := flags.StringLong("state-consumer-name-file", "", "File to store and lookup name for state consumer (default: [--dir]/state-consumer-name.txt)")
+	_ = flags.StringLong("state-consumer-name-file", "", "DEPRECATED: Using ephermal consumer and storing sequence in sqlite now")
 	taskQueueConsumerName := flags.StringLong("task-queue-consumer-name", "shaper-task-queue-consumer", "Name for the task queue consumer")
-	taskResultConsumerNameFile := flags.StringLong("task-result-consumer-name-file", "", "File to store and lookup name for task result consumer (default: [--dir]/task-result-consumer-name.txt)")
+	_ = flags.StringLong("task-result-consumer-name-file", "", "DEPRECATED: Now storing cursor in sqlite")
+	snapshotStream := flags.StringLong("snapshot-stream", "shaper-snapshots", "NATS stream name for scheduled snapshots")
+	snapshotConsumerName := flags.StringLong("snapshot-consumer-name", "shaper-snapshot-consumer", "Name for the snapshot consumer")
 	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
 	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
 	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
 	tasksSubjectPrefix := flags.StringLong("tasks-subject-prefix", "shaper.tasks.", "prefix for tasks NATS subjects")
 	taskResultsSubjectPrefix := flags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
 	taskBroadcastSubject := flags.StringLong("task-broadcast-subject", "shaper.task-broadcast", "subject to broadcast tasks to run on all nodes in a cluster when running manual task")
+	snapshotSubjectPrefix := flags.StringLong("snapshots-subject-prefix", "shaper.snapshots.", "prefix for snapshots NATS subjects")
 	flags.StringLong("config-file", "", "path to config file")
 
 	err = ff.Parse(flags, os.Args[1:],
@@ -177,9 +225,34 @@ func loadConfig() Config {
 		os.Exit(0)
 	}
 
+	switch *logLevel {
+	case "debug", "info", "warn", "error":
+		// valid
+	default:
+		fmt.Printf("Invalid log level '%s'. Valid options are: debug, info, warn, error\n", *logLevel)
+		os.Exit(1)
+	}
+
 	executableModTime, err := getExecutableModTime()
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error getting executable modification time: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *tlsDomain != "" {
+		if *addr != "localhost:5454" && *addr != ":5454" {
+			fmt.Println("Cannot set addr and tls-domain at the same time.")
+			os.Exit(1)
+		}
+		if *basePath != "/" {
+			fmt.Println("Cannot set basepath and tls-domain at the same time.")
+			os.Exit(1)
+		}
+	}
+
+	tlsCacheDir := *tlsCache
+	if tlsCacheDir == "" {
+		tlsCacheDir = path.Join(*dataDir, "letsencrypt-cache")
 	}
 
 	// Parse natsMaxStore as int64
@@ -218,9 +291,10 @@ func loadConfig() Config {
 	}
 
 	config := Config{
+		DeprecatedSchema:           *deprecatedSchema,
+		LogLevel:                   *logLevel,
 		Address:                    *addr,
 		DataDir:                    *dataDir,
-		Schema:                     *schema,
 		ExecutableModTime:          executableModTime,
 		BasePath:                   bpath,
 		CustomCSS:                  *customCSS,
@@ -229,8 +303,14 @@ func loadConfig() Config {
 		SessionExp:                 *sessionExp,
 		InviteExp:                  *inviteExp,
 		NoPublicSharing:            *noPublicSharing,
+		NoPasswordProtectedSharing: *noPasswordProtectedSharing,
 		NoTasks:                    *noTasks,
 		NodeIDFile:                 *nodeIDFile,
+		TLSDomain:                  *tlsDomain,
+		TLSEmail:                   *tlsEmail,
+		TLSCache:                   tlsCacheDir,
+		HTTPSHost:                  *httpsHost,
+		PdfDateFormat:              *pdfDateFormat,
 		NatsServers:                *natsServers,
 		NatsHost:                   *natsHost,
 		NatsPort:                   *natsPort,
@@ -244,7 +324,6 @@ func loadConfig() Config {
 		IngestStreamMaxAge:         *ingestStreamMaxAge,
 		StateStreamMaxAge:          *stateStreamMaxAge,
 		IngestConsumerNameFile:     *ingestConsumerNameFile,
-		StateConsumerNameFile:      *stateConsumerNameFile,
 		IngestSubjectPrefix:        *subjectPrefix + *ingestSubjectPrefix,
 		StateSubjectPrefix:         *subjectPrefix + *stateSubjectPrefix,
 		TasksStreamName:            *streamPrefix + *tasksStream,
@@ -253,18 +332,47 @@ func loadConfig() Config {
 		TaskResultsStreamName:      *streamPrefix + *taskResultsStream,
 		TaskResultsSubjectPrefix:   *subjectPrefix + *taskResultsSubjectPrefix,
 		TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
-		TaskResultConsumerNameFile: *taskResultConsumerNameFile,
 		TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
+		SQLiteDB:                   *sqliteDB,
 		DuckDB:                     *duckdb,
 		DuckDBExtDir:               *duckdbExtDir,
+		DuckDBSecretDir:            *duckdbSecretDir,
 		InitSQL:                    *initSQL,
 		InitSQLFile:                initSQLFilePath,
+		SnapshotTime:               *snapshotTime,
+		SnapshotS3Bucket:           *snapshotS3Bucket,
+		SnapshotS3Region:           *snapshotS3Region,
+		SnapshotS3Endpoint:         *snapshotS3Endpoint,
+		SnapshotS3AccessKey:        *snapshotS3AccessKey,
+		SnapshotS3SecretKey:        *snapshotS3SecretKey,
+		SnapshotStream:             *streamPrefix + *snapshotStream,
+		SnapshotConsumerName:       *snapshotConsumerName,
+		SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
+		NoSnapshots:                *noSnapshots,
+		NoAutoRestore:              *noAutoRestore,
 	}
 	return config
 }
 
 func Run(cfg Config) func(context.Context) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	var logLevel slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+
+	handlerOptions := &slog.HandlerOptions{
+		Level: logLevel,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, handlerOptions))
 
 	logger.Info("Starting Shaper", slog.String("version", Version))
 	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")
@@ -279,34 +387,81 @@ func Run(cfg Config) func(context.Context) {
 	// Make sure data directory exists
 	if _, err := os.Stat(cfg.DataDir); os.IsNotExist(err) {
 		err := os.Mkdir(cfg.DataDir, 0755)
-		logger.Info("Created data directory", slog.Any("path", cfg.DataDir))
 		if err != nil {
-			panic(err)
+			logger.Error("Failed to create data directory", slog.String("path", cfg.DataDir), slog.Any("error", err))
+			os.Exit(1)
 		}
+		logger.Info("Created data directory", slog.Any("path", cfg.DataDir))
 	}
 
-	dbFile := cfg.DuckDB
-	if cfg.DuckDB == "" {
-		dbFile = path.Join(cfg.DataDir, "shaper.duckdb")
+	// connect to SQLite
+	sqliteDBxFile := cfg.SQLiteDB
+	if cfg.SQLiteDB == "" {
+		sqliteDBxFile = path.Join(cfg.DataDir, "shaper_internal.sqlite")
 	}
+
+	duckDBFile := cfg.DuckDB
+	if cfg.DuckDB == "" {
+		duckDBFile = path.Join(cfg.DataDir, "shaper.duckdb")
+	}
+
+	// Attempt to restore snapshots if databases don't exist and snapshots are configured
+	snapshotConfig := snapshots.Config{
+		Logger:          logger,
+		DuckDBExtDir:    cfg.DuckDBExtDir,
+		DuckDBSecretDir: cfg.DuckDBSecretDir,
+		InitSQL:         cfg.InitSQL,
+		InitSQLFile:     cfg.InitSQLFile,
+		S3Bucket:        cfg.SnapshotS3Bucket,
+		S3Region:        cfg.SnapshotS3Region,
+		S3Endpoint:      cfg.SnapshotS3Endpoint,
+		S3AccessKey:     cfg.SnapshotS3AccessKey,
+		S3SecretKey:     cfg.SnapshotS3SecretKey,
+		EnableSnapshots: !cfg.NoSnapshots,
+		EnableRestore:   !cfg.NoAutoRestore,
+		Stream:          cfg.SnapshotStream,
+		ConsumerName:    cfg.SnapshotConsumerName,
+		SubjectPrefix:   cfg.SnapshotSubjectPrefix,
+		ScheduledTime:   cfg.SnapshotTime,
+	}
+	if err := snapshots.RestoreLatestSnapshot(sqliteDBxFile, duckDBFile, snapshotConfig); err != nil {
+		logger.Error("Failed to restore snapshots", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	sqliteDbx, err := sqlx.Connect("sqlite", sqliteDBxFile)
+	if err != nil {
+		logger.Error("Failed to connect to SQLite", slog.String("file", sqliteDBxFile), slog.Any("error", err))
+		os.Exit(1)
+	}
+	logger.Info("SQLite opened", slog.Any("file", sqliteDBxFile))
 
 	// connect to duckdb
-	dbConnector, err := duckdb.NewConnector(dbFile, nil)
+	duckDBConnector, err := duckdb.NewConnector(duckDBFile, nil)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to create DuckDB connector", slog.String("file", duckDBFile), slog.Any("error", err))
+		os.Exit(1)
 	}
-	sqlDB := sql.OpenDB(dbConnector)
+	duckDbSqlDb := sql.OpenDB(duckDBConnector)
 	// This is important to avoid leaking variables or temp tables/views. Must not reuse connections.
-	sqlDB.SetMaxIdleConns(0)
-	db := sqlx.NewDb(sqlDB, "duckdb")
-	logger.Info("DuckDB opened", slog.Any("file", dbFile))
-
+	duckDbSqlDb.SetMaxIdleConns(0)
+	duckdbSqlxDb := sqlx.NewDb(duckDbSqlDb, "duckdb")
+	logger.Info("DuckDB opened", slog.Any("file", duckDBFile))
 	if cfg.DuckDBExtDir != "" {
-		_, err := db.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
+		_, err := duckdbSqlxDb.Exec("SET extension_directory = ?", cfg.DuckDBExtDir)
 		if err != nil {
-			panic(errors.New("failed to set extension directory: " + err.Error()))
+			logger.Error("Failed to set DuckDB extension directory", slog.String("path", cfg.DuckDBExtDir), slog.Any("error", err))
+			os.Exit(1)
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
+	}
+	if cfg.DuckDBSecretDir != "" {
+		_, err := duckdbSqlxDb.Exec("SET secret_directory = ?", cfg.DuckDBSecretDir)
+		if err != nil {
+			logger.Error("Failed to set DuckDB secret directory", slog.String("path", cfg.DuckDBSecretDir), slog.Any("error", err))
+			os.Exit(1)
+		}
+		logger.Info("Set DuckDB secret directory", slog.Any("path", cfg.DuckDBSecretDir))
 	}
 
 	if cfg.InitSQL != "" {
@@ -316,9 +471,10 @@ func Run(cfg Config) func(context.Context) {
 		if sql == "" {
 			logger.Info("init-sql specified but empty, skipping")
 		} else {
-			_, err := db.Exec(sql)
+			_, err := duckdbSqlxDb.Exec(sql)
 			if err != nil {
-				panic(errors.New("failed to execute init-sql: " + err.Error()))
+				logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
+				os.Exit(1)
 			}
 		}
 	}
@@ -329,7 +485,8 @@ func Run(cfg Config) func(context.Context) {
 			if errors.Is(err, os.ErrNotExist) {
 				logger.Info("init-sql-file does not exist, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
-				panic(errors.New("failed to read init-sql-file: " + err.Error()))
+				logger.Error("Failed to read init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
+				os.Exit(1)
 			}
 		} else {
 			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
@@ -337,10 +494,10 @@ func Run(cfg Config) func(context.Context) {
 				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
 				logger.Info("Executing init-sql-file")
-				// Substitute environment variables in the SQL file content
-				_, err = db.Exec(sql)
+				_, err = duckdbSqlxDb.Exec(sql)
 				if err != nil {
-					panic(errors.New("failed to execute init-sql-file: " + err.Error()))
+					logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
+					os.Exit(1)
 				}
 			}
 		}
@@ -348,26 +505,25 @@ func Run(cfg Config) func(context.Context) {
 
 	nodeID := getOrGenerateNodeID(cfg.DataDir, cfg.NodeIDFile, "node-id.txt")
 	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-", nodeID)
-	stateConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.StateConsumerNameFile, "state-consumer-name.txt", "shaper-state-consumer-", nodeID)
-	taskResultConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.TaskResultConsumerNameFile, "task-result-consumer-name.txt", "shaper-task-result-consumer-", nodeID)
 
 	app, err := core.New(
 		APP_NAME,
 		nodeID,
-		db,
+		sqliteDbx,
+		duckdbSqlxDb,
+		cfg.DeprecatedSchema,
 		logger,
 		cfg.BasePath,
-		cfg.Schema,
 		cfg.JWTExp,
 		cfg.SessionExp,
 		cfg.InviteExp,
 		cfg.NoPublicSharing,
+		cfg.NoPasswordProtectedSharing,
 		cfg.NoTasks,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,
 		cfg.StateStreamMaxAge,
-		stateConsumerName,
 		cfg.ConfigKVBucketName,
 		cfg.TasksStreamName,
 		cfg.TasksSubjectPrefix,
@@ -375,11 +531,11 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TaskResultsStreamName,
 		cfg.TaskResultsSubjectPrefix,
 		cfg.TaskResultsStreamMaxAge,
-		taskResultConsumerName,
 		cfg.TaskBroadcastSubject,
 	)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to create application core", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	// TODO: refactor - comms should be part of core
@@ -392,18 +548,18 @@ func Run(cfg Config) func(context.Context) {
 		JSDir:               cfg.NatsJSDir,
 		JSKey:               cfg.NatsJSKey,
 		MaxStore:            cfg.NatsMaxStore,
-		DB:                  db,
-		Schema:              cfg.Schema,
+		Sqlite:              sqliteDbx,
 		IngestSubjectPrefix: cfg.IngestSubjectPrefix,
 	})
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to create NATS communication layer", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	ingestConsumer, err := ingest.Start(
 		cfg.IngestSubjectPrefix,
-		dbConnector,
-		db,
+		duckDBConnector,
+		duckdbSqlxDb,
 		logger.WithGroup("ingest"),
 		c.Conn,
 		cfg.IngestStreamName,
@@ -411,18 +567,44 @@ func Run(cfg Config) func(context.Context) {
 		ingestConsumerName,
 	)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to start ingest consumer", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	err = app.Init(c.Conn)
 	if err != nil {
-		panic(err)
+		logger.Error("Failed to initialize application", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	e := web.Start(cfg.Address, app, frontendFS, cfg.ExecutableModTime, cfg.CustomCSS, cfg.Favicon)
+	snapshotConfig.Sqlite = sqliteDbx
+	snapshotConfig.DuckDB = duckdbSqlxDb
+	snapshotConfig.Nats = c.Conn
+	s, err := snapshots.Start(snapshotConfig)
+	if err != nil {
+		logger.Error("Failed to start snapshot service", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	e := web.Start(
+		cfg.Address,
+		app,
+		frontendFS,
+		cfg.ExecutableModTime,
+		cfg.CustomCSS,
+		cfg.Favicon,
+		cfg.TLSDomain,
+		cfg.TLSEmail,
+		cfg.TLSCache,
+		cfg.HTTPSHost,
+		cfg.PdfDateFormat,
+	)
+
+	metrics.Init()
 
 	return func(ctx context.Context) {
 		logger.Info("Initiating shutdown...")
+		s.Stop()
 		logger.Info("Stopping web server...")
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
@@ -431,7 +613,7 @@ func Run(cfg Config) func(context.Context) {
 		ingestConsumer.Close()
 		c.Close()
 		logger.Info("Closing DB connections...")
-		if err := db.Close(); err != nil {
+		if err := duckdbSqlxDb.Close(); err != nil {
 			logger.ErrorContext(ctx, "Error closing database connection", slog.Any("error", err))
 		}
 	}
@@ -458,14 +640,16 @@ func getOrGenerateNodeID(dataDir, nameFile, defaultFileName string) string {
 	if _, err := os.Stat(fileName); err == nil {
 		content, err := os.ReadFile(fileName)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to read node ID file %s: %v\n", fileName, err)
+			os.Exit(1)
 		}
 		name = strings.TrimSpace(string(content))
 	} else {
 		name = cuid2.Generate()
 		err := os.WriteFile(fileName, []byte(name), 0644)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to write node ID file %s: %v\n", fileName, err)
+			os.Exit(1)
 		}
 	}
 	return name
@@ -484,7 +668,8 @@ func getOrGenerateConsumerName(dataDir, nameFile, defaultFileName, prefix, nodeI
 	if _, err := os.Stat(fileName); err == nil {
 		content, err := os.ReadFile(fileName)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to read consumer name file %s: %v\n", fileName, err)
+			os.Exit(1)
 		}
 		name = strings.TrimSpace(string(content))
 	} else {

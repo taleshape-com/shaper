@@ -8,60 +8,72 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func initDB(db *sqlx.DB, schema string) error {
-	// Create schema if not exists
-	if _, err := db.Exec("CREATE SCHEMA IF NOT EXISTS " + schema); err != nil {
-		return fmt.Errorf("error creating schema: %w", err)
+func initSQLite(sdb *sqlx.DB) error {
+	// Settings
+	_, err := sdb.Exec(`
+		PRAGMA journal_mode = WAL;
+		PRAGMA synchronous = NORMAL;
+		PRAGMA auto_vacuum = INCREMENTAL;
+		PRAGMA foreign_keys = on;
+		PRAGMA busy_timeout = 5000;
+	`)
+	if err != nil {
+		return fmt.Errorf("error setting pragmas: %w", err)
+	}
+
+	// Create folders table first (since apps references it)
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS folders (
+			id TEXT PRIMARY KEY,
+			parent_folder_id TEXT,
+			name TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			created_by TEXT,
+			updated_by TEXT,
+			FOREIGN KEY(parent_folder_id) REFERENCES folders(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating folders table: %w", err)
 	}
 
 	// Create apps table
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.apps (
-			id VARCHAR PRIMARY KEY,
-			path VARCHAR NOT NULL,
-			name VARCHAR NOT NULL,
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS apps (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
 			content TEXT NOT NULL,
-			created_at TIMESTAMP NOT NULL,
-			updated_at TIMESTAMP NOT NULL,
-			created_by VARCHAR,
-			updated_by VARCHAR,
-			visibility VARCHAR,
-			type VARCHAR NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			created_by TEXT,
+			updated_by TEXT,
+			visibility TEXT,
+			type TEXT NOT NULL,
+			password_hash TEXT,
+			folder_id TEXT,
+			FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating apps table: %w", err)
 	}
-
-	// TODO: Remove once ran for all active users
-	_, err = db.Exec(`
-		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS visibility VARCHAR
-	`)
-	if err != nil {
-		return fmt.Errorf("error adding visibility column to apps table: %w", err)
-	}
-
-	// TODO: Remove once ran for all active users
-	_, err = db.Exec(`
-		ALTER TABLE ` + schema + `.apps ADD COLUMN IF NOT EXISTS type VARCHAR;
-		UPDATE ` + schema + `.apps SET type = 'dashboard' WHERE type IS NULL;
-		ALTER TABLE ` + schema + `.apps ALTER COLUMN type SET NOT NULL;
-	`)
-	if err != nil {
-		return fmt.Errorf("error adding type column to apps table: %w", err)
-	}
+	// Ignore errors if column already exists
+	sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE CASCADE`)
+	// Ignore errors if column does not exist
+	sdb.Exec(`ALTER TABLE apps DROP COLUMN path`)
 
 	// Create api_keys table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.api_keys (
-			id VARCHAR PRIMARY KEY,
-			hash VARCHAR NOT NULL,
-			salt VARCHAR NOT NULL,
-			name VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL,
-			updated_at TIMESTAMP NOT NULL,
-			created_by VARCHAR,
-			updated_by VARCHAR
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS api_keys (
+			id TEXT PRIMARY KEY,
+			hash TEXT NOT NULL,
+			salt TEXT NOT NULL,
+			name TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			created_by TEXT,
+			updated_by TEXT
 		)
 	`)
 	if err != nil {
@@ -69,31 +81,32 @@ func initDB(db *sqlx.DB, schema string) error {
 	}
 
 	// Create users table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.users (
-			id VARCHAR PRIMARY KEY,
-			email VARCHAR NOT NULL,
-			password_hash VARCHAR,
-			name VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL,
-			updated_at TIMESTAMP NOT NULL,
-			created_by VARCHAR,
-			updated_by VARCHAR,
-			deleted_at TIMESTAMP,
-			deleted_by VARCHAR
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			password_hash TEXT,
+			name TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			created_by TEXT,
+			updated_by TEXT,
+			deleted_at DATETIME,
+			deleted_by TEXT
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating users table: %w", err)
 	}
 	// Create sessions table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.sessions (
-			id VARCHAR PRIMARY KEY,
-			user_id VARCHAR NOT NULL REFERENCES ` + schema + `.users(id),
-			hash VARCHAR NOT NULL,
-			salt VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS sessions (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			hash TEXT NOT NULL,
+			salt TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES users(id)
 		)
 	`)
 	if err != nil {
@@ -101,12 +114,12 @@ func initDB(db *sqlx.DB, schema string) error {
 	}
 
 	// Create invites table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + `.invites (
-			code VARCHAR PRIMARY KEY,
-			email VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL,
-			created_by VARCHAR
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS invites (
+			code TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			created_by TEXT
 		)
 	`)
 	if err != nil {
@@ -114,25 +127,31 @@ func initDB(db *sqlx.DB, schema string) error {
 	}
 
 	// Create task_runs table
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + schema + ` .task_runs (
-			task_id VARCHAR PRIMARY KEY NOT NULL,
-			last_run_at TIMESTAMP,
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS task_runs (
+			task_id TEXT PRIMARY KEY NOT NULL,
+			last_run_at DATETIME,
 			last_run_success BOOLEAN,
-			last_run_duration INTERVAL,
-			next_run_at TIMESTAMP,
-			next_run_type VARCHAR NOT NULL DEFAULT 'single',
+			last_run_duration INTEGER,
+			next_run_at DATETIME,
+			next_run_type TEXT NOT NULL DEFAULT 'single'
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating task_runs table: %w", err)
 	}
 
-	// Create custom types
-	for _, t := range dbTypes {
-		if err := createType(db, t.Name, t.Definition); err != nil {
-			return err
-		}
+	// Create state_consumer table
+	_, err = sdb.Exec(`
+		CREATE TABLE IF NOT EXISTS consumer_state (
+			name TEXT PRIMARY KEY,
+			last_processed_stream_seq INTEGER,
+			updated_at DATETIME NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error creating state_consumer table: %w", err)
 	}
+
 	return nil
 }

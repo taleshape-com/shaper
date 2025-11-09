@@ -12,7 +12,7 @@ import {
 import { Label } from "../tremor/Label";
 import { cx } from "../../lib/utils";
 
-const EMPTY = '<<EMPTY>>';
+const EMPTY = "<<EMPTY>>";
 
 type DropdownProps = {
   label?: string;
@@ -22,7 +22,7 @@ type DropdownProps = {
   vars?: Record<string, string | string[]>;
 };
 
-function DashboardDropdown({
+function DashboardDropdown ({
   label,
   data,
   headers,
@@ -38,23 +38,22 @@ function DashboardDropdown({
   return (
     <>
       {label && (
-        <Label htmlFor={label} className="ml-3 pr-1">
+        <Label htmlFor={label} className="ml-3 pr-1 print:hidden">
           {label}:
         </Label>
       )}
-      <div className={cx("select-none", { ["ml-2"]: !label })}>
+      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
         <Select
-          defaultValue={formatValue(
-            data[0][valueIndex],
-            headers[valueIndex].type,
-          ).toString()}
           onValueChange={(value) => {
             if (value === EMPTY) {
               value = "";
             }
             onChange({ ...vars, [varName]: value });
           }}
-          value={selectedValue}
+          value={data.some((row) => row[valueIndex] === selectedValue) ? selectedValue : formatValue(
+            data[0][valueIndex],
+            headers[valueIndex].type,
+          ).toString() || EMPTY}
         >
           <SelectTrigger
             id={label}

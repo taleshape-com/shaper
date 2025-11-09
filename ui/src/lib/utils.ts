@@ -5,7 +5,7 @@ import { z } from "zod";
 import clsx, { type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export function cx(...args: ClassValue[]) {
+export function cx (...args: ClassValue[]) {
   return twMerge(clsx(...args));
 }
 
@@ -40,13 +40,22 @@ export const varsParamSchema = z
 export type VarsParamSchema = (typeof varsParamSchema)["_type"];
 
 export const getSearchParamString = (vars: VarsParamSchema) => {
-  const urlVars = Object.entries(vars ?? {}).reduce((acc, [key, value]) => {
+  const params = new URLSearchParams();
+  Object.entries(vars ?? {}).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      return [...acc, ...value.map((v) => [key, v])];
+      // To allow clearing an array param, we need to explicitly set it to empty string
+      if (value.length === 0) {
+        params.set(key, "");
+        return;
+      }
+      value.forEach((v) => {
+        params.append(key, v);
+      });
+      return;
     }
-    return [...acc, [key, value]];
-  }, [] as string[][]);
-  return new URLSearchParams(urlVars).toString();
+    params.set(key, value);
+  });
+  return params.toString();
 };
 
 export const goToLoginPage = () => {
@@ -73,14 +82,14 @@ export const getNameIfSet = (name: string) => {
 
 export const isMac = () => navigator.userAgent.includes("Mac");
 
-export function parseJwt(token: string) {
+export function parseJwt (token: string) {
   const base64Url = token.split(".")[1];
   const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
   const jsonPayload = decodeURIComponent(
     window
       .atob(base64)
       .split("")
-      .map(function(c) {
+      .map(function (c) {
         return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
       })
       .join(""),
@@ -88,6 +97,48 @@ export function parseJwt(token: string) {
   return JSON.parse(jsonPayload);
 }
 
-export function removeTrailingSlash(s: string) {
+export function removeTrailingSlash (s: string) {
   return s.replace(/\/+$/, "");
+}
+
+export async function copyToClipboard (text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    console.error("Failed to copy to clipboard, trying fallback:", err);
+    // Fallback for older browsers
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      return true;
+    } catch (fallbackErr) {
+      console.error("Failed to copy to clipboard:", fallbackErr);
+      return false;
+    }
+  }
+}
+
+export function getLocalDate (input: string | number) {
+  const date = new Date(input);
+  const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
+  const localDate = new Date(date.toLocaleString("en-US"));
+  const offset = utcDate.getTime() - localDate.getTime();
+  date.setTime(date.getTime() + offset);
+  return date;
+}
+
+export function getUTCDate (input: Date) {
+  const date = new Date(input);
+  const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
+  const localDate = new Date(date.toLocaleString("en-US"));
+  const offset = utcDate.getTime() - localDate.getTime();
+  date.setTime(date.getTime() - offset);
+  return date;
 }

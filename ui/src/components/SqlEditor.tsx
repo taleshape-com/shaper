@@ -5,7 +5,7 @@ import * as monaco from "monaco-editor";
 import { useEffect, useRef, useContext } from "react";
 import { DarkModeContext } from "../contexts/DarkModeContext";
 
-export function SqlEditor({
+export function SqlEditor ({
   onChange,
   onRun,
   content,
@@ -36,7 +36,6 @@ export function SqlEditor({
   useEffect(() => {
     runRef.current = onRun;
   }, [onRun]);
-
 
   return (
     <Editor
@@ -70,5 +69,3 @@ export function SqlEditor({
     />
   );
 }
-
-

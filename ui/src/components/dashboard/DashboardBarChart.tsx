@@ -1,34 +1,38 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, isTimeType, Result } from "../../lib/types";
+import { Column, isTimeType, MarkLine, Result } from "../../lib/types";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
 import { BarChart } from "../charts/BarChart";
 
 type BarProps = {
   chartId: string;
+  label?: string;
   headers: Column[];
-  data: Result['sections'][0]['queries'][0]['rows']
+  data: Result["sections"][0]["queries"][0]["rows"]
   // TODO: These are unused. We might not even need to calculate them in the backend at all.
   minTimeValue: number;
   maxTimeValue: number;
   stacked?: boolean;
   vertical?: boolean;
+  markLines?: MarkLine[];
 };
 
 const DashboardBarChart = ({
   chartId,
+  label,
   headers,
   data,
   stacked,
   vertical,
+  markLines,
 }: BarProps) => {
   const valueAxisIndex = headers.findIndex((c) => c.tag === "value");
   if (valueAxisIndex === -1) {
     throw new Error("No column with tag 'value'");
   }
   const colorIndex = headers.findIndex((c) => c.tag === "color");
-  const valueAxisHeader = headers[valueAxisIndex]
+  const valueAxisHeader = headers[valueAxisIndex];
   const valueAxisName = valueAxisHeader.name;
   const categoryIndex = headers.findIndex((c) => c.tag === "category");
   const categories = new Set<string>();
@@ -42,9 +46,12 @@ const DashboardBarChart = ({
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const dataByIndexAxis = new Map<string | number, Record<string, string | number>>();
   data.forEach((row) => {
-    let key = typeof row[indexAxisIndex] === 'boolean' ? row[indexAxisIndex] ? '1' : '0' : row[indexAxisIndex];
+    let key = typeof row[indexAxisIndex] === "boolean" ? row[indexAxisIndex] ? "1" : "0" : row[indexAxisIndex];
     if (key === null) {
-      key = '';
+      if (isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration" || indexAxisHeader.type === "number") {
+        return;
+      }
+      key = "";
     }
     if (!dataByIndexAxis.get(key)) {
       dataByIndexAxis.set(key, {
@@ -65,30 +72,30 @@ const DashboardBarChart = ({
         return;
       }
       if (i === colorIndex) {
-        const color = (cell ?? '').toString();
+        const color = (cell ?? "").toString();
         if (color.length > 0) {
           if (categoryIndex === -1) {
             colorsByCategory[valueAxisName] = color;
           } else {
-            const category = (row[categoryIndex] ?? '').toString();
+            const category = (row[categoryIndex] ?? "").toString();
             colorsByCategory[category] = color;
           }
         }
         return;
       }
-      const c = formatCellValue(cell)
+      const c = formatCellValue(cell);
       if (i === valueAxisIndex) {
         if (categoryIndex === -1) {
           v[valueAxisName] = c;
           return;
         }
-        const category = (row[categoryIndex] ?? '').toString();
+        const category = (row[categoryIndex] ?? "").toString();
         categories.add(category);
         v[category] = c;
         return;
       }
-      const extraData = extraDataByIndexAxis[key]
-      const header = headers[i]
+      const extraData = extraDataByIndexAxis[key];
+      const header = headers[i];
       if (extraData != null) {
         extraData[header.name] = [c, header.type];
       } else {
@@ -102,6 +109,7 @@ const DashboardBarChart = ({
   return (
     <BarChart
       chartId={chartId}
+      label={label}
       type={stacked ? "stacked" : "default"}
       layout={vertical ? "vertical" : "horizontal"}
       data={Array.from(dataByIndexAxis.values())}
@@ -111,15 +119,16 @@ const DashboardBarChart = ({
       valueType={valueAxisHeader.type}
       categories={Array.from(categories)}
       colorsByCategory={colorsByCategory}
-      valueFormatter={(n: number, shortFormat?: boolean) => {
+      valueFormatter={(n: number, shortFormat?: boolean | number) => {
         return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
-      indexFormatter={(n: number, shortFormat?: boolean) => {
+      indexFormatter={(n: number, shortFormat?: boolean | number) => {
         return formatValue(n, indexType, true, shortFormat).toString();
       }}
       xAxisLabel={getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name)}
       yAxisLabel={getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName)}
       showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
+      markLines={markLines}
     />
   );
 };

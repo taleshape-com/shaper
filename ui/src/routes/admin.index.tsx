@@ -6,7 +6,6 @@ import {
   isRedirect,
   useNavigate,
 } from "@tanstack/react-router";
-import { translate } from "../lib/translate";
 import {
   Table,
   TableBody,
@@ -62,30 +61,30 @@ interface InviteState {
   expiresIn?: string
 }
 
-function getInviteState(createdAt: string, validTimeInSeconds: number): InviteState {
-  const createdTime = new Date(createdAt).getTime()
-  const expirationTime = createdTime + (validTimeInSeconds * 1000)
-  const now = Date.now()
-  const isExpired = now > expirationTime
+function getInviteState (createdAt: string, validTimeInSeconds: number): InviteState {
+  const createdTime = new Date(createdAt).getTime();
+  const expirationTime = createdTime + (validTimeInSeconds * 1000);
+  const now = Date.now();
+  const isExpired = now > expirationTime;
 
   if (isExpired) {
-    return { isExpired: true }
+    return { isExpired: true };
   }
 
-  const timeLeft = expirationTime - now
-  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const timeLeft = expirationTime - now;
+  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-  let expiresIn = ''
+  let expiresIn = "";
   if (days > 0) {
-    expiresIn = translate('Expires in %% days').replace('%%', days.toString())
+    expiresIn = ("Expires in %% days").replace("%%", days.toString());
   } else if (hours > 0) {
-    expiresIn = translate('Expires in %% hours').replace('%%', hours.toString())
+    expiresIn = ("Expires in %% hours").replace("%%", hours.toString());
   } else {
-    expiresIn = translate('Expires soon')
+    expiresIn = "Expires soon";
   }
 
-  return { isExpired: false, expiresIn }
+  return { isExpired: false, expiresIn };
 }
 
 export const Route = createFileRoute("/admin/")({
@@ -114,7 +113,7 @@ const getInviteLink = (code: string) => {
   return `${baseUrl}${basePath}signup?code=${code}`;
 };
 
-function UsersManagement() {
+function UsersManagement () {
   const router = useRouter();
   const data = Route.useLoaderData();
   const { sort, order } = Route.useSearch();
@@ -166,23 +165,23 @@ function UsersManagement() {
       // Reload the page to refresh the list
       router.invalidate();
       toast({
-        title: translate("Success"),
-        description: translate("User deleted successfully"),
+        title: "Success",
+        description: "User deleted successfully",
       });
     } catch (err) {
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       toast({
-        title: translate("Error"),
-        description: err instanceof Error ? err.message : translate("Unknown error"),
+        title: "Error",
+        description: err instanceof Error ? err.message : "Unknown error",
         variant: "error",
       });
     }
   };
 
   if (!data) {
-    return <div className="p-2">{translate("Loading users...")}</div>;
+    return <div className="p-2">Loading users...</div>;
   }
 
   const handleCreateInvite = async (email: string) => {
@@ -198,11 +197,11 @@ function UsersManagement() {
         return navigate(error.options);
       }
       toast({
-        title: translate("Error"),
+        title: "Error",
         description:
           error instanceof Error
             ? error.message
-            : translate("An error occurred"),
+            : "An error occurred",
         variant: "error",
       });
     }
@@ -213,35 +212,31 @@ function UsersManagement() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">
           <RiGroupLine className="size-4 inline mr-1 -mt-1" />
-          {translate("User Management")}
+          User Management
         </h2>
         {getSystemConfig().loginRequired && (
           <Button onClick={() => setShowInviteDialog(true)}>
             <RiUserAddLine className="size-4 inline mr-1 -ml-0.5 -mt-0.5" />
-            {translate("Invite User")}
+            Invite User
           </Button>
         )}
       </div>
 
       {!getSystemConfig().loginRequired && (
         <div className="mb-6">
-          <Callout title={translate("Setup Authentication")}>
+          <Callout title="Setup Authentication">
             <p className="mb-4">
-              {translate(
-                "Create a first user account to enable authentication and secure the system",
-              )}
+              Create a first user account to enable authentication and secure the system
             </p>
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="primary">{translate("Create User")}</Button>
+                <Button variant="primary">Create User</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>{translate("Create First User")}</DialogTitle>
+                  <DialogTitle>Create First User</DialogTitle>
                   <DialogDescription>
-                    {translate(
-                      "Enter the details for the first administrative user",
-                    )}
+                    Enter the details for the first administrative user
                   </DialogDescription>
                 </DialogHeader>
 
@@ -261,8 +256,8 @@ function UsersManagement() {
 
                     if (data.password !== data.confirmPassword) {
                       toast({
-                        title: translate("Error"),
-                        description: translate("Passwords do not match"),
+                        title: "Error",
+                        description: "Passwords do not match",
                         variant: "error",
                       });
                       return;
@@ -278,8 +273,8 @@ function UsersManagement() {
                         },
                       });
                       toast({
-                        title: translate("Success"),
-                        description: translate("User created successfully"),
+                        title: "Success",
+                        description: "User created successfully",
                       });
                       await fetchSystemConfig();
                       router.invalidate();
@@ -288,21 +283,21 @@ function UsersManagement() {
                           to: "/login",
                           replace: true,
                         });
-                      }, 0)
+                      }, 0);
                     } catch (error) {
                       toast({
-                        title: translate("Error"),
+                        title: "Error",
                         description:
                           error instanceof Error
                             ? error.message
-                            : translate("An error occurred"),
+                            : "An error occurred",
                         variant: "error",
                       });
                     }
                   }}
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="email">{translate("Email")}</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       name="email"
@@ -313,17 +308,17 @@ function UsersManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="name">{translate("Name")}</Label>
+                    <Label htmlFor="name">Name</Label>
                     <Input
                       id="name"
                       name="name"
                       type="text"
-                      placeholder={translate("Administrator")}
+                      placeholder="Administrator"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">{translate("Password")}</Label>
+                    <Label htmlFor="password">Password</Label>
                     <Input
                       id="password"
                       name="password"
@@ -335,7 +330,7 @@ function UsersManagement() {
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">
-                      {translate("Confirm Password")}
+                      Confirm Password
                     </Label>
                     <Input
                       id="confirmPassword"
@@ -349,10 +344,10 @@ function UsersManagement() {
                   <DialogFooter className="mt-6">
                     <DialogClose asChild>
                       <Button type="button" variant="secondary">
-                        {translate("Cancel")}
+                        Cancel
                       </Button>
                     </DialogClose>
-                    <Button type="submit">{translate("Create User")}</Button>
+                    <Button type="submit">Create User</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -373,24 +368,23 @@ function UsersManagement() {
             <DialogHeader>
               <DialogTitle>
                 {inviteCode
-                  ? translate("Invite Link")
+                  ? "Invite Link"
                   : (
                     <span>
                       <RiUserAddFill
                         className="size-4 inline mr-1 -mt-1" />
-                      {translate("Invite User")}
+                      Invite User
                     </span>
                   )}
               </DialogTitle>
               <DialogDescription>
                 {inviteCode
-                  ? translate("Share this link with %%").replace(
+                  ? ("Share this link with %%").replace(
                     "%%",
                     inviteCode.email,
                   )
-                  : translate(
-                    "Enter the email address of the user you want to invite",
-                  )}
+                  : "Enter the email address of the user you want to invite"
+                }
               </DialogDescription>
             </DialogHeader>
 
@@ -406,15 +400,13 @@ function UsersManagement() {
                         getInviteLink(inviteCode.code),
                       );
                       toast({
-                        title: translate("Success"),
-                        description: translate(
-                          "Invite link copied to clipboard",
-                        ),
+                        title: "Success",
+                        description: "Invite link copied to clipboard",
                       });
                     }}
                     variant="light"
                   >
-                    {translate("Copy")}
+                    Copy
                   </Button>
                 </div>
                 <DialogFooter>
@@ -424,7 +416,7 @@ function UsersManagement() {
                       setInviteCode(null);
                     }}
                   >
-                    {translate("Close")}
+                    Close
                   </Button>
                 </DialogFooter>
               </div>
@@ -448,10 +440,10 @@ function UsersManagement() {
                 <DialogFooter>
                   <DialogClose asChild>
                     <Button type="button" variant="secondary">
-                      {translate("Cancel")}
+                      Cancel
                     </Button>
                   </DialogClose>
-                  <Button type="submit" className="mb-4 sm:mb-0">{translate("Create Invite")}</Button>
+                  <Button type="submit" className="mb-4 sm:mb-0">Create Invite</Button>
                 </DialogFooter>
               </form>
             )}
@@ -462,9 +454,9 @@ function UsersManagement() {
       <Dialog open={deleteUserDialog !== null} onOpenChange={(open) => !open && setDeleteUserDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {deleteUserDialog && translate("Are you sure you want to delete the user %%?").replace(
+              {deleteUserDialog && ("Are you sure you want to delete the user %%?").replace(
                 "%%",
                 deleteUserDialog.email,
               )}
@@ -472,7 +464,7 @@ function UsersManagement() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setDeleteUserDialog(null)} variant="secondary">
-              {translate("Cancel")}
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -483,7 +475,7 @@ function UsersManagement() {
                 }
               }}
             >
-              {translate("Delete")}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,9 +484,9 @@ function UsersManagement() {
       <Dialog open={deleteInviteDialog !== null} onOpenChange={(open) => !open && setDeleteInviteDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{translate("Confirm Deletion")}</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              {deleteInviteDialog && translate("Are you sure you want to delete the invite for %%?").replace(
+              {deleteInviteDialog && ("Are you sure you want to delete the invite for %%?").replace(
                 "%%",
                 deleteInviteDialog.email,
               )}
@@ -502,7 +494,7 @@ function UsersManagement() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setDeleteInviteDialog(null)} variant="secondary">
-              {translate("Cancel")}
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -513,8 +505,8 @@ function UsersManagement() {
                       method: "DELETE",
                     });
                     toast({
-                      title: translate("Success"),
-                      description: translate("Invite deleted successfully"),
+                      title: "Success",
+                      description: "Invite deleted successfully",
                     });
                     router.invalidate();
                   } catch (error) {
@@ -522,10 +514,10 @@ function UsersManagement() {
                       return navigate(error.options);
                     }
                     toast({
-                      title: translate("Error"),
+                      title: "Error",
                       description: error instanceof Error
                         ? error.message
-                        : translate("An error occurred"),
+                        : "An error occurred",
                       variant: "error",
                     });
                   }
@@ -533,7 +525,7 @@ function UsersManagement() {
                 }
               }}
             >
-              {translate("Delete")}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -544,25 +536,15 @@ function UsersManagement() {
           {data.invites?.length > 0 && (
             <>
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">
-                  {translate("Pending Invites")}
-                </h3>
+                <h3 className="text-lg font-semibold mb-3">Pending Invites</h3>
                 <TableRoot>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                          {translate("Email")}
-                        </TableHeaderCell>
-                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                          {translate("Created")}
-                        </TableHeaderCell>
-                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                          {translate("Invite Link")}
-                        </TableHeaderCell>
-                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                          {translate("Actions")}
-                        </TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">Email</TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">Created</TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">Invite Link</TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">Actions</TableHeaderCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -583,13 +565,11 @@ function UsersManagement() {
                           </TableCell>
                           <TableCell className="text-ctext2 dark:text-dtext2">
                             {(() => {
-                              const inviteState = getInviteState(invite.createdAt, data.inviteValidTimeInSeconds)
+                              const inviteState = getInviteState(invite.createdAt, data.inviteValidTimeInSeconds);
                               if (inviteState.isExpired) {
                                 return (
-                                  <span>
-                                    {translate('Expired')}
-                                  </span>
-                                )
+                                  <span>Expired</span>
+                                );
                               }
                               return (
                                 <div className="space-y-1">
@@ -600,21 +580,21 @@ function UsersManagement() {
                                     <Button
                                       variant="light"
                                       onClick={() => {
-                                        navigator.clipboard.writeText(getInviteLink(invite.code))
+                                        navigator.clipboard.writeText(getInviteLink(invite.code));
                                         toast({
-                                          title: translate('Success'),
-                                          description: translate('Invite link copied to clipboard'),
-                                        })
+                                          title: "Success",
+                                          description: "Invite link copied to clipboard",
+                                        });
                                       }}
                                     >
-                                      {translate('Copy')}
+                                      Copy
                                     </Button>
                                   </div>
                                   <div className="text-xs text-ctext2 dark:text-dtext2">
                                     {inviteState.expiresIn}
                                   </div>
                                 </div>
-                              )
+                              );
                             })()}
                           </TableCell>
                           <TableCell>
@@ -622,7 +602,7 @@ function UsersManagement() {
                               onClick={() => setDeleteInviteDialog(invite)}
                               className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                             >
-                              {translate("Delete")}
+                              Delete
                             </button>
                           </TableCell>
                         </TableRow>
@@ -631,9 +611,7 @@ function UsersManagement() {
                   </Table>
                 </TableRoot>
               </div>
-              <h3 className="text-lg font-semibold mb-3">
-                {translate("Users")}
-              </h3>
+              <h3 className="text-lg font-semibold mb-3">Users</h3>
             </>
           )}
 
@@ -645,22 +623,22 @@ function UsersManagement() {
                     onClick={() => handleSort("name")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                   >
-                    {translate("Name")} <SortIcon field="name" />
+                    Name <SortIcon field="name" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("email")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                   >
-                    {translate("Email")} <SortIcon field="email" />
+                    Email <SortIcon field="email" />
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("created")}
                     className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                   >
-                    {translate("Created")} <SortIcon field="created" />
+                    Created <SortIcon field="created" />
                   </TableHeaderCell>
                   <TableHeaderCell className="text-md text-ctext dark:text-dtext">
-                    {translate("Actions")}
+                    Actions
                   </TableHeaderCell>
                 </TableRow>
               </TableHead>
@@ -686,7 +664,7 @@ function UsersManagement() {
                         onClick={() => setDeleteUserDialog(user)}
                         className="text-cerr dark:text-derr opacity-90 hover:opacity-100 hover:underline"
                       >
-                        {translate("Delete")}
+                        Delete
                       </button>
                     </TableCell>
                   </TableRow>

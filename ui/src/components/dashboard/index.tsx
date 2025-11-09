@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
@@ -8,6 +9,7 @@ import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
 import DashboardDatePicker from "./DashboardDatePicker";
 import DashboardDateRangePicker from "./DashboardDateRangePicker";
+import DashboardInput from "./DashboardInput";
 import { Card } from "../tremor/Card";
 import { translate } from "../../lib/translate";
 import DashboardLineChart from "./DashboardLineChart";
@@ -33,7 +35,9 @@ export interface DashboardProps {
   loading?: boolean;
 }
 
-export function Dashboard({
+const MIN_SHOW_LOADING = 300;
+
+export function Dashboard ({
   id,
   vars,
   getJwt,
@@ -49,77 +53,72 @@ export function Dashboard({
 }: DashboardProps) {
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
-  const [showLoading, setShowLoading] = useState<boolean>(false);
   const [isFetching, setIsFetching] = useState<boolean>(false);
-  data = data ?? fetchedData;
+  const errResetFn = useRef<(() => void) | undefined>(undefined);
+
+  const actualData = data ?? fetchedData;
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
-  const loadingTimeoutRef = useRef<NodeJS.Timeout>();
+  // Track the current AbortController so we can cancel in-flight requests
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   // Function to fetch dashboard data
   const fetchData = useCallback(async () => {
     if (!id) return;
+
+    // Abort any in-flight request before starting a new one
+    if (fetchAbortRef.current) {
+      fetchAbortRef.current.abort();
+    }
+    const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
+
+    // Clear previous reload timer when starting a new fetch
+    if (reloadTimeoutRef.current) {
+      clearTimeout(reloadTimeoutRef.current);
+      reloadTimeoutRef.current = undefined;
+    }
+
     setError(null);
     setIsFetching(true);
+    const startTime = Date.now();
 
     try {
-      const d = await fetchDashboard(id, vars, baseUrl, getJwt);
-      setFetchedData(d);
-      if (onDataChange) {
-        onDataChange(d);
+      const d = await fetchDashboard(id, vars, baseUrl, getJwt, abortController.signal);
+      const duration = Date.now() - startTime;
+      await new Promise<void>(resolve => {
+        setTimeout(() => {
+          resolve();
+        }, Math.max(0, MIN_SHOW_LOADING - duration));
+      });
+
+      // Only apply the results if this request is still the latest
+      if (fetchAbortRef.current === abortController) {
+        setFetchedData(d);
+        if (onDataChange) {
+          onDataChange(d);
+        }
+        // Set up reload timeout if reloadAt is in the future
+        if (d.reloadAt > Date.now()) {
+          const timeout = Math.max(1000, d.reloadAt - Date.now());
+          reloadTimeoutRef.current = setTimeout(fetchData, timeout);
+        }
       }
-      // Clear any existing reload timeout
-      if (reloadTimeoutRef.current) {
-        clearTimeout(reloadTimeoutRef.current);
+    } catch (err: unknown) {
+      // Swallow abort errors (they are expected when a new request starts)
+      if ((err as any)?.name === "AbortError") {
+        return;
       }
-      // Set up reload timeout if reloadAt is in the future
-      if (d.reloadAt > Date.now()) {
-        const timeout = Math.max(1000, d.reloadAt - Date.now());
-        reloadTimeoutRef.current = setTimeout(fetchData, timeout);
-      }
-    } catch (err) {
       setError(err as Error);
       onError?.(err as Error);
     } finally {
-      setIsFetching(false);
-      setShowLoading(false);
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
+      // Only clear fetching state if this is still the latest request
+      if (fetchAbortRef.current === abortController) {
+        setIsFetching(false);
       }
     }
   }, [id, vars, baseUrl, getJwt, onDataChange, onError]);
-
-  // Handle loading state based on fetch status
-  useEffect(() => {
-    if (!id) return;
-
-    if (isFetching) {
-      // Only show loading immediately if we have no data
-      if (!data) {
-        setShowLoading(true);
-      } else {
-        // Otherwise, wait 1 second before showing loading
-        loadingTimeoutRef.current = setTimeout(() => {
-          // Only show loading if we're still fetching
-          if (isFetching) {
-            setShowLoading(true);
-          }
-        }, 1000);
-      }
-    } else {
-      setShowLoading(false);
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    }
-
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [id, data, isFetching]);
 
   // Initial fetch and cleanup
   useEffect(() => {
@@ -129,13 +128,22 @@ export function Dashboard({
       if (reloadTimeoutRef.current) {
         clearTimeout(reloadTimeoutRef.current);
       }
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
+      // Abort any in-flight request on unmount
+      if (fetchAbortRef.current) {
+        fetchAbortRef.current.abort();
       }
     };
   }, [fetchData, hash]);
 
-  if (error) {
+  useEffect(() => {
+    if (errResetFn.current) {
+      errResetFn.current();
+      errResetFn.current = undefined;
+    }
+  }, [loading]);
+
+  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+    errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
         {menuButton}
@@ -147,19 +155,25 @@ export function Dashboard({
           </div>
         </div>
       </div>
-    )
+    );
+  };
+
+  if (error) {
+    return <ErrorDisplay error={error} />;
   }
 
-  return data ? (
-    <DataView
-      data={data}
-      onVarsChanged={onVarsChanged}
-      menuButton={menuButton}
-      vars={vars}
-      baseUrl={baseUrl}
-      getJwt={getJwt}
-      loading={loading || showLoading}
-    />
+  return actualData ? (
+    <ErrorBoundary fallbackRender={ErrorDisplay}>
+      <DataView
+        data={actualData}
+        onVarsChanged={onVarsChanged}
+        menuButton={menuButton}
+        vars={vars}
+        baseUrl={baseUrl}
+        getJwt={getJwt}
+        loading={loading || isFetching}
+      />
+    </ErrorBoundary>
   ) : (
     <ChartHoverProvider>
       <div className="w-full flex justify-center items-center flex-grow">
@@ -177,7 +191,7 @@ const DataView = ({
   baseUrl,
   getJwt,
   loading,
-}: (Pick<DashboardProps, 'onVarsChanged' | 'menuButton' | 'vars' | 'baseUrl' | 'getJwt'> & Required<Pick<DashboardProps, 'data'>>) & { loading: boolean }) => {
+}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt"> & Required<Pick<DashboardProps, "data">>) & { loading: boolean }) => {
   const firstIsHeader = !(data.sections.length === 0 || data.sections[0].type !== "header");
   const sections: Result["sections"] = firstIsHeader
     ? data.sections
@@ -194,6 +208,15 @@ const DataView = ({
   ).length;
 
   return (<ChartHoverProvider>
+    <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
+      {data.headerImage && (
+        <img
+          src={data.headerImage}
+          alt="Header Image"
+          className="max-h-16 object-contain"
+        />
+      )}
+    </div>
     {sections.map((section, sectionIndex) => {
       if (section.type === "header") {
         const queries = section.queries.filter(
@@ -204,7 +227,7 @@ const DataView = ({
             key={sectionIndex}
             className={cx("flex flex-wrap items-center ml-2 mr-4", {
               "mt-3 mb-3": section.queries.length > 0 || section.title,
-              "mt-4": section.title && sectionIndex !== 0,
+              "mt-8": section.title && sectionIndex !== 0,
               "my-2": section.queries.length === 0 && !section.title && sectionIndex === 0,
             })}
           >
@@ -289,6 +312,18 @@ const DataView = ({
                   />
                 );
               }
+              if (render.type === "input") {
+                return (
+                  <DashboardInput
+                    key={index}
+                    label={render.label}
+                    headers={columns}
+                    data={rows}
+                    vars={vars}
+                    onChange={onVarsChanged}
+                  />
+                );
+              }
             })}
           </section>
         );
@@ -299,8 +334,10 @@ const DataView = ({
         <section
           key={sectionIndex}
           className={cx("grid grid-cols-1 ml-4", {
-            "@sm:grid-cols-2": numQueriesInSection > 1,
-            "@lg:grid-cols-2":
+            "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+            "@sm:grid-cols-3 print:grid-cols-3":
+              numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
+            "@lg:grid-cols-2 print:grid-cols-2":
               numQueriesInSection === 2 ||
               (numContentSections === 1 && numQueriesInSection === 4),
             "@lg:grid-cols-3":
@@ -321,49 +358,44 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
-            const isChartQuery = query.render.type === 'linechart' || query.render.type === 'gauge' || query.render.type.startsWith('barchart');
+            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart");
+            const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             return (
               <Card
                 key={queryIndex}
                 className={cx(
-                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[320px] h-[calc(50dvh-3.15rem)]": section.queries.some(q => q.render.type !== "value") || numContentSections <= 2,
-                    "h-[calc(50dvh-1.6rem)]": !firstIsHeader && numContentSections === 1,
-                    "h-[calc(100cqh-5.3rem)]": numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
-                    "h-[calc(100cqh-2.2rem)] ": numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
+                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && (section.queries.some(q => q.render.type !== "value") || numContentSections <= 2),
+                    "h-[calc(50dvh-1.6rem)] print:h-[340px]": !singleTable && !firstIsHeader && numContentSections === 1,
+                    "h-[calc(100cqh-5.3rem)]": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
+                    "h-[calc(100cqh-2.2rem)] ": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
+                    "break-before-avoid": singleTable,
+                    "p-4": !isChartQuery,
                   },
                 )}
               >
-                {loading && (
-                  <div className="absolute w-full h-full p-4 z-50 backdrop-blur flex justify-center items-center rounded-md">
-                    <RiLoader3Fill className="size-7 fill-ctext dark:fill-ctext animate-spin" />
-                  </div>
-                )}
-                {isChartQuery && (
+                {isChartQuery ? (
                   <ChartDownloadButton
                     chartId={`${sectionIndex}-${queryIndex}`}
                     label={query.render.label}
                     className="absolute top-2 right-2 z-40"
                   />
-                )}
-                {query.render.label ? (
-                  <h2 className="text-md pt-4 mx-4 text-center font-semibold font-display">
+                ) : query.render.label && (
+                  <h2 className="text-md pb-4 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
-                ) : null}
-                <div
-                  className="m-4 flex-1 relative overflow-auto"
-                >
-                  {renderContent(
+                )}
+                {
+                  renderContent(
                     query,
                     sectionIndex,
                     queryIndex,
                     data.minTimeValue,
                     data.maxTimeValue,
                     numQueriesInSection,
-                  )}
-                </div>
+                  )
+                }
               </Card>
             );
           })}
@@ -383,8 +415,29 @@ const DataView = ({
         </div>
       ) : null
     }
-  </ChartHoverProvider >)
-}
+    <div
+      className={cx("shaper-custom-dashboard-footer", {
+        "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
+      })}
+      data-footer-link={data.footerLink}
+    >
+      {data.footerLink && (
+        <a
+          href={data.footerLink}
+          target="_blank"
+          className="no-underline text-ctext2 text-xs"
+        >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
+      )}
+    </div>
+    {loading && (
+      <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
+        <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
+          <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
+        </div>
+      </div>
+    )}
+  </ChartHoverProvider >);
+};
 
 const renderContent = (
   query: Result["sections"][0]["queries"][0],
@@ -403,7 +456,7 @@ const renderContent = (
             aria-hidden={true}
           />
           <p className="mt-2 font-medium">
-            {translate("No data")}
+            {translate("No Data")}
           </p>
         </div>
       </div>
@@ -413,10 +466,12 @@ const renderContent = (
     return (
       <DashboardLineChart
         chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
         headers={query.columns}
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        markLines={query.render.markLines}
       />
     );
   }
@@ -440,6 +495,7 @@ const renderContent = (
     return (
       <DashboardBarChart
         chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
         stacked={
           query.render.type === "barchartHorizontalStacked" ||
           query.render.type === "barchartVerticalStacked"
@@ -452,13 +508,20 @@ const renderContent = (
         data={query.rows}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
+        markLines={query.render.markLines}
       />
     );
   }
   if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} yScroll={numQueriesInSection > 1} />;
+    return <DashboardValue headers={query.columns} data={query.rows} />;
   }
-  return <DashboardTable headers={query.columns} data={query.rows} />;
+  return (
+    <div
+      className={cx("overflow-auto", { "h-full": numQueriesInSection > 1 })}
+    >
+      <DashboardTable headers={query.columns} data={query.rows} />
+    </div>
+  );
 };
 
 const fetchDashboard = async (
@@ -466,6 +529,7 @@ const fetchDashboard = async (
   vars: VarsParamSchema,
   baseUrl: string,
   getJwt: () => Promise<string>,
+  signal?: AbortSignal,
 ): Promise<Result> => {
   const jwt = await getJwt();
   const searchParams = getSearchParamString(vars);
@@ -474,6 +538,7 @@ const fetchDashboard = async (
       "Content-Type": "application/json",
       Authorization: jwt,
     },
+    signal,
   });
   const json = await res.json();
   if (res.status !== 200) {

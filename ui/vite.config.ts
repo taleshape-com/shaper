@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import path from 'path';
-import { defineConfig, type PluginOption } from 'vite';
+import path from "path";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { visualizer } from "rollup-plugin-visualizer";
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
+import tailwindcss from "tailwindcss";
+import autoprefixer from "autoprefixer";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,22 +19,22 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
-      routesDirectory: 'ui/src/routes',
-      generatedRouteTree: 'ui/src/routeTree.gen.ts',
+      routesDirectory: "ui/src/routes",
+      generatedRouteTree: "ui/src/routeTree.gen.ts",
     }),
     react(),
     visualizer({
-      filename: '.vite-stats/stats.html',
+      filename: ".vite-stats/stats.html",
       gzipSize: true,
     }) as PluginOption,
   ],
   css: {
     postcss: {
       plugins: [
-        tailwindcss({ config: 'ui/tailwind.config.js' }),
+        tailwindcss({ config: "ui/tailwind.config.js" }),
         autoprefixer,
       ],
-    }
+    },
   },
   server: {
     host: "0.0.0.0",

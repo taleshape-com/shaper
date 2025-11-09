@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb/v2"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -36,19 +36,19 @@ func StreamQueryCSV(
 	variables map[string]any,
 	writer io.Writer,
 ) error {
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
 	queryIndex, err := strconv.Atoi(queryID)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid query ID '%s': %w", queryID, err)
 	}
 	if len(sqls) <= queryIndex || queryIndex < 0 {
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
@@ -59,7 +59,7 @@ func StreamQueryCSV(
 	csvWriter := csv.NewWriter(writer)
 	defer csvWriter.Flush()
 
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -67,7 +67,7 @@ func StreamQueryCSV(
 	// Execute the query and get rows
 	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
 	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
 	if varCleanup != "" {
@@ -155,19 +155,19 @@ func StreamQueryXLSX(
 	writer io.Writer,
 ) error {
 	// Get dashboard content
-	dashboard, err := GetDashboardQuery(app, ctx, dashboardId)
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
-	sqls, err := splitSQLQueries(cleanContent)
+	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
 	queryIndex, err := strconv.Atoi(queryID)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid query ID '%s': %w", queryID, err)
 	}
 	if len(sqls) <= queryIndex || queryIndex < 0 {
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
@@ -219,7 +219,7 @@ func StreamQueryXLSX(
 		}),
 	}
 
-	conn, err := app.DB.Connx(ctx)
+	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -227,7 +227,7 @@ func StreamQueryXLSX(
 	// Execute the query and get rows
 	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
 	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
 	if varCleanup != "" {
@@ -473,9 +473,9 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 	}
 
 	for queryIndex, sqlString := range sqlQueries {
-		if queryIndex == len(sqlQueries)-1 {
-			// Ignore text after last semicolon
-			break
+		sqlString = strings.TrimSpace(sqlString)
+		if sqlString == "" {
+			continue
 		}
 		if nextIsDownload {
 			nextIsDownload = false
@@ -512,7 +512,7 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, data, "")
+		rInfo := getRenderInfo(colTypes, data, "", []MarkLine{})
 
 		if rInfo.Download != "" {
 			nextIsDownload = true

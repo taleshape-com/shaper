@@ -65,46 +65,46 @@ const Toast = React.forwardRef<
     let Icon: React.ReactNode;
 
     switch (variant) {
-      case "success":
-        Icon = (
-          <RiCheckboxCircleFill
-            className="size-5 shrink-0 text-emerald-600 dark:text-emerald-500"
-            aria-hidden="true"
-          />
-        );
-        break;
-      case "warning":
-        Icon = (
-          <RiErrorWarningFill
-            className="size-5 shrink-0 text-amber-500 dark:text-amber-500"
-            aria-hidden="true"
-          />
-        );
-        break;
-      case "error":
-        Icon = (
-          <RiCloseCircleFill
-            className="size-5 shrink-0 text-red-600 dark:text-red-500"
-            aria-hidden="true"
-          />
-        );
-        break;
-      case "loading":
-        Icon = (
-          <RiLoader2Fill
-            className="size-5 shrink-0 animate-spin text-gray-600 dark:text-gray-500"
-            aria-hidden="true"
-          />
-        );
-        break;
-      default:
-        Icon = (
-          <RiInformationFill
-            className="size-5 shrink-0 text-blue-500 dark:text-blue-500"
-            aria-hidden="true"
-          />
-        );
-        break;
+    case "success":
+      Icon = (
+        <RiCheckboxCircleFill
+          className="size-5 shrink-0 text-emerald-600 dark:text-emerald-500"
+          aria-hidden="true"
+        />
+      );
+      break;
+    case "warning":
+      Icon = (
+        <RiErrorWarningFill
+          className="size-5 shrink-0 text-amber-500 dark:text-amber-500"
+          aria-hidden="true"
+        />
+      );
+      break;
+    case "error":
+      Icon = (
+        <RiCloseCircleFill
+          className="size-5 shrink-0 text-red-600 dark:text-red-500"
+          aria-hidden="true"
+        />
+      );
+      break;
+    case "loading":
+      Icon = (
+        <RiLoader2Fill
+          className="size-5 shrink-0 animate-spin text-gray-600 dark:text-gray-500"
+          aria-hidden="true"
+        />
+      );
+      break;
+    default:
+      Icon = (
+        <RiInformationFill
+          className="size-5 shrink-0 text-blue-500 dark:text-blue-500"
+          aria-hidden="true"
+        />
+      );
+      break;
     }
 
     return (

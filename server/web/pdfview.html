@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" class="shaper-scope">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>loading...</title>
+  </head>
+  <body class="antialiased text-ctext dark:text-dtext bg-cbg dark:bg-dbg m-0">
+    <div id="dashboard-container" class="h-screen"></div>
+
+    <script src="/embed/shaper.js"></script>
+
+    <script>
+      function getVarsFromQuery() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const varsParam = urlParams.get('vars');
+        if (!varsParam) {
+          return {};
+        }
+        try {
+          const decodedVars = atob(varsParam);
+          return JSON.parse(decodedVars);
+        } catch (e) {
+          console.warn('Failed to decode vars parameter:', e);
+          return {};
+        }
+      }
+
+      function getJwtFromQuery() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('jwt') || '';
+      }
+
+      const { pathname } = window.location;
+      const parts = pathname.split("/")
+      const dashboardId = parts[parts.length - (pathname.endsWith("/") ? 2 : 1)];
+
+      const dashboard = shaper.dashboard({
+        baseUrl: "/",
+        container: document.getElementById("dashboard-container"),
+        dashboardId,
+        vars: getVarsFromQuery(),
+        getJwt: () => getJwtFromQuery(),
+        onTitleChanged(newTitle) {
+          document.title = newTitle;
+        },
+      });
+    </script>
+  </body>
+</html>

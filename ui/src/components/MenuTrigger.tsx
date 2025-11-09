@@ -3,8 +3,9 @@
 import React, { useEffect, useContext } from "react";
 import { RiMenuLine } from "@remixicon/react";
 import { MenuContext } from "../contexts/MenuContext";
+import { cx } from "../lib/utils";
 
-export function MenuTrigger({
+export function MenuTrigger ({
   children,
   className,
   title,
@@ -23,14 +24,13 @@ export function MenuTrigger({
     setTitle(title);
   }, [title, setTitle]);
 
-
   if (isMenuOpen) {
     return null;
   }
 
   return (
     <button
-      className={className}
+      className={cx(className, "print:hidden")}
       onClick={() => {
         setIsMenuOpen(true);
       }}
@@ -39,4 +39,3 @@ export function MenuTrigger({
     </button>
   );
 }
-

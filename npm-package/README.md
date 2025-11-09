@@ -1,4 +1,10 @@
-Shaper is a minimal data platform built on top of DuckDB and NATS to build and embed analytics dashboards into your software.
+**Open Source, SQL-driven Data Dashboards powered by DuckDB.**
+
+Learn more:
+
+https://taleshape.com/shaper/docs/
+
+---
 
 This NPM package makes it easy to install and run Shaper locally.
 
