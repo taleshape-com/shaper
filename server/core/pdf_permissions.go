@@ -9,7 +9,7 @@ import (
 	"shaper/server/util"
 	"strings"
 
-	"github.com/marcboeker/go-duckdb/v2"
+	"github.com/duckdb/duckdb-go/v2"
 )
 
 // When downloading a PDF we also need to allow access if the users has the permission to see the parent dashboard

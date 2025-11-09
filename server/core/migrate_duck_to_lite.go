@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
-	"github.com/marcboeker/go-duckdb/v2"
 )
 
 func migrateSystemData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, deprecatedSchema string, logger *slog.Logger) error {

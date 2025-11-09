@@ -119,13 +119,13 @@ function DashboardDateRangePicker ({
             if (value.from === undefined) {
               delete varsCopy[fromVarName];
             } else {
-              const fromDateString = `${value.from.getFullYear()}-${value.from.toLocaleDateString([], { month: "2-digit" })}-${value.from.toLocaleDateString([], { day: "2-digit" })}`;
+              const fromDateString = `${value.from.getFullYear()}-${value.from.toLocaleDateString("en-US", { month: "2-digit" })}-${value.from.toLocaleDateString("en-US", { day: "2-digit" })}`;
               varsCopy[fromVarName] = fromDateString;
             }
             if (value.to === undefined) {
               delete varsCopy[toVarName];
             } else {
-              const toDateString = `${value.to.getFullYear()}-${value.to.toLocaleDateString([], { month: "2-digit" })}-${value.to.toLocaleDateString([], { day: "2-digit" })}`;
+              const toDateString = `${value.to.getFullYear()}-${value.to.toLocaleDateString("en-US", { month: "2-digit" })}-${value.to.toLocaleDateString("en-US", { day: "2-digit" })}`;
               varsCopy[toVarName] = toDateString;
             }
             onChange(varsCopy);
