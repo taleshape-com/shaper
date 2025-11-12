@@ -19,19 +19,19 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
-      routesDirectory: "ui/src/routes",
-      generatedRouteTree: "ui/src/routeTree.gen.ts",
+      routesDirectory: path.join(__dirname, "src/routes"),
+      generatedRouteTree: path.join(__dirname, "src/routeTree.gen.ts"),
     }),
     react(),
     visualizer({
-      filename: ".vite-stats/stats.html",
+      filename: path.join(__dirname, "../.vite-stats/stats.html"),
       gzipSize: true,
     }) as PluginOption,
   ],
   css: {
     postcss: {
       plugins: [
-        tailwindcss({ config: "ui/tailwind.config.js" }),
+        tailwindcss({ config: path.join(__dirname, "tailwind.config.js") }),
         autoprefixer,
       ],
     },

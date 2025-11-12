@@ -192,8 +192,7 @@ const DataView = ({
   getJwt,
   loading,
 }: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt"> & Required<Pick<DashboardProps, "data">>) & { loading: boolean }) => {
-  const firstIsHeader = !(data.sections.length === 0 || data.sections[0].type !== "header");
-  const sections: Result["sections"] = firstIsHeader
+  const sections: Result["sections"] = data.sections.length > 0 && data.sections[0].type === "header"
     ? data.sections
     : [
       {
@@ -330,6 +329,9 @@ const DataView = ({
       }
 
       const numQueriesInSection = section.queries.length;
+      const prevSection = sections[sectionIndex - 1];
+      const sectionHasTitle = prevSection.type === "header" && !!prevSection.title;
+
       return (
         <section
           key={sectionIndex}
@@ -366,10 +368,10 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && (section.queries.some(q => q.render.type !== "value") || numContentSections <= 2),
-                    "h-[calc(50dvh-1.6rem)] print:h-[340px]": !singleTable && !firstIsHeader && numContentSections === 1,
-                    "h-[calc(100cqh-5.3rem)]": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
-                    "h-[calc(100cqh-2.2rem)] ": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
+                    "min-h-[340px] max-h-[600px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
+                    "h-[calc(50dvh-1.6rem)]": !singleTable && section.queries.some(q => q.render.type !== "value") && !sectionHasTitle,
+                    "@sm:h-[calc(100cqh-5.3rem)]": (isChartQuery || (query.render.type == "value" && numContentSections === 1)) && numQueriesInSection === 1 && sectionHasTitle,
+                    "@sm:h-[calc(100cqh-2.2rem)] ": (isChartQuery || (query.render.type == "value" && numContentSections === 1)) && numQueriesInSection === 1 && !sectionHasTitle,
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,
                   },
