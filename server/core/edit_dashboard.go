@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -41,6 +42,21 @@ type UpdateDashboardPasswordPayload struct {
 }
 
 func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, error) {
+	if strings.HasPrefix(id, TMP_DASHBOARD_PREFIX) {
+		entry, err := app.TmpDashboardsKv.Get(ctx, id)
+		if err != nil {
+			return Dashboard{}, fmt.Errorf("failed to get dashboard: %w", err)
+		}
+		visibility := "private"
+		dashboard := Dashboard{
+			ID:         id,
+			CreatedAt:  entry.Created(),
+			UpdatedAt:  entry.Created(),
+			Visibility: &visibility,
+			Content:    string(entry.Value()),
+		}
+		return dashboard, nil
+	}
 	var dashboard Dashboard
 	err := app.Sqlite.GetContext(ctx, &dashboard,
 		`SELECT id, folder_id, name, content, created_at, updated_at, created_by, updated_by, visibility

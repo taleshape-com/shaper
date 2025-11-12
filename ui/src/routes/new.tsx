@@ -7,17 +7,16 @@ import {
   useNavigate,
   Link,
 } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
-import { getSearchParamString, isMac, varsParamSchema, cx } from "../lib/utils";
+import { isMac, varsParamSchema, cx } from "../lib/utils";
 import { editorStorage } from "../lib/editorStorage";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
-import { Result } from "../lib/types";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
 import {
@@ -123,14 +122,15 @@ function NewDashboard () {
   const [editorQuery, setEditorQuery] = useState("");
   const [runningQuery, setRunningQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
+  const [previewId, setPreviewId] = useState<string | undefined>(undefined);
   const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [dashboardName, setDashboardName] = useState("");
-  const [loadDuration, setLoadDuration] = useState<number | null>(null);
+  const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
+  const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Check for unsaved changes when component mounts or type changes
@@ -154,28 +154,25 @@ function NewDashboard () {
     }
     setPreviewError(null);
     setIsPreviewLoading(true);
-    setLoadDuration(null); // Reset previous duration
-    const startTime = Date.now();
+    setLoadStartTime(Date.now());
+    setLoadEndTime(null);
     try {
-      const searchParams = getSearchParamString(vars);
-      const data = await queryApi(`run/dashboard?${searchParams}`, {
+      const { id } = await queryApi("dashboards", {
         method: "POST",
         body: {
           content: runningQuery,
+          temporary: true,
         },
       });
-      setPreviewData(data);
+      setPreviewId(id);
     } catch (err) {
+      setIsPreviewLoading(false);
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      const duration = startTime ? Date.now() - startTime : null;
-      setLoadDuration(duration);
-      setIsPreviewLoading(false);
     }
-  }, [queryApi, vars, runningQuery, navigate]);
+  }, [queryApi, runningQuery, navigate]);
 
   const runTask = useCallback(async () => {
     setPreviewError(null);
@@ -233,7 +230,7 @@ function NewDashboard () {
       setStoredAppType(type);
 
       // Clear results when switching types
-      setPreviewData(undefined);
+      setPreviewId(undefined);
       setTaskData(undefined);
       setPreviewError(null);
 
@@ -340,7 +337,7 @@ function NewDashboard () {
     setRunningQuery(defaultContent);
     setShowDiscardDialog(false);
     // Clear results when discarding
-    setPreviewData(undefined);
+    setPreviewId(undefined);
     setTaskData(undefined);
     setPreviewError(null);
   }, [appType]);
@@ -351,6 +348,27 @@ function NewDashboard () {
       appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
     return editorQuery !== defaultContent;
   };
+
+  const handleRedirectError = useCallback(
+    (err: Error) => {
+      if (isRedirect(err)) {
+        navigate(err.options);
+      }
+    },
+    [navigate],
+  );
+
+  const handleDataChange = useCallback(() => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+  }, [setIsPreviewLoading, setLoadEndTime]);
+
+  const loadDuration = useMemo(() => {
+    if (!loadStartTime || !loadEndTime) {
+      return null;
+    }
+    return loadEndTime - loadStartTime;
+  }, [loadStartTime, loadEndTime]);
 
   const generateBreadcrumbs = () => {
     const pathParts = (path || "/").split("/").filter((part) => part !== "");
@@ -385,14 +403,18 @@ function NewDashboard () {
               {appType === "dashboard" && (
                 <VariablesMenu onVariablesChange={previewDashboard} />
               )}
-              {appType === "dashboard" && loadDuration && (
+              {appType === "dashboard" && (
                 <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
-                  <span>
-                    Load time:{" "}
-                    {loadDuration >= 1000
-                      ? `${(loadDuration / 1000).toFixed(2)}s`
-                      : `${loadDuration}ms`}
-                  </span>
+                  {loadDuration ? (
+                    <span>
+                      Load time:{" "}
+                      {loadDuration >= 1000
+                        ? `${(loadDuration / 1000).toFixed(2)}s`
+                        : `${loadDuration}ms`}
+                    </span>
+                  ) : (
+                    <span>Loading...</span>
+                  )}
                 </div>
               )}
             </MenuTrigger>
@@ -509,11 +531,13 @@ function NewDashboard () {
           {previewError && <PreviewError>{previewError}</PreviewError>}
           {appType === "dashboard" ? (
             <Dashboard
+              id={previewId}
               vars={vars}
               hash={auth.hash}
               getJwt={getJwt}
               onVarsChanged={handleVarsChanged}
-              data={previewData}
+              onError={handleRedirectError}
+              onDataChange={handleDataChange}
               loading={isPreviewLoading}
             />
           ) : (
