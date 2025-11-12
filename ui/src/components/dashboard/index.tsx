@@ -30,7 +30,6 @@ export interface DashboardProps {
   hash?: string;
   menuButton?: React.ReactNode;
   onError?: (error: Error) => void;
-  data?: Result;
   onDataChange?: (data: Result) => void;
   loading?: boolean;
 }
@@ -47,7 +46,6 @@ export function Dashboard ({
   hash = "",
   menuButton,
   onError,
-  data,
   onDataChange,
   loading,
 }: DashboardProps) {
@@ -55,8 +53,6 @@ export function Dashboard ({
   const [error, setError] = useState<Error | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const errResetFn = useRef<(() => void) | undefined>(undefined);
-
-  const actualData = data ?? fetchedData;
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
@@ -162,10 +158,10 @@ export function Dashboard ({
     return <ErrorDisplay error={error} />;
   }
 
-  return actualData ? (
+  return fetchedData ? (
     <ErrorBoundary fallbackRender={ErrorDisplay}>
       <DataView
-        data={actualData}
+        data={fetchedData}
         onVarsChanged={onVarsChanged}
         menuButton={menuButton}
         vars={vars}
@@ -191,7 +187,8 @@ const DataView = ({
   baseUrl,
   getJwt,
   loading,
-}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt"> & Required<Pick<DashboardProps, "data">>) & { loading: boolean }) => {
+
+}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean }) => {
   const sections: Result["sections"] = data.sections.length > 0 && data.sections[0].type === "header"
     ? data.sections
     : [
