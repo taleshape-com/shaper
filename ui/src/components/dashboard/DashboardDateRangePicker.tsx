@@ -128,6 +128,12 @@ function DashboardDateRangePicker ({
               const toDateString = `${value.to.getFullYear()}-${value.to.toLocaleDateString("en-US", { month: "2-digit" })}-${value.to.toLocaleDateString("en-US", { day: "2-digit" })}`;
               varsCopy[toVarName] = toDateString;
             }
+            if (value.from === undefined && value.to !== undefined) {
+              varsCopy[fromVarName] = varsCopy[toVarName];
+            }
+            if (value.to === undefined && value.from !== undefined) {
+              varsCopy[toVarName] = varsCopy[fromVarName];
+            }
             onChange(varsCopy);
           }}
           className={"min-w-40 my-1"}
