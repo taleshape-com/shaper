@@ -485,7 +485,7 @@ func mapTag(index int, rInfo renderInfo) string {
 var matchDecimal = regexp.MustCompile(`DECIMAL\(\d+,\d+\)`)
 
 // TODO: BIT type is not supported yet by Go duckdb lib
-// TODO: Support ARRAY, LIST, STRUCT, more MAP types and generic UNION types
+// TODO: Support ARRAY, LIST, more MAP types and generic UNION types
 func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
 	for _, dbType := range dbTypes {
@@ -561,6 +561,9 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	}
 	if matchDecimal.MatchString(t) {
 		return "number", nil
+	}
+	if strings.HasPrefix(t, "STRUCT(\"") {
+		return "object", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
