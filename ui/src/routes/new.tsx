@@ -349,14 +349,13 @@ function NewDashboard () {
     return editorQuery !== defaultContent;
   };
 
-  const handleRedirectError = useCallback(
-    (err: Error) => {
-      if (isRedirect(err)) {
-        navigate(err.options);
-      }
-    },
-    [navigate],
-  );
+  const handleError = useCallback((err: Error) => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+    if (isRedirect(err)) {
+      navigate(err.options);
+    }
+  }, [navigate, setIsPreviewLoading, setLoadEndTime]);
 
   const handleDataChange = useCallback(() => {
     setIsPreviewLoading(false);
@@ -536,7 +535,7 @@ function NewDashboard () {
               hash={auth.hash}
               getJwt={getJwt}
               onVarsChanged={handleVarsChanged}
-              onError={handleRedirectError}
+              onError={handleError}
               onDataChange={handleDataChange}
               loading={isPreviewLoading}
             />

@@ -127,6 +127,7 @@ function DashboardEditor () {
     previewAbortRef.current = abortController;
 
     setPreviewError(null);
+    setIsPreviewLoading(true);
     setLoadStartTime(Date.now());
     setLoadEndTime(null);
     const startTime = Date.now();
@@ -389,14 +390,13 @@ function DashboardEditor () {
     setShowDiscardDialog(false);
   };
 
-  const handleRedirectError = useCallback(
-    (err: Error) => {
-      if (isRedirect(err)) {
-        navigate(err.options);
-      }
-    },
-    [navigate],
-  );
+  const handleError = useCallback((err: Error) => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+    if (isRedirect(err)) {
+      navigate(err.options);
+    }
+  }, [navigate, setIsPreviewLoading, setLoadEndTime]);
 
   const handleDataChange = useCallback(() => {
     setIsPreviewLoading(false);
@@ -624,7 +624,7 @@ function DashboardEditor () {
             hash={auth.hash}
             getJwt={getJwt}
             onVarsChanged={handleVarsChanged}
-            onError={handleRedirectError}
+            onError={handleError}
             onDataChange={handleDataChange}
             loading={isPreviewLoading}
           />
