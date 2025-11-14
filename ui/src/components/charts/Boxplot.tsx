@@ -114,7 +114,7 @@ const Boxplot = (props: BoxplotProps) => {
             opacity: 1,
           },
         },
-        cursor: 'default',
+        cursor: "crosshair",
       } as ScatterSeriesOption
     ];
 
@@ -174,7 +174,6 @@ const Boxplot = (props: BoxplotProps) => {
 
     return {
       animation: false,
-      cursor: "default",
       title: {
         text: label,
         textStyle: {

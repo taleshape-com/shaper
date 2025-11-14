@@ -108,6 +108,7 @@ const BarChart = (props: BarChartProps) => {
       barGap: "3%",
       barMaxWidth: dataCopy.length === 1 ? layout == "horizontal" ? "50%" : "25%" : undefined,
       stack: type === "stacked" ? "stack" : category,
+      cursor: "crosshair",
       data: isTimestampData && layout === "horizontal"
         ? dataCopy.map((item) => [item[index], item[category]])
         : dataCopy.map((item) => item[category]),
@@ -215,7 +216,6 @@ const BarChart = (props: BarChartProps) => {
 
     return {
       animation: false,
-      cursor: "default",
       title: {
         text: label,
         textStyle: {

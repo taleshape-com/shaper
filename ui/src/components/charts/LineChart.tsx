@@ -94,7 +94,9 @@ const LineChart = (props: LineChartProps) => {
       connectNulls: true,
       symbol: "circle",
       symbolSize: 6,
+      cursor: "crosshair",
       emphasis: {
+        cursor: "crosshair",
         itemStyle: {
           color: categoryColors.get(category),
           borderWidth: 0,
@@ -201,7 +203,6 @@ const LineChart = (props: LineChartProps) => {
 
     return {
       animation: false,
-      cursor: "default",
       title: {
         text: label,
         textStyle: {
