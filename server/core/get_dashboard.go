@@ -418,7 +418,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" {
+	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" {
 		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
 			return "index"
 		}
@@ -598,6 +598,15 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 		}
 	}
 	return nil, -1
+}
+
+func findBoxlotColumnIndex(columns []*sql.ColumnType) int {
+	for i, c := range columns {
+		if c.DatabaseTypeName() == boxplotType {
+			return i
+		}
+	}
+	return -1
 }
 
 // Some SQL statements are only used for their side effects and should not be shown on the dashboard.
@@ -1035,6 +1044,18 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 			Type:            "gauge",
 			ValueAxisIndex:  &gaugeIndex,
 			GaugeCategories: categories,
+		}
+		return r
+	}
+
+	boxplotIndex := findBoxlotColumnIndex(columns)
+	if boxplotIndex > -1 && xaxis != nil {
+		r := renderInfo{
+			Label:          labelValue,
+			Type:           "boxplot",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &boxplotIndex,
+			MarkLines:      markLines,
 		}
 		return r
 	}

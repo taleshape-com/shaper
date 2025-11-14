@@ -4,7 +4,7 @@ import { useMemo, useRef, useEffect } from "react";
 import { debounce } from "lodash";
 
 import * as echarts from "echarts/core";
-import { BarChart, LineChart, GaugeChart } from "echarts/charts";
+import { BarChart, LineChart, GaugeChart, BoxplotChart, ScatterChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
@@ -34,6 +34,8 @@ echarts.use([
   BarChart,
   LineChart,
   GaugeChart,
+  BoxplotChart,
+  ScatterChart,
   TitleComponent,
   TooltipComponent,
   GridComponent,

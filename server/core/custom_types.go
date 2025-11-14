@@ -78,3 +78,37 @@ func createType(db *sqlx.DB, name string, definition string) error {
 	}
 	return nil
 }
+
+const boxplotType = `STRUCT("max" DOUBLE, "min" DOUBLE, "outliers" DOUBLE[], "q1" DOUBLE, "q2" DOUBLE, "q3" DOUBLE)`
+
+const boxplotFunction = `
+CREATE OR REPLACE MACRO BOXPLOT(val, outliers := false) AS CASE
+  WHEN outliers THEN
+    {
+      'max': list(val).filter(lambda v: v <= quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))).list_max()::DOUBLE,
+      'min': list(val).filter(lambda v: v >= quantile_cont(val, 0.25) - 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))).list_min()::DOUBLE,
+      'outliers': list(val).filter(lambda v:
+        v < quantile_cont(val, 0.25) - 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
+        OR
+        v > quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
+      )::DOUBLE[],
+      'q1': quantile_cont(val, 0.25),
+      'q2': quantile_cont(val, 0.5),
+      'q3': quantile_cont(val, 0.75),
+    }
+  ELSE
+    {
+      'max': max(val)::DOUBLE,
+      'min': min(val)::DOUBLE,
+      'outliers': []::DOUBLE[],
+      'q1': quantile_cont(val, 0.25),
+      'q2': quantile_cont(val, 0.5),
+      'q3': quantile_cont(val, 0.75),
+    }
+END;
+`
+
+func createBoxlotFunction(db *sqlx.DB) error {
+	_, err := db.Exec(boxplotFunction)
+	return err
+}

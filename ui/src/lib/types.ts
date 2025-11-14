@@ -120,7 +120,7 @@ export type Result = {
           | "barchartHorizontal"
           | "barchartHorizontalStacked"
           | "barchartVertical"
-          | "barchartVerticalStacked";
+          | "barchartVerticalStacked"
           label?: string;
           markLines: MarkLine[];
         }
@@ -131,6 +131,25 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+      }[];
+    }
+    | {
+      type: "content";
+      queries: {
+        render: {
+          type: "boxplot";
+          label?: string;
+          markLines: MarkLine[];
+        }
+        columns: Column[];
+        rows: (string | number | boolean | {
+          min: number;
+          max: number;
+          q1: number;
+          q2: number;
+          q3: number;
+          outliers: number[];
+        })[][];
       }[];
     }
   )[];

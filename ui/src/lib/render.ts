@@ -5,7 +5,7 @@ import { Column } from "./types";
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.
 // The backend returns dates as unix timestamp integers in milliseconds, but this function works for strings as well
-function parseLocalDate (d: string | number) {
+function parseLocalDate(d: string | number) {
   return new Date(d);
 }
 
@@ -40,7 +40,11 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   }
   if (typeof value === "number") {
     if (shouldFormatNumbers && columnType === "number") {
-      return Number.isInteger(value) ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") : value.toString();
+      return Number.isInteger(value)
+        ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+        : shortFormat
+          ? (Math.round(value * 100) / 100).toString()
+          : value.toString();
     }
     // duration comes in ms
     if (columnType === "duration") {

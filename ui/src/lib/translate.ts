@@ -103,9 +103,24 @@ const translations = {
   "Unselect all": {
     de: "Alle abwählen",
   },
+  "Minimum": {
+    de: "Minimum",
+  },
+  "Q1": {
+    de: "Q1",
+  },
+  "Median": {
+    de: "Median",
+  },
+  "Q3": {
+    de: "Q3",
+  },
+  "Maximum": {
+    de: "Maximum",
+  },
 };
 
-export function translate (s: keyof typeof translations) {
+export function translate(s: keyof typeof translations) {
   const available = translations[s] ?? {};
   for (const lang of navigator.languages) {
     const firstPart = lang.split("-")[0];
