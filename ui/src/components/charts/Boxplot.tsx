@@ -192,7 +192,7 @@ const Boxplot = (props: BoxplotProps) => {
       },
       tooltip: {
         show: true,
-        trigger: "axis",
+        trigger: "item",
         triggerOn: "mousemove",
         enterable: false,
         confine: true,
@@ -207,13 +207,29 @@ const Boxplot = (props: BoxplotProps) => {
           color: textColor,
         },
         formatter: (params: any) => {
-          const axisData = params.find((item: any) => item?.axisDim === "x");
-          const indexValue = axisData.axisValue;
-          const extraData = extraDataByIndexAxis[indexValue];
+          const param = Array.isArray(params) ? params.find((item: any) => item?.seriesId === "boxplot" && item?.axisDim === "x") : params
+          const indexValue = param.dataIndex;
 
           const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
           let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
+          if (param.seriesId === 'outliers') {
+            const values = param.value as number[];
+            if (values === null || values === undefined || !Array.isArray(values)) {
+              return;
+            }
+            // Skip first since it's the x-index
+            for (let i = 1; i < values.length; i++) {
+              const formattedValue = valueFormatter(values[i], true);
+              tooltipContent += `<div class="flex items-center justify-end space-x-2 mt-2">
+                <span>${formattedValue}</span>
+              </div>`;
+            }
+            tooltipContent += "</div>";
+            return tooltipContent;
+          }
+
+          const extraData = extraDataByIndexAxis[indexValue];
           if (extraData) {
             tooltipContent += "<div class=\"mt-2\">";
             Object.entries(extraData).forEach(([key, valueData]) => {
@@ -228,31 +244,23 @@ const Boxplot = (props: BoxplotProps) => {
             tooltipContent += "</div>";
           }
 
-          // Use a Set to track shown categories
           tooltipContent += "<div class=\"mt-2\">";
-          params.forEach((param: any) => {
-            if (param.axisDim !== "x") {
-              return; // Skip non-index axis items
-            }
-            const values = param.value as number[];
+          const values = param.value as number[];
 
-            // Skip categories with missing or null values
-            if (values === null || values === undefined || !Array.isArray(values)) {
-              return;
-            }
+          if (values === null || values === undefined || !Array.isArray(values)) {
+            return;
+          }
 
-            // Skip first since it's the x-index
-            for (let i = 1; i < values.length; i++) {
-              const formattedValue = valueFormatter(values[i], true);
-              const key = translate(valueKeys[i - 1])
-              tooltipContent += `<div class="flex items-center justify-between space-x-2">
+          // Skip first since it's the x-index
+          for (let i = 1; i < values.length; i++) {
+            const formattedValue = valueFormatter(values[i], true);
+            const key = translate(valueKeys[i - 1])
+            tooltipContent += `<div class="flex items-center justify-between space-x-2">
                   <span class="font-medium">${key}</span>
                   <span>${formattedValue}</span>
             </div>`;
-            }
-          });
+          }
           tooltipContent += "</div>";
-
           return tooltipContent;
         },
       },
