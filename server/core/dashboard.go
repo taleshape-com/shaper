@@ -4,6 +4,8 @@ package core
 
 import "time"
 
+const TMP_DASHBOARD_PREFIX = "shaper-tmp."
+
 type Dashboard struct {
 	ID         string    `db:"id" json:"id"`
 	FolderID   *string   `db:"folder_id" json:"folderId,omitempty"`

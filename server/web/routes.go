@@ -107,7 +107,6 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
 	apiWithAuth.GET("/dashboards/:id/pdf/:filename", handler.DownloadPdf(app, internalUrl, pdfDateFormat))
-	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
 	if !app.NoTasks {
 		apiWithAuth.POST("/tasks", handler.CreateTask(app))
 		apiWithAuth.GET("/tasks/:id", handler.GetTask(app))

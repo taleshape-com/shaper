@@ -22,17 +22,22 @@ type CreateDashboardPayload struct {
 	CreatedBy string    `json:"createdBy"`
 }
 
-func CreateDashboard(app *App, ctx context.Context, name string, content string, path string) (string, error) {
+func CreateDashboard(app *App, ctx context.Context, name string, content string, path string, temporary bool) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
+	}
+	id := cuid2.Generate()
+	if temporary {
+		key := TMP_DASHBOARD_PREFIX + id
+		_, err := app.TmpDashboardsKv.PutString(ctx, key, content)
+		return key, err
 	}
 	// Validate name
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", fmt.Errorf("dashboard name cannot be empty")
 	}
-	id := cuid2.Generate()
 	err := app.SubmitState(ctx, "create_dashboard", CreateDashboardPayload{
 		ID:        id,
 		Timestamp: time.Now(),

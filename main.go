@@ -96,6 +96,8 @@ type Config struct {
 	StateStreamName            string
 	IngestStreamName           string
 	ConfigKVBucketName         string
+	TmpDashboardsKVBucketName  string
+	TmpDashboardsTTL           time.Duration
 	IngestStreamMaxAge         time.Duration
 	StateStreamMaxAge          time.Duration
 	IngestConsumerNameFile     string
@@ -186,6 +188,8 @@ func loadConfig() Config {
 	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
 	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
+	tmpDashboardsKVBucket := flags.StringLong("tmp-dashboards-kv-bucket", "shaper-tmp-dashboards", "Name for NATS KV bucket to store temporary dashboards")
+	tmpDashboardsTTL := flags.DurationLong("tmp-dashboards-ttl", 1*time.Hour, "TTL for temporary dashboards")
 	tasksStream := flags.StringLong("tasks-stream", "shaper-tasks", "NATS stream name for scheduled task execution")
 	taskResultsStream := flags.StringLong("task-results-stream", "shaper-task-results", "NATS stream name for task results")
 	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
@@ -321,6 +325,8 @@ func loadConfig() Config {
 		StateStreamName:            *streamPrefix + *stateStream,
 		IngestStreamName:           *streamPrefix + *ingestStream,
 		ConfigKVBucketName:         *streamPrefix + *configKVBucket,
+		TmpDashboardsKVBucketName:  *streamPrefix + *tmpDashboardsKVBucket,
+		TmpDashboardsTTL:           *tmpDashboardsTTL,
 		IngestStreamMaxAge:         *ingestStreamMaxAge,
 		StateStreamMaxAge:          *stateStreamMaxAge,
 		IngestConsumerNameFile:     *ingestConsumerNameFile,
@@ -525,6 +531,8 @@ func Run(cfg Config) func(context.Context) {
 		cfg.StateStreamName,
 		cfg.StateStreamMaxAge,
 		cfg.ConfigKVBucketName,
+		cfg.TmpDashboardsKVBucketName,
+		cfg.TmpDashboardsTTL,
 		cfg.TasksStreamName,
 		cfg.TasksSubjectPrefix,
 		cfg.TaskQueueConsumerName,

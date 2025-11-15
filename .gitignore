@@ -3,6 +3,7 @@ bin
 node_modules
 dist
 .vite-stats
+.tanstack
 
 # Editor directories and files
 .vscode/*
