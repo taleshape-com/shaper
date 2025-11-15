@@ -58,8 +58,8 @@ const LineChart = (props: LineChartProps) => {
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(1);
-  const [chartHeight, setChartHeight] = React.useState(1);
+  const [chartWidth, setChartWidth] = React.useState(450);
+  const [chartHeight, setChartHeight] = React.useState(300);
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
@@ -76,7 +76,7 @@ const LineChart = (props: LineChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
+    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
@@ -169,7 +169,7 @@ const LineChart = (props: LineChartProps) => {
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
     const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
-    const minLegendItemWidth = Math.max(avgLegendCharCount * 9, 50);
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
     const legendItemGap = 10;
@@ -226,9 +226,8 @@ const LineChart = (props: LineChartProps) => {
         hideDelay: 200, // Increase hide delay to prevent flickering
         showDelay: 0, // Show immediately
         borderRadius: 5,
-        backgroundColor: undefined,
-        borderColor,
-        className: "bg-cbg dark:bg-dbg",
+        borderWidth: 0,
+        backgroundColor: backgroundColorSecondary,
         textStyle: {
           fontFamily: chartFont,
           color: textColor,
@@ -341,7 +340,8 @@ const LineChart = (props: LineChartProps) => {
         right: 15 + chartPadding,
         top: 10 + legendTopOffset + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 35 : 10) + chartPadding,
-        containLabel: true,
+        outerBoundsMode: "same",
+        outerBoundsContain: "axisLabel",
       },
       xAxis: {
         type: isTimestampData ? "time" as const : "category" as const,
@@ -358,7 +358,7 @@ const LineChart = (props: LineChartProps) => {
           rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
-          customValues,
+          //customValues,
         },
         axisPointer: {
           type: data.length > 1 ? "line" : "none",
@@ -376,6 +376,8 @@ const LineChart = (props: LineChartProps) => {
             },
             fontFamily: chartFont,
             margin: 5,
+            color: textColorInverted,
+            backgroundColor: backgroundColorInverted,
           },
         },
         axisLine: {
@@ -422,6 +424,8 @@ const LineChart = (props: LineChartProps) => {
             },
             fontFamily: chartFont,
             margin: 10,
+            color: textColorInverted,
+            backgroundColor: backgroundColorInverted,
           },
         },
         axisLine: {

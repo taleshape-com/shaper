@@ -25,29 +25,27 @@ export const getThemeColors = (isDark: boolean) => {
   if (isDark) {
     return {
       primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color"),
-      backgroundColor: getComputedCssValue(
-        "--shaper-dark-mode-background-color",
-      ),
-      backgroundColorSecondary: getComputedCssValue(
-        "--shaper-dark-mode-background-color-secondary",
-      ),
+      backgroundColor: getComputedCssValue("--shaper-dark-mode-background-color"),
+      backgroundColorSecondary: getComputedCssValue("--shaper-dark-mode-background-color-secondary"),
+      backgroundColorInverted: getComputedCssValue("--shaper-dark-mode-background-color-invert"),
+      backgroundColorAlternate: getComputedCssValue("--shaper-dark-mode-background-color-alternate"),
       borderColor: getComputedCssValue("--shaper-dark-mode-border-color"),
       textColor: getComputedCssValue("--shaper-dark-mode-text-color"),
-      textColorSecondary: getComputedCssValue(
-        "--shaper-dark-mode-text-color-secondary",
-      ),
+      textColorSecondary: getComputedCssValue("--shaper-dark-mode-text-color-secondary"),
+      textColorInverted: getComputedCssValue("--shaper-dark-mode-text-color-invert"),
       referenceLineColor: getComputedCssValue("--shaper-reference-line-color"),
     };
   } else {
     return {
       primaryColor: getComputedCssValue("--shaper-primary-color"),
       backgroundColor: getComputedCssValue("--shaper-background-color"),
-      backgroundColorSecondary: getComputedCssValue(
-        "--shaper-background-color-secondary",
-      ),
+      backgroundColorSecondary: getComputedCssValue("--shaper-background-color-secondary"),
+      backgroundColorInverted: getComputedCssValue("--shaper-background-color-invert"),
+      backgroundColorAlternate: getComputedCssValue("--shaper-background-color-alternate"),
       borderColor: getComputedCssValue("--shaper-border-color"),
       textColor: getComputedCssValue("--shaper-text-color"),
       textColorSecondary: getComputedCssValue("--shaper-text-color-secondary"),
+      textColorInverted: getComputedCssValue("--shaper-text-color-invert"),
       referenceLineColor: getComputedCssValue("--shaper-reference-line-color"),
     };
   }
