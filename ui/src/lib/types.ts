@@ -67,6 +67,18 @@ export const isTimeType = (t: Column["type"]) => {
   );
 };
 
+export const isDatableType = (t: Column["type"]) => {
+  return (
+    t === "year" ||
+    t === "month" ||
+    t === "hour" ||
+    t === "date" ||
+    t === "timestamp" ||
+    t === "time" ||
+    t === "duration"
+  );
+};
+
 export type GaugeCategory = {
   from: number;
   to: number;
@@ -76,7 +88,7 @@ export type GaugeCategory = {
 
 export type MarkLine = {
   isYAxis: boolean;
-  value: (string | number | boolean);
+  value: (string | number);
   label?: string;
 };
 

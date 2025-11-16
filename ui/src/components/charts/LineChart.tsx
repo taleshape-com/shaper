@@ -12,7 +12,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType, MarkLine } from "../../lib/types";
+import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { EChart } from "./EChart";
 
@@ -27,7 +27,7 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[];
   colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
-  indexFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -81,7 +81,7 @@ const LineChart = (props: LineChartProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
+    const isTimestampData = isDatableType(indexType) || indexType === "number";
 
     // Set up chart options
     const series: LineSeriesOption[] = categories.map((category) => ({

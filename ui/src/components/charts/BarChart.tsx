@@ -12,7 +12,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType, MarkLine } from "../../lib/types";
+import { Column, isDatableType, isTimeType, MarkLine } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
@@ -30,7 +30,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[];
   colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
-  indexFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -73,6 +73,8 @@ const BarChart = (props: BarChartProps) => {
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
 
+  const isTimestampData = isDatableType(indexType) || indexType === "number";
+
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
     hoveredChartIdRef.current = hoveredChartId;
@@ -86,11 +88,9 @@ const BarChart = (props: BarChartProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
-
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
-    if (layout === "vertical" && (isTimeType(indexType) || indexType === "time" || indexType === "duration")) {
+    if (layout === "vertical" && isDatableType(indexType)) {
       dataCopy = data.map((item) => {
         return {
           ...item,
@@ -553,7 +553,6 @@ const BarChart = (props: BarChartProps) => {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
     const series: BarSeriesOption[] = [{
       id: "shaper-hover-reference-line",
       type: "bar" as const,

@@ -11,7 +11,7 @@ import { getThemeColors, getChartFont, getDisplayFont } from "../../lib/chartUti
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType, MarkLine } from "../../lib/types";
+import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { translate } from '../../lib/translate';
 import { EChart } from "./EChart";
@@ -26,7 +26,7 @@ interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
   indexType: Column["type"];
   valueType: Column["type"];
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
-  indexFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
   xAxisLabel?: string;
   yAxisLabel?: string;
   markLines?: MarkLine[];
@@ -83,8 +83,6 @@ const Boxplot = (props: BoxplotProps) => {
     const { primaryColor, colorThree, borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
-
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
 
     // Set up chart options
     const series: (BoxplotSeriesOption | ScatterSeriesOption | LineSeriesOption)[] = [
@@ -146,11 +144,9 @@ const Boxplot = (props: BoxplotProps) => {
           symbol: "none",
           data: markLines.map(m => {
             let v = m.isYAxis ? m.value
-              : typeof m.value === "boolean"
-                ? m.value ? "1" : "0"
-                : isTimeType(indexType) || indexType === "time" || indexType === "duration"
-                  ? new Date(m.value as number).toUTCString()
-                  : m.value.toString();
+              : isDatableType(indexType)
+                ? new Date(m.value).toUTCString()
+                : m.value.toString()
             return {
               xAxis: m.isYAxis ? undefined : v as number | string,
               yAxis: m.isYAxis ? v as number : undefined,
@@ -251,7 +247,7 @@ const Boxplot = (props: BoxplotProps) => {
           }
 
           const indexValue = param.name;
-          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
+          const formattedIndex = indexFormatter(decodeIndexValue(indexValue, indexType));
           tooltipContent += `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
           const extraData = extraDataByIndexAxis[indexValue];
@@ -305,8 +301,8 @@ const Boxplot = (props: BoxplotProps) => {
         show: true,
         axisLabel: {
           show: true,
-          formatter: (value: any) => {
-            return indexFormatter(isTimestampData ? new Date(value).getTime() : value, shortenLabel);
+          formatter: (value: string) => {
+            return indexFormatter(decodeIndexValue(value, indexType), shortenLabel);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -328,7 +324,7 @@ const Boxplot = (props: BoxplotProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value);
+              return indexFormatter(decodeIndexValue(params.value, indexType), shortenLabel);
             },
             fontFamily: chartFont,
             margin: 5,
@@ -532,6 +528,19 @@ const Boxplot = (props: BoxplotProps) => {
     </div>
   );
 };
+
+function decodeIndexValue(v: string | number, indexType: Column["type"]): string | number {
+  if (isDatableType(indexType)) {
+    return new Date(v).getTime();
+  }
+  if (indexType === 'number') {
+    if (typeof v === 'number') {
+      return v;
+    }
+    return parseFloat(v);
+  }
+  return v;
+}
 
 Boxplot.displayName = "Boxplot";
 

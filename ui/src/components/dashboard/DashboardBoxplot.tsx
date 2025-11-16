@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, isTimeType, MarkLine, Result } from "../../lib/types";
+import { Column, isDatableType, MarkLine, Result } from "../../lib/types";
 import { Boxplot } from "../charts/Boxplot";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
@@ -34,13 +34,11 @@ const DashboardBoxplot = ({
   const outliers: [number, number, Record<string, string> | null | undefined][] = [];
   const xData: string[] = [];
   data.forEach((row, rowI) => {
-    let key = typeof row[indexAxisIndex] === "boolean"
-      ? row[indexAxisIndex] ? "1" : "0"
-      : isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration"
-        ? new Date(row[indexAxisIndex] as number).toUTCString()
-        : row[indexAxisIndex].toString();
+    let key = isDatableType(indexAxisHeader.type)
+      ? new Date(row[indexAxisIndex] as number).toUTCString()
+      : row[indexAxisIndex].toString();
     if (key === null) {
-      if (isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration" || indexAxisHeader.type === "number") {
+      if (isDatableType(indexAxisHeader.type) || indexAxisHeader.type === "number") {
         return;
       }
       key = "";
@@ -84,7 +82,7 @@ const DashboardBoxplot = ({
       valueFormatter={(n: number, shortFormat?: boolean | number) => {
         return formatValue(n, 'number', true, shortFormat).toString();
       }}
-      indexFormatter={(n: number, shortFormat?: boolean | number) => {
+      indexFormatter={(n: number | string, shortFormat?: boolean | number) => {
         return formatValue(n, indexType, true, shortFormat).toString();
       }}
       xAxisLabel={getNameIfSet(indexAxisHeader.name)}
