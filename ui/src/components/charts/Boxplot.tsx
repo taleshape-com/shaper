@@ -80,7 +80,7 @@ const Boxplot = (props: BoxplotProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { primaryColor, colorThree, borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
+    const { primaryColor, colorThree, borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
 
@@ -93,14 +93,17 @@ const Boxplot = (props: BoxplotProps) => {
         id: "boxplot",
         type: "boxplot",
         data,
+        zlevel: 1,
         emphasis: {
           itemStyle: {
             shadowBlur: 0,
+            color: backgroundColorSecondary,
           },
         },
         itemStyle: {
           borderColor: primaryColor,
-          color: backgroundColor,
+          color: backgroundColorSecondary,
+          borderWidth: 1.5
         },
       },
       {
@@ -108,16 +111,17 @@ const Boxplot = (props: BoxplotProps) => {
         id: "outliers",
         type: "scatter",
         data: outliers,
+        zlevel: 1,
         symbolSize: 8,
         itemStyle: {
           color: colorThree,
           opacity: 0.5,
         },
         emphasis: {
+          scale: 1.4,
           itemStyle: {
             opacity: 1,
           },
-          symbolSize: 10,
         },
         cursor: "crosshair",
       } as ScatterSeriesOption
@@ -141,9 +145,15 @@ const Boxplot = (props: BoxplotProps) => {
           silent: true,
           symbol: "none",
           data: markLines.map(m => {
+            let v = m.isYAxis ? m.value
+              : typeof m.value === "boolean"
+                ? m.value ? "1" : "0"
+                : isTimeType(indexType) || indexType === "time" || indexType === "duration"
+                  ? new Date(m.value as number).toUTCString()
+                  : m.value.toString();
             return {
-              xAxis: m.isYAxis ? undefined : m.value,
-              yAxis: m.isYAxis ? m.value : undefined,
+              xAxis: m.isYAxis ? undefined : v as number | string,
+              yAxis: m.isYAxis ? v as number : undefined,
               symbol: m.isYAxis ? "none" : "circle",
               symbolSize: 6.5,
               lineStyle: {
@@ -223,7 +233,7 @@ const Boxplot = (props: BoxplotProps) => {
             }
             const formattedValue = valueFormatter(values[1], true);
             tooltipContent += `<div class="flex items-center space-x-2">
-                <span class="inline-block size-2 rounded-full bg-cthree dark:bg-dthree"></span>
+                <span class="inline-block size-3 rounded-full bg-cthree dark:bg-dthree"></span>
                 <span class="text-sm font-medium">${formattedValue}</span>
               </div>`;
             const extraData = Object.entries(values[2]);
@@ -306,9 +316,10 @@ const Boxplot = (props: BoxplotProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: "none",
+          type: "shadow",
           show: true,
           triggerOn: "mousemove",
+          triggerEmphasis: false,
           lineStyle: {
             color: referenceLineColor,
             type: "dashed",
@@ -357,7 +368,7 @@ const Boxplot = (props: BoxplotProps) => {
           hideOverlap: true,
         },
         axisPointer: {
-          type: data.length > 1 ? "line" : "none",
+          type: "none",
           show: data.length > 1,
           triggerOn: "mousemove",
           triggerEmphasis: false,

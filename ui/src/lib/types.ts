@@ -76,7 +76,7 @@ export type GaugeCategory = {
 
 export type MarkLine = {
   isYAxis: boolean;
-  value: number;
+  value: (string | number | boolean);
   label?: string;
 };
 
