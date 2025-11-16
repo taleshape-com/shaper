@@ -338,26 +338,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 				}
 				if colType == "object" {
-					if d, ok := cell.(duckdb.Map); ok {
-						allGood := true
-						m := make(map[string]string)
-						for k, v := range d {
-							kStr, ok := k.(string)
-							if !ok {
-								allGood = false
-								break
-							}
-							vStr, ok := v.(string)
-							if !ok {
-								allGood = false
-								break
-							}
-							m[kStr] = vStr
-						}
-						if allGood {
-							row[i] = m
-						}
-					}
+					row[i] = duckMapToMap(cell)
 				}
 			}
 		}
@@ -1955,4 +1936,63 @@ func lessThanTwoUniqueRangeValues(r []any) bool {
 		}
 	}
 	return true
+}
+
+func duckMapToMap(value any) any {
+	if d, ok := value.(map[string]any); ok {
+		m := make(map[string]any)
+		for k, v := range d {
+			if vStr, ok := v.(string); ok {
+				m[k] = vStr
+				continue
+			}
+			if vArr, ok := v.([]any); ok {
+				arr := make([]any, len(vArr))
+				for i, x := range vArr {
+					arr[i] = duckMapToMap(x)
+				}
+				m[k] = arr
+				continue
+			}
+			if vMap, ok := v.(map[string]any); ok {
+				m[k] = duckMapToMap(vMap)
+				continue
+			}
+			if vMap, ok := v.(duckdb.Map); ok {
+				m[k] = duckMapToMap(vMap)
+				continue
+			}
+			m[k] = v
+		}
+		return m
+	}
+	if d, ok := value.(duckdb.Map); ok {
+		m := make(map[string]any)
+		for k, v := range d {
+			kStr := fmt.Sprint(k)
+			if vStr, ok := v.(string); ok {
+				m[kStr] = vStr
+				continue
+			}
+			if vArr, ok := v.([]any); ok {
+				arr := make([]any, len(vArr))
+				for i, x := range vArr {
+					arr[i] = duckMapToMap(x)
+				}
+				m[kStr] = arr
+				continue
+			}
+			if vMap, ok := v.(map[string]any); ok {
+				m[kStr] = duckMapToMap(vMap)
+				continue
+			}
+			if vMap, ok := v.(duckdb.Map); ok {
+				m[kStr] = duckMapToMap(vMap)
+				continue
+			}
+			m[kStr] = v
+		}
+		return m
+	}
+	return value
 }

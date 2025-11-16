@@ -366,10 +366,11 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[340px] max-h-[600px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
+                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
                     "h-[calc(50dvh-1.6rem)]": !singleTable && section.queries.some(q => q.render.type !== "value") && !sectionHasTitle,
                     "@sm:h-[calc(100cqh-5.3rem)]": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && sectionHasTitle,
-                    "@sm:h-[calc(100cqh-2.2rem)] ": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && !sectionHasTitle,
+                    "@sm:h-[calc(100cqh-2.2rem)]": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && !sectionHasTitle,
+                    "max-h-[600px]": (numContentSections > 1 || numQueriesInSection > 1),
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,
                   },

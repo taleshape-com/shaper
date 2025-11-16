@@ -31,7 +31,7 @@ const DashboardBoxplot = ({
   // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const boxplotData: [number, number, number, number, number][] = [];
-  const outliers: [number, number][] = [];
+  const outliers: [number, number, Record<string, string> | null | undefined][] = [];
   const xData: string[] = [];
   data.forEach((row, rowI) => {
     let key = typeof row[indexAxisIndex] === "boolean"
@@ -50,8 +50,8 @@ const DashboardBoxplot = ({
       if (typeof cell === 'object') {
         if (i === valueAxisIndex) {
           boxplotData.push([cell.min, cell.q1, cell.q2, cell.q3, cell.max]);
-          cell.outliers.forEach(v => {
-            outliers.push([rowI, v]);
+          cell.outliers.forEach(outlier => {
+            outliers.push([rowI, outlier.value, outlier.info]);
           })
         }
         return;

@@ -16,7 +16,7 @@ interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   label?: string;
   data: [number, number, number, number, number][];
-  outliers: [number, number][];
+  outliers: [number, number, Record<string, string> | null | undefined][];
   xData: string[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   indexType: Column["type"];
@@ -31,11 +31,11 @@ interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
 const chartPadding = 16;
 
 const valueKeys = [
-  'Minimum' as const,
+  'min' as const,
   'Q1' as const,
-  'Median' as const,
+  'median' as const,
   'Q3' as const,
-  'Maximum' as const,
+  'max' as const,
 ];
 
 const Boxplot = (props: BoxplotProps) => {
@@ -58,8 +58,8 @@ const Boxplot = (props: BoxplotProps) => {
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(1);
-  const [chartHeight, setChartHeight] = React.useState(1);
+  const [chartWidth, setChartWidth] = React.useState(450);
+  const [chartHeight, setChartHeight] = React.useState(300);
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
@@ -192,7 +192,6 @@ const Boxplot = (props: BoxplotProps) => {
       tooltip: {
         show: true,
         trigger: "item",
-        triggerOn: "mousemove",
         enterable: false,
         confine: true,
         hideDelay: 200, // Increase hide delay to prevent flickering
@@ -207,26 +206,39 @@ const Boxplot = (props: BoxplotProps) => {
         },
         formatter: (params: any) => {
           const param = Array.isArray(params) ? params.find((item: any) => item?.seriesId === "boxplot" && item?.axisDim === "x") : params
+          if (!param) {
+            return;
+          }
           const indexValue = param.dataIndex;
 
           const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
-          let tooltipContent = `<div class="text-sm font-medium">${formattedIndex}</div>`;
+          let tooltipContent = ``;
 
           if (param.seriesId === 'outliers') {
             const values = param.value as number[];
             if (values === null || values === undefined || !Array.isArray(values)) {
               return;
             }
-            // Skip first since it's the x-index
-            for (let i = 1; i < values.length; i++) {
-              const formattedValue = valueFormatter(values[i], true);
-              tooltipContent += `<div class="flex items-center justify-end space-x-2 mt-2">
-                <span>${formattedValue}</span>
+            const formattedValue = valueFormatter(values[1], true);
+            tooltipContent += `<div class="flex items-center space-x-2">
+                <span class="inline-block size-2 rounded-full bg-cthree dark:bg-dthree"></span>
+                <span class="text-sm font-medium">${formattedValue}</span>
               </div>`;
+            const extraData = Object.entries(values[2]);
+            if (extraData.length) {
+              tooltipContent += "<div class=\"mt-2\">";
+              extraData.forEach(([key, value]) => {
+                tooltipContent += `<div class="flex justify-between space-x-2">
+                  <span class="font-medium">${key}</span>
+                  <span>${formatValue(value, 'string', true)}</span>
+                </div>`;
+              });
+              tooltipContent += "</div>";
             }
-            tooltipContent += "</div>";
             return tooltipContent;
           }
+
+          tooltipContent += `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
           const extraData = extraDataByIndexAxis[indexValue];
           if (extraData) {

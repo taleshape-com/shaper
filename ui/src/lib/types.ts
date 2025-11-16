@@ -148,7 +148,10 @@ export type Result = {
           q1: number;
           q2: number;
           q3: number;
-          outliers: number[];
+          outliers: {
+            value: number;
+            info?: Record<string, string> | null;
+          }[];
         })[][];
       }[];
     }

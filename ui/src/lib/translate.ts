@@ -103,20 +103,20 @@ const translations = {
   "Unselect all": {
     de: "Alle abwählen",
   },
-  "Minimum": {
-    de: "Minimum",
+  "min": {
+    de: "Min.",
   },
   "Q1": {
     de: "Q1",
   },
-  "Median": {
+  "median": {
     de: "Median",
   },
   "Q3": {
     de: "Q3",
   },
-  "Maximum": {
-    de: "Maximum",
+  "max": {
+    de: "Max.",
   },
 };
 
