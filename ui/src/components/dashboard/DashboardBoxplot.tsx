@@ -37,7 +37,7 @@ const DashboardBoxplot = ({
     let key = typeof row[indexAxisIndex] === "boolean"
       ? row[indexAxisIndex] ? "1" : "0"
       : isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration"
-        ? new Date(row[indexAxisIndex] as number).toLocaleString('en')
+        ? new Date(row[indexAxisIndex] as number).toUTCString()
         : row[indexAxisIndex].toString();
     if (key === null) {
       if (isTimeType(indexAxisHeader.type) || indexAxisHeader.type === "time" || indexAxisHeader.type === "duration" || indexAxisHeader.type === "number") {

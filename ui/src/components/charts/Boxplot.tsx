@@ -2,7 +2,11 @@
 
 import React, { useEffect, useCallback, useRef } from "react";
 import type { ECharts } from "echarts/core";
-import type { BoxplotSeriesOption, ScatterSeriesOption } from "echarts/charts";
+import type {
+  BoxplotSeriesOption,
+  ScatterSeriesOption,
+  LineSeriesOption,
+} from "echarts/charts";
 import { getThemeColors, getChartFont, getDisplayFont } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -83,7 +87,7 @@ const Boxplot = (props: BoxplotProps) => {
     const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
 
     // Set up chart options
-    const series = [
+    const series: (BoxplotSeriesOption | ScatterSeriesOption | LineSeriesOption)[] = [
       {
         name: "boxplot",
         id: "boxplot",
@@ -98,7 +102,7 @@ const Boxplot = (props: BoxplotProps) => {
           borderColor: primaryColor,
           color: backgroundColor,
         },
-      } as BoxplotSeriesOption,
+      },
       {
         name: "outliers",
         id: "outliers",
@@ -113,6 +117,7 @@ const Boxplot = (props: BoxplotProps) => {
           itemStyle: {
             opacity: 1,
           },
+          symbolSize: 10,
         },
         cursor: "crosshair",
       } as ScatterSeriesOption
@@ -131,7 +136,7 @@ const Boxplot = (props: BoxplotProps) => {
         }
       }
       series.push({
-        type: "boxplot" as const,
+        type: "line",
         markLine: {
           silent: true,
           symbol: "none",
@@ -209,9 +214,6 @@ const Boxplot = (props: BoxplotProps) => {
           if (!param) {
             return;
           }
-          const indexValue = param.dataIndex;
-
-          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
           let tooltipContent = ``;
 
           if (param.seriesId === 'outliers') {
@@ -238,6 +240,8 @@ const Boxplot = (props: BoxplotProps) => {
             return tooltipContent;
           }
 
+          const indexValue = param.name;
+          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
           tooltipContent += `<div class="text-sm font-medium">${formattedIndex}</div>`;
 
           const extraData = extraDataByIndexAxis[indexValue];
@@ -438,9 +442,9 @@ const Boxplot = (props: BoxplotProps) => {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
-    const series: BoxplotSeriesOption[] = [{
+    const series: LineSeriesOption[] = [{
       id: "shaper-hover-reference-line",
-      type: "boxplot" as const,
+      type: "line" as const,
       markLine: {
         silent: true,
         symbol: "none",
