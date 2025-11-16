@@ -120,7 +120,7 @@ const translations = {
   },
 };
 
-export function translate(s: keyof typeof translations) {
+export function translate (s: keyof typeof translations) {
   const available = translations[s] ?? {};
   for (const lang of navigator.languages) {
     const firstPart = lang.split("-")[0];

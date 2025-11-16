@@ -45,12 +45,12 @@ const DashboardBoxplot = ({
     }
     xData.push(key);
     row.forEach((cell, i) => {
-      if (typeof cell === 'object') {
+      if (typeof cell === "object") {
         if (i === valueAxisIndex) {
           boxplotData.push([cell.min, cell.q1, cell.q2, cell.q3, cell.max]);
           cell.outliers.forEach(outlier => {
             outliers.push([rowI, outlier.value, outlier.info]);
-          })
+          });
         }
         return;
       }
@@ -78,9 +78,8 @@ const DashboardBoxplot = ({
       xData={xData}
       extraDataByIndexAxis={extraDataByIndexAxis}
       indexType={indexType}
-      valueType={valueAxisHeader.type}
       valueFormatter={(n: number, shortFormat?: boolean | number) => {
-        return formatValue(n, 'number', true, shortFormat).toString();
+        return formatValue(n, "number", true, shortFormat).toString();
       }}
       indexFormatter={(n: number | string, shortFormat?: boolean | number) => {
         return formatValue(n, indexType, true, shortFormat).toString();

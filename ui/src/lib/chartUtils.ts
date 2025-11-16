@@ -179,7 +179,7 @@ export const constructCategoryColors = (
     if (!color) {
       const echartsKey =
         echartsColors[
-        echartsColorKeys[(index - customColorCount) % echartsColorKeys.length]
+          echartsColorKeys[(index - customColorCount) % echartsColorKeys.length]
         ];
       const cssVar = echartsKey[isDark ? "dark" : "light"];
       color = getComputedCssValue(cssVar.replace("var(", "").replace(")", ""));

@@ -5,7 +5,7 @@ import { Column } from "./types";
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.
 // The backend returns dates as unix timestamp integers in milliseconds, but this function works for strings as well
-function parseLocalDate(d: string | number) {
+function parseLocalDate (d: string | number) {
   return new Date(d);
 }
 

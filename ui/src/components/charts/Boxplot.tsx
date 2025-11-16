@@ -13,7 +13,7 @@ import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue } from "../../lib/render";
-import { translate } from '../../lib/translate';
+import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
 interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -24,7 +24,6 @@ interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
   xData: string[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   indexType: Column["type"];
-  valueType: Column["type"];
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
   indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
   xAxisLabel?: string;
@@ -35,11 +34,11 @@ interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
 const chartPadding = 16;
 
 const valueKeys = [
-  'min' as const,
-  'Q1' as const,
-  'median' as const,
-  'Q3' as const,
-  'max' as const,
+  "min" as const,
+  "Q1" as const,
+  "median" as const,
+  "Q3" as const,
+  "max" as const,
 ];
 
 const Boxplot = (props: BoxplotProps) => {
@@ -49,7 +48,6 @@ const Boxplot = (props: BoxplotProps) => {
     xData,
     extraDataByIndexAxis,
     indexType,
-    valueType,
     valueFormatter,
     indexFormatter,
     className,
@@ -101,7 +99,7 @@ const Boxplot = (props: BoxplotProps) => {
         itemStyle: {
           borderColor: primaryColor,
           color: backgroundColorSecondary,
-          borderWidth: 1.5
+          borderWidth: 1.5,
         },
       },
       {
@@ -122,7 +120,7 @@ const Boxplot = (props: BoxplotProps) => {
           },
         },
         cursor: "crosshair",
-      } as ScatterSeriesOption
+      } as ScatterSeriesOption,
     ];
 
     if (markLines) {
@@ -143,10 +141,10 @@ const Boxplot = (props: BoxplotProps) => {
           silent: true,
           symbol: "none",
           data: markLines.map(m => {
-            let v = m.isYAxis ? m.value
+            const v = m.isYAxis ? m.value
               : isDatableType(indexType)
                 ? new Date(m.value).toUTCString()
-                : m.value.toString()
+                : m.value.toString();
             return {
               xAxis: m.isYAxis ? undefined : v as number | string,
               yAxis: m.isYAxis ? v as number : undefined,
@@ -216,13 +214,13 @@ const Boxplot = (props: BoxplotProps) => {
           color: textColor,
         },
         formatter: (params: any) => {
-          const param = Array.isArray(params) ? params.find((item: any) => item?.seriesId === "boxplot" && item?.axisDim === "x") : params
+          const param = Array.isArray(params) ? params.find((item: any) => item?.seriesId === "boxplot" && item?.axisDim === "x") : params;
           if (!param) {
             return;
           }
-          let tooltipContent = ``;
+          let tooltipContent = "";
 
-          if (param.seriesId === 'outliers') {
+          if (param.seriesId === "outliers") {
             const values = param.value as number[];
             if (values === null || values === undefined || !Array.isArray(values)) {
               return;
@@ -238,7 +236,7 @@ const Boxplot = (props: BoxplotProps) => {
               extraData.forEach(([key, value]) => {
                 tooltipContent += `<div class="flex justify-between space-x-2">
                   <span class="font-medium">${key}</span>
-                  <span>${formatValue(value, 'string', true)}</span>
+                  <span>${formatValue(value, "string", true)}</span>
                 </div>`;
               });
               tooltipContent += "</div>";
@@ -275,7 +273,7 @@ const Boxplot = (props: BoxplotProps) => {
           // Skip first since it's the x-index
           for (let i = 1; i < values.length; i++) {
             const formattedValue = valueFormatter(values[i], true);
-            const key = translate(valueKeys[i - 1])
+            const key = translate(valueKeys[i - 1]);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
                   <span class="font-medium">${key}</span>
                   <span>${formattedValue}</span>
@@ -415,7 +413,6 @@ const Boxplot = (props: BoxplotProps) => {
     xData,
     outliers,
     indexType,
-    valueType,
     valueFormatter,
     indexFormatter,
     xAxisLabel,
@@ -499,7 +496,7 @@ const Boxplot = (props: BoxplotProps) => {
         }
       },
     };
-  }, [indexType, xData, chartId, setHoverState]);
+  }, [indexType, xData, chartId, data, setHoverState]);
 
   const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
@@ -529,12 +526,12 @@ const Boxplot = (props: BoxplotProps) => {
   );
 };
 
-function decodeIndexValue(v: string | number, indexType: Column["type"]): string | number {
+function decodeIndexValue (v: string | number, indexType: Column["type"]): string | number {
   if (isDatableType(indexType)) {
     return new Date(v).getTime();
   }
-  if (indexType === 'number') {
-    if (typeof v === 'number') {
+  if (indexType === "number") {
+    if (typeof v === "number") {
       return v;
     }
     return parseFloat(v);

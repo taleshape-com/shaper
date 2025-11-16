@@ -73,8 +73,6 @@ const BarChart = (props: BarChartProps) => {
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
 
-  const isTimestampData = isDatableType(indexType) || indexType === "number";
-
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
     hoveredChartIdRef.current = hoveredChartId;
@@ -87,6 +85,7 @@ const BarChart = (props: BarChartProps) => {
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
+    const isTimestampData = isDatableType(indexType) || indexType === "number";
 
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
@@ -553,6 +552,7 @@ const BarChart = (props: BarChartProps) => {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
+    const isTimestampData = isDatableType(indexType) || indexType === "number";
     const series: BarSeriesOption[] = [{
       id: "shaper-hover-reference-line",
       type: "bar" as const,
