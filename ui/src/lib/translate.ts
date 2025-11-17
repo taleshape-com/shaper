@@ -103,6 +103,21 @@ const translations = {
   "Unselect all": {
     de: "Alle abwählen",
   },
+  "min": {
+    de: "Min.",
+  },
+  "Q1": {
+    de: "Q1",
+  },
+  "median": {
+    de: "Median",
+  },
+  "Q3": {
+    de: "Q3",
+  },
+  "max": {
+    de: "Max.",
+  },
 };
 
 export function translate (s: keyof typeof translations) {

@@ -342,5 +342,8 @@ func initDuckDB(duckDbx *sqlx.DB) error {
 			return fmt.Errorf("failed to create custom type %s: %w", t.Name, err)
 		}
 	}
+	if err := createBoxlotFunction(duckDbx); err != nil {
+		return fmt.Errorf("failed to create BOXPLOT function: %w", err)
+	}
 	return nil
 }

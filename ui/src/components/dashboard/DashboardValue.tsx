@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 
 import { formatValue, isJSONType } from "../../lib/render";
 import { cx, getNameIfSet } from "../../lib/utils";
@@ -10,7 +10,7 @@ import TextWithLinks from "../TextWithLinks";
 
 type ValueProps = {
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"];
+  data: (string | number | boolean)[][];
 };
 
 const getLongestLineLength = (text: string) => {

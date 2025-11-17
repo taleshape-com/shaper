@@ -72,9 +72,10 @@ export const goToLoginPage = () => {
 };
 
 const castRegex = /^CAST\(.+ AS .+\)$/;
+const boxplotRegex = /^boxplot\(.+\)$/;
 const singleQuoteEscapedRegex = /^'(?:[^']|'')*'$/;
 export const getNameIfSet = (name: string) => {
-  if (castRegex.test(name) || singleQuoteEscapedRegex.test(name)) {
+  if (castRegex.test(name) || singleQuoteEscapedRegex.test(name) || boxplotRegex.test(name)) {
     return undefined;
   }
   return name;

@@ -14,6 +14,7 @@ import { Card } from "../tremor/Card";
 import { translate } from "../../lib/translate";
 import DashboardLineChart from "./DashboardLineChart";
 import DashboardBarChart from "./DashboardBarChart";
+import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -357,7 +358,7 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
-            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart");
+            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             return (
               <Card
@@ -365,10 +366,11 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[340px] max-h-[600px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
+                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
                     "h-[calc(50dvh-1.6rem)]": !singleTable && section.queries.some(q => q.render.type !== "value") && !sectionHasTitle,
-                    "@sm:h-[calc(100cqh-5.3rem)]": (isChartQuery || (query.render.type == "value" && numContentSections === 1)) && numQueriesInSection === 1 && sectionHasTitle,
-                    "@sm:h-[calc(100cqh-2.2rem)] ": (isChartQuery || (query.render.type == "value" && numContentSections === 1)) && numQueriesInSection === 1 && !sectionHasTitle,
+                    "@sm:h-[calc(100cqh-5.3rem)]": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && sectionHasTitle,
+                    "@sm:h-[calc(100cqh-2.2rem)]": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && !sectionHasTitle,
+                    "max-h-[600px]": (numContentSections > 1 || numQueriesInSection > 1),
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,
                   },
@@ -467,7 +469,7 @@ const renderContent = (
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
         headers={query.columns}
-        data={query.rows}
+        data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
@@ -504,21 +506,32 @@ const renderContent = (
           query.render.type === "barchartVerticalStacked"
         }
         headers={query.columns}
-        data={query.rows}
+        data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
       />
     );
   }
+  if (query.render.type === "boxplot") {
+    return (
+      <DashboardBoxplot
+        chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
+        headers={query.columns}
+        data={query.rows}
+        markLines={query.render.markLines}
+      />
+    );
+  }
   if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} />;
+    return <DashboardValue headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
   }
   return (
     <div
       className={cx("overflow-auto", { "h-full": numQueriesInSection > 1 })}
     >
-      <DashboardTable headers={query.columns} data={query.rows} />
+      <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />
     </div>
   );
 };

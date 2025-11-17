@@ -234,7 +234,8 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		if vars, hasVariables := claims["variables"]; hasVariables {
 			variables = vars.(map[string]any)
 		}
-		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
+		idClaim, hasId := claims["dashboardId"]
+		if hasId && idClaim != idParam {
 			parentId, ok := idClaim.(string)
 			if !ok {
 				c.Logger().Error("invalid dashboardId claim type:", slog.Any("type", idClaim))
@@ -259,11 +260,16 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
-			// Not returning the actual error to the client for security reasons.
-			// Only returning that in edit mode
+			// If the JWT is restricted to a dashboardId, we don't return the actual error to the client.
+			// But if the JWT is generic, we return it.
+			// In practice this means that if you are logged in and editing dashboards you see error messages, but if a dashboard is embedded or shared publicly you don't.
+			errMsg := err.Error()
+			if hasId {
+				errMsg = "error getting dashboard"
+			}
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "error getting dashboard"}, "  ")
+			}{Error: errMsg}, "  ")
 		}
 		return c.JSONPretty(http.StatusOK, result, "  ")
 	}

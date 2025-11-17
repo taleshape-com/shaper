@@ -40,7 +40,11 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   }
   if (typeof value === "number") {
     if (shouldFormatNumbers && columnType === "number") {
-      return Number.isInteger(value) ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") : value.toString();
+      return Number.isInteger(value)
+        ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+        : shortFormat
+          ? (Math.round(value * 100) / 100).toString()
+          : value.toString();
     }
     // duration comes in ms
     if (columnType === "duration") {

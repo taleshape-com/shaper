@@ -12,7 +12,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isTimeType, MarkLine } from "../../lib/types";
+import { Column, isDatableType, isTimeType, MarkLine } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
@@ -30,7 +30,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[];
   colorsByCategory: Record<string, string>;
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
-  indexFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
@@ -85,12 +85,11 @@ const BarChart = (props: BarChartProps) => {
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
-
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
+    const isTimestampData = isDatableType(indexType) || indexType === "number";
 
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
-    if (layout === "vertical" && (isTimeType(indexType) || indexType === "time" || indexType === "duration")) {
+    if (layout === "vertical" && isDatableType(indexType)) {
       dataCopy = data.map((item) => {
         return {
           ...item,
@@ -108,6 +107,7 @@ const BarChart = (props: BarChartProps) => {
       barGap: "3%",
       barMaxWidth: dataCopy.length === 1 ? layout == "horizontal" ? "50%" : "25%" : undefined,
       stack: type === "stacked" ? "stack" : category,
+      cursor: "crosshair",
       data: isTimestampData && layout === "horizontal"
         ? dataCopy.map((item) => [item[index], item[category]])
         : dataCopy.map((item) => item[category]),
@@ -215,7 +215,6 @@ const BarChart = (props: BarChartProps) => {
 
     return {
       animation: false,
-      cursor: "default",
       title: {
         text: label,
         textStyle: {
@@ -407,7 +406,7 @@ const BarChart = (props: BarChartProps) => {
               if (layout === "horizontal") {
                 return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value);
               }
-              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value, true);
             },
             fontFamily: chartFont,
             margin: 5,
@@ -491,24 +490,23 @@ const BarChart = (props: BarChartProps) => {
         } : undefined,
       },
       series,
-      graphic: [
-        // We use a graphic element to display the y-axis label instead of the axis name
-        // since the name can overlap with the axis labels.
-        // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
-        {
-          type: "text",
-          rotation: Math.PI / 2,
-          y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
-          x: 5 + chartPadding,
-          style: {
-            text: yAxisLabel,
-            font: `500 14px ${chartFont}`,
-            fill: textColor,
-            width: chartHeight,
-            textAlign: "center",
-          },
+      // We use a graphic element to display the y-axis label instead of the axis name
+      // since the name can overlap with the axis labels.
+      // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
+      graphic: {
+        type: "text",
+        rotation: Math.PI / 2,
+        y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
+        x: 5 + chartPadding,
+        cursor: "default",
+        style: {
+          text: yAxisLabel,
+          font: `500 14px ${chartFont}`,
+          fill: textColor,
+          width: chartHeight,
+          textAlign: "center",
         },
-      ],
+      },
     };
   }, [
     data,
@@ -553,7 +551,7 @@ const BarChart = (props: BarChartProps) => {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
-    const isTimestampData = isTimeType(indexType) || indexType === "time" || indexType === "duration" || indexType === "number";
+    const isTimestampData = isDatableType(indexType) || indexType === "number";
     const series: BarSeriesOption[] = [{
       id: "shaper-hover-reference-line",
       type: "bar" as const,

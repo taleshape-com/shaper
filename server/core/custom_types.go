@@ -78,3 +78,37 @@ func createType(db *sqlx.DB, name string, definition string) error {
 	}
 	return nil
 }
+
+const boxplotType = `STRUCT("max" DOUBLE, "min" DOUBLE, "outliers" STRUCT("value" DOUBLE, "info" MAP(VARCHAR, VARCHAR))[], "q1" DOUBLE, "q2" DOUBLE, "q3" DOUBLE)`
+
+const boxplotFunction = `
+CREATE OR REPLACE MACRO BOXPLOT(val, outlier_info := NULL) AS CASE
+  WHEN count(*) filter(WHERE outlier_info IS NOT NULL) > 0 THEN
+    {
+      'max': list(val).filter(lambda v: v <= quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))).list_max()::DOUBLE,
+      'min': list(val).filter(lambda v: v >= quantile_cont(val, 0.25) - 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))).list_min()::DOUBLE,
+      'outliers': list({ value: val, info: outlier_info }).filter(lambda outlier:
+        outlier.value < quantile_cont(val, 0.25) - 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
+        OR
+        outlier.value > quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
+      )::STRUCT(value DOUBLE, info MAP(VARCHAR, VARCHAR))[],
+      'q1': quantile_cont(val, 0.25),
+      'q2': quantile_cont(val, 0.5),
+      'q3': quantile_cont(val, 0.75),
+    }
+  ELSE
+    {
+      'max': max(val)::DOUBLE,
+      'min': min(val)::DOUBLE,
+      'outliers': []::STRUCT(value DOUBLE, info MAP(VARCHAR, VARCHAR))[],
+      'q1': quantile_cont(val, 0.25),
+      'q2': quantile_cont(val, 0.5),
+      'q3': quantile_cont(val, 0.75),
+    }
+END;
+`
+
+func createBoxlotFunction(db *sqlx.DB) error {
+	_, err := db.Exec(boxplotFunction)
+	return err
+}

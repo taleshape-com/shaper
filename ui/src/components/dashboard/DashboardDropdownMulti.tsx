@@ -3,7 +3,7 @@
 import { useState } from "react";
 import * as SelectPrimitives from "@radix-ui/react-select";
 import { RiExpandUpDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { Button } from "../tremor/Button";
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import { translate } from "../../lib/translate";
 type DropdownProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"];
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
 };

@@ -25,6 +25,7 @@ export const getThemeColors = (isDark: boolean) => {
   if (isDark) {
     return {
       primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color"),
+      colorThree: getComputedCssValue("--shaper-color-three"),
       backgroundColor: getComputedCssValue(
         "--shaper-dark-mode-background-color",
       ),
@@ -41,6 +42,7 @@ export const getThemeColors = (isDark: boolean) => {
   } else {
     return {
       primaryColor: getComputedCssValue("--shaper-primary-color"),
+      colorThree: getComputedCssValue("--shaper-color-three"),
       backgroundColor: getComputedCssValue("--shaper-background-color"),
       backgroundColorSecondary: getComputedCssValue(
         "--shaper-background-color-secondary",

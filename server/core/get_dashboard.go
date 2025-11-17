@@ -338,26 +338,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 				}
 				if colType == "object" {
-					if d, ok := cell.(duckdb.Map); ok {
-						allGood := true
-						m := make(map[string]string)
-						for k, v := range d {
-							kStr, ok := k.(string)
-							if !ok {
-								allGood = false
-								break
-							}
-							vStr, ok := v.(string)
-							if !ok {
-								allGood = false
-								break
-							}
-							m[kStr] = vStr
-						}
-						if allGood {
-							row[i] = m
-						}
-					}
+					row[i] = duckMapToMap(cell)
 				}
 			}
 		}
@@ -418,7 +399,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" {
+	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" {
 		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
 			return "index"
 		}
@@ -485,7 +466,7 @@ func mapTag(index int, rInfo renderInfo) string {
 var matchDecimal = regexp.MustCompile(`DECIMAL\(\d+,\d+\)`)
 
 // TODO: BIT type is not supported yet by Go duckdb lib
-// TODO: Support ARRAY, LIST, STRUCT, more MAP types and generic UNION types
+// TODO: Support ARRAY, LIST, more MAP types and generic UNION types
 func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
 	for _, dbType := range dbTypes {
@@ -562,6 +543,9 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	if matchDecimal.MatchString(t) {
 		return "number", nil
 	}
+	if strings.HasPrefix(t, "STRUCT(\"") {
+		return "object", nil
+	}
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
 
@@ -595,6 +579,15 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 		}
 	}
 	return nil, -1
+}
+
+func findBoxlotColumnIndex(columns []*sql.ColumnType) int {
+	for i, c := range columns {
+		if c.DatabaseTypeName() == boxplotType {
+			return i
+		}
+	}
+	return -1
 }
 
 // Some SQL statements are only used for their side effects and should not be shown on the dashboard.
@@ -1032,6 +1025,18 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 			Type:            "gauge",
 			ValueAxisIndex:  &gaugeIndex,
 			GaugeCategories: categories,
+		}
+		return r
+	}
+
+	boxplotIndex := findBoxlotColumnIndex(columns)
+	if boxplotIndex > -1 && xaxis != nil {
+		r := renderInfo{
+			Label:          labelValue,
+			Type:           "boxplot",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &boxplotIndex,
+			MarkLines:      markLines,
 		}
 		return r
 	}
@@ -1931,4 +1936,63 @@ func lessThanTwoUniqueRangeValues(r []any) bool {
 		}
 	}
 	return true
+}
+
+func duckMapToMap(value any) any {
+	if d, ok := value.(map[string]any); ok {
+		m := make(map[string]any)
+		for k, v := range d {
+			if vStr, ok := v.(string); ok {
+				m[k] = vStr
+				continue
+			}
+			if vArr, ok := v.([]any); ok {
+				arr := make([]any, len(vArr))
+				for i, x := range vArr {
+					arr[i] = duckMapToMap(x)
+				}
+				m[k] = arr
+				continue
+			}
+			if vMap, ok := v.(map[string]any); ok {
+				m[k] = duckMapToMap(vMap)
+				continue
+			}
+			if vMap, ok := v.(duckdb.Map); ok {
+				m[k] = duckMapToMap(vMap)
+				continue
+			}
+			m[k] = v
+		}
+		return m
+	}
+	if d, ok := value.(duckdb.Map); ok {
+		m := make(map[string]any)
+		for k, v := range d {
+			kStr := fmt.Sprint(k)
+			if vStr, ok := v.(string); ok {
+				m[kStr] = vStr
+				continue
+			}
+			if vArr, ok := v.([]any); ok {
+				arr := make([]any, len(vArr))
+				for i, x := range vArr {
+					arr[i] = duckMapToMap(x)
+				}
+				m[kStr] = arr
+				continue
+			}
+			if vMap, ok := v.(map[string]any); ok {
+				m[kStr] = duckMapToMap(vMap)
+				continue
+			}
+			if vMap, ok := v.(duckdb.Map); ok {
+				m[kStr] = duckMapToMap(vMap)
+				continue
+			}
+			m[kStr] = v
+		}
+		return m
+	}
+	return value
 }

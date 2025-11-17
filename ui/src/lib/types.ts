@@ -67,6 +67,18 @@ export const isTimeType = (t: Column["type"]) => {
   );
 };
 
+export const isDatableType = (t: Column["type"]) => {
+  return (
+    t === "year" ||
+    t === "month" ||
+    t === "hour" ||
+    t === "date" ||
+    t === "timestamp" ||
+    t === "time" ||
+    t === "duration"
+  );
+};
+
 export type GaugeCategory = {
   from: number;
   to: number;
@@ -76,7 +88,7 @@ export type GaugeCategory = {
 
 export type MarkLine = {
   isYAxis: boolean;
-  value: number;
+  value: (string | number);
   label?: string;
 };
 
@@ -120,7 +132,7 @@ export type Result = {
           | "barchartHorizontal"
           | "barchartHorizontalStacked"
           | "barchartVertical"
-          | "barchartVerticalStacked";
+          | "barchartVerticalStacked"
           label?: string;
           markLines: MarkLine[];
         }
@@ -131,6 +143,28 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+      }[];
+    }
+    | {
+      type: "content";
+      queries: {
+        render: {
+          type: "boxplot";
+          label?: string;
+          markLines: MarkLine[];
+        }
+        columns: Column[];
+        rows: (string | number | boolean | {
+          min: number;
+          max: number;
+          q1: number;
+          q2: number;
+          q3: number;
+          outliers: {
+            value: number;
+            info?: Record<string, string> | null;
+          }[];
+        })[][];
       }[];
     }
   )[];
