@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { formatValue } from "../../lib/render";
 import { Input } from "../tremor/Input";
 import { Label } from "../tremor/Label";
@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 type InputProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"];
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
 };

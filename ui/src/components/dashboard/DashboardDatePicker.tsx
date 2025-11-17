@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { DatePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label";
 import { cx, getLocalDate } from "../../lib/utils";
@@ -9,7 +9,7 @@ import { translate } from "../../lib/translate";
 type PickerProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"]
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
 };

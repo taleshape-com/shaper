@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { formatValue, isJSONType } from "../../lib/render";
 import {
   Table,
@@ -17,7 +17,7 @@ import TextWithLinks from "../TextWithLinks";
 
 type TableProps = {
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"]
+  data: (string | number | boolean)[][];
 };
 
 function DashboardTable ({ headers, data }: TableProps) {

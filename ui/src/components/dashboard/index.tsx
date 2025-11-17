@@ -469,7 +469,7 @@ const renderContent = (
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
         headers={query.columns}
-        data={query.rows}
+        data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
@@ -506,7 +506,7 @@ const renderContent = (
           query.render.type === "barchartVerticalStacked"
         }
         headers={query.columns}
-        data={query.rows}
+        data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
@@ -525,13 +525,13 @@ const renderContent = (
     );
   }
   if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} />;
+    return <DashboardValue headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
   }
   return (
     <div
       className={cx("overflow-auto", { "h-full": numQueriesInSection > 1 })}
     >
-      <DashboardTable headers={query.columns} data={query.rows} />
+      <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />
     </div>
   );
 };
