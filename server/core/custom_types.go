@@ -92,18 +92,18 @@ CREATE OR REPLACE MACRO BOXPLOT(val, outlier_info := NULL) AS CASE
         OR
         outlier.value > quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
       )::STRUCT(value DOUBLE, info MAP(VARCHAR, VARCHAR))[],
-      'q1': quantile_cont(val, 0.25),
-      'q2': quantile_cont(val, 0.5),
-      'q3': quantile_cont(val, 0.75),
+      'q1': quantile_cont(val, 0.25)::DOUBLE,
+      'q2': quantile_cont(val, 0.5)::DOUBLE,
+      'q3': quantile_cont(val, 0.75)::DOUBLE,
     }
   ELSE
     {
       'max': max(val)::DOUBLE,
       'min': min(val)::DOUBLE,
       'outliers': []::STRUCT(value DOUBLE, info MAP(VARCHAR, VARCHAR))[],
-      'q1': quantile_cont(val, 0.25),
-      'q2': quantile_cont(val, 0.5),
-      'q3': quantile_cont(val, 0.75),
+      'q1': quantile_cont(val, 0.25)::DOUBLE,
+      'q2': quantile_cont(val, 0.5)::DOUBLE,
+      'q3': quantile_cont(val, 0.75)::DOUBLE,
     }
 END;
 `
