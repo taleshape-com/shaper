@@ -89,6 +89,7 @@ const Boxplot = (props: BoxplotProps) => {
         id: "boxplot",
         type: "boxplot",
         data,
+        // This helps hides marklines
         zlevel: 1,
         emphasis: {
           itemStyle: {
