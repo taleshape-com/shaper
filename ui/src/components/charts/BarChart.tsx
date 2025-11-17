@@ -406,7 +406,7 @@ const BarChart = (props: BarChartProps) => {
               if (layout === "horizontal") {
                 return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value);
               }
-              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value, true);
             },
             fontFamily: chartFont,
             margin: 5,
@@ -490,24 +490,23 @@ const BarChart = (props: BarChartProps) => {
         } : undefined,
       },
       series,
-      graphic: [
-        // We use a graphic element to display the y-axis label instead of the axis name
-        // since the name can overlap with the axis labels.
-        // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
-        {
-          type: "text",
-          rotation: Math.PI / 2,
-          y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
-          x: 5 + chartPadding,
-          style: {
-            text: yAxisLabel,
-            font: `500 14px ${chartFont}`,
-            fill: textColor,
-            width: chartHeight,
-            textAlign: "center",
-          },
+      // We use a graphic element to display the y-axis label instead of the axis name
+      // since the name can overlap with the axis labels.
+      // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
+      graphic: {
+        type: "text",
+        rotation: Math.PI / 2,
+        y: (chartHeight + labelTopOffset + legendTopOffset - spaceForXaxisLabel) / 2,
+        x: 5 + chartPadding,
+        cursor: "default",
+        style: {
+          text: yAxisLabel,
+          font: `500 14px ${chartFont}`,
+          fill: textColor,
+          width: chartHeight,
+          textAlign: "center",
         },
-      ],
+      },
     };
   }, [
     data,

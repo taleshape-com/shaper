@@ -94,12 +94,16 @@ const Boxplot = (props: BoxplotProps) => {
           itemStyle: {
             shadowBlur: 0,
             color: backgroundColorSecondary,
+            borderWidth: 1.75,
           },
         },
         itemStyle: {
           borderColor: primaryColor,
           color: backgroundColorSecondary,
-          borderWidth: 1.5,
+          borderWidth: 1.25,
+          // This hides marklines
+          shadowOffsetX: 1,
+          shadowColor: backgroundColorSecondary,
         },
       },
       {
@@ -111,12 +115,14 @@ const Boxplot = (props: BoxplotProps) => {
         symbolSize: 8,
         itemStyle: {
           color: colorThree,
-          opacity: 0.5,
+          opacity: 0.7,
         },
         emphasis: {
           scale: 1.4,
           itemStyle: {
             opacity: 1,
+            borderWidth: 1,
+            borderColor: primaryColor,
           },
         },
         cursor: "crosshair",
@@ -153,8 +159,9 @@ const Boxplot = (props: BoxplotProps) => {
               lineStyle: {
                 color: textColorSecondary,
                 type: "dashed",
-                width: m.isYAxis ? 1.2 : 1.0,
+                width: m.isYAxis ? 1.2 : 1,
                 opacity: m.isYAxis ? 0.5 : 0.8,
+                shadowColor: backgroundColorSecondary,
               },
               label: {
                 formatter: m.label,
@@ -388,24 +395,23 @@ const Boxplot = (props: BoxplotProps) => {
           },
         },
       },
-      graphic: [
-        // We use a graphic element to display the y-axis label instead of the axis name
-        // since the name can overlap with the axis labels.
-        // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
-        {
-          type: "text",
-          rotation: Math.PI / 2,
-          y: (chartHeight + labelTopOffset - spaceForXaxisLabel) / 2,
-          x: 5 + chartPadding,
-          style: {
-            text: yAxisLabel,
-            font: `500 14px ${chartFont}`,
-            fill: textColor,
-            width: chartHeight,
-            textAlign: "center",
-          },
+      // We use a graphic element to display the y-axis label instead of the axis name
+      // since the name can overlap with the axis labels.
+      // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
+      graphic: {
+        type: "text",
+        rotation: Math.PI / 2,
+        y: (chartHeight + labelTopOffset - spaceForXaxisLabel) / 2,
+        x: 5 + chartPadding,
+        cursor: "default",
+        style: {
+          text: yAxisLabel,
+          font: `500 14px ${chartFont}`,
+          fill: textColor,
+          width: chartHeight,
+          textAlign: "center",
         },
-      ],
+      },
       series,
     };
   }, [
@@ -427,7 +433,10 @@ const Boxplot = (props: BoxplotProps) => {
 
   useEffect(() => {
     if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
-      setIsHovering(hoveredIndex);
+      const strIndex = isDatableType(indexType)
+        ? new Date(hoveredIndex as number).toUTCString()
+        : hoveredIndex.toString();
+      setIsHovering(strIndex);
     } else {
       setIsHovering(null);
     }
@@ -471,20 +480,16 @@ const Boxplot = (props: BoxplotProps) => {
     return {
       // Add tooltip event handler
       showTip: (params: any) => {
-        // Handle both dataIndex and axisValue approaches
         let indexValue: any;
-
-        if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
-          // Use dataIndex if available
-          const dataIndex = params.dataIndex;
-          if (dataIndex >= 0 && dataIndex < data.length) {
-            indexValue = xData[dataIndex];
+        // seriesIndex 0=box 1=outlier
+        if (params.seriesIndex === 0) {
+          indexValue = decodeIndexValue(xData[params.dataIndex], indexType);
+        } else if (params.seriesIndex === 1) {
+          const i = (outliers[params.dataIndex] ?? [])[0];
+          if (i !== undefined) {
+            indexValue = decodeIndexValue(xData[i], indexType);
           }
-        } else if (params.axisValue !== undefined) {
-          // Use axisValue as fallback
-          indexValue = params.axisValue;
         }
-
         if (indexValue !== undefined) {
           setHoverState(indexValue, chartId, indexType);
         }
@@ -496,7 +501,7 @@ const Boxplot = (props: BoxplotProps) => {
         }
       },
     };
-  }, [indexType, xData, chartId, data, setHoverState]);
+  }, [indexType, xData, chartId, outliers, setHoverState]);
 
   const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
