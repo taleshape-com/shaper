@@ -1030,6 +1030,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	}
 
 	boxplotIndex := findBoxlotColumnIndex(columns)
+	boxplotColor, boxplotColorIndex := findColumnByTag(columns, "COLOR")
 	if boxplotIndex > -1 && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
@@ -1037,6 +1038,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &boxplotIndex,
 			MarkLines:      markLines,
+		}
+		if boxplotColor != nil {
+			r.ColorIndex = &boxplotColorIndex
 		}
 		return r
 	}

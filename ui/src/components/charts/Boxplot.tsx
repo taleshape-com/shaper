@@ -24,6 +24,7 @@ interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
   xData: string[];
   extraDataByIndexAxis: Record<string, Record<string, any>>;
   indexType: Column["type"];
+  colorByIndex: Map<number, string>;
   valueFormatter: (value: number, shortFormat?: boolean | number) => string;
   indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
   xAxisLabel?: string;
@@ -47,6 +48,7 @@ const Boxplot = (props: BoxplotProps) => {
     outliers,
     xData,
     extraDataByIndexAxis,
+    colorByIndex,
     indexType,
     valueFormatter,
     indexFormatter,
@@ -78,7 +80,7 @@ const Boxplot = (props: BoxplotProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { primaryColor, colorThree, borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
+    const { primaryColor, borderColor, backgroundColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
 
@@ -89,6 +91,7 @@ const Boxplot = (props: BoxplotProps) => {
         id: "boxplot",
         type: "boxplot",
         data,
+        colorBy: "data",
         // This helps hides marklines
         zlevel: 1,
         emphasis: {
@@ -99,7 +102,7 @@ const Boxplot = (props: BoxplotProps) => {
           },
         },
         itemStyle: {
-          borderColor: primaryColor,
+          //borderColor: primaryColor,
           color: backgroundColorSecondary,
           borderWidth: 1.25,
           // This hides marklines
@@ -114,8 +117,9 @@ const Boxplot = (props: BoxplotProps) => {
         data: outliers,
         zlevel: 1,
         symbolSize: 8,
+        colorBy: "data",
         itemStyle: {
-          color: colorThree,
+          //color: primaryColor,
           opacity: 0.7,
         },
         emphasis: {
@@ -123,7 +127,7 @@ const Boxplot = (props: BoxplotProps) => {
           itemStyle: {
             opacity: 1,
             borderWidth: 1,
-            borderColor: primaryColor,
+            borderColor: backgroundColor,
           },
         },
         cursor: "crosshair",
@@ -191,6 +195,7 @@ const Boxplot = (props: BoxplotProps) => {
 
     return {
       animation: false,
+      color: xData.map((_, i) => colorByIndex.get(i) || primaryColor),
       title: {
         text: label,
         textStyle: {
@@ -419,6 +424,7 @@ const Boxplot = (props: BoxplotProps) => {
     data,
     xData,
     outliers,
+    colorByIndex,
     indexType,
     valueFormatter,
     indexFormatter,

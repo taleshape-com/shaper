@@ -28,11 +28,13 @@ const DashboardBoxplot = ({
   const valueAxisName = valueAxisHeader.name;
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
+  const colorIndex = headers.findIndex((c) => c.tag === "color");
   // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
   const boxplotData: [number, number, number, number, number][] = [];
   const outliers: [number, number, Record<string, string> | null | undefined][] = [];
   const xData: string[] = [];
+  const colorByIndex = new Map<number, string>();
   data.forEach((row, rowI) => {
     let key = isDatableType(indexAxisHeader.type)
       ? new Date(row[indexAxisIndex] as number).toUTCString()
@@ -52,6 +54,11 @@ const DashboardBoxplot = ({
             outliers.push([rowI, outlier.value, outlier.info]);
           });
         }
+        return;
+      }
+      if (i === colorIndex) {
+        const color = (cell ?? "").toString();
+        colorByIndex.set(rowI, color);
         return;
       }
       const c = formatCellValue(cell);
@@ -78,6 +85,7 @@ const DashboardBoxplot = ({
       xData={xData}
       extraDataByIndexAxis={extraDataByIndexAxis}
       indexType={indexType}
+      colorByIndex={colorByIndex}
       valueFormatter={(n: number, shortFormat?: boolean | number) => {
         return formatValue(n, "number", true, shortFormat).toString();
       }}
