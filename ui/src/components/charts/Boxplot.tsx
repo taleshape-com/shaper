@@ -17,29 +17,29 @@ import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
 interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
-	chartId: string;
-	label?: string;
-	data: [number, number, number, number, number][];
-	outliers: [number, number, Record<string, string> | null | undefined][];
-	xData: string[];
-	extraDataByIndexAxis: Record<string, Record<string, any>>;
-	indexType: Column["type"];
-	colorByIndex: Map<number, string>;
-	valueFormatter: (value: number, shortFormat?: boolean | number) => string;
-	indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
-	xAxisLabel?: string;
-	yAxisLabel?: string;
-	markLines?: MarkLine[];
+  chartId: string;
+  label?: string;
+  data: [number, number, number, number, number][];
+  outliers: [number, number, Record<string, string> | null | undefined][];
+  xData: string[];
+  extraDataByIndexAxis: Record<string, Record<string, any>>;
+  indexType: Column["type"];
+  colorByIndex: Map<number, string>;
+  valueFormatter: (value: number, shortFormat?: boolean | number) => string;
+  indexFormatter: (value: number | string, shortFormat?: boolean | number) => string;
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  markLines?: MarkLine[];
 }
 
 const chartPadding = 16;
 
 const valueKeys = [
-	"min" as const,
-	"Q1" as const,
-	"median" as const,
-	"Q3" as const,
-	"max" as const,
+  "min" as const,
+  "Q1" as const,
+  "median" as const,
+  "Q3" as const,
+  "max" as const,
 ];
 
 const Boxplot = (props: BoxplotProps) => {
@@ -67,7 +67,7 @@ const Boxplot = (props: BoxplotProps) => {
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
-		React.useContext(ChartHoverContext);
+    React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
   const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
@@ -98,40 +98,38 @@ const Boxplot = (props: BoxplotProps) => {
           itemStyle: {
             shadowBlur: 0,
             color: backgroundColorSecondary,
-            borderWidth: 1.75,
+            borderWidth: 2.2,
           },
         },
         itemStyle: {
-          //borderColor: primaryColor,
           color: backgroundColorSecondary,
-          borderWidth: 1.25,
+          borderWidth: 1.9,
           // This hides marklines
           shadowOffsetX: 1,
           shadowColor: backgroundColorSecondary,
         },
       },
-			{
-			  name: "outliers",
-			  id: "outliers",
-			  type: "scatter",
-			  data: outliers,
-			  zlevel: 1,
-			  symbolSize: 8,
-			  colorBy: "data",
-			  itemStyle: {
-			    //color: primaryColor,
-			    opacity: 0.7,
-			  },
-			  emphasis: {
-			    scale: 1.4,
-			    itemStyle: {
-			      opacity: 1,
-			      borderWidth: 1,
-			      borderColor: backgroundColor,
-			    },
-			  },
-			  cursor: "crosshair",
-			} as ScatterSeriesOption,
+      {
+        name: "outliers",
+        id: "outliers",
+        type: "scatter",
+        data: outliers,
+        zlevel: 1,
+        symbolSize: 8,
+        colorBy: "data",
+        itemStyle: {
+          opacity: 0.7,
+        },
+        emphasis: {
+          scale: 1.4,
+          itemStyle: {
+            opacity: 1,
+            borderWidth: 1,
+            borderColor: backgroundColor,
+          },
+        },
+        cursor: "crosshair",
+      } as ScatterSeriesOption,
     ];
 
     if (markLines) {
