@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { Column } from "./types";
+import * as echarts from "echarts/core";
 
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.
@@ -112,4 +113,8 @@ export const formatCellValue = (value: string | number | boolean | null | undefi
 
 export const isJSONType = (columnType: Column["type"]) => {
   return columnType === "array" || columnType === "object";
+};
+
+export const echartsEncode = (v: string | number) => {
+  return echarts.format.encodeHTML(v.toString());
 };
