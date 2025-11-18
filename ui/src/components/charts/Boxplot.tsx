@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useRef } from "react";
 import type { ECharts } from "echarts/core";
+import * as echarts from "echarts/core";
 import type {
   BoxplotSeriesOption,
   ScatterSeriesOption,
@@ -238,9 +239,10 @@ const Boxplot = (props: BoxplotProps) => {
             if (values === null || values === undefined || !Array.isArray(values)) {
               return;
             }
-            const formattedValue = valueFormatter(values[1], true);
+            const formattedValue = echarts.format.encodeHTML(valueFormatter(values[1], true));
+            const color = echarts.format.encodeHTML(colorByIndex.get(values[0]) || primaryColor);
             tooltipContent += `<div class="flex items-center space-x-2">
-                <span class="inline-block size-3 rounded-full bg-cthree dark:bg-dthree"></span>
+                <span class="inline-block size-3 rounded-full" style="background-color: ${color}"></span>
                 <span class="text-sm font-medium">${formattedValue}</span>
               </div>`;
             const extraData = Object.entries(values[2]);
@@ -248,8 +250,8 @@ const Boxplot = (props: BoxplotProps) => {
               tooltipContent += "<div class=\"mt-2\">";
               extraData.forEach(([key, value]) => {
                 tooltipContent += `<div class="flex justify-between space-x-2">
-                  <span class="font-medium">${key}</span>
-                  <span>${formatValue(value, "string", true)}</span>
+                  <span class="font-medium">${echarts.format.encodeHTML(key)}</span>
+                  <span>${echarts.format.encodeHTML(formatValue(value, "string", true).toString())}</span>
                 </div>`;
               });
               tooltipContent += "</div>";
@@ -538,7 +540,7 @@ const Boxplot = (props: BoxplotProps) => {
   );
 };
 
-function decodeIndexValue (v: string | number, indexType: Column["type"]): string | number {
+function decodeIndexValue(v: string | number, indexType: Column["type"]): string | number {
   if (isDatableType(indexType)) {
     return new Date(v).getTime();
   }
