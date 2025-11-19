@@ -2,7 +2,6 @@
 
 /** @type {import('tailwindcss').Config} */
 import defaultTheme from 'tailwindcss/defaultTheme';
-import formPlugin from '@tailwindcss/forms';
 import { scopedPreflightStyles, isolateInsideOfContainer } from 'tailwindcss-scoped-preflight';
 import containerQueries from '@tailwindcss/container-queries';
 
@@ -143,7 +142,6 @@ export default {
     },
   },
   plugins: [
-    formPlugin,
     containerQueries,
     scopedPreflightStyles({
       isolationStrategy: isolateInsideOfContainer('.shaper-scope'),
