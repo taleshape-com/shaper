@@ -107,9 +107,9 @@ jobs:
           VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
           mkdir -p bin
           # Build amd64
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-linux-amd64 -ldflags="-X 'main.Version=$VERSION'"
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-linux-amd64 -ldflags="-w -s -X 'main.Version=$VERSION'"
           # Build arm64
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -o bin/shaper-linux-arm64 -ldflags="-X 'main.Version=$VERSION'"
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -o bin/shaper-linux-arm64 -ldflags="-w -s -X 'main.Version=$VERSION'"
 
       - name: Generate checksums
         run: |
