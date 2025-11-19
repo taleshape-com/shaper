@@ -326,10 +326,9 @@ const Boxplot = (props: BoxplotProps) => {
           show: true,
           triggerOn: "mousemove",
           triggerEmphasis: false,
-          lineStyle: {
+          shadowStyle: {
             color: referenceLineColor,
-            type: "dashed",
-            width: 0.8,
+            opacity: 0.1,
           },
           label: {
             show: true,
