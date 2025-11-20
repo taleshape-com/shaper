@@ -11,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../tremor/DropdownMenu";
-import { formatValue } from "../../lib/render";
+import { formatValue, toCssId } from "../../lib/render";
 import { translate } from "../../lib/translate";
 
 type DropdownProps = {
@@ -20,6 +20,7 @@ type DropdownProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDropdownMulti ({
@@ -28,6 +29,7 @@ function DashboardDropdownMulti ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: DropdownProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
@@ -58,6 +60,7 @@ function DashboardDropdownMulti ({
           <Button
             variant="secondary"
             className="flex w-full items-center justify-between my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga"
+            id={toCssId(`${idPrefix}${varName}`)}
           >
             {label ?? varName} (
             {noneSelected ? 0 : selectedValArr.length || data.length})

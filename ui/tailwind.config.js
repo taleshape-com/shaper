@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
-/** @type {import('tailwindcss').Config} */
 import defaultTheme from 'tailwindcss/defaultTheme';
 import { scopedPreflightStyles, isolateInsideOfContainer } from 'tailwindcss-scoped-preflight';
 import containerQueries from '@tailwindcss/container-queries';
 
+/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "ui/index.html",

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { Column } from "../../lib/types";
-import { formatValue } from "../../lib/render";
+import { formatValue, toCssId } from "../../lib/render";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ type DropdownProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDropdown ({
@@ -28,6 +29,7 @@ function DashboardDropdown ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: DropdownProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
@@ -56,7 +58,7 @@ function DashboardDropdown ({
           ).toString() || EMPTY}
         >
           <SelectTrigger
-            id={label}
+            id={toCssId(`${idPrefix}${varName}`)}
             className="mx-auto my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga"
           >
             <SelectValue />

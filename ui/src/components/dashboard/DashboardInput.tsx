@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { Column } from "../../lib/types";
-import { formatValue } from "../../lib/render";
+import { formatValue, toCssId } from "../../lib/render";
 import { Input } from "../tremor/Input";
 import { Label } from "../tremor/Label";
 import { cx } from "../../lib/utils";
@@ -14,6 +14,7 @@ type InputProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardInput ({
@@ -22,6 +23,7 @@ function DashboardInput ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: InputProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "hint");
   const varName = headers[valueIndex].name;
@@ -55,7 +57,7 @@ function DashboardInput ({
       )}
       <div className={cx("print:hidden", { ["ml-2"]: !label })}>
         <Input
-          id={label}
+          id={toCssId(`${idPrefix}${varName}`)}
           value={localValue}
           placeholder={placeholder}
           onChange={(e) => {

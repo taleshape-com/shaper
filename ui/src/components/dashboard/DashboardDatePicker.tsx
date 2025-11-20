@@ -5,6 +5,7 @@ import { DatePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label";
 import { cx, getLocalDate } from "../../lib/utils";
 import { translate } from "../../lib/translate";
+import { toCssId } from "../../lib/render";
 
 type PickerProps = {
   label?: string;
@@ -12,6 +13,7 @@ type PickerProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDatePicker ({
@@ -20,6 +22,7 @@ function DashboardDatePicker ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: PickerProps) {
   const defaultValueIndex = headers.findIndex((header) => header.tag === "default");
   if (defaultValueIndex === -1) {
@@ -36,7 +39,7 @@ function DashboardDatePicker ({
       {label && <Label htmlFor={label} className="ml-3 pr-1 print:hidden">{label}:</Label>}
       <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
         <DatePicker
-          id={label}
+          id={toCssId(`${idPrefix}${varName}`)}
           defaultValue={typeof defaultValue === "boolean" || !defaultValue ? undefined : getLocalDate(defaultValue)}
           enableYearNavigation
           value={selectedDate ? getLocalDate(selectedDate) : undefined}

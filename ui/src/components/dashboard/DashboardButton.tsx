@@ -6,6 +6,7 @@ import { Button } from "../tremor/Button";
 import { Label } from "../tremor/Label";
 import { useState } from "react";
 import { cx } from "../../lib/utils";
+import { toCssId } from "../../lib/render";
 
 type ButtonProps = {
   label?: string;
@@ -13,6 +14,7 @@ type ButtonProps = {
   data: Result["sections"][0]["queries"][0]["rows"];
   baseUrl?: string;
   getJwt: () => Promise<string>;
+  idPrefix: string;
 };
 
 function DashboardButton ({
@@ -21,6 +23,7 @@ function DashboardButton ({
   headers,
   baseUrl,
   getJwt,
+  idPrefix,
 }: ButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -69,6 +72,7 @@ function DashboardButton ({
         className={cx("my-1 select-none print:hidden", {
           "ml-2": !label,
         })}
+        id={toCssId(`${idPrefix}${label ? `${label}-` : ""}${headers[0].name}`)}
       >
         <span className="flex items-center justify-between">
           {headers[0].name}

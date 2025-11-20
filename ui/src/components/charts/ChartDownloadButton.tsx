@@ -13,12 +13,14 @@ interface ChartDownloadButtonProps {
   chartId: string;
   label?: string;
   className?: string;
+  id?: string;
 }
 
 export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
   chartId,
   label,
   className,
+  id,
 }) => {
   const { isDarkMode } = React.useContext(DarkModeContext);
   const handleDownload = React.useCallback(() => {
@@ -55,6 +57,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
         )}
         onClick={handleDownload}
         title={translate("Save as image")}
+        id={id}
       >
         <RiDownload2Line className="size-4" />
       </button>

@@ -118,3 +118,15 @@ export const isJSONType = (columnType: Column["type"]) => {
 export const echartsEncode = (v: string | number) => {
   return echarts.format.encodeHTML(v.toString());
 };
+
+export function toCssId (v: string | number) {
+  return "shaper-" + (v.toString()
+    // Replace spaces and special characters with hyphens
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    // Remove consecutive hyphens
+    .replace(/-+/g, "-")
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, "")
+    // Handle empty string case
+    || Math.random().toString(36).substring(2, 10)).toLowerCase();
+}
