@@ -64,8 +64,8 @@ const BarChart = (props: BarChartProps) => {
 
   const chartRef = useRef<ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(1);
-  const [chartHeight, setChartHeight] = React.useState(1);
+  const [chartWidth, setChartWidth] = React.useState(450);
+  const [chartHeight, setChartHeight] = React.useState(300);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
@@ -81,7 +81,7 @@ const BarChart = (props: BarChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
+    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
@@ -170,7 +170,7 @@ const BarChart = (props: BarChartProps) => {
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
     const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
-    const minLegendItemWidth = Math.max(avgLegendCharCount * 9, 50);
+    const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
     const legendItemGap = 10;
@@ -239,9 +239,8 @@ const BarChart = (props: BarChartProps) => {
         hideDelay: 200, // Increase hide delay to prevent flickering
         showDelay: 0, // Show immediately
         borderRadius: 5,
-        backgroundColor: undefined,
-        borderColor,
-        className: "bg-cbg dark:bg-dbg",
+        borderWidth: 0,
+        backgroundColor: backgroundColorSecondary,
         textStyle: {
           fontFamily: chartFont,
           color: textColor,
@@ -366,7 +365,8 @@ const BarChart = (props: BarChartProps) => {
         right: 15 + chartPadding,
         top: 10 + legendTopOffset + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 35 : 10) + chartPadding,
-        containLabel: true,
+        outerBoundsMode: "same",
+        outerBoundsContain: "axisLabel",
       },
       xAxis: {
         type: layout === "vertical" ? "value" as const : (isTimestampData ? "time" as const : "category" as const),
@@ -386,7 +386,7 @@ const BarChart = (props: BarChartProps) => {
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
           rotate: shouldRotateXLabel ? 45 : 0,
           hideOverlap: true,
-          customValues,
+          //customValues,
           padding: [4, 8, 4, 8],
         },
         axisPointer: {
@@ -410,6 +410,8 @@ const BarChart = (props: BarChartProps) => {
             },
             fontFamily: chartFont,
             margin: 5,
+            color: textColorInverted,
+            backgroundColor: backgroundColorInverted,
           },
         },
         axisLine: {
@@ -474,6 +476,8 @@ const BarChart = (props: BarChartProps) => {
             },
             fontFamily: chartFont,
             margin: 10,
+            color: textColorInverted,
+            backgroundColor: backgroundColorInverted,
           },
         },
         axisLine: {
