@@ -2,6 +2,7 @@
 
 import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
+import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";
@@ -222,6 +223,7 @@ const DataView = ({
         return (
           <section
             key={sectionIndex}
+            id={toCssId(`header${sectionIndex}`)}
             className={cx("flex flex-wrap items-center ml-2 mr-4", {
               "mt-3 mb-3": section.queries.length > 0 || section.title,
               "mt-8": section.title && sectionIndex !== 0,
@@ -253,6 +255,7 @@ const DataView = ({
                 return (
                   <DashboardDropdown
                     key={index}
+                    idPrefix={`header${sectionIndex}-${render.type}-`}
                     label={render.label}
                     headers={columns}
                     data={rows}
@@ -265,6 +268,7 @@ const DataView = ({
                 return (
                   <DashboardDropdownMulti
                     key={index}
+                    idPrefix={`header${sectionIndex}-${render.type}-`}
                     label={render.label}
                     headers={columns}
                     data={rows}
@@ -277,6 +281,7 @@ const DataView = ({
                 return (
                   <DashboardButton
                     key={index}
+                    idPrefix={`header${sectionIndex}-${render.type}-`}
                     label={render.label}
                     headers={columns}
                     data={rows}
@@ -289,6 +294,7 @@ const DataView = ({
                 return (
                   <DashboardDatePicker
                     key={index}
+                    idPrefix={`header${sectionIndex}-${render.type}-`}
                     label={render.label}
                     headers={columns}
                     data={rows}
@@ -301,6 +307,7 @@ const DataView = ({
                 return (
                   <DashboardDateRangePicker
                     key={index}
+                    idPrefix={`header${sectionIndex}-${render.type}-`}
                     label={render.label}
                     headers={columns}
                     data={rows}
@@ -313,6 +320,7 @@ const DataView = ({
                 return (
                   <DashboardInput
                     key={index}
+                    idPrefix={`header${sectionIndex}-${render.type}-`}
                     label={render.label}
                     headers={columns}
                     data={rows}
@@ -333,6 +341,7 @@ const DataView = ({
       return (
         <section
           key={sectionIndex}
+          id={toCssId(`content${sectionIndex}`)}
           className={cx("grid grid-cols-1 ml-4", {
             "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
             "@sm:grid-cols-3 print:grid-cols-3":
@@ -360,9 +369,11 @@ const DataView = ({
             }
             const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+            const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
             return (
               <Card
                 key={queryIndex}
+                id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
@@ -381,6 +392,7 @@ const DataView = ({
                     chartId={`${sectionIndex}-${queryIndex}`}
                     label={query.render.label}
                     className="absolute top-2 right-2 z-40"
+                    id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                   />
                 ) : query.render.label && (
                   <h2 className="text-md pb-4 mx-4 text-center font-semibold font-display">
