@@ -255,6 +255,10 @@ func loadConfig() Config {
 			fmt.Println("Cannot set basepath and tls-domain at the same time.")
 			os.Exit(1)
 		}
+		if *watch != "" {
+			fmt.Println("Cannot set watch and tls-domain at the same time.")
+			os.Exit(1)
+		}
 	}
 
 	tlsCacheDir := *tlsCache
@@ -614,7 +618,7 @@ func Run(cfg Config) func(context.Context) {
 
 	metrics.Init()
 
-	d, err := dev.Watch(app, cfg.WatchFileDir)
+	d, err := dev.Watch(app, cfg.WatchFileDir, cfg.Address)
 	if err != nil {
 		logger.Error("Failed to start dev file watcher", slog.Any("error", err))
 		os.Exit(1)

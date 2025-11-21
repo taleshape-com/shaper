@@ -46,6 +46,7 @@ type reloadMessage struct {
 func Watch(
 	app *core.App,
 	watchDirPath string,
+	addr string,
 ) (*Dev, error) {
 	if watchDirPath == "" {
 		return &Dev{}, nil
@@ -139,9 +140,7 @@ func Watch(
 				// Notify websocket clients
 				notified := dev.notifyClients(dashboardID)
 				if !notified {
-					// TODO: get port from config
-					port := 5454
-					url := fmt.Sprintf("http://localhost:%d/dashboards/%s?dev=ws://localhost:%d/ws", port, dashboardID, dev.port)
+					url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", addr, dashboardID, dev.port)
 					if err := OpenURL(url); err != nil {
 						app.Logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 					}
@@ -161,9 +160,7 @@ func Watch(
 
 				log.Println("Dev: created new dashboard", name, "at", fPath, "with id", dashboardID)
 
-				// TODO: get port from config
-				port := 5454
-				url := fmt.Sprintf("http://localhost:%d/dashboards/%s?dev=ws://localhost:%d/ws", port, dashboardID, dev.port)
+				url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", addr, dashboardID, dev.port)
 				if err := OpenURL(url); err != nil {
 					app.Logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 				}
