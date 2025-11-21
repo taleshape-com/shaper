@@ -159,6 +159,23 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
 	}
+
+	if strings.HasPrefix(id, TMP_DASHBOARD_PREFIX) {
+		entry, err := app.TmpDashboardsKv.Get(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get dashboard: %w", err)
+		}
+		var d TmpDashboard
+		json.Unmarshal(entry.Value(), &d)
+		d.Content = content
+		j, err := json.Marshal(d)
+		if err != nil {
+			return err
+		}
+		_, err = app.TmpDashboardsKv.Put(ctx, id, j)
+		return err
+	}
+
 	var count int
 	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
@@ -167,6 +184,7 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 	if count == 0 {
 		return fmt.Errorf("dashboard not found")
 	}
+
 	err = app.SubmitState(ctx, "update_dashboard_content", UpdateDashboardContentPayload{
 		ID:        id,
 		TimeStamp: time.Now(),
