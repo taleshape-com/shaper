@@ -26,6 +26,7 @@ import { useQueryApi } from "../hooks/useQueryApi";
 export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
     vars: varsParamSchema,
+    dev: z.string().optional(),
   }),
   errorComponent: DashboardErrorComponent,
   notFoundComponent: () => {
@@ -41,15 +42,15 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent ({ error }: ErrorComponentProps) {
+function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
       <p>{error.message}</p>
     </div>
   );
 }
-function DashboardViewComponent () {
-  const { vars } = Route.useSearch();
+function DashboardViewComponent() {
+  const { vars, dev } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
   const navigate = useNavigate({ from: "/dashboards/$id" });
@@ -58,6 +59,7 @@ function DashboardViewComponent () {
   const [visibility, setVisibility] = useState<Result["visibility"]>(undefined);
   const [path, setPath] = useState("/");
   const { toast } = useToast();
+  const [dashboardKey, setDashboardKey] = useState(0); // For forcing dashboard re-render
 
   // Ref for dashboard ID text selection
   const dashboardIdRef = useRef<HTMLElement>(null);
@@ -80,6 +82,45 @@ function DashboardViewComponent () {
     };
     fetchDashboardQuery();
   }, [params.id, queryApi, navigate]);
+
+  // WebSocket connection for dev mode live reload
+  useEffect(() => {
+    if (!dev || !dev.startsWith('ws://')) {
+      return;
+    }
+
+    const wsUrl = `${dev}?dashboardId=${params.id}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log('Dev mode websocket connected');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'reload' && message.dashboardId === params.id) {
+          console.log('Reloading dashboard due to file change');
+          // Force dashboard re-render by updating key
+          setDashboardKey(prev => prev + 1);
+        }
+      } catch (err) {
+        console.error('Error parsing websocket message:', err);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('Dev mode websocket disconnected');
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [dev, params.id]);
 
   const handleRedirectError = useCallback(
     (err: Error) => {
@@ -130,15 +171,17 @@ function DashboardViewComponent () {
 
   const MenuButton = (
     <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={title}>
-      <Link
-        to="/dashboards/$id/edit"
-        params={{ id: params.id }}
-        search={() => ({ vars })}
-        className="block px-4 py-3 hover:underline"
-      >
-        <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
-        Edit Dashboard
-      </Link>
+      {!dev && (
+        <Link
+          to="/dashboards/$id/edit"
+          params={{ id: params.id }}
+          search={() => ({ vars })}
+          className="block px-4 py-3 hover:underline"
+        >
+          <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
+          Edit Dashboard
+        </Link>
+      )}
       <div className="mt-6 px-4">
         <div className="text-sm font-medium text-ctext2 dark:text-dtext2 mb-2">
           Dashboard ID
@@ -182,6 +225,7 @@ function DashboardViewComponent () {
 
       <div className="h-dvh">
         <Dashboard
+          key={dashboardKey}
           id={params.id}
           vars={vars}
           hash={auth.hash}
