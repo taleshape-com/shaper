@@ -46,12 +46,14 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 		}
 
 		// Make sure folder exists
-		_, err := core.ResolveFolderPath(app, c.Request().Context(), request.Path)
-		if err != nil {
-			return c.JSONPretty(http.StatusBadRequest,
-				struct {
-					Error string `json:"error"`
-				}{Error: err.Error()}, "  ")
+		if !request.Temporary {
+			_, err := core.ResolveFolderPath(app, c.Request().Context(), request.Path)
+			if err != nil {
+				return c.JSONPretty(http.StatusBadRequest,
+					struct {
+						Error string `json:"error"`
+					}{Error: err.Error()}, "  ")
+			}
 		}
 
 		id, err := core.CreateDashboard(app, c.Request().Context(), request.Name, request.Content, request.Path, request.Temporary)

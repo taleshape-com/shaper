@@ -84,6 +84,7 @@ require (
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/samber/lo v1.51.0 // indirect
+	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465 // indirect
 	github.com/tiendc/go-deepcopy v1.7.1 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect

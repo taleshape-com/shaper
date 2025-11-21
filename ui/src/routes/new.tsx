@@ -111,7 +111,7 @@ export const Route = createFileRoute("/new")({
   component: NewDashboard,
 });
 
-function NewDashboard () {
+function NewDashboard() {
   const { vars, path } = Route.useSearch();
   const auth = useAuth();
   const queryApi = useQueryApi();
@@ -160,6 +160,7 @@ function NewDashboard () {
       const { id } = await queryApi("dashboards", {
         method: "POST",
         body: {
+          path,
           content: runningQuery,
           temporary: true,
         },

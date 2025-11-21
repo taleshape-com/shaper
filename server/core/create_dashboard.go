@@ -22,6 +22,12 @@ type CreateDashboardPayload struct {
 	CreatedBy string    `json:"createdBy"`
 }
 
+type TmpDashboard struct {
+	Path    string `json:"path"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
 func CreateDashboard(app *App, ctx context.Context, name string, content string, path string, temporary bool) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
@@ -30,7 +36,16 @@ func CreateDashboard(app *App, ctx context.Context, name string, content string,
 	id := cuid2.Generate()
 	if temporary {
 		key := TMP_DASHBOARD_PREFIX + id
-		_, err := app.TmpDashboardsKv.PutString(ctx, key, content)
+		d := TmpDashboard{
+			Name:    name,
+			Path:    path,
+			Content: content,
+		}
+		j, err := json.Marshal(d)
+		if err != nil {
+			return "", err
+		}
+		_, err = app.TmpDashboardsKv.Put(ctx, key, j)
 		return key, err
 	}
 	// Validate name

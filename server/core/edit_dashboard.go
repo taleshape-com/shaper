@@ -47,13 +47,17 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 		if err != nil {
 			return Dashboard{}, fmt.Errorf("failed to get dashboard: %w", err)
 		}
+		var d TmpDashboard
+		json.Unmarshal(entry.Value(), &d)
 		visibility := "private"
 		dashboard := Dashboard{
 			ID:         id,
 			CreatedAt:  entry.Created(),
 			UpdatedAt:  entry.Created(),
 			Visibility: &visibility,
-			Content:    string(entry.Value()),
+			Name:       d.Name,
+			Path:       d.Path,
+			Content:    d.Content,
 		}
 		return dashboard, nil
 	}

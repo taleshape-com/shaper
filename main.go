@@ -15,6 +15,7 @@ import (
 	"path"
 	"shaper/server/comms"
 	"shaper/server/core"
+	"shaper/server/dev"
 	"shaper/server/ingest"
 	"shaper/server/metrics"
 	"shaper/server/snapshots"
@@ -72,6 +73,7 @@ type Config struct {
 	InviteExp                  time.Duration
 	Address                    string
 	DataDir                    string
+	WatchFileDir               string
 	ExecutableModTime          time.Time
 	BasePath                   string
 	CustomCSS                  string
@@ -147,6 +149,7 @@ func loadConfig() Config {
 	logLevel := flags.StringLong("log-level", "info", "log level: debug, info, warn, error")
 	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
+	watch := flags.String('w', "watch", "", "watch .sql files in specified directory and auto deploy. Same as `shaper dev` command.")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
@@ -299,6 +302,7 @@ func loadConfig() Config {
 		LogLevel:                   *logLevel,
 		Address:                    *addr,
 		DataDir:                    *dataDir,
+		WatchFileDir:               *watch,
 		ExecutableModTime:          executableModTime,
 		BasePath:                   bpath,
 		CustomCSS:                  *customCSS,
@@ -610,9 +614,16 @@ func Run(cfg Config) func(context.Context) {
 
 	metrics.Init()
 
+	d, err := dev.Watch(app, cfg.WatchFileDir)
+	if err != nil {
+		logger.Error("Failed to start dev file watcher", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	return func(ctx context.Context) {
 		logger.Info("Initiating shutdown...")
 		s.Stop()
+		d.Stop()
 		logger.Info("Stopping web server...")
 		if err := e.Shutdown(ctx); err != nil {
 			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
