@@ -42,14 +42,14 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
       <p>{error.message}</p>
     </div>
   );
 }
-function DashboardViewComponent() {
+function DashboardViewComponent () {
   const { vars, dev } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
@@ -85,7 +85,7 @@ function DashboardViewComponent() {
 
   // WebSocket connection for dev mode live reload
   useEffect(() => {
-    if (!dev || !dev.startsWith('ws://')) {
+    if (!dev || !dev.startsWith("ws://")) {
       return;
     }
 
@@ -93,28 +93,28 @@ function DashboardViewComponent() {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log('Dev mode websocket connected');
+      console.log("Dev mode websocket connected");
     };
 
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'reload' && message.dashboardId === params.id) {
-          console.log('Reloading dashboard due to file change');
+        if (message.type === "reload" && message.dashboardId === params.id) {
+          console.log("Reloading dashboard due to file change");
           // Force dashboard re-render by updating key
           setDashboardKey(prev => prev + 1);
         }
       } catch (err) {
-        console.error('Error parsing websocket message:', err);
+        console.error("Error parsing websocket message:", err);
       }
     };
 
     ws.onclose = () => {
-      console.log('Dev mode websocket disconnected');
+      console.log("Dev mode websocket disconnected");
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error("WebSocket error:", error);
     };
 
     return () => {

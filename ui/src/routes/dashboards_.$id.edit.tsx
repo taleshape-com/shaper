@@ -68,7 +68,7 @@ export const Route = createFileRoute("/dashboards_/$id/edit")({
   component: DashboardEditor,
 });
 
-function DashboardEditor() {
+function DashboardEditor () {
   const params = Route.useParams();
   const { vars } = Route.useSearch();
   const dashboard = Route.useLoaderData();
@@ -457,23 +457,23 @@ function DashboardEditor() {
               <VariablesMenu onVariablesChange={previewDashboard} />
               {(systemConfig.publicSharingEnabled ||
                 systemConfig.passwordProtectedSharingEnabled) && (
-                  <div className="my-2 px-4">
-                    <Button
-                      onClick={handleOpenVisibilityDialog}
-                      variant="secondary"
-                      className="mt-4 capitalize"
-                    >
-                      {dashboard.visibility === "password-protected"
-                        ? "Password Protected"
-                        : dashboard.visibility || "private"}
-                      <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
-                    </Button>
-                    {(dashboard.visibility === "public" ||
+                <div className="my-2 px-4">
+                  <Button
+                    onClick={handleOpenVisibilityDialog}
+                    variant="secondary"
+                    className="mt-4 capitalize"
+                  >
+                    {dashboard.visibility === "password-protected"
+                      ? "Password Protected"
+                      : dashboard.visibility || "private"}
+                    <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
+                  </Button>
+                  {(dashboard.visibility === "public" ||
                       dashboard.visibility === "password-protected") && (
-                        <PublicLink href={`../../view/${params.id}`} />
-                      )}
-                  </div>
-                )}
+                    <PublicLink href={`../../view/${params.id}`} />
+                  )}
+                </div>
+              )}
               <Button
                 onClick={() => setShowDeleteDialog(true)}
                 variant="destructive"

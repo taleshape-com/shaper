@@ -33,7 +33,7 @@ export const Route = createFileRoute("/dev-login")({
 
 type Status = "idle" | "sending" | "success" | "error";
 
-function DevLoginPage() {
+function DevLoginPage () {
   const { port } = Route.useSearch();
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");

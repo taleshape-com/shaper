@@ -111,7 +111,7 @@ export const Route = createFileRoute("/new")({
   component: NewDashboard,
 });
 
-function NewDashboard() {
+function NewDashboard () {
   const { vars, path } = Route.useSearch();
   const auth = useAuth();
   const queryApi = useQueryApi();
@@ -173,7 +173,7 @@ function NewDashboard() {
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
     }
-  }, [queryApi, runningQuery, navigate]);
+  }, [queryApi, runningQuery, navigate, path]);
 
   const runTask = useCallback(async () => {
     setPreviewError(null);
