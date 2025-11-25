@@ -20,6 +20,7 @@ const (
 	defaultServerURL   = "http://localhost:5454"
 	defaultWatchFolder = "."
 	defaultConfigPath  = "./shaper.json"
+	defaultAuthFile    = ".shaper-auth"
 )
 
 type DevConfig struct {
@@ -32,9 +33,10 @@ func RunCommand(args []string) error {
 	fs.SetOutput(os.Stderr)
 
 	configPath := fs.String("config", defaultConfigPath, "Path to dev config file")
+	authFileFlag := fs.String("auth-file", defaultAuthFile, "Path to dev CLI auth token file")
 
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage: shaper dev [--config path]\n\n")
+		fmt.Fprintf(fs.Output(), "Usage: shaper dev [--config path] [--auth-file path]\n\n")
 		fs.PrintDefaults()
 	}
 
@@ -55,6 +57,15 @@ func RunCommand(args []string) error {
 		return err
 	}
 
+	authFile := *authFileFlag
+	if authFile == "" {
+		authFile = defaultAuthFile
+	}
+	authFilePath, err := filepath.Abs(authFile)
+	if err != nil {
+		return fmt.Errorf("failed to resolve auth file path: %w", err)
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
@@ -62,7 +73,17 @@ func RunCommand(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	client, err := NewAPIClient(ctx, cfg.URL, logger)
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	if err != nil {
+		return err
+	}
+
+	authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired, logger)
+	if err := authManager.EnsureSession(); err != nil {
+		return err
+	}
+
+	client, err := NewAPIClient(ctx, cfg.URL, logger, authManager)
 	if err != nil {
 		return fmt.Errorf("failed to initialize API client: %w", err)
 	}

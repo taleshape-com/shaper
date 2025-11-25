@@ -19,9 +19,10 @@ type APIClient struct {
 	token       string
 	logger      *slog.Logger
 	tokenExpiry time.Time
+	auth        *AuthManager
 }
 
-func NewAPIClient(ctx context.Context, baseURL string, logger *slog.Logger) (*APIClient, error) {
+func NewAPIClient(ctx context.Context, baseURL string, logger *slog.Logger, auth *AuthManager) (*APIClient, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -32,6 +33,7 @@ func NewAPIClient(ctx context.Context, baseURL string, logger *slog.Logger) (*AP
 			Timeout: 15 * time.Second,
 		},
 		logger: logger,
+		auth:   auth,
 	}
 	if err := client.refreshToken(ctx); err != nil {
 		return nil, err
@@ -40,46 +42,70 @@ func NewAPIClient(ctx context.Context, baseURL string, logger *slog.Logger) (*AP
 }
 
 func (c *APIClient) refreshToken(ctx context.Context) error {
-	body, err := json.Marshal(map[string]string{
-		"token": "",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal token request: %w", err)
-	}
+	for attempt := 0; attempt < 2; attempt++ {
+		bodyMap := map[string]any{}
+		if c.auth != nil && c.auth.LoginRequired() {
+			token, err := c.auth.SessionToken()
+			if err != nil {
+				return err
+			}
+			if token != "" {
+				bodyMap["token"] = token
+			}
+		}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/auth/token", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("failed to build token request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+		body, err := json.Marshal(bodyMap)
+		if err != nil {
+			return fmt.Errorf("failed to marshal token request: %w", err)
+		}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to request token: %w", err)
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/auth/token", bytes.NewReader(body))
+		if err != nil {
+			return fmt.Errorf("failed to build token request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("token request failed with status %s", resp.Status)
-	}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to request token: %w", err)
+		}
 
-	var payload struct {
-		JWT string `json:"jwt"`
+		if resp.StatusCode == http.StatusUnauthorized && c.auth != nil && c.auth.LoginRequired() {
+			resp.Body.Close()
+			if err := c.auth.RequireInteractiveLogin(); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			data, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+			resp.Body.Close()
+			return fmt.Errorf("token request failed with status %s: %s", resp.Status, strings.TrimSpace(string(data)))
+		}
+
+		var payload struct {
+			JWT string `json:"jwt"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+			resp.Body.Close()
+			return fmt.Errorf("failed to decode token response: %w", err)
+		}
+		resp.Body.Close()
+
+		if payload.JWT == "" {
+			return fmt.Errorf("token response missing jwt")
+		}
+		c.token = payload.JWT
+		expiry, err := extractJWTExpiry(payload.JWT)
+		if err != nil {
+			return fmt.Errorf("failed to parse token expiry: %w", err)
+		}
+		c.tokenExpiry = expiry
+		c.logger.Info("Obtained JWT for dev mode")
+		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return fmt.Errorf("failed to decode token response: %w", err)
-	}
-	if payload.JWT == "" {
-		return fmt.Errorf("token response missing jwt")
-	}
-	c.token = payload.JWT
-	expiry, err := extractJWTExpiry(payload.JWT)
-	if err != nil {
-		return fmt.Errorf("failed to parse token expiry: %w", err)
-	}
-	c.tokenExpiry = expiry
-	c.logger.Info("Obtained JWT for dev mode")
-	return nil
+	return fmt.Errorf("failed to refresh token after re-authentication")
 }
 
 func extractJWTExpiry(token string) (time.Time, error) {
@@ -156,10 +182,6 @@ func (c *APIClient) SaveDashboardQuery(ctx context.Context, dashboardID, content
 }
 
 func (c *APIClient) authedRequest(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
-	return c.doAuthedRequest(ctx, method, path, body, true)
-}
-
-func (c *APIClient) doAuthedRequest(ctx context.Context, method, path string, body []byte, canRetry bool) (*http.Response, error) {
 	if err := c.ensureValidToken(ctx); err != nil {
 		return nil, err
 	}
@@ -175,12 +197,12 @@ func (c *APIClient) doAuthedRequest(ctx context.Context, method, path string, bo
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	if resp.StatusCode == http.StatusUnauthorized && canRetry {
+	if resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
 		if err := c.refreshToken(ctx); err != nil {
 			return nil, err
 		}
-		return c.doAuthedRequest(ctx, method, path, body, false)
+		return c.authedRequest(ctx, method, path, body)
 	}
 	return resp, nil
 }

@@ -19,7 +19,6 @@ import (
 )
 
 const DASHBOARD_SUFFIX = ".dashboard.sql"
-const TIMEOUT = 10 * time.Second
 
 type DashboardClient interface {
 	CreateDashboard(ctx context.Context, name, content, folderPath string) (string, error)
@@ -126,13 +125,11 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				continue
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), TIMEOUT)
-
+			ctx := context.Background()
 			// Read file content
 			contentBytes, err := os.ReadFile(p)
 			if err != nil {
 				dev.logger.Error("Failed reading watched dashboard file", slog.String("file", p), slog.Any("error", err))
-				cancel()
 				continue
 			}
 
@@ -153,7 +150,6 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				err = dev.client.SaveDashboardQuery(ctx, existingDashboardID, string(contentBytes))
 				if err != nil {
 					dev.logger.Error("Failed updating existing dashboard from watched file", slog.String("file", p), slog.Any("error", err))
-					cancel()
 					continue
 				}
 				dashboardID = existingDashboardID
@@ -175,7 +171,6 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				dashboardID, err = dev.client.CreateDashboard(ctx, name, string(contentBytes), fPath+"/")
 				if err != nil {
 					dev.logger.Error("Failed creating dashboard from watched file", slog.String("file", p), slog.Any("error", err))
-					cancel()
 					continue
 				}
 
@@ -194,7 +189,6 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 					dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 				}
 			}
-			cancel()
 		}
 	}()
 
