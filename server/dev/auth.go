@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +47,7 @@ func fetchSystemConfig(ctx context.Context, baseURL string) (SystemConfig, error
 type AuthManager struct {
 	ctx           context.Context
 	baseURL       string
+	allowedOrigin string
 	authFile      string
 	loginRequired bool
 	logger        *slog.Logger
@@ -57,9 +59,17 @@ func NewAuthManager(ctx context.Context, baseURL, authFile string, loginRequired
 	if logger == nil {
 		logger = slog.Default()
 	}
+	trimmedBase := strings.TrimSuffix(baseURL, "/")
+	var allowedOrigin string
+	if parsed, err := url.Parse(trimmedBase); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		allowedOrigin = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+	} else if err != nil {
+		logger.Warn("Unable to derive origin from dev base URL; falling back to permissive CORS", slog.String("base_url", baseURL), slog.Any("error", err))
+	}
 	return &AuthManager{
 		ctx:           ctx,
-		baseURL:       strings.TrimSuffix(baseURL, "/"),
+		baseURL:       trimmedBase,
+		allowedOrigin: allowedOrigin,
 		authFile:      authFile,
 		loginRequired: loginRequired,
 		logger:        logger,
@@ -136,7 +146,16 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 	tokenCh := make(chan string, 1)
 	server := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			setCORSHeaders(w)
+			origin := r.Header.Get("Origin")
+			if a.allowedOrigin != "" {
+				if origin != a.allowedOrigin {
+					http.Error(w, "origin not allowed", http.StatusForbidden)
+					return
+				}
+				setCORSHeaders(w, a.allowedOrigin)
+			} else if origin != "" {
+				setCORSHeaders(w, origin)
+			}
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -174,6 +193,7 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 	}()
 
 	loginURL := fmt.Sprintf("%s/dev-login?port=%d", a.baseURL, port)
+	fmt.Fprintf(os.Stdout, "\nDev auth callback listening on port %d\n\n", port)
 	fmt.Fprintf(os.Stdout, "Opening %s ...\n", loginURL)
 	if err := OpenURL(loginURL); err != nil {
 		fmt.Fprintf(os.Stdout, "Failed to open browser automatically: %v\nPlease open the URL manually.\n", err)
@@ -211,8 +231,12 @@ func (a *AuthManager) saveTokenLocked(token string) error {
 	return nil
 }
 
-func setCORSHeaders(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+func setCORSHeaders(w http.ResponseWriter, origin string) {
+	if origin == "" {
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Add("Vary", "Origin")
 }

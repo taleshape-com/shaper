@@ -104,6 +104,22 @@ function DevLoginPage() {
                 Confirm to give the Shaper Dev CLI access to your user account.
               </p>
               {
+                port ? (
+                  <div className="rounded-md border border-cborder dark:border-dborder bg-cbg-secondary dark:bg-dbg-secondary p-4 text-sm">
+                    <p className="font-semibold">
+                      CLI port: <span className="font-mono text-base">{port}</span>
+                    </p>
+                    <p className="text-ctext2 dark:text-dtext2">
+                      Make sure the number here matches the port shown in your terminal before you send the token.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-cborder dark:border-dborder bg-cbg-secondary dark:bg-dbg-secondary p-4 text-sm text-cerr dark:text-derr">
+                    Unable to detect the CLI port. Restart the CLI to try again.
+                  </div>
+                )
+              }
+              {
                 status !== "success" && (
                   <Button
                     onClick={sendToken}
