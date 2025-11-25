@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"shaper/server/core"
+	"strconv"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
@@ -22,7 +23,48 @@ func ListApps(app *core.App) echo.HandlerFunc {
 		sort := c.QueryParam("sort")
 		order := c.QueryParam("order")
 		path := c.QueryParam("path")
-		result, err := core.ListApps(app, c.Request().Context(), sort, order, path)
+
+		includeSubfolders := false
+		if recursive := c.QueryParam("recursive"); recursive != "" {
+			parsed, err := strconv.ParseBool(recursive)
+			if err != nil {
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "invalid recursive value"}, "  ")
+			}
+			includeSubfolders = parsed
+		}
+
+		var limit int
+		if limitParam := c.QueryParam("limit"); limitParam != "" {
+			parsed, err := strconv.Atoi(limitParam)
+			if err != nil || parsed < 0 {
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "invalid limit value"}, "  ")
+			}
+			limit = parsed
+		}
+
+		var offset int
+		if offsetParam := c.QueryParam("offset"); offsetParam != "" {
+			parsed, err := strconv.Atoi(offsetParam)
+			if err != nil || parsed < 0 {
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "invalid offset value"}, "  ")
+			}
+			offset = parsed
+		}
+
+		result, err := core.ListApps(app, c.Request().Context(), core.ListAppsOptions{
+			Sort:              sort,
+			Order:             order,
+			Path:              path,
+			IncludeSubfolders: includeSubfolders,
+			Limit:             limit,
+			Offset:            offset,
+		})
 		if err != nil {
 			c.Logger().Error("error listing apps:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {

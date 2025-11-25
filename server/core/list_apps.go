@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -52,6 +53,15 @@ type AppListResponse struct {
 	Apps []AppListItem `json:"apps"`
 }
 
+type ListAppsOptions struct {
+	Sort              string
+	Order             string
+	Path              string
+	IncludeSubfolders bool
+	Limit             int
+	Offset            int
+}
+
 type FolderListItem struct {
 	ID             string    `json:"id"`
 	Path           string    `json:"path"`
@@ -78,15 +88,18 @@ type FolderListResponse struct {
 	Folders []FolderListItem `json:"folders"`
 }
 
-func ListApps(app *App, ctx context.Context, sort string, order string, path string) (AppListResponse, error) {
-	var orderBy string
+func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListResponse, error) {
+	sort := opts.Sort
+	order := opts.Order
+	path := opts.Path
+	var orderColumn string
 	switch sort {
 	case "created":
-		orderBy = "created_at"
+		orderColumn = "created_at"
 	case "name":
-		orderBy = "name"
+		orderColumn = "name"
 	default:
-		orderBy = "updated_at"
+		orderColumn = "updated_at"
 	}
 
 	if order != "asc" && order != "desc" {
@@ -95,16 +108,22 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 
 	dbApps := []AppDbRecord{}
 
-	// Find folder_id from path using recursive CTE
+	// Build folder filters
 	var folderIDFilter string
 	var folderIDArgs []interface{}
 
-	if path == "/" || path == "" {
-		// Root level - items with folder_id = NULL
-		folderIDFilter = "WHERE a.folder_id IS NULL"
+	if opts.IncludeSubfolders {
+		if path == "/" || path == "" {
+			folderIDFilter = "WHERE 1=1"
+		} else {
+			folderIDFilter = "WHERE (COALESCE(fp.path, '/') = ? OR COALESCE(fp.path, '/') LIKE ?)"
+			folderIDArgs = append(folderIDArgs, path, path+"%")
+		}
 	} else {
-		// Non-root level - need to find folder ID from path
-		folderIDFilter = `WHERE a.folder_id = (
+		if path == "/" || path == "" {
+			folderIDFilter = "WHERE a.folder_id IS NULL"
+		} else {
+			folderIDFilter = `WHERE a.folder_id = (
 			WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
 				SELECT id, parent_folder_id, name, '/' || name || '/' as path
 				FROM folders
@@ -118,20 +137,36 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			)
 			SELECT id FROM folder_path WHERE path = ?
 		)`
-		folderIDArgs = append(folderIDArgs, path)
+			folderIDArgs = append(folderIDArgs, path)
+		}
+	}
+
+	if folderIDFilter == "" {
+		folderIDFilter = "WHERE 1=1"
 	}
 
 	// Build type filter
-	typeFilter := ""
 	if app.NoTasks {
-		typeFilter = " AND a.type = 'dashboard'"
+		if strings.Contains(folderIDFilter, "WHERE") {
+			folderIDFilter += " AND a.type = 'dashboard'"
+		} else {
+			folderIDFilter = "WHERE a.type = 'dashboard'"
+		}
 	}
 
-	// Combine filters
-	whereClause := folderIDFilter + typeFilter
+	var paginationClause string
+	if opts.Limit > 0 {
+		if opts.Offset > 0 {
+			paginationClause = " LIMIT ? OFFSET ?"
+		} else {
+			paginationClause = " LIMIT ?"
+		}
+	} else if opts.Offset > 0 {
+		paginationClause = " LIMIT -1 OFFSET ?"
+	}
 
 	// Build the query with recursive CTE for folder paths
-	query := fmt.Sprintf(`
+	queryWithFolders := fmt.Sprintf(`
 		WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
 			SELECT id, parent_folder_id, name, '/' || name || '/' as path
 			FROM folders
@@ -185,7 +220,7 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 		FROM folders f
 		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
 		WHERE f.parent_folder_id %s
-		ORDER BY type, %s %s`, whereClause,
+		ORDER BY type, %s %s%s`, folderIDFilter,
 		func() string {
 			if path == "/" || path == "" {
 				return "IS NULL"
@@ -205,12 +240,62 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 					SELECT id FROM folder_path WHERE path = ?
 				)`)
 			}
-		}(), orderBy, order)
+		}(), orderColumn, order, paginationClause)
+
+	queryAppsOnly := fmt.Sprintf(`
+		WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
+			SELECT id, parent_folder_id, name, '/' || name || '/' as path
+			FROM folders
+			WHERE parent_folder_id IS NULL
+
+			UNION ALL
+
+			SELECT f.id, f.parent_folder_id, f.name, fp.path || f.name || '/' as path
+			FROM folders f
+			JOIN folder_path fp ON f.parent_folder_id = fp.id
+		)
+		SELECT
+			a.id,
+			COALESCE(fp.path, '/') as path,
+			a.folder_id,
+			a.name,
+			a.content,
+			a.created_at,
+			a.updated_at,
+			a.created_by,
+			a.updated_by,
+			a.visibility,
+			a.type,
+			t.last_run_at,
+			t.last_run_success,
+			t.last_run_duration,
+			t.next_run_at
+		FROM apps a
+		LEFT JOIN folder_path fp ON a.folder_id = fp.id
+		LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
+		%s
+		ORDER BY %s %s%s`, folderIDFilter, fmt.Sprintf("a.%s", orderColumn), order, paginationClause)
 
 	// Prepare arguments
 	args := folderIDArgs
-	if path != "/" && path != "" {
+	if !opts.IncludeSubfolders && path != "/" && path != "" {
 		args = append(args, path) // For the folder query
+	}
+
+	if opts.Limit > 0 {
+		args = append(args, opts.Limit)
+		if opts.Offset > 0 {
+			args = append(args, opts.Offset)
+		}
+	} else if opts.Offset > 0 {
+		args = append(args, opts.Offset)
+	}
+
+	var query string
+	if opts.IncludeSubfolders {
+		query = queryAppsOnly
+	} else {
+		query = queryWithFolders
 	}
 
 	err := app.Sqlite.SelectContext(ctx, &dbApps, query, args...)

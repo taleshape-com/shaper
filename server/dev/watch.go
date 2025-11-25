@@ -371,7 +371,7 @@ func hasLeadingShaperIDComment(content string) bool {
 }
 
 func prependShaperIDComment(id, content string) string {
-	commentLine := fmt.Sprintf("-- shaperid:%s", id)
+	commentLine := fmt.Sprintf("-- shaperid:%s\n", id)
 	if content != "" {
 		if content[0] != '\n' && content[0] != '\r' {
 			commentLine += "\n"
