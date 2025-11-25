@@ -2,7 +2,9 @@ package dev
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -107,6 +109,11 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if err := ensureShaperIDsForDir(absWatchDir, dev.logger); err != nil {
+		return nil, fmt.Errorf("failed ensuring shaper IDs for dashboards in %s: %w", absWatchDir, err)
+	}
+
 	if err := notify.Watch(path.Join(absWatchDir, "..."), c, notify.Create, notify.Write); err != nil {
 		return nil, err
 	}
@@ -130,36 +137,22 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 			}
 
 			ctx := context.Background()
-			// Read file content
-			contentBytes, err := os.ReadFile(p)
+			contentBytes, updated, shaperID, err := ensureShaperIDForFile(p)
 			if err != nil {
-				dev.logger.Error("Failed reading watched dashboard file", slog.String("file", p), slog.Any("error", err))
+				dev.logger.Error("Failed ensuring shaper ID for dashboard file", slog.String("file", p), slog.Any("error", err))
 				continue
 			}
 
-			content := string(contentBytes)
-			if !hasLeadingShaperIDComment(content) {
-				newID := cuid2.Generate()
-				newContent := prependShaperIDComment(newID, content)
-
-				fileInfo, statErr := os.Stat(p)
-				if statErr != nil {
-					dev.logger.Error("Failed stat dashboard file for shaper ID insertion", slog.String("file", p), slog.Any("error", statErr))
-					continue
-				}
-
-				if writeErr := os.WriteFile(p, []byte(newContent), fileInfo.Mode()); writeErr != nil {
-					dev.logger.Error("Failed writing shaper ID comment to dashboard file", slog.String("file", p), slog.Any("error", writeErr))
-					continue
-				}
-
+			if updated {
 				dev.logger.Info("Added shaper ID comment to dashboard file",
 					slog.String("file", p),
-					slog.String("shaper_id", newID))
+					slog.String("shaper_id", shaperID))
 
 				// Skip further handling for this event; the write will trigger a new event
 				continue
 			}
+
+			content := string(contentBytes)
 
 			// Check if we have an existing dashboard for this file
 			dev.filesMutex.RLock()
@@ -175,7 +168,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 			var dashboardID string
 			if existingDashboardID != "" {
 				// Update existing dashboard
-				err = dev.client.SaveDashboardQuery(ctx, existingDashboardID, string(contentBytes))
+				err = dev.client.SaveDashboardQuery(ctx, existingDashboardID, content)
 				if err != nil {
 					dev.logger.Error("Failed updating existing dashboard from watched file", slog.String("file", p), slog.Any("error", err))
 					continue
@@ -196,7 +189,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				}
 			} else {
 				// Create new dashboard
-				dashboardID, err = dev.client.CreateDashboard(ctx, name, string(contentBytes), fPath+"/")
+				dashboardID, err = dev.client.CreateDashboard(ctx, name, content, fPath+"/")
 				if err != nil {
 					dev.logger.Error("Failed creating dashboard from watched file", slog.String("file", p), slog.Any("error", err))
 					continue
@@ -387,4 +380,69 @@ func prependShaperIDComment(id, content string) string {
 		return commentLine
 	}
 	return commentLine + "\n"
+}
+
+func ensureShaperIDForFile(filePath string) ([]byte, bool, string, error) {
+	contentBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, false, "", err
+	}
+
+	content := string(contentBytes)
+	if hasLeadingShaperIDComment(content) {
+		return contentBytes, false, "", nil
+	}
+
+	newID := cuid2.Generate()
+	newContent := prependShaperIDComment(newID, content)
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return nil, false, "", err
+	}
+
+	if err := os.WriteFile(filePath, []byte(newContent), fileInfo.Mode()); err != nil {
+		return nil, false, "", err
+	}
+
+	return []byte(newContent), true, newID, nil
+}
+
+func ensureShaperIDsForDir(dir string, logger *slog.Logger) error {
+	var aggregated error
+
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+			return nil
+		}
+
+		_, updated, shaperID, err := ensureShaperIDForFile(p)
+		if err != nil {
+			logger.Error("Failed ensuring shaper ID for dashboard file",
+				slog.String("file", p),
+				slog.Any("error", err))
+			aggregated = errors.Join(aggregated, fmt.Errorf("%s: %w", p, err))
+			return nil
+		}
+
+		if updated {
+			logger.Info("Added shaper ID comment to dashboard file",
+				slog.String("file", p),
+				slog.String("shaper_id", shaperID))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return aggregated
 }
