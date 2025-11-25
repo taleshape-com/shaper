@@ -15,10 +15,14 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/nrednav/cuid2"
 	"github.com/syncthing/notify"
 )
 
-const DASHBOARD_SUFFIX = ".dashboard.sql"
+const (
+	DASHBOARD_SUFFIX = ".dashboard.sql"
+	shaperIDPrefix   = "-- shaperid:"
+)
 
 type DashboardClient interface {
 	CreateDashboard(ctx context.Context, name, content, folderPath string) (string, error)
@@ -130,6 +134,30 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 			contentBytes, err := os.ReadFile(p)
 			if err != nil {
 				dev.logger.Error("Failed reading watched dashboard file", slog.String("file", p), slog.Any("error", err))
+				continue
+			}
+
+			content := string(contentBytes)
+			if !hasLeadingShaperIDComment(content) {
+				newID := cuid2.Generate()
+				newContent := prependShaperIDComment(newID, content)
+
+				fileInfo, statErr := os.Stat(p)
+				if statErr != nil {
+					dev.logger.Error("Failed stat dashboard file for shaper ID insertion", slog.String("file", p), slog.Any("error", statErr))
+					continue
+				}
+
+				if writeErr := os.WriteFile(p, []byte(newContent), fileInfo.Mode()); writeErr != nil {
+					dev.logger.Error("Failed writing shaper ID comment to dashboard file", slog.String("file", p), slog.Any("error", writeErr))
+					continue
+				}
+
+				dev.logger.Info("Added shaper ID comment to dashboard file",
+					slog.String("file", p),
+					slog.String("shaper_id", newID))
+
+				// Skip further handling for this event; the write will trigger a new event
 				continue
 			}
 
@@ -328,4 +356,35 @@ func (d *Dev) notifyClients(dashboardID string) bool {
 		}(conn)
 	}
 	return true
+}
+
+func hasLeadingShaperIDComment(content string) bool {
+	if !strings.HasPrefix(content, shaperIDPrefix) {
+		return false
+	}
+
+	lineEnd := strings.IndexByte(content, '\n')
+	firstLine := content
+	if lineEnd != -1 {
+		firstLine = content[:lineEnd]
+	}
+
+	id := strings.TrimPrefix(firstLine, shaperIDPrefix)
+	if id == "" || strings.ContainsAny(id, " \t\r") {
+		return false
+	}
+
+	return true
+}
+
+func prependShaperIDComment(id, content string) string {
+	commentLine := fmt.Sprintf("-- shaperid:%s", id)
+	if content != "" {
+		if content[0] != '\n' && content[0] != '\r' {
+			commentLine += "\n"
+		}
+		commentLine += content
+		return commentLine
+	}
+	return commentLine + "\n"
 }
