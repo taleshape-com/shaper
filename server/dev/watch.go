@@ -30,7 +30,7 @@ type WatchConfig struct {
 	WatchDirPath string
 	Client       DashboardClient
 	Logger       *slog.Logger
-	Addr         string
+	BaseURL      string
 }
 
 type Dev struct {
@@ -43,7 +43,7 @@ type Dev struct {
 	filesMutex     sync.RWMutex
 	logger         *slog.Logger
 	client         DashboardClient
-	addr           string
+	baseURL        string
 }
 
 type websocketConn struct {
@@ -63,8 +63,8 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	if cfg.Client == nil {
 		return nil, fmt.Errorf("dashboard client is required")
 	}
-	if cfg.Addr == "" {
-		cfg.Addr = "localhost:5454"
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = "http://localhost:5454"
 	}
 
 	logger := cfg.Logger
@@ -78,7 +78,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 		dashboardFiles: make(map[string]string),
 		logger:         logger,
 		client:         cfg.Client,
-		addr:           cfg.Addr,
+		baseURL:        strings.TrimSuffix(cfg.BaseURL, "/"),
 	}
 
 	// Start websocket server on random port
@@ -165,7 +165,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				// Notify websocket clients
 				notified := dev.notifyClients(dashboardID)
 				if !notified {
-					url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.addr, dashboardID, dev.port)
+					url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
 					if err := OpenURL(url); err != nil {
 						dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 					}
@@ -189,7 +189,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 					slog.String("path", fPath),
 					slog.String("dashboard_id", dashboardID))
 
-				url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.addr, dashboardID, dev.port)
+				url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
 				if err := OpenURL(url); err != nil {
 					dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 				}
