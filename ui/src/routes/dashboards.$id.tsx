@@ -19,6 +19,7 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { VariablesMenu } from "../components/VariablesMenu";
 import { PublicLink } from "../components/PublicLink";
+import { Tooltip } from "../components/tremor/Tooltip";
 import { useToast } from "../hooks/useToast";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
@@ -169,44 +170,64 @@ function DashboardViewComponent () {
     }
   };
 
-  const MenuButton = (
-    <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={title}>
-      {!dev && (
-        <Link
-          to="/dashboards/$id/edit"
-          params={{ id: params.id }}
-          search={() => ({ vars })}
-          className="block px-4 py-3 hover:underline"
+  const menuTitle = dev ? (
+    <div>
+      <Tooltip
+        showArrow={false}
+        asChild
+        content="You are viewing a preview of the dashboard in development mode."
+      >
+        <div
+          className="inline-block px-2.5 py-2 mb-2 text-xs font-mono cursor-help bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb"
         >
-          <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
-          Edit Dashboard
-        </Link>
-      )}
-      <div className="mt-6 px-4">
-        <div className="text-sm font-medium text-ctext2 dark:text-dtext2 mb-2">
-          Dashboard ID
+          Preview
         </div>
-        <div className="flex items-center space-x-2">
-          <code
-            ref={dashboardIdRef}
-            onClick={handleDashboardIdClick}
-            className="flex-grow px-2 py-1.5 bg-cbgs dark:bg-dbgs border border-cb dark:border-db rounded text-xs font-mono text-ctext dark:text-dtext overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer hover:bg-cbga dark:hover:bg-dbga transition-colors"
-          >
-            {params.id}
-          </code>
-          <Button
-            onClick={handleCopyDashboardId}
-            variant="secondary"
-            className="px-2 py-1.5 flex-shrink-0"
-          >
-            <RiFileCopyLine className="size-4" />
-          </Button>
-        </div>
+      </Tooltip>
+      <div>
+        {title}
       </div>
+    </div>
+  ) : title;
+  const MenuButton = (
+    <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={menuTitle}>
+      {!dev && (
+        <>
+          <Link
+            to="/dashboards/$id/edit"
+            params={{ id: params.id }}
+            search={() => ({ vars })}
+            className="block px-4 py-3 hover:underline"
+          >
+            <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
+            Edit Dashboard
+          </Link>
+          <div className="mt-6 px-4">
+            <div className="text-sm font-medium text-ctext2 dark:text-dtext2 mb-2">
+              Dashboard ID
+            </div>
+            <div className="flex items-center space-x-2">
+              <code
+                ref={dashboardIdRef}
+                onClick={handleDashboardIdClick}
+                className="flex-grow px-2 py-1.5 bg-cbgs dark:bg-dbgs border border-cb dark:border-db rounded text-xs font-mono text-ctext dark:text-dtext overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer hover:bg-cbga dark:hover:bg-dbga transition-colors"
+              >
+                {params.id}
+              </code>
+              <Button
+                onClick={handleCopyDashboardId}
+                variant="secondary"
+                className="px-2 py-1.5 flex-shrink-0"
+              >
+                <RiFileCopyLine className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
       <VariablesMenu />
       {(visibility === "public" || visibility === "password-protected") && (
         <div className="my-2 px-4">
-          <PublicLink href={`../view/${params.id}`} />
+          <PublicLink href={`../ view / ${params.id} `} />
         </div>
       )}
     </MenuTrigger>

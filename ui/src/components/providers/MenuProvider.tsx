@@ -40,7 +40,7 @@ export function MenuProvider ({
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
   const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
-  const [title, setTitle] = useState<string | undefined>(undefined);
+  const [title, setTitle] = useState<string | React.ReactNode | undefined>(undefined);
   const [userName, setUserName] = useState<string>("");
 
   const fetchUserName = useCallback(async () => {
