@@ -3,14 +3,12 @@ package dev
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"shaper/server/core"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +21,18 @@ import (
 const DASHBOARD_SUFFIX = ".dashboard.sql"
 const TIMEOUT = 10 * time.Second
 
+type DashboardClient interface {
+	CreateDashboard(ctx context.Context, name, content, folderPath string) (string, error)
+	SaveDashboardQuery(ctx context.Context, dashboardID, content string) error
+}
+
+type WatchConfig struct {
+	WatchDirPath string
+	Client       DashboardClient
+	Logger       *slog.Logger
+	Addr         string
+}
+
 type Dev struct {
 	c              chan notify.EventInfo
 	server         *http.Server
@@ -31,6 +41,9 @@ type Dev struct {
 	connMutex      sync.RWMutex
 	dashboardFiles map[string]string // dashboardID -> file path
 	filesMutex     sync.RWMutex
+	logger         *slog.Logger
+	client         DashboardClient
+	addr           string
 }
 
 type websocketConn struct {
@@ -43,31 +56,41 @@ type reloadMessage struct {
 	DashboardID string `json:"dashboardId"`
 }
 
-func Watch(
-	app *core.App,
-	watchDirPath string,
-	addr string,
-) (*Dev, error) {
-	if watchDirPath == "" {
-		return &Dev{}, nil
+func Watch(cfg WatchConfig) (*Dev, error) {
+	if cfg.WatchDirPath == "" {
+		return nil, fmt.Errorf("watch directory is required")
+	}
+	if cfg.Client == nil {
+		return nil, fmt.Errorf("dashboard client is required")
+	}
+	if cfg.Addr == "" {
+		cfg.Addr = "localhost:5454"
+	}
+
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
 	}
 
 	// Create Dev instance with websocket support
 	dev := Dev{
 		connections:    make(map[string][]*websocketConn),
 		dashboardFiles: make(map[string]string),
+		logger:         logger,
+		client:         cfg.Client,
+		addr:           cfg.Addr,
 	}
 
 	// Start websocket server on random port
-	port, server, err := dev.startWebSocketServer(app)
+	port, server, err := dev.startWebSocketServer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start websocket server: %w", err)
 	}
 	dev.port = port
 	dev.server = server
 
-	app.Logger.Info("Watching dashboard files in dev mode",
-		slog.String("dir", watchDirPath),
+	dev.logger.Info("Watching dashboard files in dev mode",
+		slog.String("dir", cfg.WatchDirPath),
 		slog.Int("websocket_port", port))
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
@@ -77,7 +100,7 @@ func Watch(
 
 	// Set up a watchpoint listening on events within current working directory.
 	// Dispatch each create and remove events separately to c.
-	absWatchDir, err := filepath.Abs(watchDirPath)
+	absWatchDir, err := filepath.Abs(cfg.WatchDirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -94,24 +117,22 @@ func Watch(
 			// TODO: on windows need to convert \ to /
 			fPath, found := strings.CutPrefix(path.Dir(p), absWatchDir)
 			if !found {
-				app.Logger.Error("Failed removing prefix from dir of watched file", slog.String("dir", path.Dir(p)), slog.String("absWatchDir", absWatchDir))
+				dev.logger.Error("Failed removing prefix from dir of watched file", slog.String("dir", path.Dir(p)), slog.String("absWatchDir", absWatchDir))
 				continue
 			}
 			name, found := strings.CutSuffix(path.Base(p), DASHBOARD_SUFFIX)
 			if !found {
-				app.Logger.Error("Failed removing dashboard suffix from watched file name", slog.String("file", path.Base(p)))
+				dev.logger.Error("Failed removing dashboard suffix from watched file name", slog.String("file", path.Base(p)))
 				continue
 			}
 
-			// TODO: set actor when logged in
-			actor := "dev-watcher"
-			ctx, cancel := context.WithTimeout(core.ContextWithActor(context.Background(), core.ActorFromString(actor)), TIMEOUT)
-			defer cancel()
+			ctx, cancel := context.WithTimeout(context.Background(), TIMEOUT)
 
 			// Read file content
 			contentBytes, err := os.ReadFile(p)
 			if err != nil {
-				app.Logger.Error("Failed reading watched dashboard file", slog.String("file", p), slog.Any("error", err))
+				dev.logger.Error("Failed reading watched dashboard file", slog.String("file", p), slog.Any("error", err))
+				cancel()
 				continue
 			}
 
@@ -129,27 +150,32 @@ func Watch(
 			var dashboardID string
 			if existingDashboardID != "" {
 				// Update existing dashboard
-				err = core.SaveDashboardQuery(app, ctx, existingDashboardID, string(contentBytes))
+				err = dev.client.SaveDashboardQuery(ctx, existingDashboardID, string(contentBytes))
 				if err != nil {
-					app.Logger.Error("Failed updating existing dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+					dev.logger.Error("Failed updating existing dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+					cancel()
 					continue
 				}
 				dashboardID = existingDashboardID
-				log.Println("Dev: updated existing dashboard", name, "at", fPath+"/", "with id", dashboardID)
+				dev.logger.Info("Updated existing dashboard from file",
+					slog.String("name", name),
+					slog.String("path", fPath+"/"),
+					slog.String("dashboard_id", dashboardID))
 
 				// Notify websocket clients
 				notified := dev.notifyClients(dashboardID)
 				if !notified {
-					url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", addr, dashboardID, dev.port)
+					url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.addr, dashboardID, dev.port)
 					if err := OpenURL(url); err != nil {
-						app.Logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
+						dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 					}
 				}
 			} else {
 				// Create new dashboard
-				dashboardID, err = core.CreateDashboard(app, ctx, name, string(contentBytes), fPath+"/", true)
+				dashboardID, err = dev.client.CreateDashboard(ctx, name, string(contentBytes), fPath+"/")
 				if err != nil {
-					app.Logger.Error("Failed reloading dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+					dev.logger.Error("Failed creating dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+					cancel()
 					continue
 				}
 
@@ -158,13 +184,17 @@ func Watch(
 				dev.dashboardFiles[dashboardID] = p
 				dev.filesMutex.Unlock()
 
-				log.Println("Dev: created new dashboard", name, "at", fPath, "with id", dashboardID)
+				dev.logger.Info("Created new dashboard from file",
+					slog.String("name", name),
+					slog.String("path", fPath),
+					slog.String("dashboard_id", dashboardID))
 
-				url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", addr, dashboardID, dev.port)
+				url := fmt.Sprintf("http://%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.addr, dashboardID, dev.port)
 				if err := OpenURL(url); err != nil {
-					app.Logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
+					dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
 				}
 			}
+			cancel()
 		}
 	}()
 
@@ -179,7 +209,7 @@ func (d *Dev) Stop() {
 }
 
 // startWebSocketServer starts a websocket server on a random port
-func (d *Dev) startWebSocketServer(app *core.App) (int, *http.Server, error) {
+func (d *Dev) startWebSocketServer() (int, *http.Server, error) {
 	// Find a random available port
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -189,7 +219,7 @@ func (d *Dev) startWebSocketServer(app *core.App) (int, *http.Server, error) {
 	listener.Close()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", d.handleWebSocket(app))
+	mux.HandleFunc("/ws", d.handleWebSocket())
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -198,7 +228,7 @@ func (d *Dev) startWebSocketServer(app *core.App) (int, *http.Server, error) {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			app.Logger.Error("WebSocket server error", slog.Any("error", err))
+			d.logger.Error("WebSocket server error", slog.Any("error", err))
 		}
 	}()
 
@@ -206,7 +236,7 @@ func (d *Dev) startWebSocketServer(app *core.App) (int, *http.Server, error) {
 }
 
 // handleWebSocket handles websocket connections
-func (d *Dev) handleWebSocket(app *core.App) http.HandlerFunc {
+func (d *Dev) handleWebSocket() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dashboardID := r.URL.Query().Get("dashboardId")
 		if dashboardID == "" {
@@ -216,7 +246,7 @@ func (d *Dev) handleWebSocket(app *core.App) http.HandlerFunc {
 
 		conn, _, _, err := ws.UpgradeHTTP(r, w)
 		if err != nil {
-			app.Logger.Error("WebSocket upgrade failed", slog.Any("error", err))
+			d.logger.Error("WebSocket upgrade failed", slog.Any("error", err))
 			return
 		}
 
@@ -233,7 +263,7 @@ func (d *Dev) handleWebSocket(app *core.App) http.HandlerFunc {
 		d.connections[dashboardID] = append(d.connections[dashboardID], wsConn)
 		d.connMutex.Unlock()
 
-		app.Logger.Info("WebSocket connection established",
+		d.logger.Info("WebSocket connection established",
 			slog.String("dashboardId", dashboardID),
 			slog.String("connId", wsConn.id))
 
@@ -242,7 +272,7 @@ func (d *Dev) handleWebSocket(app *core.App) http.HandlerFunc {
 			defer func() {
 				conn.Close()
 				d.removeConnection(dashboardID, wsConn.id)
-				app.Logger.Info("WebSocket connection closed",
+				d.logger.Info("WebSocket connection closed",
 					slog.String("dashboardId", dashboardID),
 					slog.String("connId", wsConn.id))
 			}()
