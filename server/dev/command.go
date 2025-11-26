@@ -1,50 +1,74 @@
 package dev
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
-	"errors"
-	"flag"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
-)
 
-const (
-	defaultServerURL   = "http://localhost:5454"
-	defaultWatchFolder = "."
-	defaultConfigPath  = "./shaper.json"
-	defaultAuthFile    = ".shaper-auth"
+	"github.com/peterbourgon/ff/v4"
+	"github.com/peterbourgon/ff/v4/ffhelp"
 )
-
-type DevConfig struct {
-	URL       string `json:"url"`
-	Directory string `json:"directory"`
-}
 
 func RunCommand(args []string) error {
-	fs := flag.NewFlagSet("dev", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-
-	configPath := fs.String("config", defaultConfigPath, "Path to dev config file")
-	authFileFlag := fs.String("auth-file", defaultAuthFile, "Path to dev CLI auth token file")
-
-	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage: shaper dev [--config path] [--auth-file path]\n\n")
-		fs.PrintDefaults()
+	// Root command flags
+	rootFlags := ff.NewFlagSet("shaper")
+	rootCmd := &ff.Command{
+		Name:  "shaper",
+		Usage: "shaper <subcommand> [FLAGS]",
+		Flags: rootFlags,
 	}
 
-	if err := fs.Parse(args); err != nil {
+	// dev subcommand
+	devFlags := ff.NewFlagSet("dev").SetParent(rootFlags)
+	devConfigPath := devFlags.StringLong("config", defaultConfigPath, "Path to config file")
+	devAuthFile := devFlags.StringLong("auth-file", defaultAuthFile, "Path to auth token file")
+
+	devCmd := &ff.Command{
+		Name:      "dev",
+		Usage:     "shaper dev [--config path] [--auth-file path]",
+		ShortHelp: "watch local dashboard files and sync to server",
+		Flags:     devFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			return runDevCommand(ctx, *devConfigPath, *devAuthFile)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, devCmd)
+
+	// pull subcommand
+	pullFlags := ff.NewFlagSet("pull").SetParent(rootFlags)
+	pullConfigPath := pullFlags.StringLong("config", defaultConfigPath, "Path to config file")
+	pullAuthFile := pullFlags.StringLong("auth-file", defaultAuthFile, "Path to auth token file")
+
+	pullCmd := &ff.Command{
+		Name:      "pull",
+		Usage:     "shaper pull [--config path] [--auth-file path]",
+		ShortHelp: "pull dashboards from server to local files",
+		Flags:     pullFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+				Level: slog.LevelInfo,
+			}))
+			return RunPullCommand(ctx, *pullConfigPath, *pullAuthFile, logger)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := rootCmd.ParseAndRun(ctx, args); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", ffhelp.Command(rootCmd))
 		return err
 	}
+	return nil
+}
 
-	cfg, err := loadOrPromptConfig(*configPath)
+func runDevCommand(ctx context.Context, configPath, authFile string) error {
+	cfg, err := LoadOrPromptConfig(configPath)
 	if err != nil {
 		return err
 	}
@@ -53,11 +77,10 @@ func RunCommand(args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve watch directory: %w", err)
 	}
-	if err := ensureDirExists(watchDir); err != nil {
+	if err := EnsureDirExists(watchDir); err != nil {
 		return err
 	}
 
-	authFile := *authFileFlag
 	if authFile == "" {
 		authFile = defaultAuthFile
 	}
@@ -69,9 +92,6 @@ func RunCommand(args []string) error {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
 	if err != nil {
@@ -104,106 +124,4 @@ func RunCommand(args []string) error {
 	watcher.Stop()
 	logger.Info("Stopped dev watcher")
 	return nil
-}
-
-func loadOrPromptConfig(path string) (DevConfig, error) {
-	data, err := os.ReadFile(path)
-	if err == nil {
-		return parseConfig(data)
-	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return DevConfig{}, fmt.Errorf("failed to read config: %w", err)
-	}
-	return promptAndSaveConfig(path)
-}
-
-func parseConfig(data []byte) (DevConfig, error) {
-	var cfg DevConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return DevConfig{}, fmt.Errorf("failed to parse config: %w", err)
-	}
-	return normalizeConfig(cfg)
-}
-
-func normalizeConfig(cfg DevConfig) (DevConfig, error) {
-	cfg.URL = strings.TrimSpace(cfg.URL)
-	if cfg.URL == "" {
-		cfg.URL = defaultServerURL
-	}
-	if _, err := url.ParseRequestURI(cfg.URL); err != nil {
-		return DevConfig{}, fmt.Errorf("invalid url %q: %w", cfg.URL, err)
-	}
-
-	cfg.Directory = strings.TrimSpace(cfg.Directory)
-	if cfg.Directory == "" {
-		cfg.Directory = defaultWatchFolder
-	}
-
-	return cfg, nil
-}
-
-func promptAndSaveConfig(path string) (DevConfig, error) {
-	fmt.Printf("Dev config file %s not found. Let's create it.\n", path)
-	reader := bufio.NewReader(os.Stdin)
-
-	urlVal := prompt(reader, fmt.Sprintf("Server URL [%s]: ", defaultServerURL))
-	if urlVal == "" {
-		urlVal = defaultServerURL
-	}
-	dirVal := prompt(reader, fmt.Sprintf("Directory to watch [%s]: ", defaultWatchFolder))
-	if dirVal == "" {
-		dirVal = defaultWatchFolder
-	}
-
-	cfg, err := normalizeConfig(DevConfig{
-		URL:       urlVal,
-		Directory: dirVal,
-	})
-	if err != nil {
-		return DevConfig{}, err
-	}
-	if err := saveConfig(path, cfg); err != nil {
-		return DevConfig{}, err
-	}
-	fmt.Printf("Saved dev config to %s\n", path)
-	return cfg, nil
-}
-
-func prompt(reader *bufio.Reader, msg string) string {
-	fmt.Print(msg)
-	input, _ := reader.ReadString('\n')
-	return strings.TrimSpace(input)
-}
-
-func saveConfig(path string, cfg DevConfig) error {
-	dir := filepath.Dir(path)
-	if dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("failed to create config directory: %w", err)
-		}
-	}
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to encode config: %w", err)
-	}
-	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
-	}
-	return nil
-}
-
-func ensureDirExists(path string) error {
-	if stat, err := os.Stat(path); err == nil {
-		if !stat.IsDir() {
-			return fmt.Errorf("%s is not a directory", path)
-		}
-		return nil
-	} else if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(path, 0o755); err != nil {
-			return fmt.Errorf("failed to create watch directory: %w", err)
-		}
-		return nil
-	} else {
-		return fmt.Errorf("failed to access watch directory: %w", err)
-	}
 }

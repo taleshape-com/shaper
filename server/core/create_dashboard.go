@@ -53,7 +53,26 @@ func CreateDashboard(app *App, ctx context.Context, name string, content string,
 	if name == "" {
 		return "", fmt.Errorf("dashboard name cannot be empty")
 	}
-	err := app.SubmitState(ctx, "create_dashboard", CreateDashboardPayload{
+	// Check for duplicate name in same folder
+	folderID, err := ResolveFolderPath(app, ctx, path)
+	if err != nil {
+		folderID = nil
+	}
+	var count int
+	if folderID == nil {
+		err = app.Sqlite.GetContext(ctx, &count,
+			`SELECT COUNT(*) FROM apps WHERE name = $1 AND folder_id IS NULL AND type = 'dashboard'`, name)
+	} else {
+		err = app.Sqlite.GetContext(ctx, &count,
+			`SELECT COUNT(*) FROM apps WHERE name = $1 AND folder_id = $2 AND type = 'dashboard'`, name, *folderID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to check for duplicate name: %w", err)
+	}
+	if count > 0 {
+		return "", fmt.Errorf("a dashboard with this name already exists in this folder")
+	}
+	err = app.SubmitState(ctx, "create_dashboard", CreateDashboardPayload{
 		ID:        id,
 		Timestamp: time.Now(),
 		Path:      path,

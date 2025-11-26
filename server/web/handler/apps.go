@@ -57,11 +57,23 @@ func ListApps(app *core.App) echo.HandlerFunc {
 			offset = parsed
 		}
 
+		includeContent := false
+		if includeContentParam := c.QueryParam("include_content"); includeContentParam != "" {
+			parsed, err := strconv.ParseBool(includeContentParam)
+			if err != nil {
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "invalid include_content value"}, "  ")
+			}
+			includeContent = parsed
+		}
+
 		result, err := core.ListApps(app, c.Request().Context(), core.ListAppsOptions{
 			Sort:              sort,
 			Order:             order,
 			Path:              path,
 			IncludeSubfolders: includeSubfolders,
+			IncludeContent:    includeContent,
 			Limit:             limit,
 			Offset:            offset,
 		})

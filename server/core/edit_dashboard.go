@@ -97,13 +97,30 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
 	}
-	var count int
-	err := app.Sqlite.GetContext(ctx, &count, `SELECT COUNT(*) FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
-	if err != nil {
-		return fmt.Errorf("failed to query dashboard: %w", err)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("dashboard name cannot be empty")
 	}
-	if count == 0 {
+	// Get current dashboard to find its folder
+	var folderID *string
+	err := app.Sqlite.GetContext(ctx, &folderID, `SELECT folder_id FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
+	if err != nil {
 		return fmt.Errorf("dashboard not found")
+	}
+	// Check for duplicate name in same folder (excluding current dashboard)
+	var count int
+	if folderID == nil {
+		err = app.Sqlite.GetContext(ctx, &count,
+			`SELECT COUNT(*) FROM apps WHERE name = $1 AND folder_id IS NULL AND type = 'dashboard' AND id != $2`, name, id)
+	} else {
+		err = app.Sqlite.GetContext(ctx, &count,
+			`SELECT COUNT(*) FROM apps WHERE name = $1 AND folder_id = $2 AND type = 'dashboard' AND id != $3`, name, *folderID, id)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check for duplicate name: %w", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("a dashboard with this name already exists in this folder")
 	}
 	err = app.SubmitState(ctx, "update_dashboard_name", UpdateDashboardNamePayload{
 		ID:        id,
