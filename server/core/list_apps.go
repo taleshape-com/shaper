@@ -14,7 +14,6 @@ type AppListItem struct {
 	Path       string    `json:"path"`
 	FolderID   *string   `json:"folderId,omitempty"`
 	Name       string    `json:"name"`
-	Content    string    `json:"content"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 	CreatedBy  *string   `json:"createdBy,omitempty"`
@@ -29,7 +28,6 @@ type AppDbRecord struct {
 	Path            string     `db:"path"`
 	FolderID        *string    `db:"folder_id"`
 	Name            string     `db:"name"`
-	Content         string     `db:"content"`
 	CreatedAt       time.Time  `db:"created_at"`
 	UpdatedAt       time.Time  `db:"updated_at"`
 	CreatedBy       *string    `db:"created_by"`
@@ -183,7 +181,6 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 			COALESCE(fp.path, '/') as path,
 			a.folder_id,
 			a.name,
-			a.content,
 			a.created_at,
 			a.updated_at,
 			a.created_by,
@@ -206,7 +203,6 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 			COALESCE(fp.path, '/') as path,
 			f.parent_folder_id as folder_id,
 			f.name as name,
-			'' as content,
 			f.created_at,
 			f.updated_at,
 			f.created_by,
@@ -259,7 +255,6 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 			COALESCE(fp.path, '/') as path,
 			a.folder_id,
 			a.name,
-			a.content,
 			a.created_at,
 			a.updated_at,
 			a.created_by,
@@ -310,7 +305,6 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 			Path:       a.Path,
 			FolderID:   a.FolderID,
 			Name:       a.Name,
-			Content:    a.Content,
 			CreatedAt:  a.CreatedAt,
 			UpdatedAt:  a.UpdatedAt,
 			CreatedBy:  a.CreatedBy,

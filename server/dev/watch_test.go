@@ -60,17 +60,17 @@ func TestPrependShaperIDComment(t *testing.T) {
 		{
 			name:     "content without leading newline gets newline inserted",
 			content:  "select 1",
-			expected: "-- shaperid:testid\nselect 1",
+			expected: "-- shaperid:testid\n\nselect 1",
 		},
 		{
 			name:     "content with leading newline keeps newline",
 			content:  "\nselect 1",
-			expected: "-- shaperid:testid\nselect 1",
+			expected: "-- shaperid:testid\n\nselect 1",
 		},
 		{
 			name:     "empty content still ends with newline",
 			content:  "",
-			expected: "-- shaperid:testid\n",
+			expected: "-- shaperid:testid\n\n",
 		},
 	}
 
