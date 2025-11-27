@@ -19,6 +19,7 @@ import { getSystemConfig } from "../../lib/system";
 import { Tooltip } from "../tremor/Tooltip";
 
 const isLg = () => window.innerWidth >= 1024;
+const MENU_STATE_KEY = "shaper-menu-open";
 
 export function MenuProvider ({
   children,
@@ -37,7 +38,27 @@ export function MenuProvider ({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(null);
+  
+  // Check if we're in dev mode from search params (reactive to location changes)
+  // Use window.location.search to reliably get the current URL's search params
+  const searchParams = new URLSearchParams(window.location.search);
+  const isDev = searchParams.has("dev");
+  
+  // Get initial state from localStorage or default
+  const getStoredMenuState = (): boolean | null => {
+    const stored = localStorage.getItem(MENU_STATE_KEY);
+    if (stored !== null) {
+      return stored === "true";
+    }
+    return null; // Will use defaultOpen
+  };
+  
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(() => {
+    if (isDev) {
+      return false; // Always closed in dev mode
+    }
+    return getStoredMenuState();
+  });
   const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
   const [title, setTitle] = useState<string | React.ReactNode | undefined>(undefined);
@@ -72,6 +93,30 @@ export function MenuProvider ({
       window.removeEventListener("resize", handleResize);
     };
   }, []);
+
+  // Persist menu state to localStorage when it changes (but not in dev mode)
+  useEffect(() => {
+    if (isMenuOpen !== null && !isDev) {
+      localStorage.setItem(MENU_STATE_KEY, String(isMenuOpen));
+    }
+  }, [isMenuOpen, isDev]);
+
+  // Update menu state when dev mode changes
+  useEffect(() => {
+    if (isDev) {
+      // In dev mode, force closed
+      setIsMenuOpen(false);
+    } else {
+      // When not in dev mode, restore from localStorage or use default
+      const stored = localStorage.getItem(MENU_STATE_KEY);
+      if (stored !== null) {
+        setIsMenuOpen(stored === "true");
+      } else {
+        // Use null to fall back to defaultOpen (based on screen size)
+        setIsMenuOpen(null);
+      }
+    }
+  }, [isDev]);
 
   const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
 

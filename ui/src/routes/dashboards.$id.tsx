@@ -240,17 +240,11 @@ function DashboardViewComponent() {
           onDataChange={onDataChange}
         />
         {dev && (
-          <Tooltip
-            showArrow={false}
-            asChild
-            content="You are viewing a preview of the dashboard in development mode"
+          <div
+            className="fixed top-1 left-1 px-2.5 py-2 text-xs font-mono cursor-help bg-cerr dark:bg-derr text-ctextb dark:text-dtextb opacity-80 pointer-events-none z-50"
           >
-            <div
-              className="fixed top-1 left-1 px-2.5 py-2 text-xs font-mono cursor-help bg-cerr dark:bg-derr text-ctextb dark:text-dtextb opacity-80 pointer-events-none z-50"
-            >
-              Preview
-            </div>
-          </Tooltip>
+            Preview
+          </div>
         )}
       </div>
     </MenuProvider>
