@@ -30,7 +30,7 @@ func RunCommand(args []string) error {
 	devCmd := &ff.Command{
 		Name:      "dev",
 		Usage:     "shaper dev [--config path] [--auth-file path]",
-		ShortHelp: "watch local dashboard files and sync to server",
+		ShortHelp: "watch local dashboard files and show preview",
 		Flags:     devFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			return runDevCommand(ctx, *devConfigPath, *devAuthFile)

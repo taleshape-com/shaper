@@ -140,7 +140,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
 	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
-	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
+	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.POST("/folders", handler.CreateFolder(app))
@@ -210,14 +210,13 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, app.BasePath))
 }
 
-func jwtOrAPIKeyMiddleware(jwtMiddleware echo.MiddlewareFunc, setActorMid echo.MiddlewareFunc, keyAuthMiddleware echo.MiddlewareFunc, apiKeyActorMid echo.MiddlewareFunc) echo.MiddlewareFunc {
+func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, setActorMid echo.MiddlewareFunc, keyAuthMiddleware echo.MiddlewareFunc, apiKeyActorMid echo.MiddlewareFunc) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		jwtChain := jwtMiddleware(setActorMid(next))
 		apiKeyChain := keyAuthMiddleware(apiKeyActorMid(next))
 		return func(c echo.Context) error {
 			token := extractAuthorizationToken(c)
-			fmt.Println("is key", core.IsAPIKeyToken(token))
-			if core.IsAPIKeyToken(token) {
+			if core.IsAPIKeyToken(token) || !app.LoginRequired {
 				return apiKeyChain(c)
 			}
 			return jwtChain(c)

@@ -16,7 +16,10 @@ import (
 	"time"
 )
 
-const deployAPIKeyEnv = "SHAPER_DEPLOY_API_KEY"
+const (
+	deployAPIKeyEnv = "SHAPER_DEPLOY_API_KEY"
+	noAuthActor     = "no_auth"
+)
 
 type LocalDashboard struct {
 	ID       string
@@ -43,16 +46,16 @@ type deployRequest struct {
 	Apps []deployOperation `json:"apps"`
 }
 
+type deployHTTPClient interface {
+	appsRequester
+	Actor() string
+}
+
 func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logger) error {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		}))
-	}
-
-	apiKey := strings.TrimSpace(os.Getenv(deployAPIKeyEnv))
-	if apiKey == "" {
-		return fmt.Errorf("%s must be set to run shaper deploy", deployAPIKeyEnv)
 	}
 
 	cfg, err := LoadConfig(configPath)
@@ -71,16 +74,31 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 		return err
 	}
 
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	if err != nil {
+		return err
+	}
+
+	apiKey := strings.TrimSpace(os.Getenv(deployAPIKeyEnv))
+
+	var client deployHTTPClient
+	switch {
+	case apiKey != "":
+		client, err = newAPIKeyClient(cfg.URL, apiKey, logger)
+		if err != nil {
+			return err
+		}
+	case !systemCfg.LoginRequired:
+		client = newOpenDeployClient(cfg.URL, logger)
+	default:
+		return fmt.Errorf("%s must be set to run shaper deploy when login is required", deployAPIKeyEnv)
+	}
+
 	localDashboards, err := loadLocalDashboards(watchDir)
 	if err != nil {
 		return err
 	}
 	logger.Info("Loaded local dashboards", slog.Int("count", len(localDashboards)))
-
-	client, err := newAPIKeyClient(cfg.URL, apiKey, logger)
-	if err != nil {
-		return err
-	}
 
 	logger.Info("Fetching remote dashboards...", slog.String("url", cfg.URL))
 	remoteDashboards, err := fetchAllDashboards(ctx, client)
@@ -96,7 +114,7 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 		}
 	}
 
-	if err := ensureRemoteFreshness(remoteDashboards, *cfg.LastPull, client.actor); err != nil {
+	if err := ensureRemoteFreshness(remoteDashboards, *cfg.LastPull, client.Actor()); err != nil {
 		return err
 	}
 
@@ -349,7 +367,7 @@ func logDeployChanges(logger *slog.Logger, ops []deployOperation, local map[stri
 	}
 }
 
-func submitDeploy(ctx context.Context, client *apiKeyClient, ops []deployOperation) error {
+func submitDeploy(ctx context.Context, client deployHTTPClient, ops []deployOperation) error {
 	body, err := json.Marshal(deployRequest{Apps: ops})
 	if err != nil {
 		return fmt.Errorf("failed to marshal deploy request: %w", err)
@@ -404,6 +422,48 @@ func (c *apiKeyClient) DoRequest(ctx context.Context, method, path string, body 
 		return nil, fmt.Errorf("failed to build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *apiKeyClient) Actor() string {
+	return c.actor
+}
+
+type openDeployClient struct {
+	baseURL    string
+	httpClient *http.Client
+	logger     *slog.Logger
+}
+
+func newOpenDeployClient(baseURL string, logger *slog.Logger) *openDeployClient {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	logger.Info("Using unauthenticated deploy client")
+	return &openDeployClient{
+		baseURL: strings.TrimSuffix(baseURL, "/"),
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+		logger: logger,
+	}
+}
+
+func (c *openDeployClient) Actor() string {
+	return noAuthActor
+}
+
+func (c *openDeployClient) DoRequest(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
