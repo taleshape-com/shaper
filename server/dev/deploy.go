@@ -100,7 +100,7 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 		return err
 	}
 
-	logger.Info("Deploy checkpoint established", slog.Time("last_pull", cfg.LastPull.UTC()))
+	logger.Info("Last pulled", slog.Time("time", cfg.LastPull.UTC()))
 
 	ops := buildDeployOperations(localDashboards, remoteDashboards)
 	if len(ops) == 0 {
@@ -304,7 +304,6 @@ func dashboardsDiffer(local LocalDashboard, remote App) bool {
 func logDeployChanges(logger *slog.Logger, ops []deployOperation, local map[string]LocalDashboard, remote map[string]App) {
 	for _, op := range ops {
 		changeAttrs := []any{
-			slog.String("operation", op.Operation),
 			slog.String("id", op.Data.ID),
 		}
 
@@ -338,7 +337,7 @@ func logDeployChanges(logger *slog.Logger, ops []deployOperation, local map[stri
 			slog.String("name", currentName),
 		)
 
-		if hasPrev {
+		if hasPrev && op.Operation != "delete" {
 			changeAttrs = append(changeAttrs,
 				slog.String("previous_path", prev.Path),
 				slog.String("previous_name", prev.Name),
@@ -346,7 +345,7 @@ func logDeployChanges(logger *slog.Logger, ops []deployOperation, local map[stri
 			)
 		}
 
-		logger.Info("Deploy dashboard change", (changeAttrs)...)
+		logger.Info(op.Operation, (changeAttrs)...)
 	}
 }
 

@@ -112,7 +112,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 	}
 
 	if len(toCreate) == 0 && len(toUpdate) == 0 {
-		fmt.Println("No dashboards to pull.")
+		fmt.Println("No changes.")
 		return nil
 	}
 

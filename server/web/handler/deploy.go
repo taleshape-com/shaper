@@ -4,6 +4,8 @@ package handler
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -107,7 +109,10 @@ func handleDeployCreate(ctx context.Context, app *core.App, idx int, data deploy
 
 	name := strings.TrimSpace(*data.Name)
 	content := *data.Content
-	path := *data.Path
+	path, err := ensureFolderPathExists(ctx, app, *data.Path)
+	if err != nil {
+		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+	}
 
 	var requestedID string
 	if data.ID != nil {
@@ -156,8 +161,41 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data deploy
 		changed = true
 	}
 
+	var dashboardInfo core.Dashboard
+	var haveDashboardInfo bool
+	getDashboard := func() (core.Dashboard, error) {
+		if haveDashboardInfo {
+			return dashboardInfo, nil
+		}
+		info, err := core.GetDashboardInfo(app, ctx, id)
+		if err != nil {
+			return core.Dashboard{}, err
+		}
+		dashboardInfo = info
+		haveDashboardInfo = true
+		return dashboardInfo, nil
+	}
+
 	if data.Path != nil {
-		return deployResult{}, fmt.Errorf("apps[%d]: updating dashboard path is not supported", idx)
+		desiredPath, err := ensureFolderPathExists(ctx, app, *data.Path)
+		if err != nil {
+			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+		}
+		info, err := getDashboard()
+		if err != nil {
+			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+		}
+		currentPath := normalizeFolderPath(info.Path)
+		if desiredPath != currentPath {
+			moveReq := core.MoveItemsRequest{
+				Apps: []string{id},
+				Path: desiredPath,
+			}
+			if err := core.MoveItems(app, ctx, moveReq); err != nil {
+				return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+			}
+			changed = true
+		}
 	}
 
 	if !changed {
@@ -188,4 +226,69 @@ func handleDeployDelete(ctx context.Context, app *core.App, idx int, data deploy
 		ID:        id,
 		Status:    "deleted",
 	}, nil
+}
+
+func ensureFolderPathExists(ctx context.Context, app *core.App, rawPath string) (string, error) {
+	normalized := normalizeFolderPath(rawPath)
+	if normalized == "/" {
+		return normalized, nil
+	}
+
+	trimmed := strings.Trim(normalized, "/")
+	if trimmed == "" {
+		return normalized, nil
+	}
+
+	segments := strings.Split(trimmed, "/")
+	for i := range segments {
+		subPath := "/" + strings.Join(segments[:i+1], "/") + "/"
+		if _, err := core.ResolveFolderPath(app, ctx, subPath); err == nil {
+			continue
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return "", err
+		}
+
+		parentPath := "/"
+		if i > 0 {
+			parentPath = "/" + strings.Join(segments[:i], "/") + "/"
+		}
+
+		if _, err := core.CreateFolder(app, ctx, core.CreateFolderRequest{
+			Name: segments[i],
+			Path: parentPath,
+		}); err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "already exists") {
+				continue
+			}
+			return "", err
+		}
+	}
+
+	return normalized, nil
+}
+
+func normalizeFolderPath(rawPath string) string {
+	path := strings.TrimSpace(rawPath)
+	if path == "" {
+		return "/"
+	}
+	path = strings.ReplaceAll(path, "\\", "/")
+	path = strings.Trim(path, "/")
+	if path == "" {
+		return "/"
+	}
+
+	var segments []string
+	for _, segment := range strings.Split(path, "/") {
+		if segment == "" {
+			continue
+		}
+		segments = append(segments, segment)
+	}
+
+	if len(segments) == 0 {
+		return "/"
+	}
+
+	return "/" + strings.Join(segments, "/") + "/"
 }
