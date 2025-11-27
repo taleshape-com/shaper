@@ -50,6 +50,34 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func SetAPIKeyActor(contextKey string) func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			raw := c.Get(contextKey)
+			token, _ := raw.(string)
+			if token == "" {
+				return next(c)
+			}
+
+			apiKeyID := core.GetAPIKeyID(token)
+			if apiKeyID == "" {
+				return next(c)
+			}
+
+			actor := &core.Actor{
+				Type: core.ActorAPIKey,
+				ID:   apiKeyID,
+			}
+			ctx := core.ContextWithActor(c.Request().Context(), actor)
+			c.SetRequest(c.Request().WithContext(ctx))
+
+			return next(c)
+		}
+	}
+}
+
+const keyAuthContextKey = "api_key_token"
+
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
 	apiWithAuth := e.Group("/api",
 		echojwt.WithConfig(echojwt.Config{
@@ -66,9 +94,17 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			valid, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			if err != nil {
+				return false, err
+			}
+			if valid {
+				c.Set(keyAuthContextKey, key)
+			}
+			return valid, nil
 		},
 	}
+	apiKeyActor := SetAPIKeyActor(keyAuthContextKey)
 
 	e.HEAD("/", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
@@ -79,7 +115,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.HEAD("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))
@@ -89,7 +125,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
-	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
+	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
 	apiWithAuth.GET("/apps", handler.ListApps(app))
