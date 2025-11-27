@@ -170,6 +170,45 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				// Update existing dashboard
 				err = dev.client.SaveDashboardQuery(ctx, existingDashboardID, content)
 				if err != nil {
+					// Check if the error indicates the dashboard has expired (key not found)
+					errStr := err.Error()
+					if strings.Contains(errStr, "key not found") || strings.Contains(errStr, "failed to get dashboard") {
+						// Dashboard expired, recreate it
+						dev.logger.Info("Temporary dashboard expired, recreating",
+							slog.String("old_dashboard_id", existingDashboardID),
+							slog.String("file", p))
+
+						// Remove the expired dashboard from tracking
+						dev.filesMutex.Lock()
+						delete(dev.dashboardFiles, existingDashboardID)
+						dev.filesMutex.Unlock()
+
+						// Create new dashboard
+						dashboardID, err = dev.client.CreateDashboard(ctx, name, content, fPath+"/")
+						if err != nil {
+							dev.logger.Error("Failed recreating expired dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+							continue
+						}
+
+						// Track this file with new dashboard ID
+						dev.filesMutex.Lock()
+						dev.dashboardFiles[dashboardID] = p
+						dev.filesMutex.Unlock()
+
+						dev.logger.Info("Recreated expired dashboard from file",
+							slog.String("name", name),
+							slog.String("path", fPath),
+							slog.String("old_dashboard_id", existingDashboardID),
+							slog.String("new_dashboard_id", dashboardID))
+
+						url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
+						if err := OpenURL(url); err != nil {
+							dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
+						}
+						continue
+					}
+
+					// Other error, log and continue
 					dev.logger.Error("Failed updating existing dashboard from watched file", slog.String("file", p), slog.Any("error", err))
 					continue
 				}
