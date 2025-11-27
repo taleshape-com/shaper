@@ -43,14 +43,14 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent ({ error }: ErrorComponentProps) {
+function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
       <p>{error.message}</p>
     </div>
   );
 }
-function DashboardViewComponent () {
+function DashboardViewComponent() {
   const { vars, dev } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
@@ -170,24 +170,7 @@ function DashboardViewComponent () {
     }
   };
 
-  const menuTitle = dev ? (
-    <div>
-      <Tooltip
-        showArrow={false}
-        asChild
-        content="You are viewing a preview of the dashboard in development mode."
-      >
-        <div
-          className="inline-block px-2.5 py-2 mb-2 text-xs font-mono cursor-help bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb"
-        >
-          Preview
-        </div>
-      </Tooltip>
-      <div>
-        {title}
-      </div>
-    </div>
-  ) : title;
+  const menuTitle = title;
   const MenuButton = (
     <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={menuTitle}>
       {!dev && (
@@ -244,7 +227,7 @@ function DashboardViewComponent () {
         <meta name="description" content={title} />
       </Helmet>
 
-      <div className="h-dvh">
+      <div className="h-dvh relative">
         <Dashboard
           key={dashboardKey}
           id={params.id}
@@ -256,6 +239,19 @@ function DashboardViewComponent () {
           onError={handleRedirectError}
           onDataChange={onDataChange}
         />
+        {dev && (
+          <Tooltip
+            showArrow={false}
+            asChild
+            content="You are viewing a preview of the dashboard in development mode"
+          >
+            <div
+              className="fixed top-1 left-1 px-2.5 py-2 text-xs font-mono cursor-help bg-cerr dark:bg-derr text-ctextb dark:text-dtextb opacity-80 pointer-events-none z-50"
+            >
+              Preview
+            </div>
+          </Tooltip>
+        )}
       </div>
     </MenuProvider>
   );
