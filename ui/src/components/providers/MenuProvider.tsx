@@ -38,12 +38,12 @@ export function MenuProvider ({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Check if we're in dev mode from search params (reactive to location changes)
   // Use window.location.search to reliably get the current URL's search params
   const searchParams = new URLSearchParams(window.location.search);
   const isDev = searchParams.has("dev");
-  
+
   // Get initial state from localStorage or default
   const getStoredMenuState = (): boolean | null => {
     const stored = localStorage.getItem(MENU_STATE_KEY);
@@ -52,7 +52,7 @@ export function MenuProvider ({
     }
     return null; // Will use defaultOpen
   };
-  
+
   const [isMenuOpen, setIsMenuOpen] = useState<boolean | null>(() => {
     if (isDev) {
       return false; // Always closed in dev mode

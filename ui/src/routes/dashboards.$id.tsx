@@ -19,7 +19,6 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { VariablesMenu } from "../components/VariablesMenu";
 import { PublicLink } from "../components/PublicLink";
-import { Tooltip } from "../components/tremor/Tooltip";
 import { useToast } from "../hooks/useToast";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
@@ -43,14 +42,14 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return (
     <div className="p-4 m-4 bg-red-200 rounded-md">
       <p>{error.message}</p>
     </div>
   );
 }
-function DashboardViewComponent() {
+function DashboardViewComponent () {
   const { vars, dev } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();
