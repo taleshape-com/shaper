@@ -20,6 +20,7 @@ type App struct {
 	Type      string    `json:"type"`
 	Content   string    `json:"content"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	UpdatedBy string    `json:"updatedBy"`
 	Path      string    `json:"path"`
 }
 
@@ -77,7 +78,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 	if err != nil {
 		return fmt.Errorf("failed to scan local dashboards: %w", err)
 	}
-	logger.Info("Found local dashboards", slog.Int("count", len(localIDs)))
+	logger.Info("Found local dashboards", slog.String("folder", watchDir), slog.Int("count", len(localIDs)))
 
 	// Compare and categorize
 	var toCreate, toUpdate []App
@@ -166,13 +167,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 	return nil
 }
 
-func fetchAllDashboards(ctx context.Context, client *APIClient) ([]App, error) {
+func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]App, error) {
 	var allDashboards []App
 	page := 1
 	pageSize := 100
 
 	for {
-		apps, totalCount, err := fetchAppsPage(ctx, client, page, pageSize)
+		apps, totalCount, err := fetchAppsPage(ctx, requester, page, pageSize)
 		if err != nil {
 			return nil, err
 		}
@@ -192,16 +193,16 @@ func fetchAllDashboards(ctx context.Context, client *APIClient) ([]App, error) {
 	return allDashboards, nil
 }
 
-func fetchAppsPage(ctx context.Context, client *APIClient, page, pageSize int) ([]App, int, error) {
+func fetchAppsPage(ctx context.Context, requester appsRequester, page, pageSize int) ([]App, int, error) {
 	path := fmt.Sprintf("/api/apps?include_content=true&recursive=true&page=%d&pageSize=%d", page, pageSize)
-	resp, err := client.authedRequest(ctx, http.MethodGet, path, nil)
+	resp, err := requester.DoRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, 0, client.decodeAPIError(resp)
+		return nil, 0, decodeAPIError(resp)
 	}
 
 	var result AppsResponse

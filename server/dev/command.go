@@ -57,6 +57,24 @@ func RunCommand(args []string) error {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
 
+	// deploy subcommand
+	deployFlags := ff.NewFlagSet("deploy").SetParent(rootFlags)
+	deployConfigPath := deployFlags.StringLong("config", defaultConfigPath, "Path to config file")
+
+	deployCmd := &ff.Command{
+		Name:      "deploy",
+		Usage:     "shaper deploy [--config path]",
+		ShortHelp: "deploy dashboards from files using API key auth",
+		Flags:     deployFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+				Level: slog.LevelInfo,
+			}))
+			return RunDeployCommand(ctx, *deployConfigPath, logger)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

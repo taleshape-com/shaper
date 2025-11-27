@@ -25,15 +25,28 @@ type Config struct {
 	LastPull  *time.Time `json:"lastPull,omitempty"`
 }
 
+var ErrConfigNotFound = errors.New("config file not found")
+
 func LoadOrPromptConfig(path string) (Config, error) {
-	data, err := os.ReadFile(path)
+	cfg, err := LoadConfig(path)
 	if err == nil {
-		return parseConfig(data)
+		return cfg, nil
 	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return Config{}, fmt.Errorf("failed to read config: %w", err)
+	if !errors.Is(err, ErrConfigNotFound) {
+		return Config{}, err
 	}
 	return promptAndSaveConfig(path)
+}
+
+func LoadConfig(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return Config{}, fmt.Errorf("%w: %s", ErrConfigNotFound, path)
+		}
+		return Config{}, fmt.Errorf("failed to read config: %w", err)
+	}
+	return parseConfig(data)
 }
 
 func parseConfig(data []byte) (Config, error) {

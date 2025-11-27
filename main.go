@@ -131,7 +131,7 @@ type Config struct {
 }
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "dev" || os.Args[1] == "pull") {
+	if len(os.Args) > 1 && (os.Args[1] == "dev" || os.Args[1] == "pull" || os.Args[1] == "deploy") {
 		if err := dev.RunCommand(os.Args[1:]); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

@@ -146,7 +146,7 @@ func (c *APIClient) CreateDashboard(ctx context.Context, name, content, folderPa
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return "", c.decodeAPIError(resp)
+		return "", decodeAPIError(resp)
 	}
 
 	var result struct {
@@ -176,7 +176,7 @@ func (c *APIClient) SaveDashboardQuery(ctx context.Context, dashboardID, content
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return c.decodeAPIError(resp)
+		return decodeAPIError(resp)
 	}
 	return nil
 }
@@ -207,6 +207,10 @@ func (c *APIClient) authedRequest(ctx context.Context, method, path string, body
 	return resp, nil
 }
 
+func (c *APIClient) DoRequest(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+	return c.authedRequest(ctx, method, path, body)
+}
+
 func (c *APIClient) ensureValidToken(ctx context.Context) error {
 	if c.token == "" || time.Until(c.tokenExpiry) < time.Minute {
 		return c.refreshToken(ctx)
@@ -214,7 +218,7 @@ func (c *APIClient) ensureValidToken(ctx context.Context) error {
 	return nil
 }
 
-func (c *APIClient) decodeAPIError(resp *http.Response) error {
+func decodeAPIError(resp *http.Response) error {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
 	if len(body) == 0 {
 		return fmt.Errorf("request failed with status %s", resp.Status)

@@ -109,7 +109,15 @@ func handleDeployCreate(ctx context.Context, app *core.App, idx int, data deploy
 	content := *data.Content
 	path := *data.Path
 
-	id, err := core.CreateDashboard(app, ctx, name, content, path, false)
+	var requestedID string
+	if data.ID != nil {
+		requestedID = strings.TrimSpace(*data.ID)
+		if requestedID == "" {
+			return deployResult{}, fmt.Errorf("apps[%d]: id cannot be empty when provided", idx)
+		}
+	}
+
+	id, err := core.CreateDashboard(app, ctx, name, content, path, false, requestedID)
 	if err != nil {
 		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 	}

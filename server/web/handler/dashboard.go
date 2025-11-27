@@ -56,7 +56,7 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 			}
 		}
 
-		id, err := core.CreateDashboard(app, c.Request().Context(), request.Name, request.Content, request.Path, request.Temporary)
+		id, err := core.CreateDashboard(app, c.Request().Context(), request.Name, request.Content, request.Path, request.Temporary, "")
 		if err != nil {
 			c.Logger().Error("error creating dashboard:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,

@@ -14,11 +14,14 @@ import (
 
 func ListApps(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
+		ctxUser := c.Get("user")
+		if ctxUser != nil {
+			claims := ctxUser.(*jwt.Token).Claims.(jwt.MapClaims)
+			if _, hasId := claims["dashboardId"]; hasId {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
 		}
 		sort := c.QueryParam("sort")
 		order := c.QueryParam("order")

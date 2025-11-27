@@ -28,12 +28,15 @@ type TmpDashboard struct {
 	Content string `json:"content"`
 }
 
-func CreateDashboard(app *App, ctx context.Context, name string, content string, path string, temporary bool) (string, error) {
+func CreateDashboard(app *App, ctx context.Context, name string, content string, path string, temporary bool, requestedID string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
 	}
-	id := cuid2.Generate()
+	id := strings.TrimSpace(requestedID)
+	if id == "" {
+		id = cuid2.Generate()
+	}
 	if temporary {
 		key := TMP_DASHBOARD_PREFIX + id
 		d := TmpDashboard{
@@ -71,6 +74,17 @@ func CreateDashboard(app *App, ctx context.Context, name string, content string,
 	}
 	if count > 0 {
 		return "", fmt.Errorf("a dashboard with this name already exists in this folder")
+	}
+	if requestedID != "" {
+		var idCount int
+		err = app.Sqlite.GetContext(ctx, &idCount,
+			`SELECT COUNT(*) FROM apps WHERE id = $1`, id)
+		if err != nil {
+			return "", fmt.Errorf("failed to check for duplicate dashboard id: %w", err)
+		}
+		if idCount > 0 {
+			return "", fmt.Errorf("a dashboard with this id already exists")
+		}
 	}
 	err = app.SubmitState(ctx, "create_dashboard", CreateDashboardPayload{
 		ID:        id,
