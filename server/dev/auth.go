@@ -21,7 +21,7 @@ type SystemConfig struct {
 	LoginRequired bool `json:"loginRequired"`
 }
 
-func fetchSystemConfig(ctx context.Context, baseURL string) (SystemConfig, error) {
+func FetchSystemConfig(ctx context.Context, baseURL string) (SystemConfig, error) {
 	var cfg SystemConfig
 	base := strings.TrimSuffix(baseURL, "/")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/system/config", nil)

@@ -50,7 +50,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	systemCfg, err := FetchSystemConfig(ctx, cfg.URL)
 	if err != nil {
 		return err
 	}

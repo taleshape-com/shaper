@@ -74,7 +74,7 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 		return err
 	}
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	systemCfg, err := FetchSystemConfig(ctx, cfg.URL)
 	if err != nil {
 		return err
 	}
