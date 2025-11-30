@@ -63,6 +63,13 @@ const optionSettings = {
   lazyUpdate: true,
 };
 
+// Detect Safari browser
+const isSafari = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const userAgent = window.navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(userAgent);
+};
+
 export const EChart = ({
   option,
   events = {},
@@ -90,7 +97,9 @@ export const EChart = ({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null, { renderer: "canvas" });
+    // Use canvas renderer for Safari, SVG for other browsers
+    const renderer = isSafari() ? "canvas" : "svg";
+    const chart = echarts.init(chartRef.current, null, { renderer });
     if (onChartReady) {
       onChartReady(chart);
     }
