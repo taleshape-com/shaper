@@ -8,7 +8,7 @@ toolchain go1.24.2
 require (
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.2
-	github.com/duckdb/duckdb-go/v2 v2.5.2
+	github.com/duckdb/duckdb-go/v2 v2.5.3
 	github.com/gobwas/ws v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
@@ -29,7 +29,7 @@ require (
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/xuri/excelize/v2 v2.10.0
 	golang.org/x/crypto v0.45.0
-	modernc.org/sqlite v1.40.0
+	modernc.org/sqlite v1.40.1
 )
 
 require (
@@ -45,7 +45,7 @@ require (
 	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.23 // indirect
 	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.23 // indirect
 	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go/arrowmapping v0.0.25 // indirect
+	github.com/duckdb/duckdb-go/arrowmapping v0.0.26 // indirect
 	github.com/duckdb/duckdb-go/mapping v0.0.25 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.9.0 // indirect

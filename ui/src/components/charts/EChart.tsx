@@ -51,7 +51,7 @@ echarts.use([
   MarkLineComponent,
   LabelLayout,
   UniversalTransition,
-  // SVG renderer as default it looks sharper
+  // SVG renderer as default because it looks sharper
   // and allows zooming in browser and PDFs
   SVGRenderer,
   // Using canvas renderer to support downloading as PNG
@@ -61,6 +61,13 @@ echarts.use([
 const optionSettings = {
   replaceMerge: "series",
   lazyUpdate: true,
+};
+
+// Detect Safari browser
+const isSafari = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const userAgent = window.navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(userAgent);
 };
 
 export const EChart = ({
@@ -90,7 +97,9 @@ export const EChart = ({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null, { renderer: "svg" });
+    // Use canvas renderer for Safari, SVG for other browsers
+    const renderer = isSafari() ? "canvas" : "svg";
+    const chart = echarts.init(chartRef.current, null, { renderer });
     if (onChartReady) {
       onChartReady(chart);
     }
