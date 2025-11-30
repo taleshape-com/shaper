@@ -192,7 +192,6 @@ const Boxplot = (props: BoxplotProps) => {
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
 
     return {
-      animation: false,
       color: xData.map((_, i) => colorByIndex.get(i) || primaryColor),
       title: {
         text: label,

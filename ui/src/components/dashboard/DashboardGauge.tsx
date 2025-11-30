@@ -156,7 +156,6 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     const pointerOffset = barWidth - radius;
 
     return {
-      animation: false,
       title: {
         text: label,
         textStyle: {
