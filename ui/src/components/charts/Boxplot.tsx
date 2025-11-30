@@ -535,7 +535,7 @@ const Boxplot = (props: BoxplotProps) => {
   );
 };
 
-function decodeIndexValue(v: string | number, indexType: Column["type"]): string | number {
+function decodeIndexValue (v: string | number, indexType: Column["type"]): string | number {
   if (isDatableType(indexType)) {
     return new Date(v).getTime();
   }

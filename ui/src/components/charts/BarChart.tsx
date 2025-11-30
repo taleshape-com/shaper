@@ -115,7 +115,7 @@ const BarChart = (props: BarChartProps) => {
         color: categoryColors.get(category),
       },
       emphasis: {
-        focus: 'series',
+        focus: "series",
       },
       animationDelay: 100,
       animationDelayUpdate: 100,
@@ -582,6 +582,7 @@ const BarChart = (props: BarChartProps) => {
     chart.setOption({ series }, { lazyUpdate: true });
   }, [
     data,
+    index,
     categories,
     indexType,
     isDarkMode,

@@ -70,17 +70,17 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     ]) as [number, string][];
 
     // Helper to check if a value is a boundary (with float tolerance)
-    function isBoundary(val: number) {
+    function isBoundary (val: number) {
       return boundaryValues.some(b => Math.abs(b - val) < 1e-6);
     }
 
     // axisLabel formatter: only show value at boundaries
-    function valueLabelFormatter(v: number) {
+    function valueLabelFormatter (v: number) {
       return isBoundary(v) ? formatValue(v, valueHeader.type, true).toString() : "";
     }
 
     // Helper to calculate GCD
-    function gcd(a: number, b: number): number {
+    function gcd (a: number, b: number): number {
       return b === 0 ? a : gcd(b, a % b);
     }
 
@@ -214,7 +214,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
             offsetCenter: [0, "-26%"],
             color: theme.textColor,
             fontWeight: 600,
-            formatter: function(v: number) {
+            formatter: function (v: number) {
               return formatValue(v, valueHeader.type, true).toString();
             },
           },

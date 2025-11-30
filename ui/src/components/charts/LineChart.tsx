@@ -98,7 +98,7 @@ const LineChart = (props: LineChartProps) => {
       zlevel: 10,
       emphasis: {
         scale: 1.3,
-        focus: 'self',
+        focus: "self",
       },
       animationDelay: 100,
       animationDelayUpdate: 100,
@@ -356,7 +356,7 @@ const LineChart = (props: LineChartProps) => {
           customValues,
         },
         axisPointer: {
-          type: 'line',
+          type: "line",
           show: true,
           triggerOn: "mousemove",
           lineStyle: {
