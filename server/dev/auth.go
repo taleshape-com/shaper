@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -21,7 +20,7 @@ type SystemConfig struct {
 	LoginRequired bool `json:"loginRequired"`
 }
 
-func FetchSystemConfig(ctx context.Context, baseURL string) (SystemConfig, error) {
+func fetchSystemConfig(ctx context.Context, baseURL string) (SystemConfig, error) {
 	var cfg SystemConfig
 	base := strings.TrimSuffix(baseURL, "/")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/system/config", nil)
@@ -50,21 +49,18 @@ type AuthManager struct {
 	allowedOrigin string
 	authFile      string
 	loginRequired bool
-	logger        *slog.Logger
 	sessionToken  string
 	mu            sync.Mutex
 }
 
-func NewAuthManager(ctx context.Context, baseURL, authFile string, loginRequired bool, logger *slog.Logger) *AuthManager {
-	if logger == nil {
-		logger = slog.Default()
-	}
+func NewAuthManager(ctx context.Context, baseURL, authFile string, loginRequired bool) *AuthManager {
 	trimmedBase := strings.TrimSuffix(baseURL, "/")
 	var allowedOrigin string
 	if parsed, err := url.Parse(trimmedBase); err == nil && parsed.Scheme != "" && parsed.Host != "" {
 		allowedOrigin = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 	} else if err != nil {
-		logger.Warn("Unable to derive origin from dev base URL; falling back to permissive CORS", slog.String("base_url", baseURL), slog.Any("error", err))
+		fmt.Println("WARN: Unable to derive origin from dev base URL; falling back to permissive CORS")
+		fmt.Println("Error: ", err)
 	}
 	return &AuthManager{
 		ctx:           ctx,
@@ -72,7 +68,6 @@ func NewAuthManager(ctx context.Context, baseURL, authFile string, loginRequired
 		allowedOrigin: allowedOrigin,
 		authFile:      authFile,
 		loginRequired: loginRequired,
-		logger:        logger,
 	}
 }
 
@@ -188,7 +183,7 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 
 	go func() {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			a.logger.Error("Auth callback server error", slog.Any("error", err))
+			fmt.Println("ERROR: Auth callback server failed: ", err)
 		}
 	}()
 

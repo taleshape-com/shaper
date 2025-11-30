@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -51,13 +50,7 @@ type deployHTTPClient interface {
 	Actor() string
 }
 
-func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logger) error {
-	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		}))
-	}
-
+func RunDeployCommand(ctx context.Context, configPath string) error {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
@@ -70,11 +63,16 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}
-	if err := EnsureDirExists(watchDir); err != nil {
+	if err := ensureDirExists(watchDir); err != nil {
 		return err
 	}
 
-	systemCfg, err := FetchSystemConfig(ctx, cfg.URL)
+	fmt.Printf("Deploying Shaper dashboards...\n\n")
+	fmt.Println("Current time: ", time.Now().Format(time.RFC3339))
+	fmt.Println("Last pulled:  ", cfg.LastPull.Format(time.RFC3339))
+	fmt.Println()
+
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
 	if err != nil {
 		return err
 	}
@@ -84,28 +82,28 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 	var client deployHTTPClient
 	switch {
 	case apiKey != "":
-		client, err = newAPIKeyClient(cfg.URL, apiKey, logger)
+		client, err = newAPIKeyClient(cfg.URL, apiKey)
 		if err != nil {
 			return err
 		}
 	case !systemCfg.LoginRequired:
-		client = newOpenDeployClient(cfg.URL, logger)
+		client = newOpenDeployClient(cfg.URL)
 	default:
 		return fmt.Errorf("%s must be set to run shaper deploy when login is required", deployAPIKeyEnv)
 	}
-
-	localDashboards, err := loadLocalDashboards(watchDir)
-	if err != nil {
-		return err
-	}
-	logger.Info("Loaded local dashboards", slog.Int("count", len(localDashboards)))
-
-	logger.Info("Fetching remote dashboards...", slog.String("url", cfg.URL))
+	fmt.Println("Fetching remote dashboards from", cfg.URL)
 	remoteDashboards, err := fetchAllDashboards(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to fetch dashboards: %w", err)
 	}
-	logger.Info("Loaded remote dashboards", slog.Int("count", len(remoteDashboards)))
+	fmt.Printf("Found %d remote dashboards.\n", len(remoteDashboards))
+
+	fmt.Println("Loading dashboards from folder", watchDir)
+	localDashboards, err := loadLocalDashboards(watchDir)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Found %d local dashboards.\n", len(localDashboards))
 
 	remoteDashboardsByID := make(map[string]App, len(remoteDashboards))
 	for _, dashboard := range remoteDashboards {
@@ -118,11 +116,9 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 		return err
 	}
 
-	logger.Info("Last pulled", slog.Time("time", cfg.LastPull.UTC()))
-
 	ops := buildDeployOperations(localDashboards, remoteDashboards)
 	if len(ops) == 0 {
-		logger.Info("No changes detected; nothing to deploy")
+		fmt.Printf("\nNo changes detected; nothing to deploy.\n")
 		return nil
 	}
 
@@ -138,19 +134,14 @@ func RunDeployCommand(ctx context.Context, configPath string, logger *slog.Logge
 		}
 	}
 
-	logger.Info("Submitting deploy request",
-		slog.Int("operations", len(ops)),
-		slog.Int("creates", createCount),
-		slog.Int("updates", updateCount),
-		slog.Int("deletes", deleteCount))
-
-	logDeployChanges(logger, ops, localDashboards, remoteDashboardsByID)
+	fmt.Printf("\nChanges: create=%d, update=%d, delete=%d\n\n", createCount, updateCount, deleteCount)
+	logDeployChanges(ops, localDashboards, remoteDashboardsByID)
 
 	if err := submitDeploy(ctx, client, ops); err != nil {
 		return err
 	}
 
-	logger.Info("Deploy completed", slog.Time("timestamp", time.Now().UTC()))
+	fmt.Printf("\nDeploy completed.\n")
 	return nil
 }
 
@@ -319,12 +310,8 @@ func dashboardsDiffer(local LocalDashboard, remote App) bool {
 	return local.Content != remote.Content
 }
 
-func logDeployChanges(logger *slog.Logger, ops []deployOperation, local map[string]LocalDashboard, remote map[string]App) {
+func logDeployChanges(ops []deployOperation, local map[string]LocalDashboard, remote map[string]App) {
 	for _, op := range ops {
-		changeAttrs := []any{
-			slog.String("id", op.Data.ID),
-		}
-
 		var (
 			currentPath string
 			currentName string
@@ -350,20 +337,19 @@ func logDeployChanges(logger *slog.Logger, ops []deployOperation, local map[stri
 			currentName = prev.Name
 		}
 
-		changeAttrs = append(changeAttrs,
-			slog.String("path", currentPath),
-			slog.String("name", currentName),
-		)
-
+		extra := ""
 		if hasPrev && op.Operation != "delete" {
-			changeAttrs = append(changeAttrs,
-				slog.String("previous_path", prev.Path),
-				slog.String("previous_name", prev.Name),
-				slog.Time("previous_updated_at", prev.UpdatedAt),
-			)
+			extra = " (last_updated=" + prev.UpdatedAt.Format(time.RFC3339)
+			if prev.Path != currentPath {
+				extra += fmt.Sprintf(", previous_path=%s", prev.Path)
+			}
+			if prev.Name != currentName {
+				extra += fmt.Sprintf(", previous_name=%s", prev.Name)
+			}
+			extra += ")"
 		}
 
-		logger.Info(op.Operation, (changeAttrs)...)
+		fmt.Printf("%s %s: %s%s%s\n", op.Operation, op.Data.ID, currentPath, currentName, extra)
 	}
 }
 
@@ -391,19 +377,15 @@ type apiKeyClient struct {
 	httpClient *http.Client
 	apiKey     string
 	actor      string
-	logger     *slog.Logger
 }
 
-func newAPIKeyClient(baseURL, apiKey string, logger *slog.Logger) (*apiKeyClient, error) {
+func newAPIKeyClient(baseURL, apiKey string) (*apiKeyClient, error) {
 	keyID, actor, err := parseAPIKeyActor(apiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	if logger == nil {
-		logger = slog.Default()
-	}
-	logger.Info("Using API key for deploy", slog.String("key_id", keyID))
+	fmt.Println("Using API key: ", keyID)
 
 	return &apiKeyClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
@@ -412,7 +394,6 @@ func newAPIKeyClient(baseURL, apiKey string, logger *slog.Logger) (*apiKeyClient
 		},
 		apiKey: apiKey,
 		actor:  actor,
-		logger: logger,
 	}, nil
 }
 
@@ -438,20 +419,15 @@ func (c *apiKeyClient) Actor() string {
 type openDeployClient struct {
 	baseURL    string
 	httpClient *http.Client
-	logger     *slog.Logger
 }
 
-func newOpenDeployClient(baseURL string, logger *slog.Logger) *openDeployClient {
-	if logger == nil {
-		logger = slog.Default()
-	}
-	logger.Info("Using unauthenticated deploy client")
+func newOpenDeployClient(baseURL string) *openDeployClient {
+	fmt.Printf("Using unauthenticated deploy client.\n\n")
 	return &openDeployClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		logger: logger,
 	}
 }
 

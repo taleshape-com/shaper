@@ -1,8 +1,6 @@
 package dev
 
 import (
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,8 +137,7 @@ func TestEnsureShaperIDsForDir(t *testing.T) {
 		t.Fatalf("failed writing withoutID file: %v", err)
 	}
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if err := ensureShaperIDsForDir(tmpDir, logger); err != nil {
+	if err := ensureShaperIDsForDir(tmpDir); err != nil {
 		t.Fatalf("ensureShaperIDsForDir returned error: %v", err)
 	}
 

@@ -27,7 +27,7 @@ type Config struct {
 
 var ErrConfigNotFound = errors.New("config file not found")
 
-func LoadOrPromptConfig(path string) (Config, error) {
+func loadOrPromptConfig(path string) (Config, error) {
 	cfg, err := LoadConfig(path)
 	if err == nil {
 		return cfg, nil
@@ -124,7 +124,7 @@ func SaveConfig(path string, cfg Config) error {
 	return nil
 }
 
-func EnsureDirExists(path string) error {
+func ensureDirExists(path string) error {
 	if stat, err := os.Stat(path); err == nil {
 		if !stat.IsDir() {
 			return fmt.Errorf("%s is not a directory", path)

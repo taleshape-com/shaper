@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -17,23 +16,17 @@ type APIClient struct {
 	baseURL     string
 	httpClient  *http.Client
 	token       string
-	logger      *slog.Logger
 	tokenExpiry time.Time
 	auth        *AuthManager
 }
 
-func NewAPIClient(ctx context.Context, baseURL string, logger *slog.Logger, auth *AuthManager) (*APIClient, error) {
-	if logger == nil {
-		logger = slog.Default()
-	}
-
+func NewAPIClient(ctx context.Context, baseURL string, auth *AuthManager) (*APIClient, error) {
 	client := &APIClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
-		logger: logger,
-		auth:   auth,
+		auth: auth,
 	}
 	if err := client.refreshToken(ctx); err != nil {
 		return nil, err
@@ -102,7 +95,7 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 			return fmt.Errorf("failed to parse token expiry: %w", err)
 		}
 		c.tokenExpiry = expiry
-		c.logger.Info("Obtained JWT for dev mode")
+		fmt.Println("Generated JWT.")
 		return nil
 	}
 	return fmt.Errorf("failed to refresh token after re-authentication")

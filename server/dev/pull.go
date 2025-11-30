@@ -31,8 +31,8 @@ type AppsResponse struct {
 	TotalCount int   `json:"totalCount"`
 }
 
-func RunPullCommand(ctx context.Context, configPath, authFile string, logger *slog.Logger) error {
-	cfg, err := LoadOrPromptConfig(configPath)
+func RunPullCommand(ctx context.Context, configPath, authFile string) error {
+	cfg, err := loadOrPromptConfig(configPath)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}
-	if err := EnsureDirExists(watchDir); err != nil {
+	if err := ensureDirExists(watchDir); err != nil {
 		return err
 	}
 
@@ -50,35 +50,38 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}
 
-	systemCfg, err := FetchSystemConfig(ctx, cfg.URL)
+	fmt.Printf("Pulling dashboard changes...\n\n")
+
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
 	if err != nil {
 		return err
 	}
 
-	authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired, logger)
+	authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
 	if err := authManager.EnsureSession(); err != nil {
 		return err
 	}
 
-	client, err := NewAPIClient(ctx, cfg.URL, logger, authManager)
+	client, err := NewAPIClient(ctx, cfg.URL, authManager)
 	if err != nil {
 		return fmt.Errorf("failed to initialize API client: %w", err)
 	}
 
 	// Fetch all dashboards from remote
-	logger.Info("Fetching dashboards from server...", slog.String("url", cfg.URL))
+	fmt.Println("Fetching dashboards from", cfg.URL)
 	remoteDashboards, err := fetchAllDashboards(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to fetch dashboards: %w", err)
 	}
-	logger.Info("Found remote dashboards", slog.Int("count", len(remoteDashboards)))
+	fmt.Printf("Found %d remote dashboards\n", len(remoteDashboards))
 
 	// Scan local files for existing dashboard IDs
+	fmt.Println("Loading dashboards from folder", watchDir)
 	localIDs, err := scanLocalDashboardIDs(watchDir)
 	if err != nil {
 		return fmt.Errorf("failed to scan local dashboards: %w", err)
 	}
-	logger.Info("Found local dashboards", slog.String("folder", watchDir), slog.Int("count", len(localIDs)))
+	fmt.Printf("Found %d local dashboards.\n", len(localIDs))
 
 	// Compare and categorize
 	var toCreate, toUpdate []App
@@ -112,7 +115,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 	}
 
 	if len(toCreate) == 0 && len(toUpdate) == 0 {
-		fmt.Println("No changes.")
+		fmt.Printf("\nNo changes.\n")
 		return nil
 	}
 
@@ -146,11 +149,11 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, logger *sl
 	var writeErrors []error
 	for _, dashboard := range append(toCreate, toUpdate...) {
 		if err := writeDashboardFile(watchDir, dashboard); err != nil {
-			logger.Error("Failed to write dashboard", slog.String("name", dashboard.Name), slog.Any("error", err))
+			fmt.Printf("ERROR: Failed to write dashboard '%s': %s\n", dashboard.Name, err)
 			writeErrors = append(writeErrors, err)
 			continue
 		}
-		logger.Info("Wrote dashboard", slog.String("path", dashboard.Path+dashboard.Name+DASHBOARD_SUFFIX))
+		fmt.Println("Wrote dashboard", slog.String("path", dashboard.Path+dashboard.Name+DASHBOARD_SUFFIX))
 	}
 
 	if len(writeErrors) > 0 {

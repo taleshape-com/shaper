@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"shaper/server/comms"
 	"shaper/server/core"
 	"shaper/server/dev"
@@ -305,7 +304,7 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(devFlags, usage))
 				return nil
 			}
-			return runDevCommand(ctx, *devConfigPath, *devAuthFile)
+			return dev.RunDevCommand(ctx, *devConfigPath, *devAuthFile)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, devCmd)
@@ -329,10 +328,7 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(pullFlags, usage))
 				return nil
 			}
-			logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-				Level: slog.LevelInfo,
-			}))
-			return dev.RunPullCommand(ctx, *pullConfigPath, *pullAuthFile, logger)
+			return dev.RunPullCommand(ctx, *pullConfigPath, *pullAuthFile)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
@@ -357,73 +353,11 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(deployFlags, usage))
 				return nil
 			}
-			logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-				Level: slog.LevelInfo,
-			}))
-			return dev.RunDeployCommand(ctx, *deployConfigPath, logger)
+			return dev.RunDeployCommand(ctx, *deployConfigPath)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
 	return deployCmd
-}
-
-func runDevCommand(ctx context.Context, configPath, authFile string) error {
-	cfg, err := dev.LoadOrPromptConfig(configPath)
-	if err != nil {
-		return err
-	}
-
-	watchDir, err := filepath.Abs(cfg.Directory)
-	if err != nil {
-		return fmt.Errorf("failed to resolve watch directory: %w", err)
-	}
-	if err := dev.EnsureDirExists(watchDir); err != nil {
-		return err
-	}
-
-	if authFile == "" {
-		authFile = ".shaper-auth"
-	}
-	authFilePath, err := filepath.Abs(authFile)
-	if err != nil {
-		return fmt.Errorf("failed to resolve auth file path: %w", err)
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
-	systemCfg, err := dev.FetchSystemConfig(ctx, cfg.URL)
-	if err != nil {
-		return err
-	}
-
-	authManager := dev.NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired, logger)
-	if err := authManager.EnsureSession(); err != nil {
-		return err
-	}
-
-	client, err := dev.NewAPIClient(ctx, cfg.URL, logger, authManager)
-	if err != nil {
-		return fmt.Errorf("failed to initialize API client: %w", err)
-	}
-
-	watcher, err := dev.Watch(dev.WatchConfig{
-		WatchDirPath: watchDir,
-		Client:       client,
-		Logger:       logger,
-		BaseURL:      cfg.URL,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start watcher: %w", err)
-	}
-
-	logger.Info("Watching dashboards; press Ctrl+C to stop", slog.String("dir", watchDir), slog.String("url", cfg.URL))
-
-	<-ctx.Done()
-	watcher.Stop()
-	logger.Info("Stopped dev watcher")
-	return nil
 }
 
 func loadConfigFromFlags(

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -34,7 +33,6 @@ type DashboardClient interface {
 type WatchConfig struct {
 	WatchDirPath string
 	Client       DashboardClient
-	Logger       *slog.Logger
 	BaseURL      string
 }
 
@@ -46,7 +44,6 @@ type Dev struct {
 	connMutex      sync.RWMutex
 	dashboardFiles map[string]string // dashboardID -> file path
 	filesMutex     sync.RWMutex
-	logger         *slog.Logger
 	client         DashboardClient
 	baseURL        string
 }
@@ -72,16 +69,10 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 		cfg.BaseURL = "http://localhost:5454"
 	}
 
-	logger := cfg.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
-
 	// Create Dev instance with websocket support
 	dev := Dev{
 		connections:    make(map[string][]*websocketConn),
 		dashboardFiles: make(map[string]string),
-		logger:         logger,
 		client:         cfg.Client,
 		baseURL:        strings.TrimSuffix(cfg.BaseURL, "/"),
 	}
@@ -94,9 +85,8 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	dev.port = port
 	dev.server = server
 
-	dev.logger.Info("Watching dashboard files in dev mode",
-		slog.String("dir", cfg.WatchDirPath),
-		slog.Int("websocket_port", port))
+	fmt.Println("Watching files:", cfg.WatchDirPath)
+	fmt.Printf("Dev server listening at :%d\n", port)
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
 	// an event if the receiver is not able to keep up the sending pace.
@@ -110,7 +100,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 		return nil, err
 	}
 
-	if err := ensureShaperIDsForDir(absWatchDir, dev.logger); err != nil {
+	if err := ensureShaperIDsForDir(absWatchDir); err != nil {
 		return nil, fmt.Errorf("failed ensuring shaper IDs for dashboards in %s: %w", absWatchDir, err)
 	}
 
@@ -127,27 +117,24 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 			// TODO: on windows need to convert \ to /
 			fPath, found := strings.CutPrefix(path.Dir(p), absWatchDir)
 			if !found {
-				dev.logger.Error("Failed removing prefix from dir of watched file", slog.String("dir", path.Dir(p)), slog.String("absWatchDir", absWatchDir))
+				fmt.Printf("ERROR: Failed removing prefix '%s' from dir %s\n", absWatchDir, path.Dir(p))
 				continue
 			}
 			name, found := strings.CutSuffix(path.Base(p), DASHBOARD_SUFFIX)
 			if !found {
-				dev.logger.Error("Failed removing dashboard suffix from watched file name", slog.String("file", path.Base(p)))
+				fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", DASHBOARD_SUFFIX, path.Base(p))
 				continue
 			}
 
 			ctx := context.Background()
 			contentBytes, updated, shaperID, err := ensureShaperIDForFile(p)
 			if err != nil {
-				dev.logger.Error("Failed ensuring shaper ID for dashboard file", slog.String("file", p), slog.Any("error", err))
+				fmt.Printf("ERROR: Failed ensuring ID comment in file '%s': %s\n", p, err)
 				continue
 			}
 
 			if updated {
-				dev.logger.Info("Added shaper ID comment to dashboard file",
-					slog.String("file", p),
-					slog.String("shaper_id", shaperID))
-
+				fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
 				// Skip further handling for this event; the write will trigger a new event
 				continue
 			}
@@ -174,9 +161,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 					errStr := err.Error()
 					if strings.Contains(errStr, "key not found") || strings.Contains(errStr, "failed to get dashboard") {
 						// Dashboard expired, recreate it
-						dev.logger.Info("Temporary dashboard expired, recreating",
-							slog.String("old_dashboard_id", existingDashboardID),
-							slog.String("file", p))
+						fmt.Printf("Temporary dashboard for '%s' expired, recreating\n", p)
 
 						// Remove the expired dashboard from tracking
 						dev.filesMutex.Lock()
@@ -186,7 +171,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 						// Create new dashboard
 						dashboardID, err = dev.client.CreateDashboard(ctx, name, content, fPath+"/")
 						if err != nil {
-							dev.logger.Error("Failed recreating expired dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+							fmt.Printf("ERROR: Failed recreating expired dashboard for '%s': %s\n", p, err)
 							continue
 						}
 
@@ -195,42 +180,35 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 						dev.dashboardFiles[dashboardID] = p
 						dev.filesMutex.Unlock()
 
-						dev.logger.Info("Recreated expired dashboard from file",
-							slog.String("name", name),
-							slog.String("path", fPath),
-							slog.String("old_dashboard_id", existingDashboardID),
-							slog.String("new_dashboard_id", dashboardID))
+						fmt.Printf("Recreated expired dashboard for '%s%s'\n", fPath, name)
 
 						url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
 						if err := OpenURL(url); err != nil {
-							dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
+							fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
 						}
 						continue
 					}
 
 					// Other error, log and continue
-					dev.logger.Error("Failed updating existing dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+					fmt.Printf("ERROR: Failed updating dashboard '%s': %s\n", p, err)
 					continue
 				}
 				dashboardID = existingDashboardID
-				dev.logger.Info("Updated existing dashboard from file",
-					slog.String("name", name),
-					slog.String("path", fPath+"/"),
-					slog.String("dashboard_id", dashboardID))
+				fmt.Printf("Updated dashboard '%s%s'\n", fPath+"/", name)
 
 				// Notify websocket clients
 				notified := dev.notifyClients(dashboardID)
 				if !notified {
 					url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
 					if err := OpenURL(url); err != nil {
-						dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
+						fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
 					}
 				}
 			} else {
 				// Create new dashboard
 				dashboardID, err = dev.client.CreateDashboard(ctx, name, content, fPath+"/")
 				if err != nil {
-					dev.logger.Error("Failed creating dashboard from watched file", slog.String("file", p), slog.Any("error", err))
+					fmt.Printf("ERROR: Failed creating dashboard for '%s': %s\n", p, err)
 					continue
 				}
 
@@ -239,14 +217,11 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 				dev.dashboardFiles[dashboardID] = p
 				dev.filesMutex.Unlock()
 
-				dev.logger.Info("Created new dashboard from file",
-					slog.String("name", name),
-					slog.String("path", fPath),
-					slog.String("dashboard_id", dashboardID))
+				fmt.Printf("Created new dashboard for '%s%s'\n", fPath, name)
 
 				url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
 				if err := OpenURL(url); err != nil {
-					dev.logger.Error("Failed opening dashboard in browser", slog.String("url", url), slog.Any("error", err))
+					fmt.Printf("ERROR: Failed opening '%s' in browser: %s\b", url, err)
 				}
 			}
 		}
@@ -282,7 +257,7 @@ func (d *Dev) startWebSocketServer() (int, *http.Server, error) {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			d.logger.Error("WebSocket server error", slog.Any("error", err))
+			fmt.Printf("ERROR: WebSocket server error: %s\n", err)
 		}
 	}()
 
@@ -300,7 +275,7 @@ func (d *Dev) handleWebSocket() http.HandlerFunc {
 
 		conn, _, _, err := ws.UpgradeHTTP(r, w)
 		if err != nil {
-			d.logger.Error("WebSocket upgrade failed", slog.Any("error", err))
+			fmt.Printf("ERROR: WebSocket upgrade failed: %s\n", err)
 			return
 		}
 
@@ -317,18 +292,14 @@ func (d *Dev) handleWebSocket() http.HandlerFunc {
 		d.connections[dashboardID] = append(d.connections[dashboardID], wsConn)
 		d.connMutex.Unlock()
 
-		d.logger.Info("WebSocket connection established",
-			slog.String("dashboardId", dashboardID),
-			slog.String("connId", wsConn.id))
+		fmt.Printf("WebSocket connection established for dashboard '%s'\n", dashboardID)
 
 		// Handle connection cleanup when it closes
 		go func() {
 			defer func() {
 				conn.Close()
 				d.removeConnection(dashboardID, wsConn.id)
-				d.logger.Info("WebSocket connection closed",
-					slog.String("dashboardId", dashboardID),
-					slog.String("connId", wsConn.id))
+				fmt.Printf("WebSocket connection closed for dashboard '%s'\n", dashboardID)
 			}()
 
 			// Keep connection alive by reading messages (though we don't expect any)
@@ -447,7 +418,7 @@ func ensureShaperIDForFile(filePath string) ([]byte, bool, string, error) {
 	return []byte(newContent), true, newID, nil
 }
 
-func ensureShaperIDsForDir(dir string, logger *slog.Logger) error {
+func ensureShaperIDsForDir(dir string) error {
 	var aggregated error
 
 	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, walkErr error) error {
@@ -463,17 +434,13 @@ func ensureShaperIDsForDir(dir string, logger *slog.Logger) error {
 
 		_, updated, shaperID, err := ensureShaperIDForFile(p)
 		if err != nil {
-			logger.Error("Failed ensuring shaper ID for dashboard file",
-				slog.String("file", p),
-				slog.Any("error", err))
+			fmt.Printf("ERROR: Failed ensuring ID comment in file '%s': %s\n", p, err)
 			aggregated = errors.Join(aggregated, fmt.Errorf("%s: %w", p, err))
 			return nil
 		}
 
 		if updated {
-			logger.Info("Added shaper ID comment to dashboard file",
-				slog.String("file", p),
-				slog.String("shaper_id", shaperID))
+			fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
 		}
 
 		return nil
