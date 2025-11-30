@@ -114,6 +114,11 @@ const BarChart = (props: BarChartProps) => {
       itemStyle: {
         color: categoryColors.get(category),
       },
+      emphasis: {
+        focus: 'series',
+      },
+      animationDelay: 100,
+      animationDelayUpdate: 100,
     }));
 
     if (markLines) {
@@ -135,6 +140,7 @@ const BarChart = (props: BarChartProps) => {
         markLine: {
           silent: true,
           symbol: "none",
+          animation: false,
           data: markLines.filter(m => !m.isYAxis || layout === "horizontal").map(m => {
             const isGoalLine = m.isYAxis || layout === "vertical";
             return {
@@ -214,7 +220,6 @@ const BarChart = (props: BarChartProps) => {
     }
 
     return {
-      animation: false,
       title: {
         text: label,
         textStyle: {
@@ -397,8 +402,8 @@ const BarChart = (props: BarChartProps) => {
           triggerTooltip: layout === "horizontal",
           lineStyle: {
             color: referenceLineColor,
-            type: "dashed",
-            width: 0.8,
+            type: "solid",
+            width: 0.65,
           },
           label: {
             show: data.length > 1,
@@ -461,8 +466,8 @@ const BarChart = (props: BarChartProps) => {
           triggerOn: "mousemove",
           lineStyle: {
             color: referenceLineColor,
-            type: "dashed",
-            width: 0.8,
+            type: "solid",
+            width: 0.65,
           },
           label: {
             show: layout === "horizontal" || dataCopy.length > 1,
@@ -564,10 +569,10 @@ const BarChart = (props: BarChartProps) => {
         },
         lineStyle: {
           color: referenceLineColor,
-          type: "dashed",
-          width: 0.8,
+          type: "solid",
+          width: 0.65,
         },
-        data: isHovering != null ? [{
+        data: isHovering != null && (data.length !== 1 || data[0][index] === isHovering) ? [{
           [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && layout === "vertical"
             ? indexType === "number" ? isHovering.toString() : new Date(isHovering).toISOString()
             : isHovering,
@@ -576,6 +581,7 @@ const BarChart = (props: BarChartProps) => {
     }];
     chart.setOption({ series }, { lazyUpdate: true });
   }, [
+    data,
     categories,
     indexType,
     isDarkMode,

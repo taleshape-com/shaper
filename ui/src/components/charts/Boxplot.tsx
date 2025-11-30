@@ -192,7 +192,6 @@ const Boxplot = (props: BoxplotProps) => {
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
 
     return {
-      animation: false,
       color: xData.map((_, i) => colorByIndex.get(i) || primaryColor),
       title: {
         text: label,
@@ -536,7 +535,7 @@ const Boxplot = (props: BoxplotProps) => {
   );
 };
 
-function decodeIndexValue (v: string | number, indexType: Column["type"]): string | number {
+function decodeIndexValue(v: string | number, indexType: Column["type"]): string | number {
   if (isDatableType(indexType)) {
     return new Date(v).getTime();
   }

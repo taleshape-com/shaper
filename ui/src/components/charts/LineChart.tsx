@@ -93,21 +93,15 @@ const LineChart = (props: LineChartProps) => {
         : data.map((item) => item[category]),
       connectNulls: true,
       symbol: "circle",
-      symbolSize: 6,
+      symbolSize: data.length > 1 ? 8 : 10,
       cursor: "crosshair",
+      zlevel: 10,
       emphasis: {
-        cursor: "crosshair",
-        itemStyle: {
-          color: categoryColors.get(category),
-          borderWidth: 0,
-          shadowBlur: 0,
-          shadowColor: categoryColors.get(category),
-          opacity: 1,
-        },
-        lineStyle: {
-          width: 2,
-        },
+        scale: 1.3,
+        focus: 'self',
       },
+      animationDelay: 100,
+      animationDelayUpdate: 100,
       lineStyle: {
         color: categoryColors.get(category),
         width: 2,
@@ -136,6 +130,7 @@ const LineChart = (props: LineChartProps) => {
         type: "line" as const,
         markLine: {
           silent: true,
+          animation: false,
           symbol: "none",
           data: markLines.map(m => {
             return {
@@ -202,7 +197,6 @@ const LineChart = (props: LineChartProps) => {
     }
 
     return {
-      animation: false,
       title: {
         text: label,
         textStyle: {
@@ -362,13 +356,13 @@ const LineChart = (props: LineChartProps) => {
           customValues,
         },
         axisPointer: {
-          type: data.length > 1 ? "line" : "none",
+          type: 'line',
           show: true,
           triggerOn: "mousemove",
           lineStyle: {
             color: referenceLineColor,
-            type: "dashed",
-            width: 0.8,
+            type: "solid",
+            width: 0.65,
           },
           label: {
             show: true,
@@ -423,6 +417,11 @@ const LineChart = (props: LineChartProps) => {
             },
             fontFamily: chartFont,
             margin: 10,
+          },
+          lineStyle: {
+            color: referenceLineColor,
+            type: "solid",
+            width: 0.65,
           },
         },
         axisLine: {
@@ -502,6 +501,8 @@ const LineChart = (props: LineChartProps) => {
       id: "shaper-hover-reference-line",
       type: "line" as const,
       markLine: {
+        animationDuration: 100,
+        animationDurationUpdate: 100,
         silent: true,
         symbol: "none",
         label: {
@@ -509,16 +510,16 @@ const LineChart = (props: LineChartProps) => {
         },
         lineStyle: {
           color: referenceLineColor,
-          type: "dashed",
-          width: 0.8,
+          type: "solid",
+          width: 0.65,
         },
-        data: isHovering != null ? [{ xAxis: isHovering }] : [],
+        data: isHovering != null && (data.length !== 1 || data[0][index] === isHovering) ? [{ xAxis: isHovering }] : [],
       },
     }];
     chart.setOption({ series }, { lazyUpdate: true });
   }, [
-    categories,
-    indexType,
+    data,
+    index,
     isDarkMode,
     isHovering,
   ]);

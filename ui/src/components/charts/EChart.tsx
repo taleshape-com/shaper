@@ -51,7 +51,7 @@ echarts.use([
   MarkLineComponent,
   LabelLayout,
   UniversalTransition,
-  // SVG renderer as default it looks sharper
+  // SVG renderer as default because it looks sharper
   // and allows zooming in browser and PDFs
   SVGRenderer,
   // Using canvas renderer to support downloading as PNG
@@ -90,7 +90,7 @@ export const EChart = ({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null, { renderer: "svg" });
+    const chart = echarts.init(chartRef.current, null, { renderer: "canvas" });
     if (onChartReady) {
       onChartReady(chart);
     }
