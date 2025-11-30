@@ -9,8 +9,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -138,10 +140,41 @@ func RunPullCommand(ctx context.Context, configPath, authFile string) error {
 	// Ask for confirmation
 	fmt.Print("Proceed with pull? [y/N]: ")
 	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
+
+	// Set up signal handling for CTRL-C
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGINT)
+	defer signal.Stop(sigChan)
+
+	// Channel to receive input
+	inputChan := make(chan string, 1)
+	errChan := make(chan error, 1)
+
+	// Read input in a goroutine
+	go func() {
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			errChan <- err
+			return
+		}
+		inputChan <- input
+	}()
+
+	// Wait for either input or signal
+	var input string
+	select {
+	case input = <-inputChan:
+		// Got input, continue
+	case <-sigChan:
+		fmt.Print("\n\nInterrupted\n\n")
+		return ErrInterrupted
+	case err := <-errChan:
+		return fmt.Errorf("failed to read input: %w", err)
+	}
+
 	input = strings.TrimSpace(strings.ToLower(input))
 	if input != "y" && input != "yes" {
-		fmt.Println("Pull cancelled.")
+		fmt.Println("\nPull cancelled.")
 		return nil
 	}
 

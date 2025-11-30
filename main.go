@@ -148,6 +148,10 @@ func main() {
 		if errors.Is(err, ff.ErrHelp) {
 			os.Exit(0)
 		}
+		// Check if user interrupted (CTRL-C), exit with code 0
+		if errors.Is(err, dev.ErrInterrupted) {
+			os.Exit(130)
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	}

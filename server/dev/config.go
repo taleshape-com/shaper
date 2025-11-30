@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -26,6 +28,7 @@ type Config struct {
 }
 
 var ErrConfigNotFound = errors.New("config file not found")
+var ErrInterrupted = errors.New("interrupted by user")
 
 func loadOrPromptConfig(path string) (Config, error) {
 	cfg, err := LoadConfig(path)
@@ -75,14 +78,20 @@ func normalizeConfig(cfg Config) (Config, error) {
 }
 
 func promptAndSaveConfig(path string) (Config, error) {
-	fmt.Printf("Config file %s not found. Let's create it.\n", path)
+	fmt.Printf("Config file %s not found. Let's create it.\n\n", path)
 	reader := bufio.NewReader(os.Stdin)
 
-	urlVal := prompt(reader, fmt.Sprintf("Server URL [%s]: ", defaultServerURL))
+	urlVal, err := prompt(reader, fmt.Sprintf("Server URL [Press ENTER to use %s]: ", defaultServerURL))
+	if err != nil {
+		return Config{}, err
+	}
 	if urlVal == "" {
 		urlVal = defaultServerURL
 	}
-	dirVal := prompt(reader, fmt.Sprintf("Directory to watch [%s]: ", defaultWatchFolder))
+	dirVal, err := prompt(reader, fmt.Sprintf("Directory to watch [Press ENTER to use %s]: ", defaultWatchFolder))
+	if err != nil {
+		return Config{}, err
+	}
 	if dirVal == "" {
 		dirVal = defaultWatchFolder
 	}
@@ -101,10 +110,38 @@ func promptAndSaveConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
-func prompt(reader *bufio.Reader, msg string) string {
+func prompt(reader *bufio.Reader, msg string) (string, error) {
 	fmt.Print(msg)
-	input, _ := reader.ReadString('\n')
-	return strings.TrimSpace(input)
+
+	// Set up signal handling for CTRL-C
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGINT)
+	defer signal.Stop(sigChan)
+
+	// Channel to receive input
+	inputChan := make(chan string, 1)
+	errChan := make(chan error, 1)
+
+	// Read input in a goroutine
+	go func() {
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			errChan <- err
+			return
+		}
+		inputChan <- input
+	}()
+
+	// Wait for either input or signal
+	select {
+	case input := <-inputChan:
+		return strings.TrimSpace(input), nil
+	case <-sigChan:
+		fmt.Print("\n\nInterrupted\n\n")
+		return "", ErrInterrupted
+	case err := <-errChan:
+		return "", err
+	}
 }
 
 func SaveConfig(path string, cfg Config) error {

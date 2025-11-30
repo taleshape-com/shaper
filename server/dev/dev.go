@@ -7,6 +7,8 @@ import (
 )
 
 func RunDevCommand(ctx context.Context, configPath, authFile string) error {
+	fmt.Printf("Starting Shaper Dev File Watcher...\n\n")
+
 	cfg, err := loadOrPromptConfig(configPath)
 	if err != nil {
 		return err
@@ -28,7 +30,6 @@ func RunDevCommand(ctx context.Context, configPath, authFile string) error {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}
 
-	fmt.Printf("Starting Shaper Dev File Watcher...\n\n")
 	fmt.Println("Connecting to Shaper at: " + cfg.URL)
 
 	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
