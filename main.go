@@ -164,82 +164,82 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		os.Exit(1)
 	}
 
-	rootFlags := ff.NewFlagSet(APP_NAME)
+	flags := ff.NewFlagSet(APP_NAME)
 	rootCmd := &ff.Command{
 		Name:      APP_NAME,
 		Usage:     fmt.Sprintf("%s [FLAGS] | %s <subcommand> [FLAGS]", APP_NAME, APP_NAME),
 		ShortHelp: "Shaper is a minimal data platform built on top of DuckDB and NATS to create analytics dashboards",
-		Flags:     rootFlags,
+		Flags:     flags,
 	}
 
 	// Add all server configuration flags
-	help := rootFlags.Bool('h', "help", "show help")
-	version := rootFlags.Bool('v', "version", "show version")
-	logLevel := rootFlags.StringLong("log-level", "info", "log level: debug, info, warn, error")
-	addr := rootFlags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
-	dataDir := rootFlags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
-	customCSS := rootFlags.StringLong("css", "", "CSS string to inject into the frontend")
-	favicon := rootFlags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
-	initSQL := rootFlags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
-	initSQLFile := rootFlags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
-	snapshotS3Bucket := rootFlags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
-	snapshotS3Endpoint := rootFlags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (optional, defaults to AWS S3 if not provided)")
-	snapshotS3AccessKey := rootFlags.StringLong("snapshot-s3-access-key", "", "S3 access key (optional, can use AWS_ACCESS_KEY_ID environment variable)")
-	snapshotS3SecretKey := rootFlags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (optional, can use AWS_SECRET_ACCESS_KEY environment variable)")
-	snapshotTime := rootFlags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
-	snapshotS3Region := rootFlags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional, can use AWS_REGION environment variable)")
-	noSnapshots := rootFlags.BoolLong("no-snapshots", "Disable automatic snapshots")
-	noAutoRestore := rootFlags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
-	noPublicSharing := rootFlags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
-	noPasswordProtectedSharing := rootFlags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
-	noTasks := rootFlags.BoolLong("no-tasks", "Disable task functionality")
-	tlsDomain := rootFlags.StringLong("tls-domain", "", "Domain name for TLS certificate")
-	tlsEmail := rootFlags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
-	tlsCache := rootFlags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
-	httpsHost := rootFlags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
-	basePath := rootFlags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
-	pdfDateFormat := rootFlags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
-	natsHost := rootFlags.StringLong("nats-host", "0.0.0.0", "NATS server host")
-	natsPort := rootFlags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
-	natsToken := rootFlags.String('t', "nats-token", "", "NATS authentication token")
-	natsServers := rootFlags.StringLong("nats-servers", "", "Use external NATS servers, specify as comma separated list")
-	natsMaxStore := rootFlags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
-	natsJSKey := rootFlags.StringLong("nats-js-key", "", "JetStream encryption key")
-	natsJSDir := rootFlags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
-	sqliteDB := rootFlags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper_internal.sqlite)")
-	duckdb := rootFlags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
-	duckdbExtDir := rootFlags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
-	duckdbSecretDir := rootFlags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
-	deprecatedSchema := rootFlags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
-	jwtExp := rootFlags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
-	sessionExp := rootFlags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
-	inviteExp := rootFlags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
-	streamPrefix := rootFlags.StringLong("stream-prefix", "", "Prefix for NATS stream and KV bucket names. Must be a valid NATS subject name")
-	nodeIDFile := rootFlags.StringLong("node-id-file", "", "File to store and lookup node ID (default: [--dir]/node-id.txt)")
-	ingestStream := rootFlags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
-	stateStream := rootFlags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
-	configKVBucket := rootFlags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
-	tmpDashboardsKVBucket := rootFlags.StringLong("tmp-dashboards-kv-bucket", "shaper-tmp-dashboards", "Name for NATS KV bucket to store temporary dashboards")
-	tmpDashboardsTTL := rootFlags.DurationLong("tmp-dashboards-ttl", 24*time.Hour, "TTL for temporary dashboards")
-	tasksStream := rootFlags.StringLong("tasks-stream", "shaper-tasks", "NATS stream name for scheduled task execution")
-	taskResultsStream := rootFlags.StringLong("task-results-stream", "shaper-task-results", "NATS stream name for task results")
-	ingestStreamMaxAge := rootFlags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
-	stateStreamMaxAge := rootFlags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
-	taskResultsStreamMaxAge := rootFlags.DurationLong("task-results-max-age", 0, "Maximum age of messages in the task-results stream. Set to 0 for indefinite retention")
-	ingestConsumerNameFile := rootFlags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
-	_ = rootFlags.StringLong("state-consumer-name-file", "", "DEPRECATED: Using ephermal consumer and storing sequence in sqlite now")
-	taskQueueConsumerName := rootFlags.StringLong("task-queue-consumer-name", "shaper-task-queue-consumer", "Name for the task queue consumer")
-	_ = rootFlags.StringLong("task-result-consumer-name-file", "", "DEPRECATED: Now storing cursor in sqlite")
-	snapshotStream := rootFlags.StringLong("snapshot-stream", "shaper-snapshots", "NATS stream name for scheduled snapshots")
-	snapshotConsumerName := rootFlags.StringLong("snapshot-consumer-name", "shaper-snapshot-consumer", "Name for the snapshot consumer")
-	subjectPrefix := rootFlags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
-	ingestSubjectPrefix := rootFlags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
-	stateSubjectPrefix := rootFlags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
-	tasksSubjectPrefix := rootFlags.StringLong("tasks-subject-prefix", "shaper.tasks.", "prefix for tasks NATS subjects")
-	taskResultsSubjectPrefix := rootFlags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
-	taskBroadcastSubject := rootFlags.StringLong("task-broadcast-subject", "shaper.task-broadcast", "subject to broadcast tasks to run on all nodes in a cluster when running manual task")
-	snapshotSubjectPrefix := rootFlags.StringLong("snapshots-subject-prefix", "shaper.snapshots.", "prefix for snapshots NATS subjects")
-	_ = rootFlags.StringLong("config-file", "", "path to config file")
+	help := flags.Bool('h', "help", "show help")
+	version := flags.Bool('v', "version", "show version")
+	logLevel := flags.StringLong("log-level", "info", "log level: debug, info, warn, error")
+	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
+	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
+	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
+	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
+	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
+	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
+	snapshotS3Bucket := flags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
+	snapshotS3Endpoint := flags.StringLong("snapshot-s3-endpoint", "", "S3 endpoint URL (optional, defaults to AWS S3 if not provided)")
+	snapshotS3AccessKey := flags.StringLong("snapshot-s3-access-key", "", "S3 access key (optional, can use AWS_ACCESS_KEY_ID environment variable)")
+	snapshotS3SecretKey := flags.StringLong("snapshot-s3-secret-key", "", "S3 secret key (optional, can use AWS_SECRET_ACCESS_KEY environment variable)")
+	snapshotTime := flags.StringLong("snapshot-time", "01:00", "time to run daily snapshots, format: HH:MM")
+	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional, can use AWS_REGION environment variable)")
+	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
+	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
+	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
+	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
+	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
+	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
+	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
+	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
+	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
+	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
+	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
+	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
+	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
+	natsToken := flags.String('t', "nats-token", "", "NATS authentication token")
+	natsServers := flags.StringLong("nats-servers", "", "Use external NATS servers, specify as comma separated list")
+	natsMaxStore := flags.StringLong("nats-max-store", "0", "Maximum storage in bytes, set to 0 for unlimited")
+	natsJSKey := flags.StringLong("nats-js-key", "", "JetStream encryption key")
+	natsJSDir := flags.StringLong("nats-dir", "", "Override JetStream storage directory (default: [--dir]/nats)")
+	sqliteDB := flags.StringLong("sqlite", "", "Override sqlite DB file that is used for system state (default: [--dir]/shaper_internal.sqlite)")
+	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
+	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
+	duckdbSecretDir := flags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
+	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
+	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
+	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
+	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
+	streamPrefix := flags.StringLong("stream-prefix", "", "Prefix for NATS stream and KV bucket names. Must be a valid NATS subject name")
+	nodeIDFile := flags.StringLong("node-id-file", "", "File to store and lookup node ID (default: [--dir]/node-id.txt)")
+	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
+	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
+	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
+	tmpDashboardsKVBucket := flags.StringLong("tmp-dashboards-kv-bucket", "shaper-tmp-dashboards", "Name for NATS KV bucket to store temporary dashboards")
+	tmpDashboardsTTL := flags.DurationLong("tmp-dashboards-ttl", 24*time.Hour, "TTL for temporary dashboards")
+	tasksStream := flags.StringLong("tasks-stream", "shaper-tasks", "NATS stream name for scheduled task execution")
+	taskResultsStream := flags.StringLong("task-results-stream", "shaper-task-results", "NATS stream name for task results")
+	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
+	stateStreamMaxAge := flags.DurationLong("state-max-age", 0, "Maximum age of messages in the state stream. Set to 0 for indefinite retention")
+	taskResultsStreamMaxAge := flags.DurationLong("task-results-max-age", 0, "Maximum age of messages in the task-results stream. Set to 0 for indefinite retention")
+	ingestConsumerNameFile := flags.StringLong("ingest-consumer-name-file", "", "File to store and lookup name for ingest consumer (default: [--dir]/ingest-consumer-name.txt)")
+	_ = flags.StringLong("state-consumer-name-file", "", "DEPRECATED: Using ephermal consumer and storing sequence in sqlite now")
+	taskQueueConsumerName := flags.StringLong("task-queue-consumer-name", "shaper-task-queue-consumer", "Name for the task queue consumer")
+	_ = flags.StringLong("task-result-consumer-name-file", "", "DEPRECATED: Now storing cursor in sqlite")
+	snapshotStream := flags.StringLong("snapshot-stream", "shaper-snapshots", "NATS stream name for scheduled snapshots")
+	snapshotConsumerName := flags.StringLong("snapshot-consumer-name", "shaper-snapshot-consumer", "Name for the snapshot consumer")
+	subjectPrefix := flags.StringLong("subject-prefix", "", "prefix for NATS subjects. Must be a valid NATS subject name. Should probably end with a dot.")
+	ingestSubjectPrefix := flags.StringLong("ingest-subject-prefix", "shaper.ingest.", "prefix for ingest NATS subjects")
+	stateSubjectPrefix := flags.StringLong("state-subject-prefix", "shaper.state.", "prefix for state NATS subjects")
+	tasksSubjectPrefix := flags.StringLong("tasks-subject-prefix", "shaper.tasks.", "prefix for tasks NATS subjects")
+	taskResultsSubjectPrefix := flags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
+	taskBroadcastSubject := flags.StringLong("task-broadcast-subject", "shaper.task-broadcast", "subject to broadcast tasks to run on all nodes in a cluster when running manual task")
+	snapshotSubjectPrefix := flags.StringLong("snapshots-subject-prefix", "shaper.snapshots.", "prefix for snapshots NATS subjects")
+	_ = flags.StringLong("config-file", "", "path to config file")
 
 	// Collect subcommands so we can include them in help output
 	var subcommands []*ff.Command
@@ -254,7 +254,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		// Handle help and version flags
 		if *help {
 			usage := strings.Replace(USAGE, "{{.Version}}", Version, 1)
-			fmt.Printf("%s\n", ffhelp.Flags(rootFlags, usage))
+			fmt.Printf("%s\n", ffhelp.Flags(flags, usage))
 			fmt.Println("\nSUBCOMMANDS:")
 			for _, cmd := range subcommands {
 				fmt.Printf("  %-10s %s\n", cmd.Name, cmd.ShortHelp)
@@ -266,24 +266,132 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			return nil
 		}
 
-		config := loadConfigFromFlags(
-			homeDir,
-			*logLevel, *addr, *dataDir, *customCSS, *favicon, *initSQL, *initSQLFile,
-			*snapshotS3Bucket, *snapshotS3Endpoint, *snapshotS3AccessKey, *snapshotS3SecretKey,
-			*snapshotTime, *snapshotS3Region, *noSnapshots, *noAutoRestore,
-			*noPublicSharing, *noPasswordProtectedSharing, *noTasks,
-			*tlsDomain, *tlsEmail, *tlsCache, *httpsHost, *basePath, *pdfDateFormat,
-			*natsHost, *natsToken, *natsServers, *natsMaxStore, *natsJSKey, *natsJSDir,
-			*sqliteDB, *duckdb, *duckdbExtDir, *duckdbSecretDir, *deprecatedSchema,
-			*jwtExp, *sessionExp, *inviteExp,
-			*streamPrefix, *nodeIDFile, *ingestStream, *stateStream, *configKVBucket,
-			*tmpDashboardsKVBucket, *tmpDashboardsTTL, *tasksStream, *taskResultsStream,
-			*ingestStreamMaxAge, *stateStreamMaxAge, *taskResultsStreamMaxAge,
-			*ingestConsumerNameFile, *taskQueueConsumerName, *snapshotStream, *snapshotConsumerName,
-			*subjectPrefix, *ingestSubjectPrefix, *stateSubjectPrefix, *tasksSubjectPrefix,
-			*taskResultsSubjectPrefix, *taskBroadcastSubject, *snapshotSubjectPrefix,
-			*natsPort,
-		)
+		switch *logLevel {
+		case "debug", "info", "warn", "error":
+			// valid values
+		default:
+			fmt.Printf("Invalid log level '%s'. Valid options are: debug, info, warn, error\n", *logLevel)
+			os.Exit(1)
+		}
+
+		executableModTime, err := getExecutableModTime()
+		if err != nil {
+			fmt.Printf("Error getting executable modification time: %v\n", err)
+			os.Exit(1)
+		}
+
+		if *tlsDomain != "" {
+			if *addr != "localhost:5454" && *addr != ":5454" {
+				fmt.Println("Cannot set addr and tls-domain at the same time.")
+				os.Exit(1)
+			}
+			if *basePath != "/" {
+				fmt.Println("Cannot set basepath and tls-domain at the same time.")
+				os.Exit(1)
+			}
+		}
+
+		tlsCacheDir := *tlsCache
+		if tlsCacheDir == "" {
+			tlsCacheDir = path.Join(*dataDir, "letsencrypt-cache")
+		}
+
+		maxStore, err := strconv.ParseInt(*natsMaxStore, 10, 64)
+		if err != nil {
+			fmt.Printf("Invalid value for nats-max-store: %v\n", err)
+			os.Exit(1)
+		}
+		if *natsServers != "" {
+			if *natsJSDir != "" || *natsJSKey != "" || maxStore > 0 {
+				fmt.Println("when connecting to external NATS servers (nats-servers specified), nats-js-key, nats-dir and nats-max-store must not be specified")
+				os.Exit(1)
+			}
+		}
+
+		natsDir := path.Join(*dataDir, "nats")
+		if *natsJSDir != "" {
+			natsDir = *natsJSDir
+		}
+
+		bpath := *basePath
+		if bpath == "" {
+			bpath = "/"
+		}
+		if bpath[0] != '/' {
+			bpath = "/" + bpath
+		}
+		if bpath[len(bpath)-1] != '/' {
+			bpath += "/"
+		}
+
+		initSQLFilePath := path.Join(*dataDir, "init.sql")
+		if *initSQLFile != "" {
+			initSQLFilePath = *initSQLFile
+		}
+
+		config := Config{
+			DeprecatedSchema:           *deprecatedSchema,
+			LogLevel:                   *logLevel,
+			Address:                    *addr,
+			DataDir:                    *dataDir,
+			ExecutableModTime:          executableModTime,
+			BasePath:                   bpath,
+			CustomCSS:                  *customCSS,
+			Favicon:                    *favicon,
+			JWTExp:                     *jwtExp,
+			SessionExp:                 *sessionExp,
+			InviteExp:                  *inviteExp,
+			NoPublicSharing:            *noPublicSharing,
+			NoPasswordProtectedSharing: *noPasswordProtectedSharing,
+			NoTasks:                    *noTasks,
+			NodeIDFile:                 *nodeIDFile,
+			TLSDomain:                  *tlsDomain,
+			TLSEmail:                   *tlsEmail,
+			TLSCache:                   tlsCacheDir,
+			HTTPSHost:                  *httpsHost,
+			PdfDateFormat:              *pdfDateFormat,
+			NatsServers:                *natsServers,
+			NatsHost:                   *natsHost,
+			NatsPort:                   *natsPort,
+			NatsToken:                  *natsToken,
+			NatsJSDir:                  natsDir,
+			NatsJSKey:                  *natsJSKey,
+			NatsMaxStore:               maxStore,
+			StateStreamName:            *streamPrefix + *stateStream,
+			IngestStreamName:           *streamPrefix + *ingestStream,
+			ConfigKVBucketName:         *streamPrefix + *configKVBucket,
+			TmpDashboardsKVBucketName:  *streamPrefix + *tmpDashboardsKVBucket,
+			TmpDashboardsTTL:           *tmpDashboardsTTL,
+			IngestStreamMaxAge:         *ingestStreamMaxAge,
+			StateStreamMaxAge:          *stateStreamMaxAge,
+			IngestConsumerNameFile:     *ingestConsumerNameFile,
+			IngestSubjectPrefix:        *subjectPrefix + *ingestSubjectPrefix,
+			StateSubjectPrefix:         *subjectPrefix + *stateSubjectPrefix,
+			TasksStreamName:            *streamPrefix + *tasksStream,
+			TasksSubjectPrefix:         *subjectPrefix + *tasksSubjectPrefix,
+			TaskQueueConsumerName:      *taskQueueConsumerName,
+			TaskResultsStreamName:      *streamPrefix + *taskResultsStream,
+			TaskResultsSubjectPrefix:   *subjectPrefix + *taskResultsSubjectPrefix,
+			TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
+			TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
+			SQLiteDB:                   *sqliteDB,
+			DuckDB:                     *duckdb,
+			DuckDBExtDir:               *duckdbExtDir,
+			DuckDBSecretDir:            *duckdbSecretDir,
+			InitSQL:                    *initSQL,
+			InitSQLFile:                initSQLFilePath,
+			SnapshotTime:               *snapshotTime,
+			SnapshotS3Bucket:           *snapshotS3Bucket,
+			SnapshotS3Region:           *snapshotS3Region,
+			SnapshotS3Endpoint:         *snapshotS3Endpoint,
+			SnapshotS3AccessKey:        *snapshotS3AccessKey,
+			SnapshotS3SecretKey:        *snapshotS3SecretKey,
+			SnapshotStream:             *streamPrefix + *snapshotStream,
+			SnapshotConsumerName:       *snapshotConsumerName,
+			SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
+			NoSnapshots:                *noSnapshots,
+			NoAutoRestore:              *noAutoRestore,
+		}
 		signals.HandleInterrupt(Run(config))
 		return nil
 	}
@@ -362,155 +470,6 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
 	return deployCmd
-}
-
-func loadConfigFromFlags(
-	homeDir string,
-	logLevel, addr, dataDir, customCSS, favicon, initSQL, initSQLFile string,
-	snapshotS3Bucket, snapshotS3Endpoint, snapshotS3AccessKey, snapshotS3SecretKey string,
-	snapshotTime, snapshotS3Region string, noSnapshots, noAutoRestore bool,
-	noPublicSharing, noPasswordProtectedSharing, noTasks bool,
-	tlsDomain, tlsEmail, tlsCache, httpsHost, basePath, pdfDateFormat string,
-	natsHost, natsToken, natsServers, natsMaxStore, natsJSKey, natsJSDir string,
-	sqliteDB, duckdb, duckdbExtDir, duckdbSecretDir, deprecatedSchema string,
-	jwtExp, sessionExp, inviteExp time.Duration,
-	streamPrefix, nodeIDFile, ingestStream, stateStream, configKVBucket string,
-	tmpDashboardsKVBucket string, tmpDashboardsTTL time.Duration,
-	tasksStream, taskResultsStream string,
-	ingestStreamMaxAge, stateStreamMaxAge, taskResultsStreamMaxAge time.Duration,
-	ingestConsumerNameFile, taskQueueConsumerName, snapshotStream, snapshotConsumerName string,
-	subjectPrefix, ingestSubjectPrefix, stateSubjectPrefix, tasksSubjectPrefix string,
-	taskResultsSubjectPrefix, taskBroadcastSubject, snapshotSubjectPrefix string,
-	natsPort int,
-) Config {
-	switch logLevel {
-	case "debug", "info", "warn", "error":
-		// valid
-	default:
-		fmt.Printf("Invalid log level '%s'. Valid options are: debug, info, warn, error\n", logLevel)
-		os.Exit(1)
-	}
-
-	executableModTime, err := getExecutableModTime()
-	if err != nil {
-		fmt.Printf("Error getting executable modification time: %v\n", err)
-		os.Exit(1)
-	}
-
-	if tlsDomain != "" {
-		if addr != "localhost:5454" && addr != ":5454" {
-			fmt.Println("Cannot set addr and tls-domain at the same time.")
-			os.Exit(1)
-		}
-		if basePath != "/" {
-			fmt.Println("Cannot set basepath and tls-domain at the same time.")
-			os.Exit(1)
-		}
-	}
-
-	tlsCacheDir := tlsCache
-	if tlsCacheDir == "" {
-		tlsCacheDir = path.Join(dataDir, "letsencrypt-cache")
-	}
-
-	// Parse natsMaxStore as int64
-	maxStore, err := strconv.ParseInt(natsMaxStore, 10, 64)
-	if err != nil {
-		fmt.Printf("Invalid value for nats-max-store: %v\n", err)
-		os.Exit(1)
-	}
-
-	if natsServers != "" {
-		if natsJSDir != "" || natsJSKey != "" || maxStore > 0 {
-			fmt.Println("when connecting to external NATS servers (nats-servers specified), nats-js-key, nats-dir and nats-max-store must not be specified")
-			os.Exit(1)
-		}
-	}
-
-	natsDir := path.Join(dataDir, "nats")
-	if natsJSDir != "" {
-		natsDir = natsJSDir
-	}
-
-	bpath := basePath
-	if bpath == "" {
-		bpath = "/"
-	}
-	if bpath[0] != '/' {
-		bpath = "/" + bpath
-	}
-	if bpath[len(bpath)-1] != '/' {
-		bpath += "/"
-	}
-
-	initSQLFilePath := path.Join(dataDir, "init.sql")
-	if initSQLFile != "" {
-		initSQLFilePath = initSQLFile
-	}
-
-	return Config{
-		DeprecatedSchema:           deprecatedSchema,
-		LogLevel:                   logLevel,
-		Address:                    addr,
-		DataDir:                    dataDir,
-		ExecutableModTime:          executableModTime,
-		BasePath:                   bpath,
-		CustomCSS:                  customCSS,
-		Favicon:                    favicon,
-		JWTExp:                     jwtExp,
-		SessionExp:                 sessionExp,
-		InviteExp:                  inviteExp,
-		NoPublicSharing:            noPublicSharing,
-		NoPasswordProtectedSharing: noPasswordProtectedSharing,
-		NoTasks:                    noTasks,
-		NodeIDFile:                 nodeIDFile,
-		TLSDomain:                  tlsDomain,
-		TLSEmail:                   tlsEmail,
-		TLSCache:                   tlsCacheDir,
-		HTTPSHost:                  httpsHost,
-		PdfDateFormat:              pdfDateFormat,
-		NatsServers:                natsServers,
-		NatsHost:                   natsHost,
-		NatsPort:                   natsPort,
-		NatsToken:                  natsToken,
-		NatsJSDir:                  natsDir,
-		NatsJSKey:                  natsJSKey,
-		NatsMaxStore:               maxStore,
-		StateStreamName:            streamPrefix + stateStream,
-		IngestStreamName:           streamPrefix + ingestStream,
-		ConfigKVBucketName:         streamPrefix + configKVBucket,
-		TmpDashboardsKVBucketName:  streamPrefix + tmpDashboardsKVBucket,
-		TmpDashboardsTTL:           tmpDashboardsTTL,
-		IngestStreamMaxAge:         ingestStreamMaxAge,
-		StateStreamMaxAge:          stateStreamMaxAge,
-		IngestConsumerNameFile:     ingestConsumerNameFile,
-		IngestSubjectPrefix:        subjectPrefix + ingestSubjectPrefix,
-		StateSubjectPrefix:         subjectPrefix + stateSubjectPrefix,
-		TasksStreamName:            streamPrefix + tasksStream,
-		TasksSubjectPrefix:         subjectPrefix + tasksSubjectPrefix,
-		TaskQueueConsumerName:      taskQueueConsumerName,
-		TaskResultsStreamName:      streamPrefix + taskResultsStream,
-		TaskResultsSubjectPrefix:   subjectPrefix + taskResultsSubjectPrefix,
-		TaskResultsStreamMaxAge:    taskResultsStreamMaxAge,
-		TaskBroadcastSubject:       subjectPrefix + taskBroadcastSubject,
-		SQLiteDB:                   sqliteDB,
-		DuckDB:                     duckdb,
-		DuckDBExtDir:               duckdbExtDir,
-		DuckDBSecretDir:            duckdbSecretDir,
-		InitSQL:                    initSQL,
-		InitSQLFile:                initSQLFilePath,
-		SnapshotTime:               snapshotTime,
-		SnapshotS3Bucket:           snapshotS3Bucket,
-		SnapshotS3Region:           snapshotS3Region,
-		SnapshotS3Endpoint:         snapshotS3Endpoint,
-		SnapshotS3AccessKey:        snapshotS3AccessKey,
-		SnapshotS3SecretKey:        snapshotS3SecretKey,
-		SnapshotStream:             streamPrefix + snapshotStream,
-		SnapshotConsumerName:       snapshotConsumerName,
-		SnapshotSubjectPrefix:      subjectPrefix + snapshotSubjectPrefix,
-		NoSnapshots:                noSnapshots,
-		NoAutoRestore:              noAutoRestore,
-	}
 }
 
 func Run(cfg Config) func(context.Context) {
