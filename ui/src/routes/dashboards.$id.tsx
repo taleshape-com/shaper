@@ -228,10 +228,9 @@ function DashboardViewComponent () {
 
       <div className="h-dvh relative">
         <Dashboard
-          key={dashboardKey}
           id={params.id}
           vars={vars}
-          hash={auth.hash}
+          hash={`${auth.hash}-${dashboardKey}`}
           getJwt={getJwt}
           menuButton={MenuButton}
           onVarsChanged={handleVarsChanged}
