@@ -3,7 +3,6 @@ package dev
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 )
 
 func RunDevCommand(ctx context.Context, configPath, authFile string) error {
@@ -14,7 +13,7 @@ func RunDevCommand(ctx context.Context, configPath, authFile string) error {
 		return err
 	}
 
-	watchDir, err := filepath.Abs(cfg.Directory)
+	watchDir, err := resolveAbsolutePath(cfg.Directory)
 	if err != nil {
 		return fmt.Errorf("failed to resolve watch directory: %w", err)
 	}
@@ -25,7 +24,7 @@ func RunDevCommand(ctx context.Context, configPath, authFile string) error {
 	if authFile == "" {
 		authFile = ".shaper-auth"
 	}
-	authFilePath, err := filepath.Abs(authFile)
+	authFilePath, err := resolveAbsolutePath(authFile)
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}

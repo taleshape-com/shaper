@@ -59,7 +59,7 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 		return errors.New("config missing lastPull timestamp; run `shaper pull` before deploying")
 	}
 
-	watchDir, err := filepath.Abs(cfg.Directory)
+	watchDir, err := resolveAbsolutePath(cfg.Directory)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}

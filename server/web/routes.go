@@ -65,7 +65,6 @@ func SetAPIKeyActor(app *core.App, contextKey string) func(next echo.HandlerFunc
 
 			raw := c.Get(contextKey)
 			token, _ := raw.(string)
-			fmt.Println("set api actor", token)
 			if token == "" {
 				return next(c)
 			}
@@ -106,7 +105,6 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			fmt.Println("validate key", key)
 			valid, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
 			if err != nil {
 				return false, err
@@ -226,13 +224,6 @@ func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, set
 
 func extractAuthorizationToken(c echo.Context) string {
 	header := strings.TrimSpace(c.Request().Header.Get(echo.HeaderAuthorization))
-	if header == "" {
-		return ""
-	}
-	const bearerPrefix = "Bearer "
-	if len(header) > len(bearerPrefix) && strings.EqualFold(header[:len(bearerPrefix)], bearerPrefix) {
-		return strings.TrimSpace(header[len(bearerPrefix):])
-	}
 	return header
 }
 

@@ -39,7 +39,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string) error {
 		return err
 	}
 
-	watchDir, err := filepath.Abs(cfg.Directory)
+	watchDir, err := resolveAbsolutePath(cfg.Directory)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}
@@ -47,7 +47,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string) error {
 		return err
 	}
 
-	authFilePath, err := filepath.Abs(authFile)
+	authFilePath, err := resolveAbsolutePath(authFile)
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}

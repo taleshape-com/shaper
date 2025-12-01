@@ -42,7 +42,12 @@ func loadOrPromptConfig(path string) (Config, error) {
 }
 
 func LoadConfig(path string) (Config, error) {
-	data, err := os.ReadFile(path)
+	resolvedPath, err := expandUserPath(path)
+	if err != nil {
+		return Config{}, err
+	}
+
+	data, err := os.ReadFile(resolvedPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return Config{}, fmt.Errorf("%w: %s", ErrConfigNotFound, path)
@@ -145,7 +150,12 @@ func prompt(reader *bufio.Reader, msg string) (string, error) {
 }
 
 func SaveConfig(path string, cfg Config) error {
-	dir := filepath.Dir(path)
+	resolvedPath, err := expandUserPath(path)
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(resolvedPath)
 	if dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("failed to create config directory: %w", err)
@@ -155,7 +165,7 @@ func SaveConfig(path string, cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to encode config: %w", err)
 	}
-	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(resolvedPath, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 	return nil
