@@ -209,7 +209,7 @@ function DashboardViewComponent () {
       <VariablesMenu />
       {(visibility === "public" || visibility === "password-protected") && (
         <div className="my-2 px-4">
-          <PublicLink href={`../ view / ${params.id} `} />
+          <PublicLink href={`../view/${params.id}`} />
         </div>
       )}
     </MenuTrigger>
