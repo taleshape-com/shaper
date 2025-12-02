@@ -34,7 +34,7 @@ type deployHTTPClient interface {
 	Actor() string
 }
 
-func RunDeployCommand(ctx context.Context, configPath string) error {
+func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool) error {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
@@ -137,6 +137,11 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 
 	fmt.Printf("\nChanges: create=%d, update=%d, delete=%d\n\n", createCount, updateCount, deleteCount)
 	logDeployChanges(ops, localDashboards, remoteDashboardsByID)
+
+	if validateOnly {
+		fmt.Printf("\nValidation successful. No changes have been applied (validate-only mode).\n")
+		return nil
+	}
 
 	if err := submitDeploy(ctx, client, ops); err != nil {
 		return err

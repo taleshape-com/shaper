@@ -452,6 +452,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	deployFlags := ff.NewFlagSet("deploy")
 	help := deployFlags.Bool('h', "help", "show help")
 	deployConfigPath := deployFlags.StringLong("config", "./shaper.json", "Path to config file")
+	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
 
 	usage := `Deploy dashboards from files using API key auth.
 
@@ -466,7 +467,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(deployFlags, usage))
 				return nil
 			}
-			return dev.RunDeployCommand(ctx, *deployConfigPath)
+			return dev.RunDeployCommand(ctx, *deployConfigPath, *deployValidateOnly)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
