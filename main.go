@@ -428,11 +428,12 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 	help := pullFlags.Bool('h', "help", "show help")
 	pullConfigPath := pullFlags.StringLong("config", "./shaper.json", "Path to config file")
 	pullAuthFile := pullFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	pullYes := pullFlags.Bool('y', "yes", "Skip confirmation prompt")
 
 	usage := "pull dashboards from server to local files"
 	pullCmd := &ff.Command{
 		Name:      "pull",
-		Usage:     "shaper pull [--config path] [--auth-file path]",
+		Usage:     "shaper pull [--config path] [--auth-file path] [--yes]",
 		ShortHelp: usage,
 		Flags:     pullFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -440,7 +441,7 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(pullFlags, usage))
 				return nil
 			}
-			return dev.RunPullCommand(ctx, *pullConfigPath, *pullAuthFile)
+			return dev.RunPullCommand(ctx, *pullConfigPath, *pullAuthFile, *pullYes)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
