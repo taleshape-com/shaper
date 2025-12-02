@@ -55,9 +55,6 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 	if err != nil {
 		return err
 	}
-	if cfg.LastPull == nil {
-		return errors.New("config missing lastPull timestamp; run `shaper pull` before deploying")
-	}
 
 	watchDir, err := resolveAbsolutePath(cfg.Directory)
 	if err != nil {
@@ -69,7 +66,11 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 
 	fmt.Printf("Deploying Shaper dashboards...\n\n")
 	fmt.Println("Current time: ", time.Now().Format(time.RFC3339))
-	fmt.Println("Last pulled:  ", cfg.LastPull.Format(time.RFC3339))
+	if cfg.LastPull != nil {
+		fmt.Println("Last pulled:  ", cfg.LastPull.Format(time.RFC3339))
+	} else {
+		fmt.Println("Last pulled:  (not set)")
+	}
 	fmt.Println()
 
 	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
@@ -98,6 +99,19 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 	}
 	fmt.Printf("Found %d remote dashboards.\n", len(remoteDashboards))
 
+	// Count dashboard-type apps
+	remoteDashboardCount := 0
+	for _, dashboard := range remoteDashboards {
+		if dashboard.Type == "dashboard" {
+			remoteDashboardCount++
+		}
+	}
+
+	// Require lastPull only if remote has dashboards
+	if remoteDashboardCount > 0 && cfg.LastPull == nil {
+		return errors.New("config missing lastPull timestamp; run `shaper pull` before deploying (remote has existing dashboards)")
+	}
+
 	fmt.Println("Loading dashboards from folder", watchDir)
 	localDashboards, err := loadLocalDashboards(watchDir)
 	if err != nil {
@@ -112,8 +126,11 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 		}
 	}
 
-	if err := ensureRemoteFreshness(remoteDashboards, *cfg.LastPull, client.Actor()); err != nil {
-		return err
+	// Only check freshness if we have a lastPull timestamp
+	if cfg.LastPull != nil {
+		if err := ensureRemoteFreshness(remoteDashboards, *cfg.LastPull, client.Actor()); err != nil {
+			return err
+		}
 	}
 
 	ops := buildDeployOperations(localDashboards, remoteDashboards)
