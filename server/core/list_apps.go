@@ -5,24 +5,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"shaper/server/api"
 	"strings"
 	"time"
 )
-
-type AppListItem struct {
-	ID         string    `json:"id"`
-	Path       string    `json:"path"`
-	FolderID   *string   `json:"folderId,omitempty"`
-	Name       string    `json:"name"`
-	Content    string    `json:"content,omitempty"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-	CreatedBy  *string   `json:"createdBy,omitempty"`
-	UpdatedBy  *string   `json:"updatedBy,omitempty"`
-	Visibility *string   `json:"visibility,omitempty"`
-	TaskInfo   *TaskInfo `json:"taskInfo,omitempty"`
-	Type       string    `json:"type"`
-}
 
 type AppDbRecord struct {
 	ID              string     `db:"id"`
@@ -42,16 +28,6 @@ type AppDbRecord struct {
 	NextRunAt       *time.Time `db:"next_run_at"`
 }
 
-type TaskInfo struct {
-	LastRunAt       *time.Time `json:"lastRunAt,omitempty"`
-	LastRunSuccess  *bool      `json:"lastRunSuccess,omitempty"`
-	LastRunDuration *int64     `json:"lastRunDuration,omitempty"`
-	NextRunAt       *time.Time `json:"nextRunAt,omitempty"`
-}
-
-type AppListResponse struct {
-	Apps []AppListItem `json:"apps"`
-}
 
 type ListAppsOptions struct {
 	Sort              string
@@ -89,7 +65,7 @@ type FolderListResponse struct {
 	Folders []FolderListItem `json:"folders"`
 }
 
-func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListResponse, error) {
+func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResponse, error) {
 	sort := opts.Sort
 	order := opts.Order
 	path := opts.Path
@@ -304,9 +280,9 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 		err = fmt.Errorf("error listing apps: %w", err)
 	}
 
-	apps := make([]AppListItem, len(dbApps))
+	apps := make([]api.App, len(dbApps))
 	for i, a := range dbApps {
-		apps[i] = AppListItem{
+		apps[i] = api.App{
 			ID:         a.ID,
 			Path:       a.Path,
 			FolderID:   a.FolderID,
@@ -321,7 +297,7 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 		if opts.IncludeContent {
 			apps[i].Content = a.Content
 		}
-		apps[i].TaskInfo = &TaskInfo{
+		apps[i].TaskInfo = &api.TaskInfo{
 			LastRunAt:       a.LastRunAt,
 			LastRunSuccess:  a.LastRunSuccess,
 			LastRunDuration: a.LastRunDuration,
@@ -334,5 +310,23 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (AppListRespo
 			apps[i].Visibility = nil
 		}
 	}
-	return AppListResponse{Apps: apps}, err
+
+	// Calculate pagination info from limit/offset
+	pageSize := opts.Limit
+	if pageSize == 0 {
+		pageSize = len(apps)
+		if pageSize == 0 {
+			pageSize = 1 // Avoid division by zero
+		}
+	}
+	page := 1
+	if pageSize > 0 && opts.Offset > 0 {
+		page = (opts.Offset / pageSize) + 1
+	}
+
+	return api.AppsResponse{
+		Apps:     apps,
+		Page:     page,
+		PageSize: pageSize,
+	}, err
 }

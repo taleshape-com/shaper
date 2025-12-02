@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"shaper/server/api"
 	"testing"
 	"time"
 
@@ -92,8 +93,8 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-func dashboardsOnly(items []AppListItem) []AppListItem {
-	var dashboards []AppListItem
+func dashboardsOnly(items []api.App) []api.App {
+	var dashboards []api.App
 	for _, item := range items {
 		if item.Type != "_folder" {
 			dashboards = append(dashboards, item)

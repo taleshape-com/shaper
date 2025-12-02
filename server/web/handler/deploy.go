@@ -10,27 +10,11 @@ import (
 	"log/slog"
 	"net/http"
 	"shaper/server/core"
+	"shaper/server/api"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 )
-
-type deployRequest struct {
-	Apps []deployAppRequest `json:"apps"`
-}
-
-type deployAppRequest struct {
-	Operation string              `json:"operation"`
-	Type      string              `json:"type"`
-	Data      deployDashboardData `json:"data"`
-}
-
-type deployDashboardData struct {
-	ID      *string `json:"id"`
-	Path    *string `json:"path"`
-	Name    *string `json:"name"`
-	Content *string `json:"content"`
-}
 
 type deployResult struct {
 	Operation string `json:"operation"`
@@ -41,7 +25,7 @@ type deployResult struct {
 
 func Deploy(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var req deployRequest
+		var req api.Request
 		if err := c.Bind(&req); err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -77,7 +61,7 @@ func Deploy(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func processDeployOperation(ctx context.Context, app *core.App, idx int, req deployAppRequest) (deployResult, error) {
+func processDeployOperation(ctx context.Context, app *core.App, idx int, req api.AppRequest) (deployResult, error) {
 	switch strings.ToLower(strings.TrimSpace(req.Type)) {
 	case "dashboard":
 	default:
@@ -96,7 +80,7 @@ func processDeployOperation(ctx context.Context, app *core.App, idx int, req dep
 	}
 }
 
-func handleDeployCreate(ctx context.Context, app *core.App, idx int, data deployDashboardData) (deployResult, error) {
+func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.DashboardData) (deployResult, error) {
 	if data.Name == nil || strings.TrimSpace(*data.Name) == "" {
 		return deployResult{}, fmt.Errorf("apps[%d]: name is required for create operations", idx)
 	}
@@ -135,7 +119,7 @@ func handleDeployCreate(ctx context.Context, app *core.App, idx int, data deploy
 	}, nil
 }
 
-func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data deployDashboardData) (deployResult, error) {
+func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.DashboardData) (deployResult, error) {
 	if data.ID == nil || strings.TrimSpace(*data.ID) == "" {
 		return deployResult{}, fmt.Errorf("apps[%d]: id is required for update operations", idx)
 	}
@@ -210,7 +194,7 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data deploy
 	}, nil
 }
 
-func handleDeployDelete(ctx context.Context, app *core.App, idx int, data deployDashboardData) (deployResult, error) {
+func handleDeployDelete(ctx context.Context, app *core.App, idx int, data api.DashboardData) (deployResult, error) {
 	if data.ID == nil || strings.TrimSpace(*data.ID) == "" {
 		return deployResult{}, fmt.Errorf("apps[%d]: id is required for delete operations", idx)
 	}

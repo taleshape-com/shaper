@@ -11,27 +11,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"shaper/server/api"
 	"strings"
 	"syscall"
 	"time"
 )
-
-type App struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Type      string    `json:"type"`
-	Content   string    `json:"content"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	UpdatedBy string    `json:"updatedBy"`
-	Path      string    `json:"path"`
-}
-
-type AppsResponse struct {
-	Apps       []App `json:"apps"`
-	Page       int   `json:"page"`
-	PageSize   int   `json:"pageSize"`
-	TotalCount int   `json:"totalCount"`
-}
 
 func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfirm bool) error {
 	cfg, err := loadOrPromptConfig(configPath)
@@ -86,7 +70,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	fmt.Printf("Found %d local dashboards.\n", len(localIDs))
 
 	// Compare and categorize
-	var toCreate, toUpdate []App
+	var toCreate, toUpdate []api.App
 	var maxUpdatedAt time.Time
 
 	// Track file paths to detect duplicates
@@ -205,13 +189,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	return nil
 }
 
-func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]App, error) {
-	var allDashboards []App
-	page := 1
-	pageSize := 100
+func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]api.App, error) {
+	var allDashboards []api.App
+	limit := 100
+	offset := 0
 
 	for {
-		apps, totalCount, err := fetchAppsPage(ctx, requester, page, pageSize)
+		apps, err := fetchAppsPage(ctx, requester, limit, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -222,33 +206,34 @@ func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]App, er
 			}
 		}
 
-		if page*pageSize >= totalCount {
+		// If we got fewer apps than requested, we've reached the end
+		if len(apps) < limit {
 			break
 		}
-		page++
+		offset += len(apps)
 	}
 
 	return allDashboards, nil
 }
 
-func fetchAppsPage(ctx context.Context, requester appsRequester, page, pageSize int) ([]App, int, error) {
-	path := fmt.Sprintf("/api/apps?include_content=true&recursive=true&page=%d&pageSize=%d", page, pageSize)
+func fetchAppsPage(ctx context.Context, requester appsRequester, limit, offset int) ([]api.App, error) {
+	path := fmt.Sprintf("/api/apps?include_content=true&recursive=true&limit=%d&offset=%d", limit, offset)
 	resp, err := requester.DoRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, 0, decodeAPIError(resp)
+		return nil, decodeAPIError(resp)
 	}
 
-	var result AppsResponse
+	var result api.AppsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, 0, fmt.Errorf("failed to decode apps response: %w", err)
+		return nil, fmt.Errorf("failed to decode apps response: %w", err)
 	}
 
-	return result.Apps, result.TotalCount, nil
+	return result.Apps, nil
 }
 
 func scanLocalDashboardIDs(dir string) (map[string]string, error) {
@@ -307,7 +292,7 @@ func sanitizeFileName(name string) string {
 	return name
 }
 
-func writeDashboardFile(baseDir string, dashboard App) error {
+func writeDashboardFile(baseDir string, dashboard api.App) error {
 	// Construct path
 	dashPath := dashboard.Path
 	if dashPath == "" {

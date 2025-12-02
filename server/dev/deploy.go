@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"shaper/server/api"
 	"sort"
 	"strings"
 	"time"
@@ -28,22 +29,6 @@ type LocalDashboard struct {
 	FilePath string
 }
 
-type deployOperation struct {
-	Operation string              `json:"operation"`
-	Type      string              `json:"type"`
-	Data      deployDashboardData `json:"data"`
-}
-
-type deployDashboardData struct {
-	ID      string  `json:"id,omitempty"`
-	Path    *string `json:"path,omitempty"`
-	Name    *string `json:"name,omitempty"`
-	Content *string `json:"content,omitempty"`
-}
-
-type deployRequest struct {
-	Apps []deployOperation `json:"apps"`
-}
 
 type deployHTTPClient interface {
 	appsRequester
@@ -119,7 +104,7 @@ func RunDeployCommand(ctx context.Context, configPath string) error {
 	}
 	fmt.Printf("Found %d local dashboards.\n", len(localDashboards))
 
-	remoteDashboardsByID := make(map[string]App, len(remoteDashboards))
+	remoteDashboardsByID := make(map[string]api.App, len(remoteDashboards))
 	for _, dashboard := range remoteDashboards {
 		if dashboard.Type == "dashboard" {
 			remoteDashboardsByID[dashboard.ID] = dashboard
@@ -221,27 +206,31 @@ func normalizeDashboardPath(relDir string) string {
 	return normalized
 }
 
-func ensureRemoteFreshness(remote []App, lastPull time.Time, actor string) error {
+func ensureRemoteFreshness(remote []api.App, lastPull time.Time, actor string) error {
 	for _, dashboard := range remote {
 		if dashboard.Type != "dashboard" {
 			continue
 		}
-		if dashboard.UpdatedAt.After(lastPull) && dashboard.UpdatedBy != actor {
-			return fmt.Errorf("remote dashboard %s (%s) was updated after last pull by %s; run `shaper pull` first", dashboard.Name, dashboard.ID, dashboard.UpdatedBy)
+		updatedBy := ""
+		if dashboard.UpdatedBy != nil {
+			updatedBy = *dashboard.UpdatedBy
+		}
+		if dashboard.UpdatedAt.After(lastPull) && updatedBy != actor {
+			return fmt.Errorf("remote dashboard %s (%s) was updated after last pull by %s; run `shaper pull` first", dashboard.Name, dashboard.ID, updatedBy)
 		}
 	}
 	return nil
 }
 
-func buildDeployOperations(local map[string]LocalDashboard, remote []App) []deployOperation {
-	remoteByID := make(map[string]App, len(remote))
+func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []api.AppRequest {
+	remoteByID := make(map[string]api.App, len(remote))
 	for _, r := range remote {
 		if r.Type == "dashboard" {
 			remoteByID[r.ID] = r
 		}
 	}
 
-	var ops []deployOperation
+	var ops []api.AppRequest
 
 	localList := make([]LocalDashboard, 0, len(local))
 	for _, l := range local {
@@ -260,11 +249,12 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []App) []depl
 				name := localDash.Name
 				path := localDash.Path
 				content := localDash.Content
-				ops = append(ops, deployOperation{
+				id := localDash.ID
+				ops = append(ops, api.AppRequest{
 					Operation: "update",
 					Type:      "dashboard",
-					Data: deployDashboardData{
-						ID:      localDash.ID,
+					Data: api.DashboardData{
+						ID:      &id,
 						Name:    &name,
 						Path:    &path,
 						Content: &content,
@@ -277,11 +267,12 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []App) []depl
 		name := localDash.Name
 		path := localDash.Path
 		content := localDash.Content
-		ops = append(ops, deployOperation{
+		id := localDash.ID
+		ops = append(ops, api.AppRequest{
 			Operation: "create",
 			Type:      "dashboard",
-			Data: deployDashboardData{
-				ID:      localDash.ID,
+			Data: api.DashboardData{
+				ID:      &id,
 				Name:    &name,
 				Path:    &path,
 				Content: &content,
@@ -289,7 +280,7 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []App) []depl
 		})
 	}
 
-	remoteList := make([]App, 0, len(remoteByID))
+	remoteList := make([]api.App, 0, len(remoteByID))
 	for _, r := range remoteByID {
 		remoteList = append(remoteList, r)
 	}
@@ -305,11 +296,11 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []App) []depl
 			continue
 		}
 		id := remoteDash.ID
-		ops = append(ops, deployOperation{
+		ops = append(ops, api.AppRequest{
 			Operation: "delete",
 			Type:      "dashboard",
-			Data: deployDashboardData{
-				ID: id,
+			Data: api.DashboardData{
+				ID: &id,
 			},
 		})
 	}
@@ -317,7 +308,7 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []App) []depl
 	return ops
 }
 
-func dashboardsDiffer(local LocalDashboard, remote App) bool {
+func dashboardsDiffer(local LocalDashboard, remote api.App) bool {
 	if local.Name != remote.Name {
 		return true
 	}
@@ -327,26 +318,31 @@ func dashboardsDiffer(local LocalDashboard, remote App) bool {
 	return local.Content != remote.Content
 }
 
-func logDeployChanges(ops []deployOperation, local map[string]LocalDashboard, remote map[string]App) {
+func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, remote map[string]api.App) {
 	for _, op := range ops {
 		var (
 			currentPath string
 			currentName string
 		)
 
-		if localDash, ok := local[op.Data.ID]; ok {
-			currentPath = localDash.Path
-			currentName = localDash.Name
-		} else {
-			if op.Data.Path != nil {
-				currentPath = *op.Data.Path
-			}
-			if op.Data.Name != nil {
-				currentName = *op.Data.Name
+		if op.Data.ID != nil {
+			if localDash, ok := local[*op.Data.ID]; ok {
+				currentPath = localDash.Path
+				currentName = localDash.Name
 			}
 		}
+		if currentPath == "" && op.Data.Path != nil {
+			currentPath = *op.Data.Path
+		}
+		if currentName == "" && op.Data.Name != nil {
+			currentName = *op.Data.Name
+		}
 
-		prev, hasPrev := remote[op.Data.ID]
+		var prev api.App
+		var hasPrev bool
+		if op.Data.ID != nil {
+			prev, hasPrev = remote[*op.Data.ID]
+		}
 		if currentPath == "" && hasPrev {
 			currentPath = prev.Path
 		}
@@ -366,12 +362,16 @@ func logDeployChanges(ops []deployOperation, local map[string]LocalDashboard, re
 			extra += ")"
 		}
 
-		fmt.Printf("%s %s: %s%s%s\n", op.Operation, op.Data.ID, currentPath, currentName, extra)
+		opID := "unknown"
+		if op.Data.ID != nil {
+			opID = *op.Data.ID
+		}
+		fmt.Printf("%s %s: %s%s%s\n", op.Operation, opID, currentPath, currentName, extra)
 	}
 }
 
-func submitDeploy(ctx context.Context, client deployHTTPClient, ops []deployOperation) error {
-	body, err := json.Marshal(deployRequest{Apps: ops})
+func submitDeploy(ctx context.Context, client deployHTTPClient, ops []api.AppRequest) error {
+	body, err := json.Marshal(api.Request{Apps: ops})
 	if err != nil {
 		return fmt.Errorf("failed to marshal deploy request: %w", err)
 	}
