@@ -224,6 +224,13 @@ func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, set
 
 func extractAuthorizationToken(c echo.Context) string {
 	header := strings.TrimSpace(c.Request().Header.Get(echo.HeaderAuthorization))
+	if header == "" {
+		return ""
+	}
+	const bearerPrefix = "Bearer "
+	if len(header) > len(bearerPrefix) && strings.EqualFold(header[:len(bearerPrefix)], bearerPrefix) {
+		return strings.TrimSpace(header[len(bearerPrefix):])
+	}
 	return header
 }
 

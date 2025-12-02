@@ -29,7 +29,6 @@ type LocalDashboard struct {
 	FilePath string
 }
 
-
 type deployHTTPClient interface {
 	appsRequester
 	Actor() string
