@@ -300,6 +300,10 @@ func GetAPIKeyID(token string) string {
 	return parts[0]
 }
 
+func IsAPIKeyToken(token string) bool {
+	return strings.HasPrefix(token, API_KEY_PREFIX)
+}
+
 func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 	if !app.LoginRequired && token == "" {
 		return AuthInfo{Valid: true}, nil

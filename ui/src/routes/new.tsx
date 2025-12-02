@@ -160,6 +160,7 @@ function NewDashboard () {
       const { id } = await queryApi("dashboards", {
         method: "POST",
         body: {
+          path,
           content: runningQuery,
           temporary: true,
         },
@@ -172,7 +173,7 @@ function NewDashboard () {
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
     }
-  }, [queryApi, runningQuery, navigate]);
+  }, [queryApi, runningQuery, navigate, path]);
 
   const runTask = useCallback(async () => {
     setPreviewError(null);

@@ -5,7 +5,6 @@ export interface IApp {
   name: string;
   path?: string;
   folderId?: string;
-  content: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -22,7 +21,9 @@ interface ITaskInfo {
   nextRunAt?: string;
 }
 
-export type IDashboard = Omit<IApp, "type">;
+export type IDashboard = Omit<IApp, "type"> & {
+  content: string;
+};
 
 export type Column = {
   name: string;

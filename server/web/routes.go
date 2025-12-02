@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"shaper/server/core"
 	"shaper/server/web/handler"
+	"strings"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -50,12 +51,50 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func SetAPIKeyActor(app *core.App, contextKey string) func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if !app.LoginRequired {
+				actor := &core.Actor{
+					Type: core.ActorNoAuth,
+				}
+				ctx := core.ContextWithActor(c.Request().Context(), actor)
+				c.SetRequest(c.Request().WithContext(ctx))
+				return next(c)
+			}
+
+			raw := c.Get(contextKey)
+			token, _ := raw.(string)
+			if token == "" {
+				return next(c)
+			}
+
+			apiKeyID := core.GetAPIKeyID(token)
+			if apiKeyID == "" {
+				return next(c)
+			}
+
+			actor := &core.Actor{
+				Type: core.ActorAPIKey,
+				ID:   apiKeyID,
+			}
+			ctx := core.ContextWithActor(c.Request().Context(), actor)
+			c.SetRequest(c.Request().WithContext(ctx))
+
+			return next(c)
+		}
+	}
+}
+
+const keyAuthContextKey = "api_key_token"
+
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
+	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
+		TokenLookup: "header:Authorization",
+		KeyFunc:     GetJWTKeyfunc(app),
+	})
 	apiWithAuth := e.Group("/api",
-		echojwt.WithConfig(echojwt.Config{
-			TokenLookup: "header:Authorization",
-			KeyFunc:     GetJWTKeyfunc(app),
-		}),
+		jwtMiddleware,
 		SetActor(app),
 	)
 
@@ -66,9 +105,17 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			valid, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			if err != nil {
+				return false, err
+			}
+			if valid {
+				c.Set(keyAuthContextKey, key)
+			}
+			return valid, nil
 		},
 	}
+	apiKeyActor := SetAPIKeyActor(app, keyAuthContextKey)
 
 	e.HEAD("/", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
@@ -79,7 +126,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.HEAD("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))
@@ -89,10 +136,11 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
-	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
+	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
+	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
-	apiWithAuth.GET("/apps", handler.ListApps(app))
 	apiWithAuth.POST("/folders", handler.CreateFolder(app))
 	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
 	apiWithAuth.POST("/folders/:id/name", handler.RenameFolder(app))
@@ -158,6 +206,32 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	// Index HTML - light caching with revalidation
 	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, app.BasePath))
+}
+
+func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, setActorMid echo.MiddlewareFunc, keyAuthMiddleware echo.MiddlewareFunc, apiKeyActorMid echo.MiddlewareFunc) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		jwtChain := jwtMiddleware(setActorMid(next))
+		apiKeyChain := keyAuthMiddleware(apiKeyActorMid(next))
+		return func(c echo.Context) error {
+			token := extractAuthorizationToken(c)
+			if core.IsAPIKeyToken(token) || !app.LoginRequired {
+				return apiKeyChain(c)
+			}
+			return jwtChain(c)
+		}
+	}
+}
+
+func extractAuthorizationToken(c echo.Context) string {
+	header := strings.TrimSpace(c.Request().Header.Get(echo.HeaderAuthorization))
+	if header == "" {
+		return ""
+	}
+	const bearerPrefix = "Bearer "
+	if len(header) > len(bearerPrefix) && strings.EqualFold(header[:len(bearerPrefix)], bearerPrefix) {
+		return strings.TrimSpace(header[len(bearerPrefix):])
+	}
+	return header
 }
 
 // We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time
