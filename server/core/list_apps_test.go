@@ -160,7 +160,7 @@ func TestListAppsPagination(t *testing.T) {
 		Sort:              "name",
 		Order:             "asc",
 		Limit:             2,
-		Offset:            1,
+		Offset:            3,
 	})
 	if err != nil {
 		t.Fatalf("ListApps paginated: %v", err)
