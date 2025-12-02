@@ -251,12 +251,46 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 		LEFT JOIN folder_path fp ON a.folder_id = fp.id
 		LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
 		%s
-		ORDER BY %s %s%s`, folderIDFilter, fmt.Sprintf("a.%s", orderColumn), order, paginationClause)
+
+		UNION ALL
+
+		SELECT
+			f.id,
+			COALESCE(fp.path, '/') as path,
+			f.parent_folder_id as folder_id,
+			f.name as name,
+			'' as content,
+			f.created_at,
+			f.updated_at,
+			f.created_by,
+			f.updated_by,
+			NULL as visibility,
+			'_folder' as type,
+			NULL as last_run_at,
+			NULL as last_run_success,
+			NULL as last_run_duration,
+			NULL as next_run_at
+		FROM folders f
+		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
+		WHERE %s
+		ORDER BY type, %s %s%s`, folderIDFilter, 
+		func() string {
+			// Build folder filter for recursive mode
+			if path == "/" || path == "" {
+				return "1=1" // Include all folders
+			} else {
+				// Include folders at the path or in subfolders
+				return "(COALESCE(fp.path, '/') = ? OR COALESCE(fp.path, '/') LIKE ?)"
+			}
+		}(), orderColumn, order, paginationClause)
 
 	// Prepare arguments
 	args := folderIDArgs
-	if !opts.IncludeSubfolders && path != "/" && path != "" {
-		args = append(args, path) // For the folder query
+	if opts.IncludeSubfolders && path != "/" && path != "" {
+		// For recursive mode, we need to duplicate path args for the folder query part
+		args = append(args, path, path+"%")
+	} else if !opts.IncludeSubfolders && path != "/" && path != "" {
+		args = append(args, path) // For the folder query in non-recursive mode
 	}
 
 	if opts.Limit > 0 {

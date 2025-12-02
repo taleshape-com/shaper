@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -53,13 +52,20 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return fmt.Errorf("failed to initialize API client: %w", err)
 	}
 
-	// Fetch all dashboards from remote
-	fmt.Println("Fetching dashboards from", cfg.URL)
-	remoteDashboards, err := fetchAllDashboards(ctx, client)
+	// Fetch all dashboards and folders from remote
+	fmt.Println("Fetching dashboards and folders from", cfg.URL)
+	remoteDashboards, folders, err := fetchAllDashboardsAndFolders(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to fetch dashboards: %w", err)
 	}
 	fmt.Printf("Found %d remote dashboards\n", len(remoteDashboards))
+	fmt.Printf("Found %d remote folders\n", len(folders))
+
+	// Build a map of folder paths to their updatedAt timestamps
+	folderUpdatedAt := make(map[string]time.Time) // path -> updatedAt
+	for _, folder := range folders {
+		folderUpdatedAt[folder.Path+folder.Name+"/"] = folder.UpdatedAt
+	}
 
 	// Scan local files for existing dashboard IDs
 	fmt.Println("Loading dashboards from folder", watchDir)
@@ -72,6 +78,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	// Compare and categorize
 	var toCreate, toUpdate []api.App
 	var maxUpdatedAt time.Time
+
+	// Track max updatedAt from folders as well
+	for _, folder := range folders {
+		if folder.UpdatedAt.After(maxUpdatedAt) {
+			maxUpdatedAt = folder.UpdatedAt
+		}
+	}
 
 	// Track file paths to detect duplicates
 	seenPaths := make(map[string]string) // path -> dashboard name (for error reporting)
@@ -88,8 +101,17 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		}
 		seenPaths[filePath] = dashboard.Name
 
-		// Skip dashboards older than lastPull
-		if cfg.LastPull != nil && !dashboard.UpdatedAt.After(*cfg.LastPull) {
+		// Check if dashboard itself was updated
+		dashboardUpdated := cfg.LastPull == nil || dashboard.UpdatedAt.After(*cfg.LastPull)
+
+		// Check if any folder in the dashboard's path was updated
+		folderUpdated := false
+		if cfg.LastPull != nil {
+			folderUpdated = isAnyParentFolderUpdated(dashboard.Path, folderUpdatedAt, *cfg.LastPull)
+		}
+
+		// Include dashboard if it was updated OR if any parent folder was updated
+		if !dashboardUpdated && !folderUpdated {
 			continue
 		}
 
@@ -181,7 +203,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 			writeErrors = append(writeErrors, err)
 			continue
 		}
-		fmt.Println("Wrote dashboard", slog.String("path", dashboard.Path+dashboard.Name+DASHBOARD_SUFFIX))
+		fmt.Println("Wrote dashboard:", dashboard.Path+dashboard.Name+DASHBOARD_SUFFIX)
 	}
 
 	if len(writeErrors) > 0 {
@@ -222,19 +244,27 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 }
 
 func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]api.App, error) {
+	dashboards, _, err := fetchAllDashboardsAndFolders(ctx, requester)
+	return dashboards, err
+}
+
+func fetchAllDashboardsAndFolders(ctx context.Context, requester appsRequester) ([]api.App, []api.App, error) {
 	var allDashboards []api.App
+	var allFolders []api.App
 	limit := 100
 	offset := 0
 
 	for {
 		apps, err := fetchAppsPage(ctx, requester, limit, offset)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		for _, app := range apps {
 			if app.Type == "dashboard" {
 				allDashboards = append(allDashboards, app)
+			} else if app.Type == "_folder" {
+				allFolders = append(allFolders, app)
 			}
 		}
 
@@ -245,7 +275,7 @@ func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]api.App
 		offset += len(apps)
 	}
 
-	return allDashboards, nil
+	return allDashboards, allFolders, nil
 }
 
 func fetchAppsPage(ctx context.Context, requester appsRequester, limit, offset int) ([]api.App, error) {
@@ -329,6 +359,45 @@ func sanitizeFileName(name string) string {
 	name = strings.ReplaceAll(name, "/", "_")
 	name = strings.ReplaceAll(name, "\\", "_")
 	return name
+}
+
+// isAnyParentFolderUpdated checks if any folder in the given path (including the path itself)
+// was updated after the lastPull timestamp. It checks all parent paths.
+// For example, for path "/folder1/folder2/", it checks:
+// - "/folder1/folder2/"
+// - "/folder1/"
+// - "/"
+func isAnyParentFolderUpdated(path string, folderUpdatedAt map[string]time.Time, lastPull time.Time) bool {
+	// Normalize path to ensure it ends with /
+	normalizedPath := path
+	if normalizedPath != "/" && !strings.HasSuffix(normalizedPath, "/") {
+		normalizedPath += "/"
+	}
+
+	// Check all parent paths
+	currentPath := normalizedPath
+	for {
+		if updatedAt, exists := folderUpdatedAt[currentPath]; exists {
+			if updatedAt.After(lastPull) {
+				return true
+			}
+		}
+
+		// Move to parent path
+		if currentPath == "/" {
+			break
+		}
+		// Remove the last segment
+		currentPath = strings.TrimSuffix(currentPath, "/")
+		lastSlash := strings.LastIndex(currentPath, "/")
+		if lastSlash == -1 {
+			currentPath = "/"
+		} else {
+			currentPath = currentPath[:lastSlash+1]
+		}
+	}
+
+	return false
 }
 
 func getExpectedFilePath(baseDir string, dashboard api.App) (string, error) {
