@@ -166,7 +166,16 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 
 	// Write dashboards to files
 	var writeErrors []error
+	expectedPaths := make(map[string]string) // dashboard ID -> expected file path
 	for _, dashboard := range append(toCreate, toUpdate...) {
+		expectedPath, err := getExpectedFilePath(watchDir, dashboard)
+		if err != nil {
+			fmt.Printf("ERROR: Failed to determine file path for dashboard '%s': %s\n", dashboard.Name, err)
+			writeErrors = append(writeErrors, err)
+			continue
+		}
+		expectedPaths[dashboard.ID] = expectedPath
+
 		if err := writeDashboardFile(watchDir, dashboard); err != nil {
 			fmt.Printf("ERROR: Failed to write dashboard '%s': %s\n", dashboard.Name, err)
 			writeErrors = append(writeErrors, err)
@@ -177,6 +186,29 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 
 	if len(writeErrors) > 0 {
 		return fmt.Errorf("pull completed with %d error(s), lastPull not updated", len(writeErrors))
+	}
+
+	// Delete old files that have been moved or renamed
+	var deleteErrors []error
+	for dashboardID, actualPath := range localIDs {
+		expectedPath, exists := expectedPaths[dashboardID]
+		if !exists {
+			// Dashboard was deleted remotely, skip deletion (user might want to keep it)
+			continue
+		}
+		if actualPath != expectedPath {
+			// Dashboard was moved/renamed, delete old file
+			if err := os.Remove(actualPath); err != nil {
+				fmt.Printf("ERROR: Failed to delete old dashboard file '%s': %s\n", actualPath, err)
+				deleteErrors = append(deleteErrors, err)
+			} else {
+				fmt.Printf("Deleted old dashboard file: %s\n", actualPath)
+			}
+		}
+	}
+
+	if len(deleteErrors) > 0 {
+		return fmt.Errorf("pull completed with %d deletion error(s), lastPull not updated", len(deleteErrors))
 	}
 
 	// Update lastPull timestamp
@@ -256,7 +288,14 @@ func scanLocalDashboardIDs(dir string) (map[string]string, error) {
 		}
 
 		if id := extractShaperID(string(content)); id != "" {
-			ids[id] = p
+			// Convert to absolute path for consistent comparison
+			absPath, err := filepath.Abs(p)
+			if err != nil {
+				// If we can't get absolute path, use the original path
+				ids[id] = p
+			} else {
+				ids[id] = absPath
+			}
 		}
 
 		return nil
@@ -290,6 +329,27 @@ func sanitizeFileName(name string) string {
 	name = strings.ReplaceAll(name, "/", "_")
 	name = strings.ReplaceAll(name, "\\", "_")
 	return name
+}
+
+func getExpectedFilePath(baseDir string, dashboard api.App) (string, error) {
+	// Construct path (same logic as writeDashboardFile)
+	dashPath := dashboard.Path
+	if dashPath == "" {
+		dashPath = "/"
+	}
+	// Remove leading slash for filepath.Join
+	dashPath = strings.TrimPrefix(dashPath, "/")
+
+	dirPath := filepath.Join(baseDir, dashPath)
+	fileName := sanitizeFileName(dashboard.Name) + DASHBOARD_SUFFIX
+	filePath := filepath.Join(dirPath, fileName)
+
+	// Convert to absolute path for comparison
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	return absPath, nil
 }
 
 func writeDashboardFile(baseDir string, dashboard api.App) error {
