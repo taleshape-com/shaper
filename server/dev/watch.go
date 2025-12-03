@@ -46,6 +46,15 @@ type Dev struct {
 	filesMutex     sync.RWMutex
 	client         DashboardClient
 	baseURL        string
+	throttleState  map[string]*fileThrottle
+	debounceMutex  sync.Mutex
+}
+
+type fileThrottle struct {
+	timer    *time.Timer
+	lastRun  time.Time
+	pending  func()
+	runMutex sync.Mutex
 }
 
 type websocketConn struct {
@@ -73,6 +82,7 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	dev := Dev{
 		connections:    make(map[string][]*websocketConn),
 		dashboardFiles: make(map[string]string),
+		throttleState:  make(map[string]*fileThrottle),
 		client:         cfg.Client,
 		baseURL:        strings.TrimSuffix(cfg.BaseURL, "/"),
 	}
@@ -111,119 +121,9 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	go func() {
 		for ei := range c {
 			p := ei.Path()
-			if !strings.HasSuffix(p, DASHBOARD_SUFFIX) {
-				continue
-			}
-			// TODO: on windows need to convert \ to /
-			fPath, found := strings.CutPrefix(path.Dir(p), absWatchDir)
-			if !found {
-				fmt.Printf("ERROR: Failed removing prefix '%s' from dir %s\n", absWatchDir, path.Dir(p))
-				continue
-			}
-			name, found := strings.CutSuffix(path.Base(p), DASHBOARD_SUFFIX)
-			if !found {
-				fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", DASHBOARD_SUFFIX, path.Base(p))
-				continue
-			}
-
-			ctx := context.Background()
-			contentBytes, updated, shaperID, err := ensureShaperIDForFile(p)
-			if err != nil {
-				fmt.Printf("ERROR: Failed ensuring ID comment in file '%s': %s\n", p, err)
-				continue
-			}
-
-			if updated {
-				fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
-				// Skip further handling for this event; the write will trigger a new event
-				continue
-			}
-
-			content := string(contentBytes)
-
-			// Check if we have an existing dashboard for this file
-			dev.filesMutex.RLock()
-			existingDashboardID := ""
-			for dashID, filePath := range dev.dashboardFiles {
-				if filePath == p {
-					existingDashboardID = dashID
-					break
-				}
-			}
-			dev.filesMutex.RUnlock()
-
-			var dashboardID string
-			if existingDashboardID != "" {
-				// Update existing dashboard
-				err = dev.client.SaveDashboardQuery(ctx, existingDashboardID, content)
-				if err != nil {
-					// Check if the error indicates the dashboard has expired (key not found)
-					errStr := err.Error()
-					if strings.Contains(errStr, "key not found") || strings.Contains(errStr, "failed to get dashboard") {
-						// Dashboard expired, recreate it
-						fmt.Printf("Temporary dashboard for '%s' expired, recreating\n", p)
-
-						// Remove the expired dashboard from tracking
-						dev.filesMutex.Lock()
-						delete(dev.dashboardFiles, existingDashboardID)
-						dev.filesMutex.Unlock()
-
-						// Create new dashboard
-						dashboardID, err = dev.client.CreateDashboard(ctx, name, content, fPath+"/")
-						if err != nil {
-							fmt.Printf("ERROR: Failed recreating expired dashboard for '%s': %s\n", p, err)
-							continue
-						}
-
-						// Track this file with new dashboard ID
-						dev.filesMutex.Lock()
-						dev.dashboardFiles[dashboardID] = p
-						dev.filesMutex.Unlock()
-
-						fmt.Printf("Recreated expired dashboard for '%s%s'\n", fPath, name)
-
-						url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
-						if err := OpenURL(url); err != nil {
-							fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
-						}
-						continue
-					}
-
-					// Other error, log and continue
-					fmt.Printf("ERROR: Failed updating dashboard '%s': %s\n", p, err)
-					continue
-				}
-				dashboardID = existingDashboardID
-				fmt.Printf("Updated dashboard '%s%s'\n", fPath+"/", name)
-
-				// Notify websocket clients
-				notified := dev.notifyClients(dashboardID)
-				if !notified {
-					url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
-					if err := OpenURL(url); err != nil {
-						fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
-					}
-				}
-			} else {
-				// Create new dashboard
-				dashboardID, err = dev.client.CreateDashboard(ctx, name, content, fPath+"/")
-				if err != nil {
-					fmt.Printf("ERROR: Failed creating dashboard for '%s': %s\n", p, err)
-					continue
-				}
-
-				// Track this file
-				dev.filesMutex.Lock()
-				dev.dashboardFiles[dashboardID] = p
-				dev.filesMutex.Unlock()
-
-				fmt.Printf("Created new dashboard for '%s%s'\n", fPath, name)
-
-				url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", dev.baseURL, dashboardID, dev.port)
-				if err := OpenURL(url); err != nil {
-					fmt.Printf("ERROR: Failed opening '%s' in browser: %s\b", url, err)
-				}
-			}
+			dev.throttleFileEvent(p, func() {
+				dev.handleDashboardFile(absWatchDir, p)
+			})
 		}
 	}()
 
@@ -232,8 +132,182 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 
 func (d *Dev) Stop() {
 	notify.Stop(d.c)
+	d.debounceMutex.Lock()
+	for path, state := range d.throttleState {
+		if state.timer != nil {
+			state.timer.Stop()
+		}
+		delete(d.throttleState, path)
+	}
+	d.debounceMutex.Unlock()
 	if d.server != nil {
 		d.server.Close()
+	}
+}
+
+const fileEventThrottle = 5000 * time.Millisecond
+
+func (d *Dev) throttleFileEvent(filePath string, handler func()) {
+	d.debounceMutex.Lock()
+	state, ok := d.throttleState[filePath]
+	if !ok {
+		state = &fileThrottle{}
+		d.throttleState[filePath] = state
+	}
+
+	now := time.Now()
+	elapsed := now.Sub(state.lastRun)
+	if state.lastRun.IsZero() || elapsed >= fileEventThrottle {
+		state.lastRun = now
+		d.debounceMutex.Unlock()
+		handler()
+		return
+	}
+
+	wait := fileEventThrottle - elapsed
+	state.pending = handler
+	if state.timer != nil {
+		state.timer.Stop()
+	}
+	state.timer = time.AfterFunc(wait, func() {
+		d.runThrottledHandler(filePath)
+	})
+	d.debounceMutex.Unlock()
+}
+
+func (d *Dev) runThrottledHandler(filePath string) {
+	d.debounceMutex.Lock()
+	state, ok := d.throttleState[filePath]
+	if !ok {
+		d.debounceMutex.Unlock()
+		return
+	}
+	handler := state.pending
+	state.pending = nil
+	state.lastRun = time.Now()
+	state.timer = nil
+	d.debounceMutex.Unlock()
+
+	if handler != nil {
+		handler()
+	}
+}
+
+func (d *Dev) handleDashboardFile(absWatchDir, p string) {
+	if !strings.HasSuffix(p, DASHBOARD_SUFFIX) {
+		return
+	}
+
+	// TODO: on windows need to convert \ to /
+	fPath, found := strings.CutPrefix(path.Dir(p), absWatchDir)
+	if !found {
+		fmt.Printf("ERROR: Failed removing prefix '%s' from dir %s\n", absWatchDir, path.Dir(p))
+		return
+	}
+	name, found := strings.CutSuffix(path.Base(p), DASHBOARD_SUFFIX)
+	if !found {
+		fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", DASHBOARD_SUFFIX, path.Base(p))
+		return
+	}
+
+	ctx := context.Background()
+	contentBytes, updated, shaperID, err := ensureShaperIDForFile(p)
+	if err != nil {
+		fmt.Printf("ERROR: Failed ensuring ID comment in file '%s': %s\n", p, err)
+		return
+	}
+
+	if updated {
+		fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
+		// Skip further handling for this event; the write will trigger a new event
+		return
+	}
+
+	content := string(contentBytes)
+
+	// Check if we have an existing dashboard for this file
+	d.filesMutex.RLock()
+	existingDashboardID := ""
+	for dashID, filePath := range d.dashboardFiles {
+		if filePath == p {
+			existingDashboardID = dashID
+			break
+		}
+	}
+	d.filesMutex.RUnlock()
+
+	var dashboardID string
+	if existingDashboardID != "" {
+		// Update existing dashboard
+		err = d.client.SaveDashboardQuery(ctx, existingDashboardID, content)
+		if err != nil {
+			// Check if the error indicates the dashboard has expired (key not found)
+			errStr := err.Error()
+			if strings.Contains(errStr, "key not found") || strings.Contains(errStr, "failed to get dashboard") {
+				// Dashboard expired, recreate it
+				fmt.Printf("Temporary dashboard for '%s' expired, recreating\n", p)
+
+				// Remove the expired dashboard from tracking
+				d.filesMutex.Lock()
+				delete(d.dashboardFiles, existingDashboardID)
+				d.filesMutex.Unlock()
+
+				// Create new dashboard
+				dashboardID, err = d.client.CreateDashboard(ctx, name, content, fPath+"/")
+				if err != nil {
+					fmt.Printf("ERROR: Failed recreating expired dashboard for '%s': %s\n", p, err)
+					return
+				}
+
+				// Track this file with new dashboard ID
+				d.filesMutex.Lock()
+				d.dashboardFiles[dashboardID] = p
+				d.filesMutex.Unlock()
+
+				fmt.Printf("Recreated expired dashboard for '%s%s'\n", fPath, name)
+
+				url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", d.baseURL, dashboardID, d.port)
+				if err := OpenURL(url); err != nil {
+					fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
+				}
+				return
+			}
+
+			// Other error, log and return
+			fmt.Printf("ERROR: Failed updating dashboard '%s': %s\n", p, err)
+			return
+		}
+		dashboardID = existingDashboardID
+		fmt.Printf("Updated dashboard '%s%s'\n", fPath+"/", name)
+
+		// Notify websocket clients
+		notified := d.notifyClients(dashboardID)
+		if !notified {
+			url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", d.baseURL, dashboardID, d.port)
+			if err := OpenURL(url); err != nil {
+				fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
+			}
+		}
+		return
+	}
+
+	// Create new dashboard
+	dashboardID, err = d.client.CreateDashboard(ctx, name, content, fPath+"/")
+	if err != nil {
+		fmt.Printf("ERROR: Failed creating dashboard for '%s': %s\n", p, err)
+		return
+	}
+
+	// Track this file
+	d.filesMutex.Lock()
+	d.dashboardFiles[dashboardID] = p
+	d.filesMutex.Unlock()
+
+	fmt.Printf("Created new dashboard for '%s%s'\n", fPath, name)
+
+	url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", d.baseURL, dashboardID, d.port)
+	if err := OpenURL(url); err != nil {
+		fmt.Printf("ERROR: Failed opening '%s' in browser: %s\b", url, err)
 	}
 }
 
