@@ -210,6 +210,31 @@ func normalizeDashboardPath(relDir string) string {
 	return normalized
 }
 
+// stripShaperIDPrefix removes the ID prefix, the newline after it, and the following empty line from content.
+// The ID prefix format is "-- shaperid:<id>\n\n" at the start of the content.
+func stripShaperIDPrefix(content string) string {
+	if !strings.HasPrefix(content, shaperIDPrefix) {
+		return content
+	}
+
+	// Find the end of the first line (where the newline is)
+	lineEnd := strings.IndexByte(content, '\n')
+	if lineEnd == -1 {
+		// No newline found, return empty string (content is just the ID line)
+		return ""
+	}
+
+	// Skip the ID line's newline
+	remaining := content[lineEnd+1:]
+
+	// Check if there's an empty line after the ID line and skip it too
+	if len(remaining) > 0 && remaining[0] == '\n' {
+		remaining = remaining[1:]
+	}
+
+	return remaining
+}
+
 func ensureRemoteFreshness(remote []api.App, lastPull time.Time, actor string) error {
 	for _, dashboard := range remote {
 		if dashboard.Type != "dashboard" {
@@ -252,7 +277,7 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []
 			if dashboardsDiffer(localDash, remoteDash) {
 				name := localDash.Name
 				path := localDash.Path
-				content := localDash.Content
+				content := stripShaperIDPrefix(localDash.Content)
 				id := localDash.ID
 				ops = append(ops, api.AppRequest{
 					Operation: "update",
@@ -270,7 +295,7 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []
 
 		name := localDash.Name
 		path := localDash.Path
-		content := localDash.Content
+		content := stripShaperIDPrefix(localDash.Content)
 		id := localDash.ID
 		ops = append(ops, api.AppRequest{
 			Operation: "create",
@@ -319,7 +344,9 @@ func dashboardsDiffer(local LocalDashboard, remote api.App) bool {
 	if local.Path != normalizeDashboardPath(strings.TrimPrefix(remote.Path, "/")) {
 		return true
 	}
-	return local.Content != remote.Content
+	// Compare content without the ID prefix (local has it, remote doesn't)
+	localContent := stripShaperIDPrefix(local.Content)
+	return localContent != remote.Content
 }
 
 func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, remote map[string]api.App) {
@@ -370,7 +397,7 @@ func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, rem
 		if op.Data.ID != nil {
 			opID = *op.Data.ID
 		}
-		fmt.Printf("%s %s: %s%s%s\n", op.Operation, opID, currentPath, currentName, extra)
+		fmt.Printf("%s %s: %s%s%s%s\n", op.Operation, opID, currentPath, currentName, DASHBOARD_SUFFIX, extra)
 	}
 }
 
@@ -401,12 +428,10 @@ type apiKeyClient struct {
 }
 
 func newAPIKeyClient(baseURL, apiKey string) (*apiKeyClient, error) {
-	keyID, actor, err := parseAPIKeyActor(apiKey)
+	_, actor, err := parseAPIKeyActor(apiKey)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("Using API key: ", keyID)
 
 	return &apiKeyClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
