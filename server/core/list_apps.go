@@ -5,23 +5,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"shaper/server/api"
+	"strings"
 	"time"
 )
-
-type AppListItem struct {
-	ID         string    `json:"id"`
-	Path       string    `json:"path"`
-	FolderID   *string   `json:"folderId,omitempty"`
-	Name       string    `json:"name"`
-	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-	CreatedBy  *string   `json:"createdBy,omitempty"`
-	UpdatedBy  *string   `json:"updatedBy,omitempty"`
-	Visibility *string   `json:"visibility,omitempty"`
-	TaskInfo   *TaskInfo `json:"taskInfo,omitempty"`
-	Type       string    `json:"type"`
-}
 
 type AppDbRecord struct {
 	ID              string     `db:"id"`
@@ -41,15 +28,15 @@ type AppDbRecord struct {
 	NextRunAt       *time.Time `db:"next_run_at"`
 }
 
-type TaskInfo struct {
-	LastRunAt       *time.Time `json:"lastRunAt,omitempty"`
-	LastRunSuccess  *bool      `json:"lastRunSuccess,omitempty"`
-	LastRunDuration *int64     `json:"lastRunDuration,omitempty"`
-	NextRunAt       *time.Time `json:"nextRunAt,omitempty"`
-}
 
-type AppListResponse struct {
-	Apps []AppListItem `json:"apps"`
+type ListAppsOptions struct {
+	Sort              string
+	Order             string
+	Path              string
+	IncludeSubfolders bool
+	IncludeContent    bool
+	Limit             int
+	Offset            int
 }
 
 type FolderListItem struct {
@@ -78,15 +65,18 @@ type FolderListResponse struct {
 	Folders []FolderListItem `json:"folders"`
 }
 
-func ListApps(app *App, ctx context.Context, sort string, order string, path string) (AppListResponse, error) {
-	var orderBy string
+func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResponse, error) {
+	sort := opts.Sort
+	order := opts.Order
+	path := opts.Path
+	var orderColumn string
 	switch sort {
 	case "created":
-		orderBy = "created_at"
+		orderColumn = "created_at"
 	case "name":
-		orderBy = "name"
+		orderColumn = "name"
 	default:
-		orderBy = "updated_at"
+		orderColumn = "updated_at"
 	}
 
 	if order != "asc" && order != "desc" {
@@ -95,16 +85,22 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 
 	dbApps := []AppDbRecord{}
 
-	// Find folder_id from path using recursive CTE
+	// Build folder filters
 	var folderIDFilter string
 	var folderIDArgs []interface{}
 
-	if path == "/" || path == "" {
-		// Root level - items with folder_id = NULL
-		folderIDFilter = "WHERE a.folder_id IS NULL"
+	if opts.IncludeSubfolders {
+		if path == "/" || path == "" {
+			folderIDFilter = "WHERE 1=1"
+		} else {
+			folderIDFilter = "WHERE (COALESCE(fp.path, '/') = ? OR COALESCE(fp.path, '/') LIKE ?)"
+			folderIDArgs = append(folderIDArgs, path, path+"%")
+		}
 	} else {
-		// Non-root level - need to find folder ID from path
-		folderIDFilter = `WHERE a.folder_id = (
+		if path == "/" || path == "" {
+			folderIDFilter = "WHERE a.folder_id IS NULL"
+		} else {
+			folderIDFilter = `WHERE a.folder_id = (
 			WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
 				SELECT id, parent_folder_id, name, '/' || name || '/' as path
 				FROM folders
@@ -118,20 +114,36 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			)
 			SELECT id FROM folder_path WHERE path = ?
 		)`
-		folderIDArgs = append(folderIDArgs, path)
+			folderIDArgs = append(folderIDArgs, path)
+		}
+	}
+
+	if folderIDFilter == "" {
+		folderIDFilter = "WHERE 1=1"
 	}
 
 	// Build type filter
-	typeFilter := ""
 	if app.NoTasks {
-		typeFilter = " AND a.type = 'dashboard'"
+		if strings.Contains(folderIDFilter, "WHERE") {
+			folderIDFilter += " AND a.type = 'dashboard'"
+		} else {
+			folderIDFilter = "WHERE a.type = 'dashboard'"
+		}
 	}
 
-	// Combine filters
-	whereClause := folderIDFilter + typeFilter
+	var paginationClause string
+	if opts.Limit > 0 {
+		if opts.Offset > 0 {
+			paginationClause = " LIMIT ? OFFSET ?"
+		} else {
+			paginationClause = " LIMIT ?"
+		}
+	} else if opts.Offset > 0 {
+		paginationClause = " LIMIT -1 OFFSET ?"
+	}
 
 	// Build the query with recursive CTE for folder paths
-	query := fmt.Sprintf(`
+	queryWithFolders := fmt.Sprintf(`
 		WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
 			SELECT id, parent_folder_id, name, '/' || name || '/' as path
 			FROM folders
@@ -185,7 +197,7 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 		FROM folders f
 		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
 		WHERE f.parent_folder_id %s
-		ORDER BY type, %s %s`, whereClause,
+		ORDER BY type, %s %s%s`, folderIDFilter,
 		func() string {
 			if path == "/" || path == "" {
 				return "IS NULL"
@@ -205,12 +217,96 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 					SELECT id FROM folder_path WHERE path = ?
 				)`)
 			}
-		}(), orderBy, order)
+		}(), orderColumn, order, paginationClause)
+
+	queryAppsOnly := fmt.Sprintf(`
+		WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
+			SELECT id, parent_folder_id, name, '/' || name || '/' as path
+			FROM folders
+			WHERE parent_folder_id IS NULL
+
+			UNION ALL
+
+			SELECT f.id, f.parent_folder_id, f.name, fp.path || f.name || '/' as path
+			FROM folders f
+			JOIN folder_path fp ON f.parent_folder_id = fp.id
+		)
+		SELECT
+			a.id,
+			COALESCE(fp.path, '/') as path,
+			a.folder_id,
+			a.name,
+			a.content,
+			a.created_at,
+			a.updated_at,
+			a.created_by,
+			a.updated_by,
+			a.visibility,
+			a.type,
+			t.last_run_at,
+			t.last_run_success,
+			t.last_run_duration,
+			t.next_run_at
+		FROM apps a
+		LEFT JOIN folder_path fp ON a.folder_id = fp.id
+		LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
+		%s
+
+		UNION ALL
+
+		SELECT
+			f.id,
+			COALESCE(fp.path, '/') as path,
+			f.parent_folder_id as folder_id,
+			f.name as name,
+			'' as content,
+			f.created_at,
+			f.updated_at,
+			f.created_by,
+			f.updated_by,
+			NULL as visibility,
+			'_folder' as type,
+			NULL as last_run_at,
+			NULL as last_run_success,
+			NULL as last_run_duration,
+			NULL as next_run_at
+		FROM folders f
+		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
+		WHERE %s
+		ORDER BY type, %s %s%s`, folderIDFilter, 
+		func() string {
+			// Build folder filter for recursive mode
+			if path == "/" || path == "" {
+				return "1=1" // Include all folders
+			} else {
+				// Include folders at the path or in subfolders
+				return "(COALESCE(fp.path, '/') = ? OR COALESCE(fp.path, '/') LIKE ?)"
+			}
+		}(), orderColumn, order, paginationClause)
 
 	// Prepare arguments
 	args := folderIDArgs
-	if path != "/" && path != "" {
-		args = append(args, path) // For the folder query
+	if opts.IncludeSubfolders && path != "/" && path != "" {
+		// For recursive mode, we need to duplicate path args for the folder query part
+		args = append(args, path, path+"%")
+	} else if !opts.IncludeSubfolders && path != "/" && path != "" {
+		args = append(args, path) // For the folder query in non-recursive mode
+	}
+
+	if opts.Limit > 0 {
+		args = append(args, opts.Limit)
+		if opts.Offset > 0 {
+			args = append(args, opts.Offset)
+		}
+	} else if opts.Offset > 0 {
+		args = append(args, opts.Offset)
+	}
+
+	var query string
+	if opts.IncludeSubfolders {
+		query = queryAppsOnly
+	} else {
+		query = queryWithFolders
 	}
 
 	err := app.Sqlite.SelectContext(ctx, &dbApps, query, args...)
@@ -218,14 +314,13 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 		err = fmt.Errorf("error listing apps: %w", err)
 	}
 
-	apps := make([]AppListItem, len(dbApps))
+	apps := make([]api.App, len(dbApps))
 	for i, a := range dbApps {
-		apps[i] = AppListItem{
+		apps[i] = api.App{
 			ID:         a.ID,
 			Path:       a.Path,
 			FolderID:   a.FolderID,
 			Name:       a.Name,
-			Content:    a.Content,
 			CreatedAt:  a.CreatedAt,
 			UpdatedAt:  a.UpdatedAt,
 			CreatedBy:  a.CreatedBy,
@@ -233,7 +328,10 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			Visibility: a.Visibility,
 			Type:       a.Type,
 		}
-		apps[i].TaskInfo = &TaskInfo{
+		if opts.IncludeContent {
+			apps[i].Content = a.Content
+		}
+		apps[i].TaskInfo = &api.TaskInfo{
 			LastRunAt:       a.LastRunAt,
 			LastRunSuccess:  a.LastRunSuccess,
 			LastRunDuration: a.LastRunDuration,
@@ -246,5 +344,23 @@ func ListApps(app *App, ctx context.Context, sort string, order string, path str
 			apps[i].Visibility = nil
 		}
 	}
-	return AppListResponse{Apps: apps}, err
+
+	// Calculate pagination info from limit/offset
+	pageSize := opts.Limit
+	if pageSize == 0 {
+		pageSize = len(apps)
+		if pageSize == 0 {
+			pageSize = 1 // Avoid division by zero
+		}
+	}
+	page := 1
+	if pageSize > 0 && opts.Offset > 0 {
+		page = (opts.Offset / pageSize) + 1
+	}
+
+	return api.AppsResponse{
+		Apps:     apps,
+		Page:     page,
+		PageSize: pageSize,
+	}, err
 }

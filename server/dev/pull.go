@@ -1,0 +1,452 @@
+package dev
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"shaper/server/api"
+	"strings"
+	"syscall"
+	"time"
+)
+
+func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfirm bool) error {
+	cfg, err := loadOrPromptConfig(configPath)
+	if err != nil {
+		return err
+	}
+
+	watchDir, err := resolveAbsolutePath(cfg.Directory)
+	if err != nil {
+		return fmt.Errorf("failed to resolve directory: %w", err)
+	}
+	if err := ensureDirExists(watchDir); err != nil {
+		return err
+	}
+
+	authFilePath, err := resolveAbsolutePath(authFile)
+	if err != nil {
+		return fmt.Errorf("failed to resolve auth file path: %w", err)
+	}
+
+	fmt.Printf("Pulling dashboard changes...\n\n")
+
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	if err != nil {
+		return err
+	}
+
+	authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
+	if err := authManager.EnsureSession(); err != nil {
+		return err
+	}
+
+	client, err := NewAPIClient(ctx, cfg.URL, authManager)
+	if err != nil {
+		return fmt.Errorf("failed to initialize API client: %w", err)
+	}
+
+	// Fetch all dashboards and folders from remote
+	fmt.Println("Fetching dashboards and folders from", cfg.URL)
+	remoteDashboards, folders, err := fetchAllDashboardsAndFolders(ctx, client)
+	if err != nil {
+		return fmt.Errorf("failed to fetch dashboards: %w", err)
+	}
+	fmt.Printf("Found %d remote dashboards\n", len(remoteDashboards))
+	fmt.Printf("Found %d remote folders\n", len(folders))
+
+	// Build a map of folder paths to their updatedAt timestamps
+	folderUpdatedAt := make(map[string]time.Time) // path -> updatedAt
+	for _, folder := range folders {
+		folderUpdatedAt[folder.Path+folder.Name+"/"] = folder.UpdatedAt
+	}
+
+	// Scan local files for existing dashboard IDs
+	fmt.Println("Loading dashboards from folder", watchDir)
+	localIDs, err := scanLocalDashboardIDs(watchDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan local dashboards: %w", err)
+	}
+	fmt.Printf("Found %d local dashboards.\n", len(localIDs))
+
+	// Compare and categorize
+	var toCreate, toUpdate []api.App
+	var maxUpdatedAt time.Time
+
+	// Track max updatedAt from folders as well
+	for _, folder := range folders {
+		if folder.UpdatedAt.After(maxUpdatedAt) {
+			maxUpdatedAt = folder.UpdatedAt
+		}
+	}
+
+	// Track file paths to detect duplicates
+	seenPaths := make(map[string]string) // path -> dashboard name (for error reporting)
+
+	for _, dashboard := range remoteDashboards {
+		if dashboard.UpdatedAt.After(maxUpdatedAt) {
+			maxUpdatedAt = dashboard.UpdatedAt
+		}
+
+		// Check for duplicate file paths
+		filePath := filepath.Join(strings.TrimPrefix(dashboard.Path, "/"), sanitizeFileName(dashboard.Name)+DASHBOARD_SUFFIX)
+		if existingName, exists := seenPaths[filePath]; exists {
+			return fmt.Errorf("duplicate dashboard name %q in folder %q (conflicts with %q) - please rename one of them before pulling", dashboard.Name, dashboard.Path, existingName)
+		}
+		seenPaths[filePath] = dashboard.Name
+
+		// Check if dashboard itself was updated
+		dashboardUpdated := cfg.LastPull == nil || dashboard.UpdatedAt.After(*cfg.LastPull)
+
+		// Check if any folder in the dashboard's path was updated
+		folderUpdated := false
+		if cfg.LastPull != nil {
+			folderUpdated = isAnyParentFolderUpdated(dashboard.Path, folderUpdatedAt, *cfg.LastPull)
+		}
+
+		// Include dashboard if it was updated OR if any parent folder was updated
+		if !dashboardUpdated && !folderUpdated {
+			continue
+		}
+
+		if _, exists := localIDs[dashboard.ID]; exists {
+			toUpdate = append(toUpdate, dashboard)
+		} else {
+			toCreate = append(toCreate, dashboard)
+		}
+	}
+
+	if len(toCreate) == 0 && len(toUpdate) == 0 {
+		fmt.Printf("\nNo changes.\n")
+		return nil
+	}
+
+	// Show summary
+	fmt.Println()
+	if len(toCreate) > 0 {
+		fmt.Printf("Dashboards to create (%d):\n", len(toCreate))
+		for _, d := range toCreate {
+			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), DASHBOARD_SUFFIX)
+		}
+	}
+	if len(toUpdate) > 0 {
+		fmt.Printf("Dashboards to update (%d):\n", len(toUpdate))
+		for _, d := range toUpdate {
+			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), DASHBOARD_SUFFIX)
+		}
+	}
+	fmt.Println()
+
+	// Ask for confirmation unless skipped
+	if !skipConfirm {
+		fmt.Print("Proceed with pull? [y/N]: ")
+		reader := bufio.NewReader(os.Stdin)
+
+		// Set up signal handling for CTRL-C
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGINT)
+		defer signal.Stop(sigChan)
+
+		// Channel to receive input
+		inputChan := make(chan string, 1)
+		errChan := make(chan error, 1)
+
+		// Read input in a goroutine
+		go func() {
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				errChan <- err
+				return
+			}
+			inputChan <- input
+		}()
+
+		// Wait for either input or signal
+		var input string
+		select {
+		case input = <-inputChan:
+			// Got input, continue
+		case <-sigChan:
+			fmt.Print("\n\nInterrupted\n\n")
+			return ErrInterrupted
+		case err := <-errChan:
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+
+		input = strings.TrimSpace(strings.ToLower(input))
+		if input != "y" && input != "yes" {
+			fmt.Println("\nPull cancelled.")
+			return nil
+		}
+	}
+
+	// Write dashboards to files
+	var writeErrors []error
+	expectedPaths := make(map[string]string) // dashboard ID -> expected file path
+	for _, dashboard := range append(toCreate, toUpdate...) {
+		expectedPath, err := getExpectedFilePath(watchDir, dashboard)
+		if err != nil {
+			fmt.Printf("ERROR: Failed to determine file path for dashboard '%s': %s\n", dashboard.Name, err)
+			writeErrors = append(writeErrors, err)
+			continue
+		}
+		expectedPaths[dashboard.ID] = expectedPath
+
+		if err := writeDashboardFile(watchDir, dashboard); err != nil {
+			fmt.Printf("ERROR: Failed to write dashboard '%s': %s\n", dashboard.Name, err)
+			writeErrors = append(writeErrors, err)
+			continue
+		}
+		fmt.Println("Wrote dashboard:", dashboard.Path+dashboard.Name+DASHBOARD_SUFFIX)
+	}
+
+	if len(writeErrors) > 0 {
+		return fmt.Errorf("pull completed with %d error(s), lastPull not updated", len(writeErrors))
+	}
+
+	// Delete old files that have been moved or renamed
+	var deleteErrors []error
+	for dashboardID, actualPath := range localIDs {
+		expectedPath, exists := expectedPaths[dashboardID]
+		if !exists {
+			// Dashboard was deleted remotely, skip deletion (user might want to keep it)
+			continue
+		}
+		if actualPath != expectedPath {
+			// Dashboard was moved/renamed, delete old file
+			if err := os.Remove(actualPath); err != nil {
+				fmt.Printf("ERROR: Failed to delete old dashboard file '%s': %s\n", actualPath, err)
+				deleteErrors = append(deleteErrors, err)
+			} else {
+				fmt.Printf("Deleted old dashboard file: %s\n", actualPath)
+			}
+		}
+	}
+
+	if len(deleteErrors) > 0 {
+		return fmt.Errorf("pull completed with %d deletion error(s), lastPull not updated", len(deleteErrors))
+	}
+
+	// Update lastPull timestamp
+	cfg.LastPull = &maxUpdatedAt
+	if err := SaveConfig(configPath, cfg); err != nil {
+		return fmt.Errorf("failed to save config with lastPull: %w", err)
+	}
+
+	fmt.Printf("\nPull complete. Last pull timestamp: %s\n", maxUpdatedAt.Format(time.RFC3339))
+	return nil
+}
+
+func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]api.App, error) {
+	dashboards, _, err := fetchAllDashboardsAndFolders(ctx, requester)
+	return dashboards, err
+}
+
+func fetchAllDashboardsAndFolders(ctx context.Context, requester appsRequester) ([]api.App, []api.App, error) {
+	var allDashboards []api.App
+	var allFolders []api.App
+	limit := 100
+	offset := 0
+
+	for {
+		apps, err := fetchAppsPage(ctx, requester, limit, offset)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for _, app := range apps {
+			if app.Type == "dashboard" {
+				allDashboards = append(allDashboards, app)
+			} else if app.Type == "_folder" {
+				allFolders = append(allFolders, app)
+			}
+		}
+
+		// If we got fewer apps than requested, we've reached the end
+		if len(apps) < limit {
+			break
+		}
+		offset += len(apps)
+	}
+
+	return allDashboards, allFolders, nil
+}
+
+func fetchAppsPage(ctx context.Context, requester appsRequester, limit, offset int) ([]api.App, error) {
+	path := fmt.Sprintf("/api/apps?include_content=true&recursive=true&limit=%d&offset=%d", limit, offset)
+	resp, err := requester.DoRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, decodeAPIError(resp)
+	}
+
+	var result api.AppsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode apps response: %w", err)
+	}
+
+	return result.Apps, nil
+}
+
+func scanLocalDashboardIDs(dir string) (map[string]string, error) {
+	ids := make(map[string]string) // shaperID -> filePath
+
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+			return nil
+		}
+
+		content, err := os.ReadFile(p)
+		if err != nil {
+			return nil
+		}
+
+		if id := extractShaperID(string(content)); id != "" {
+			// Convert to absolute path for consistent comparison
+			absPath, err := filepath.Abs(p)
+			if err != nil {
+				// If we can't get absolute path, use the original path
+				ids[id] = p
+			} else {
+				ids[id] = absPath
+			}
+		}
+
+		return nil
+	})
+
+	return ids, err
+}
+
+func extractShaperID(content string) string {
+	if !strings.HasPrefix(content, shaperIDPrefix) {
+		return ""
+	}
+
+	lineEnd := strings.IndexByte(content, '\n')
+	firstLine := content
+	if lineEnd != -1 {
+		firstLine = content[:lineEnd]
+	}
+
+	id := strings.TrimPrefix(firstLine, shaperIDPrefix)
+	id = strings.TrimSpace(id)
+	if id == "" || strings.ContainsAny(id, " \t\r") {
+		return ""
+	}
+
+	return id
+}
+
+func sanitizeFileName(name string) string {
+	// Escape slashes and backslashes to prevent path traversal
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	return name
+}
+
+// isAnyParentFolderUpdated checks if any folder in the given path (including the path itself)
+// was updated after the lastPull timestamp. It checks all parent paths.
+// For example, for path "/folder1/folder2/", it checks:
+// - "/folder1/folder2/"
+// - "/folder1/"
+// - "/"
+func isAnyParentFolderUpdated(path string, folderUpdatedAt map[string]time.Time, lastPull time.Time) bool {
+	// Normalize path to ensure it ends with /
+	normalizedPath := path
+	if normalizedPath != "/" && !strings.HasSuffix(normalizedPath, "/") {
+		normalizedPath += "/"
+	}
+
+	// Check all parent paths
+	currentPath := normalizedPath
+	for {
+		if updatedAt, exists := folderUpdatedAt[currentPath]; exists {
+			if updatedAt.After(lastPull) {
+				return true
+			}
+		}
+
+		// Move to parent path
+		if currentPath == "/" {
+			break
+		}
+		// Remove the last segment
+		currentPath = strings.TrimSuffix(currentPath, "/")
+		lastSlash := strings.LastIndex(currentPath, "/")
+		if lastSlash == -1 {
+			currentPath = "/"
+		} else {
+			currentPath = currentPath[:lastSlash+1]
+		}
+	}
+
+	return false
+}
+
+func getExpectedFilePath(baseDir string, dashboard api.App) (string, error) {
+	// Construct path (same logic as writeDashboardFile)
+	dashPath := dashboard.Path
+	if dashPath == "" {
+		dashPath = "/"
+	}
+	// Remove leading slash for filepath.Join
+	dashPath = strings.TrimPrefix(dashPath, "/")
+
+	dirPath := filepath.Join(baseDir, dashPath)
+	fileName := sanitizeFileName(dashboard.Name) + DASHBOARD_SUFFIX
+	filePath := filepath.Join(dirPath, fileName)
+
+	// Convert to absolute path for comparison
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	return absPath, nil
+}
+
+func writeDashboardFile(baseDir string, dashboard api.App) error {
+	// Construct path
+	dashPath := dashboard.Path
+	if dashPath == "" {
+		dashPath = "/"
+	}
+	// Remove leading slash for filepath.Join
+	dashPath = strings.TrimPrefix(dashPath, "/")
+
+	dirPath := filepath.Join(baseDir, dashPath)
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
+	}
+
+	fileName := sanitizeFileName(dashboard.Name) + DASHBOARD_SUFFIX
+	filePath := filepath.Join(dirPath, fileName)
+
+	// Ensure content has shaper ID
+	content := dashboard.Content
+	if !hasLeadingShaperIDComment(content) {
+		content = prependShaperIDComment(dashboard.ID, content)
+	}
+
+	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", filePath, err)
+	}
+
+	return nil
+}

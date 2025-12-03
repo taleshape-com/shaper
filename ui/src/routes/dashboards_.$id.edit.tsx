@@ -135,6 +135,8 @@ function DashboardEditor () {
       const { id } = await queryApi("dashboards", {
         method: "POST",
         body: {
+          name: dashboard.name,
+          path: dashboard.path,
           content: runningQuery,
           temporary: true,
         },
@@ -168,7 +170,7 @@ function DashboardEditor () {
         setIsPreviewLoading(false);
       }
     }
-  }, [queryApi, runningQuery, navigate]);
+  }, [queryApi, runningQuery, navigate, dashboard]);
 
   const handleRun = useCallback(() => {
     if (editorQuery !== runningQuery) {

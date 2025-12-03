@@ -9,11 +9,12 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.2
 	github.com/duckdb/duckdb-go/v2 v2.5.3
+	github.com/gobwas/ws v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo-contrib v0.17.4
-	github.com/labstack/echo-jwt/v4 v4.3.1
+	github.com/labstack/echo-jwt/v4 v4.4.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/labstack/gommon v0.4.2
 	github.com/minio/minio-go/v7 v7.0.97
@@ -23,8 +24,9 @@ require (
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/samber/slog-echo v1.18.0
-	github.com/shirou/gopsutil/v4 v4.25.10
+	github.com/shirou/gopsutil/v4 v4.25.11
 	github.com/stretchr/testify v1.11.1
+	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/xuri/excelize/v2 v2.10.0
 	golang.org/x/crypto v0.45.0
 	modernc.org/sqlite v1.40.1
@@ -46,14 +48,13 @@ require (
 	github.com/duckdb/duckdb-go/arrowmapping v0.0.26 // indirect
 	github.com/duckdb/duckdb-go/mapping v0.0.25 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.9.0 // indirect
+	github.com/ebitengine/purego v0.9.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-json-experiment/json v0.0.0-20250725192818-e39067aee2d2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/gobwas/ws v1.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/go-tpm v0.9.6 // indirect
@@ -86,8 +87,8 @@ require (
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/tiendc/go-deepcopy v1.7.1 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.15 // indirect
-	github.com/tklauser/numcpus v0.10.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.16 // indirect
+	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
