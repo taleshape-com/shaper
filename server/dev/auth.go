@@ -209,7 +209,7 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 	if err := a.saveTokenLocked(token); err != nil {
 		return "", err
 	}
-	fmt.Fprintf(os.Stdout, "Authentication successful. Token saved to %s\n", a.authFile)
+	fmt.Fprintf(os.Stdout, "\nAuthentication successful!\n\nToken saved to %s\n", a.authFile)
 	return token, nil
 }
 
