@@ -64,6 +64,7 @@ export const downloadChartAsImage = (
   const chartDom = chartInstance.getDom();
   const { width, height } = chartDom.getBoundingClientRect();
   const chartOptions = chartInstance.getOption();
+  chartOptions.animation = false;
 
   // Create a temporary container for the canvas chart
   const tempContainer = document.createElement("div");
