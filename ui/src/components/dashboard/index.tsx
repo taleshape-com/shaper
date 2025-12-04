@@ -189,7 +189,6 @@ const DataView = ({
   baseUrl,
   getJwt,
   loading,
-
 }: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean }) => {
   const sections: Result["sections"] = data.sections.length > 0 && data.sections[0].type === "header"
     ? data.sections

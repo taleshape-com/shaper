@@ -63,6 +63,18 @@ const optionSettings = {
   lazyUpdate: true,
 };
 
+// Helper to determine current render mode from global shaper config.
+// Defaults to "interactive" when not set.
+const getRenderMode = (): "interactive" | "pdf" => {
+  if (typeof window === "undefined") {
+    return "interactive";
+  }
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const mode = window.shaper?.renderMode;
+  return mode === "pdf" ? "pdf" : "interactive";
+};
+
 // Detect Safari browser
 const isSafari = (): boolean => {
   if (typeof window === "undefined") return false;
@@ -162,7 +174,11 @@ export const EChart = ({
     if (!chartRef.current) return;
     const chart = echarts.getInstanceByDom(chartRef.current);
     if (chart) {
-      chart.setOption(option, optionSettings);
+      const isPdfMode = getRenderMode() === "pdf";
+      const effectiveOption: echarts.EChartsCoreOption = isPdfMode
+        ? { ...option, animation: false }
+        : option;
+      chart.setOption(effectiveOption, optionSettings);
     }
   }, [option]);
 
