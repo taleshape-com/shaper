@@ -197,6 +197,7 @@ const Calendar = ({
               goToMonth(targetMonth);
             }
           };
+          const d = Date.UTC(props.displayMonth.getFullYear(), props.displayMonth.getMonth(), props.displayMonth.getDate());
 
           return (
             <div className="flex items-center justify-between">
@@ -230,7 +231,7 @@ const Calendar = ({
                 aria-live="polite"
                 className="text-sm font-medium capitalize tabular-nums text-gray-900 dark:text-gray-50"
               >
-                {formatValue(props.displayMonth.getTime(), "month")}
+                {formatValue(d, "month")}
               </div>
 
               <div className="flex items-center gap-1">
