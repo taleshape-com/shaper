@@ -32,6 +32,18 @@ export function dashboard ({ container, ...initialProps }: EmbedArgs) {
   injectCustomCSS();
   container.classList.add("shaper-scope");
 
+  // Expose renderMode on the global shaper object so the UI
+  // (especially charts) can adjust behaviour for PDF rendering.
+  if (typeof window !== "undefined") {
+    // Ensure window.shaper exists
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.shaper = window.shaper || {};
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.shaper.renderMode = initialProps.renderMode ?? "interactive";
+  }
+
   let updateProps: (newProps: Partial<EmbedProps>) => void = () => { };
   const updateSubscriber = (fn: typeof updateProps) => {
     updateProps = fn;
