@@ -96,12 +96,6 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	dev.server = server
 
 	fmt.Println("Watching directory:", cfg.WatchDirPath)
-	fmt.Printf("Dev server listening at :%d\n", port)
-	fmt.Println(`
-Create or edit any file with .dashboard.sql extension in the watched directory
-and a live-preview will automatically open in your browser.
-The filename before the .dashboard.sql extension will be set as the dashboard name.
-You can also create sub-directories to organize dashboards into folders.`)
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
 	// an event if the receiver is not able to keep up the sending pace.
@@ -115,9 +109,22 @@ You can also create sub-directories to organize dashboards into folders.`)
 		return nil, err
 	}
 
-	if err := ensureShaperIDsForDir(absWatchDir); err != nil {
+	fileCount, err := ensureShaperIDsForDir(absWatchDir)
+	if err != nil {
 		return nil, fmt.Errorf("failed ensuring shaper IDs for dashboards in %s: %w", absWatchDir, err)
 	}
+
+	pluralSuffix := ""
+	if fileCount != 1 {
+		pluralSuffix = "s"
+	}
+	fmt.Printf("Found %d dashboard%s in watch directory.\n", fileCount, pluralSuffix)
+	fmt.Printf("Dev server listening at :%d\n", port)
+	fmt.Println(`
+Create or edit any file with the .dashboard.sql extension in the watched directory.
+A live-preview automatically opens in your browser.
+The filename before the .dashboard.sql extension is the dashboard name.
+Create sub-directories to organize dashboards into folders.`)
 
 	if err := notify.Watch(path.Join(absWatchDir, "..."), c, notify.Create, notify.Write); err != nil {
 		return nil, err
@@ -497,8 +504,9 @@ func ensureShaperIDForFile(filePath string) ([]byte, bool, string, error) {
 	return []byte(newContent), true, newID, nil
 }
 
-func ensureShaperIDsForDir(dir string) error {
+func ensureShaperIDsForDir(dir string) (int, error) {
 	var aggregated error
+	var fileCount int
 
 	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -510,6 +518,8 @@ func ensureShaperIDsForDir(dir string) error {
 		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
 			return nil
 		}
+
+		fileCount++
 
 		_, updated, shaperID, err := ensureShaperIDForFile(p)
 		if err != nil {
@@ -526,8 +536,8 @@ func ensureShaperIDsForDir(dir string) error {
 	})
 
 	if err != nil {
-		return err
+		return fileCount, err
 	}
 
-	return aggregated
+	return fileCount, aggregated
 }

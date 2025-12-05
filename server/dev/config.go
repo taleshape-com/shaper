@@ -111,7 +111,7 @@ func promptAndSaveConfig(path string) (Config, error) {
 	if err := SaveConfig(path, cfg); err != nil {
 		return Config{}, err
 	}
-	fmt.Printf("Saved config to %s\n", path)
+	fmt.Printf("\nSaved config to %s\n\n", path)
 	return cfg, nil
 }
 
