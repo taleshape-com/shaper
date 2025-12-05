@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MPL-2.0
+
 bin
-node_modules
 dist
+node_modules
 .vite-stats
 .tanstack
+pip-package/shaper_pkg/__pycache__
 
 # Editor directories and files
 .vscode/*

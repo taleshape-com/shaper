@@ -323,3 +323,63 @@ jobs:
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  pypi-publish:
+    name: Publish to PyPI
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download Linux binaries and checksums
+        uses: actions/download-artifact@v6
+        with:
+          name: linux-binaries
+          path: bin
+
+      - name: Download macOS binaries and checksums
+        uses: actions/download-artifact@v6
+        with:
+          name: darwin-binaries
+          path: bin
+
+      - name: Combine checksums
+        run: |
+          mkdir -p pip-package/shaper_pkg/bin
+          cat bin/checksums-*.txt | sort | uniq > pip-package/shaper_pkg/bin/SHA256SUMS
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Update Python package version
+        run: |
+          cd pip-package
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          # Update version in pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+          # Update version in __init__.py
+          sed -i "s/^__version__ = \".*\"/__version__ = \"$VERSION\"/" shaper_pkg/__init__.py
+
+      - name: Build Python package
+        run: |
+          cd pip-package
+          python -m build
+
+      - name: Publish to PyPI
+        run: |
+          cd pip-package
+          python -m twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shaper-bin"
+version = "0.0.0"
+description = "Minimal Embedded Analytics and Data Platform"
+readme = "README.md"
+license = {text = "MPL-2.0"}
+authors = [
+    {name = "Taleshape", email = "hi@taleshape.com"}
+]
+keywords = ["data", "analytics", "dashboards", "duckdb"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[project.urls]
+Homepage = "https://taleshape.com/shaper"
+Documentation = "https://taleshape.com/shaper/docs/"
+Repository = "https://github.com/taleshape-com/shaper"
+Issues = "https://github.com/taleshape-com/shaper/issues"
+
+[project.scripts]
+shaper = "shaper_pkg.cli:main"
+
+[tool.setuptools]
+packages = ["shaper_pkg"]
+
+[tool.setuptools.package-data]
+shaper_pkg = ["bin/SHA256SUMS"]
