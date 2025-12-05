@@ -65,7 +65,7 @@ function DashboardInput ({
             // Update local state immediately for responsive UI
             setLocalValue(newValue);
             // Throttle the actual API call
-            throttledOnChange(newValue);
+            throttledOnChange(newValue.trim());
           }}
           className="mx-auto my-0 min-w-[120px]"
         />
