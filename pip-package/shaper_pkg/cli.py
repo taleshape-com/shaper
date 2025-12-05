@@ -3,8 +3,8 @@
 
 """Command-line interface for Shaper."""
 
+import os
 import sys
-import subprocess
 from pathlib import Path
 
 # Get package directory
@@ -26,11 +26,10 @@ def main():
             print("Please run the install script manually or reinstall the package.", file=sys.stderr)
             sys.exit(1)
     
-    # Execute the binary
+    # Replace current process with the Shaper binary to keep interactive
+    # behavior identical to invoking the binary directly (no extra buffering).
     try:
-        sys.exit(subprocess.call([str(BINARY_PATH)] + sys.argv[1:]))
-    except KeyboardInterrupt:
-        sys.exit(130)
+        os.execv(str(BINARY_PATH), [str(BINARY_PATH), *sys.argv[1:]])
     except Exception as e:
         print(f"Error running shaper: {e}", file=sys.stderr)
         sys.exit(1)
