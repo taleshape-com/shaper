@@ -95,8 +95,13 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 	dev.port = port
 	dev.server = server
 
-	fmt.Println("Watching files:", cfg.WatchDirPath)
+	fmt.Println("Watching directory:", cfg.WatchDirPath)
 	fmt.Printf("Dev server listening at :%d\n", port)
+	fmt.Println(`
+Create or edit any file with .dashboard.sql extension in the watched directory
+and a live-preview will automatically open in your browser.
+The filename before the .dashboard.sql extension will be set as the dashboard name.
+You can also create sub-directories to organize dashboards into folders.`)
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
 	// an event if the receiver is not able to keep up the sending pace.
@@ -145,7 +150,7 @@ func (d *Dev) Stop() {
 	}
 }
 
-const fileEventThrottle = 5000 * time.Millisecond
+const fileEventThrottle = 3000 * time.Millisecond
 
 func (d *Dev) throttleFileEvent(filePath string, handler func()) {
 	d.debounceMutex.Lock()
@@ -278,7 +283,7 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 			return
 		}
 		dashboardID = existingDashboardID
-		fmt.Printf("Updated dashboard '%s%s'\n", fPath+"/", name)
+		fmt.Printf("Updated %s%s%s\n", fPath+"/", name, DASHBOARD_SUFFIX)
 
 		// Notify websocket clients
 		notified := d.notifyClients(dashboardID)
