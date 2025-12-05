@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 package api
 
 import "time"
@@ -32,18 +34,18 @@ type TaskInfo struct {
 
 // App represents an app (dashboard or task) from the API.
 type App struct {
-	ID         string     `json:"id"`
-	Path       string     `json:"path"`
-	FolderID   *string    `json:"folderId,omitempty"`
-	Name       string     `json:"name"`
-	Content    string     `json:"content,omitempty"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	UpdatedAt  time.Time  `json:"updatedAt"`
-	CreatedBy  *string    `json:"createdBy,omitempty"`
-	UpdatedBy  *string    `json:"updatedBy,omitempty"`
-	Visibility *string    `json:"visibility,omitempty"`
-	TaskInfo   *TaskInfo  `json:"taskInfo,omitempty"`
-	Type       string     `json:"type"`
+	ID         string    `json:"id"`
+	Path       string    `json:"path"`
+	FolderID   *string   `json:"folderId,omitempty"`
+	Name       string    `json:"name"`
+	Content    string    `json:"content,omitempty"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+	CreatedBy  *string   `json:"createdBy,omitempty"`
+	UpdatedBy  *string   `json:"updatedBy,omitempty"`
+	Visibility *string   `json:"visibility,omitempty"`
+	TaskInfo   *TaskInfo `json:"taskInfo,omitempty"`
+	Type       string    `json:"type"`
 }
 
 // AppsResponse represents a paginated response containing apps.
