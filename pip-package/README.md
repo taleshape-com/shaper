@@ -6,21 +6,23 @@ https://taleshape.com/shaper/docs/
 
 ---
 
-This Python package makes it easy to install and run Shaper locally.
+Install Shaper via PyPI when using Shaper locally if you already have Python installed.
 
-You can run Shaper directly via pipx:
+Python's package manager `pip` manages the version for you and handles downloading the correct binary for your system.
+
+If you have `pipx` installed, you can run Shaper via `pipx` without explicitly installing it:
 ```bash
 pipx run shaper-bin
 ```
 
-Or you can install it:
+Install Shaper globally to make the `shaper` binary available in your PATH:
 ```bash
-pip install shaper-bin
+pipx install shaper-bin
 ```
 
-Then run it:
+You can also use `pip` to install Shaper as a dependency in your project. This is useful to ensure everyone working on the project uses the same version of shaper:
 ```bash
-shaper
+pip install shaper-bin
 ```
 
 To run Shaper in production, we recommend using the Docker image since it ensures a consistent environment.
