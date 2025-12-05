@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 package dev
 
 import (
@@ -137,7 +139,8 @@ func TestEnsureShaperIDsForDir(t *testing.T) {
 		t.Fatalf("failed writing withoutID file: %v", err)
 	}
 
-	if err := ensureShaperIDsForDir(tmpDir); err != nil {
+	_, err := ensureShaperIDsForDir(tmpDir)
+	if err != nil {
 		t.Fatalf("ensureShaperIDsForDir returned error: %v", err)
 	}
 
