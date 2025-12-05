@@ -125,7 +125,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	}
 
 	if len(toCreate) == 0 && len(toUpdate) == 0 {
-		fmt.Printf("\nNo changes.\n")
+		fmt.Printf("\nNo updates.\n")
 		return nil
 	}
 
