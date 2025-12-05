@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+
+include README.md
+include LICENSE
+recursive-include shaper_pkg/bin *
