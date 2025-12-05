@@ -46,15 +46,8 @@ type Dev struct {
 	filesMutex     sync.RWMutex
 	client         DashboardClient
 	baseURL        string
-	throttleState  map[string]*fileThrottle
-	debounceMutex  sync.Mutex
-}
-
-type fileThrottle struct {
-	timer    *time.Timer
-	lastRun  time.Time
-	pending  func()
-	runMutex sync.Mutex
+	throttleMutex  sync.Mutex
+	lastEventTime  time.Time
 }
 
 type websocketConn struct {
@@ -80,11 +73,10 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 
 	// Create Dev instance with websocket support
 	dev := Dev{
-		connections:    make(map[string][]*websocketConn),
+		connections:   make(map[string][]*websocketConn),
 		dashboardFiles: make(map[string]string),
-		throttleState:  make(map[string]*fileThrottle),
-		client:         cfg.Client,
-		baseURL:        strings.TrimSuffix(cfg.BaseURL, "/"),
+		client:        cfg.Client,
+		baseURL:       strings.TrimSuffix(cfg.BaseURL, "/"),
 	}
 
 	// Start websocket server on random port
@@ -144,65 +136,32 @@ Create sub-directories to organize dashboards into folders.`)
 
 func (d *Dev) Stop() {
 	notify.Stop(d.c)
-	d.debounceMutex.Lock()
-	for path, state := range d.throttleState {
-		if state.timer != nil {
-			state.timer.Stop()
-		}
-		delete(d.throttleState, path)
-	}
-	d.debounceMutex.Unlock()
 	if d.server != nil {
 		d.server.Close()
 	}
 }
 
-const fileEventThrottle = 3000 * time.Millisecond
+const eventThrottleWindow = 500 * time.Millisecond
 
+// throttleFileEvent implements a simple global throttling: after an event is handled,
+// all events for any file are ignored for the next 500ms. This handles editor formatting
+// events and Git branch switches where many files change at once.
 func (d *Dev) throttleFileEvent(filePath string, handler func()) {
-	d.debounceMutex.Lock()
-	state, ok := d.throttleState[filePath]
-	if !ok {
-		state = &fileThrottle{}
-		d.throttleState[filePath] = state
-	}
-
+	d.throttleMutex.Lock()
 	now := time.Now()
-	elapsed := now.Sub(state.lastRun)
-	if state.lastRun.IsZero() || elapsed >= fileEventThrottle {
-		state.lastRun = now
-		d.debounceMutex.Unlock()
-		handler()
+	elapsed := now.Sub(d.lastEventTime)
+	
+	// If we're within the throttle window, ignore this event
+	if !d.lastEventTime.IsZero() && elapsed < eventThrottleWindow {
+		d.throttleMutex.Unlock()
 		return
 	}
-
-	wait := fileEventThrottle - elapsed
-	state.pending = handler
-	if state.timer != nil {
-		state.timer.Stop()
-	}
-	state.timer = time.AfterFunc(wait, func() {
-		d.runThrottledHandler(filePath)
-	})
-	d.debounceMutex.Unlock()
-}
-
-func (d *Dev) runThrottledHandler(filePath string) {
-	d.debounceMutex.Lock()
-	state, ok := d.throttleState[filePath]
-	if !ok {
-		d.debounceMutex.Unlock()
-		return
-	}
-	handler := state.pending
-	state.pending = nil
-	state.lastRun = time.Now()
-	state.timer = nil
-	d.debounceMutex.Unlock()
-
-	if handler != nil {
-		handler()
-	}
+	
+	// Update last event time and unlock before handling
+	d.lastEventTime = now
+	d.throttleMutex.Unlock()
+	
+	handler()
 }
 
 func (d *Dev) handleDashboardFile(absWatchDir, p string) {
