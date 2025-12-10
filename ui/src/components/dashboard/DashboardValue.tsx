@@ -97,7 +97,9 @@ function DashboardValue ({ headers, data }: ValueProps) {
       {
         compareValue && compareHeader ? (
           <div className="text-sm mt-4 flex items-center justify-center font-medium">
-            <span>{compareHeader.name}:</span>
+            {getNameIfSet(compareHeader.name) && (
+              <span>{getNameIfSet(compareHeader.name)}:</span>
+            )}
             <span className="ml-1">{formatValue(compareValue, valueHeader.type, true)}</span>
             {percent && <div
               className={cx(
