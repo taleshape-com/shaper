@@ -48,7 +48,7 @@ def get_release(version):
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "shaper-installer"
     }
-    
+
     try:
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
@@ -66,12 +66,12 @@ def download_file(url, dest):
     try:
         response = requests.get(url, stream=True, timeout=60)
         response.raise_for_status()
-        
+
         # Check content length (max 100MB)
         content_length = response.headers.get("content-length")
-        if content_length and int(content_length) > 100 * 1024 * 1024:
-            raise Exception("File size exceeds 100MB limit")
-        
+        if content_length and int(content_length) > 200 * 1024 * 1024:
+            raise Exception("File size exceeds 200MB limit")
+
         with open(dest, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
@@ -104,7 +104,7 @@ def load_checksums():
     checksums_path = BIN_DIR / "SHA256SUMS"
     if not checksums_path.exists():
         raise Exception("SHA256SUMS file not found in package")
-    
+
     checksums = {}
     with open(checksums_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -115,7 +115,7 @@ def load_checksums():
                     checksum = parts[0]
                     filename = parts[1]
                     checksums[filename] = checksum
-    
+
     return checksums
 
 
@@ -128,69 +128,69 @@ def main():
         # Remove any stale marker so mismatched versions are re-fetched
         if VERSION_FILE.exists():
             VERSION_FILE.unlink()
-        
+
         # Determine platform
         system = platform.system().lower()
         machine = platform.machine().lower()
-        
+
         # Normalize machine names
         if machine == "amd64":
             machine = "x86_64"
         elif machine in ("arm64", "aarch64"):
             machine = "aarch64" if system == "linux" else "arm64"
-        
+
         platform_key = (system, machine)
         asset_name = PLATFORM_MAP.get(platform_key)
-        
+
         if not asset_name:
             # Try alternative mappings
             if system == "linux" and machine == "arm64":
                 asset_name = PLATFORM_MAP.get(("linux", "aarch64"))
             elif system == "darwin" and machine == "aarch64":
                 asset_name = PLATFORM_MAP.get(("darwin", "arm64"))
-        
+
         if not asset_name:
             raise Exception(f"Unsupported platform: {system}-{machine}")
-        
+
         # Load checksums from the package
         print("Loading checksums...")
         checksums = load_checksums()
         expected_checksum = checksums.get(asset_name)
-        
+
         if not expected_checksum:
             raise Exception(f"No checksum found for {asset_name} in SHA256SUMS")
-        
+
         # Get version
         version = get_version()
-        
+
         # Get release information
         release = get_release(version)
         asset = next((a for a in release["assets"] if a["name"] == asset_name), None)
-        
+
         if not asset:
             raise Exception(f"Asset not found for platform {system}-{machine} in version v{version}")
-        
+
         # Download binary
         print(f"Downloading shaper v{version} for {system}-{machine}...")
         binary_path = BIN_DIR / "shaper"
         # Download into a temporary file to avoid leaving a partial binary
         tmp_path = BIN_DIR / ".shaper.tmp"
         download_file(asset["browser_download_url"], tmp_path)
-        
+
         # Verify checksum
         print("Verifying checksum...")
         verify_checksum(tmp_path, expected_checksum)
         print("Checksum verified successfully")
-        
+
         # Move into place and set executable permissions
         tmp_path.replace(binary_path)
         os.chmod(binary_path, 0o755)
 
         # Record the binary version shipped with this package
         VERSION_FILE.write_text(f"{version}\n", encoding="utf-8")
-        
+
         print("Installation complete!")
-        
+
     except Exception as error:
         print(f"Installation failed: {error}", file=sys.stderr)
         # Clean up binary if verification failed
