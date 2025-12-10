@@ -12,13 +12,14 @@ import requests
 # Get package directory
 PACKAGE_DIR = Path(__file__).parent
 BIN_DIR = PACKAGE_DIR / "bin"
+VERSION_FILE = BIN_DIR / "VERSION"
 
 
 def get_version():
-    """Get the package version from metadata or __init__.py."""
+    """Get the package version from distribution metadata."""
     try:
         import importlib.metadata
-        return importlib.metadata.version("shaper")
+        return importlib.metadata.version("shaper-bin")
     except Exception:
         # Fallback: try to read from __init__.py or use default
         try:
@@ -123,6 +124,10 @@ def main():
     try:
         # Create bin directory if it doesn't exist
         BIN_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Remove any stale marker so mismatched versions are re-fetched
+        if VERSION_FILE.exists():
+            VERSION_FILE.unlink()
         
         # Determine platform
         system = platform.system().lower()
@@ -168,15 +173,21 @@ def main():
         # Download binary
         print(f"Downloading shaper v{version} for {system}-{machine}...")
         binary_path = BIN_DIR / "shaper"
-        download_file(asset["browser_download_url"], binary_path)
+        # Download into a temporary file to avoid leaving a partial binary
+        tmp_path = BIN_DIR / ".shaper.tmp"
+        download_file(asset["browser_download_url"], tmp_path)
         
         # Verify checksum
         print("Verifying checksum...")
-        verify_checksum(binary_path, expected_checksum)
+        verify_checksum(tmp_path, expected_checksum)
         print("Checksum verified successfully")
         
-        # Set executable permissions
+        # Move into place and set executable permissions
+        tmp_path.replace(binary_path)
         os.chmod(binary_path, 0o755)
+
+        # Record the binary version shipped with this package
+        VERSION_FILE.write_text(f"{version}\n", encoding="utf-8")
         
         print("Installation complete!")
         
@@ -186,6 +197,8 @@ def main():
         binary_path = BIN_DIR / "shaper"
         if binary_path.exists():
             binary_path.unlink()
+        if (BIN_DIR / ".shaper.tmp").exists():
+            (BIN_DIR / ".shaper.tmp").unlink()
         sys.exit(1)
 
 
