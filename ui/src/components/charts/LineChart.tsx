@@ -58,8 +58,8 @@ const LineChart = (props: LineChartProps) => {
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(1);
-  const [chartHeight, setChartHeight] = React.useState(1);
+  const [chartWidth, setChartWidth] = React.useState(450);
+  const [chartHeight, setChartHeight] = React.useState(300);
   const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
@@ -208,8 +208,7 @@ const LineChart = (props: LineChartProps) => {
           width: chartWidth - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        textAlign: "center",
-        left: "50%",
+        left: "center",
         top: chartPadding,
       },
       tooltip: {

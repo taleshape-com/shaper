@@ -5,6 +5,7 @@ import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
 import { Column } from "../../lib/types";
 
 import { formatValue, isJSONType } from "../../lib/render";
+import { isDatableType } from "../../lib/types";
 import { cx, getNameIfSet } from "../../lib/utils";
 import TextWithLinks from "../TextWithLinks";
 
@@ -49,23 +50,24 @@ function DashboardValue ({ headers, data }: ValueProps) {
   }, []);
 
   const valueLongestLine = getLongestLineLength(formattedValue);
-  const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.6, 16, 60, 8);
+  const maxFontSize = valueHeader.type === "number" || valueHeader.type === "percent" || valueHeader.type === "boolean"
+    ? 40
+    : isDatableType(valueHeader.type)
+      ? 36
+      : 32;
+  const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.8, 16, maxFontSize, 10);
 
   const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : "";
   const labelLongestLine = getLongestLineLength(labelText);
-  const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 24, 4);
+  const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 22, 10);
 
   return (
     <div
-      className={cx(
-        "h-full w-full flex flex-col justify-center py-2 overflow-auto", {
-          "items-center py-8": formattedValue.length < 300 || !!labelText,
-        },
-      )}
+      className={"h-full w-full flex flex-col justify-center"}
       ref={containerRef}
     >
       <div
-        className={cx({
+        className={cx("overflow-auto py-2", {
           "font-mono": isJSONType(valueHeader.type),
           "font-semibold": formattedValue.length < 200,
           "text-center": formattedValue.length < 300,
@@ -94,13 +96,13 @@ function DashboardValue ({ headers, data }: ValueProps) {
       }
       {
         compareValue && compareHeader ? (
-          <div className="text-sm mt-2 flex items-center justify-center font-medium">
+          <div className="text-sm mt-4 flex items-center justify-center font-medium">
             <span>{compareHeader.name}:</span>
             <span className="ml-1">{formatValue(compareValue, valueHeader.type, true)}</span>
             {percent && <div
               className={cx(
-                "ml-2 rounded px-1 py-1 text-sm font-medium text-ctexti dark:text-dtexti flex flex-nowrap items-center b bg-cbgi dark:bg-dbgi",
-                // { "bg-emerald-500": percent >= 0, "bg-red-500": percent < 0, }
+                "ml-2 rounded px-1 py-1 text-sm font-medium text-ctexti dark:text-dtexti",
+                "flex flex-nowrap items-center b bg-cbgi dark:bg-dbgi opacity-55",
               )}
             >{percent > 0 && "+"}{percent}%{percent > 0 ? <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" /> : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />}</div>}
           </div>
