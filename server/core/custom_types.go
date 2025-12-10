@@ -45,7 +45,7 @@ var dbTypes = []struct {
 	{"DATEPICKER", "UNION(\"datepicker_date\" DATE)", "date"},
 	{"DATEPICKER_FROM", "UNION(\"datepicker_from_date\" DATE)", "date"},
 	{"DATEPICKER_TO", "UNION(\"datepicker_to_date\" DATE)", "date"},
-	{"COMPARE", "UNION(\"compare_double\" DOUBLE)", "number"},
+	{"COMPARE", "UNION(\"compare_double\" DOUBLE, \"compare_interval\" INTERVAL)", "chart"},
 	{"TREND", "UNION(\"trend_double\" DOUBLE)", "number"},
 	{"PLACEHOLDER", "UNION(\"placeholder_varchar\" VARCHAR)", "string"},
 	{"INPUT", "UNION(\"input_varchar\" VARCHAR)", "string"},
