@@ -43,6 +43,13 @@
 }
 @font-face {
   font-family: 'SourceSansPro';
+  src: url('./assets/fonts/SourceSansPro-Semibold.ttf.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+}
+@font-face {
+  font-family: 'SourceSansPro';
   src: url('./assets/fonts/SourceSansPro-Bold.ttf.woff2') format('woff2');
   font-style: normal;
   font-weight: 700;

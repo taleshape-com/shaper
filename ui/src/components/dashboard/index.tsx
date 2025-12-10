@@ -334,8 +334,6 @@ const DataView = ({
       }
 
       const numQueriesInSection = section.queries.length;
-      const prevSection = sections[sectionIndex - 1];
-      const sectionHasTitle = prevSection.type === "header" && !!prevSection.title;
 
       return (
         <section
@@ -376,10 +374,8 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
-                    "h-[calc(50dvh-1.6rem)]": !singleTable && section.queries.some(q => q.render.type !== "value") && !sectionHasTitle,
-                    "@sm:h-[calc(100cqh-5.3rem)]": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && sectionHasTitle,
-                    "@sm:h-[calc(100cqh-2.2rem)]": query.render.type != "table" && numContentSections === 1 && numQueriesInSection === 1 && !sectionHasTitle,
+                    "min-h-[340px] h-[calc(45cqh)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge"),
+                    "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
                     "max-h-[600px]": (numContentSections > 1 || numQueriesInSection > 1),
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,

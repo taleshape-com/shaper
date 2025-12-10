@@ -64,8 +64,8 @@ const BarChart = (props: BarChartProps) => {
 
   const chartRef = useRef<ECharts | null>(null);
   const hoveredChartIdRef = useRef<string | null>(null);
-  const [chartWidth, setChartWidth] = React.useState(1);
-  const [chartHeight, setChartHeight] = React.useState(1);
+  const [chartWidth, setChartWidth] = React.useState(450);
+  const [chartHeight, setChartHeight] = React.useState(300);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
@@ -231,8 +231,7 @@ const BarChart = (props: BarChartProps) => {
           width: chartWidth - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        textAlign: "center",
-        left: "50%",
+        left: "center",
         top: chartPadding,
       },
       tooltip: {

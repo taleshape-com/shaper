@@ -204,8 +204,7 @@ const Boxplot = (props: BoxplotProps) => {
           width: chartWidth - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        textAlign: "center",
-        left: "50%",
+        left: "center",
         top: chartPadding,
       },
       tooltip: {

@@ -24,7 +24,7 @@ function DashboardTable ({ headers, data }: TableProps) {
   return (
     <TableRoot>
       <Table>
-        <TableHead>
+        <TableHead className="z-10">
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell
@@ -49,7 +49,7 @@ function DashboardTable ({ headers, data }: TableProps) {
                       {percent !== undefined ? percent === 0 ? "-" : (
                         <div
                           className={cx(
-                            "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi max-w-32 ml-auto",
+                            "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi max-w-32 ml-auto opacity-55",
                           )}
                         >
                           {percent > 0 && "+"}{percent}%{

@@ -65,7 +65,7 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       }
       if (!shortFormat || value < 86400000) {
         if (minutes > 0) {
-          mainParts.push(`${minutes}min`);
+          mainParts.push(`${minutes}m`);
         }
       }
       if (!shortFormat || value < 3600000) {
@@ -73,6 +73,8 @@ export const formatValue = (value: string | number | boolean | null | undefined,
           mainParts.push(`${seconds}.${ms.toString().padStart(3, "0")}s`);
         } else if (seconds > 0) {
           mainParts.push(`${seconds}s`);
+        } else if (minutes >= 0 && hours <= 0 && day <= 0) {
+          mainParts.push("0s");
         }
       }
       if (mainParts.length === 0) {
