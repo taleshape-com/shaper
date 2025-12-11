@@ -19,3 +19,11 @@ func GetSystemConfig(app *core.App) echo.HandlerFunc {
 		})
 	}
 }
+
+func GetVersion(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{
+			"version": app.Version,
+		})
+	}
+}

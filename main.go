@@ -629,6 +629,7 @@ func Run(cfg Config) func(context.Context) {
 	app, err := core.New(
 		APP_NAME,
 		nodeID,
+		Version,
 		sqliteDbx,
 		duckdbSqlxDb,
 		cfg.DeprecatedSchema,
