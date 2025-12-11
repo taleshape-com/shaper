@@ -374,9 +374,17 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[340px] h-[calc(45cqh)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge"),
+                    "min-h-[240px] h-[calc(45cqh)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge"),
                     "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
-                    "max-h-[600px]": (numContentSections > 1 || numQueriesInSection > 1),
+                    "max-h-[calc(45cqw)]": (numContentSections > 1 || numQueriesInSection > 1),
+                    // 4 cols
+                    "h-[calc(16cqw)]": (numQueriesInSection === 4 && numContentSections > 1) ||
+                      numQueriesInSection === 7 ||
+                      numQueriesInSection === 8 ||
+                      numQueriesInSection > 9,
+                    // 5 cols
+                    "h-[calc(13cqw)]": (numQueriesInSection === 5 && numContentSections > 1) ||
+                      numQueriesInSection >= 9,
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,
                   },
