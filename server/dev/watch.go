@@ -75,10 +75,10 @@ func Watch(cfg WatchConfig) (*Dev, error) {
 
 	// Create Dev instance with websocket support
 	dev := Dev{
-		connections:   make(map[string][]*websocketConn),
+		connections:    make(map[string][]*websocketConn),
 		dashboardFiles: make(map[string]string),
-		client:        cfg.Client,
-		baseURL:       strings.TrimSuffix(cfg.BaseURL, "/"),
+		client:         cfg.Client,
+		baseURL:        strings.TrimSuffix(cfg.BaseURL, "/"),
 	}
 
 	// Start websocket server on random port
@@ -152,17 +152,17 @@ func (d *Dev) throttleFileEvent(filePath string, handler func()) {
 	d.throttleMutex.Lock()
 	now := time.Now()
 	elapsed := now.Sub(d.lastEventTime)
-	
+
 	// If we're within the throttle window, ignore this event
 	if !d.lastEventTime.IsZero() && elapsed < eventThrottleWindow {
 		d.throttleMutex.Unlock()
 		return
 	}
-	
+
 	// Update last event time and unlock before handling
 	d.lastEventTime = now
 	d.throttleMutex.Unlock()
-	
+
 	handler()
 }
 
@@ -192,8 +192,6 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 
 	if updated {
 		fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
-		// Skip further handling for this event; the write will trigger a new event
-		return
 	}
 
 	content := string(contentBytes)
@@ -428,7 +426,7 @@ func hasLeadingShaperIDComment(content string) bool {
 }
 
 func prependShaperIDComment(id, content string) string {
-	commentLine := fmt.Sprintf("-- shaperid:%s\n", id)
+	commentLine := fmt.Sprintf("%s%s\n", shaperIDPrefix, id)
 	if content != "" {
 		if content[0] != '\n' && content[0] != '\r' {
 			commentLine += "\n"
@@ -446,7 +444,7 @@ func ensureShaperIDForFile(filePath string) ([]byte, bool, string, error) {
 	}
 
 	content := string(contentBytes)
-	if hasLeadingShaperIDComment(content) {
+	if hasLeadingShaperIDComment(content) || strings.TrimSpace(content) == "" {
 		return contentBytes, false, "", nil
 	}
 
