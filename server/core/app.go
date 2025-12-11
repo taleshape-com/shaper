@@ -21,6 +21,7 @@ const (
 type App struct {
 	Name                       string
 	NodeID                     string
+	Version                    string
 	Sqlite                     *sqlx.DB
 	DuckDB                     *sqlx.DB
 	Logger                     *slog.Logger
@@ -62,6 +63,7 @@ type App struct {
 func New(
 	name string,
 	nodeID string,
+	version string,
 	sqliteDbx *sqlx.DB,
 	duckDbx *sqlx.DB,
 	deprecatedSchema string,
@@ -122,6 +124,7 @@ func New(
 	app := &App{
 		Name:                       name,
 		NodeID:                     nodeID,
+		Version:                    version,
 		Sqlite:                     sqliteDbx,
 		DuckDB:                     duckDbx,
 		Logger:                     logger,
