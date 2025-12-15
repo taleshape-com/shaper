@@ -8,14 +8,14 @@ toolchain go1.24.2
 require (
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.2
-	github.com/duckdb/duckdb-go/v2 v2.5.3
+	github.com/duckdb/duckdb-go/v2 v2.5.4
 	github.com/gobwas/ws v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo-contrib v0.17.4
 	github.com/labstack/echo-jwt/v4 v4.4.0
-	github.com/labstack/echo/v4 v4.13.4
+	github.com/labstack/echo/v4 v4.14.0
 	github.com/labstack/gommon v0.4.2
 	github.com/minio/minio-go/v7 v7.0.97
 	github.com/nats-io/nats-server/v2 v2.12.2
@@ -28,7 +28,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/xuri/excelize/v2 v2.10.0
-	golang.org/x/crypto v0.45.0
+	golang.org/x/crypto v0.46.0
 	modernc.org/sqlite v1.40.1
 )
 
@@ -39,14 +39,14 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/duckdb/duckdb-go-bindings v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.23 // indirect
-	github.com/duckdb/duckdb-go/arrowmapping v0.0.26 // indirect
-	github.com/duckdb/duckdb-go/mapping v0.0.25 // indirect
+	github.com/duckdb/duckdb-go-bindings v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.24 // indirect
+	github.com/duckdb/duckdb-go/arrowmapping v0.0.27 // indirect
+	github.com/duckdb/duckdb-go/mapping v0.0.27 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.9.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -56,9 +56,9 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/google/flatbuffers v25.2.10+incompatible // indirect
+	github.com/google/flatbuffers v25.9.23+incompatible // indirect
 	github.com/google/go-tpm v0.9.6 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -98,15 +98,15 @@ require (
 	go.opentelemetry.io/otel v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
-	golang.org/x/mod v0.29.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
+	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251208220230-2638a1023523 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/tools v0.40.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
