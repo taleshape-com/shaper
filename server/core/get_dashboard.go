@@ -399,7 +399,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" {
+	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" || rInfo.Type == "piechart" || rInfo.Type == "donutchart" {
 		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
 			return "index"
 		}
@@ -1025,6 +1025,47 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 			Type:            "gauge",
 			ValueAxisIndex:  &gaugeIndex,
 			GaugeCategories: categories,
+		}
+		return r
+	}
+
+	// Pie chart detection
+	piechart, piechartIndex := findColumnByTag(columns, "PIECHART")
+	if piechart == nil {
+		piechart, piechartIndex = findColumnByTag(columns, "PIECHART_PERCENT")
+	}
+	isDonut := false
+	if piechart == nil {
+		piechart, piechartIndex = findColumnByTag(columns, "DONUTCHART")
+		isDonut = true
+	}
+	if piechart == nil {
+		piechart, piechartIndex = findColumnByTag(columns, "DONUTCHART_PERCENT")
+		isDonut = true
+	}
+	if piechart != nil {
+		pieCat, pieCatIndex := findColumnByTag(columns, "PIECHART_CATEGORY")
+		if pieCat == nil {
+			pieCat, pieCatIndex = findColumnByTag(columns, "CATEGORY")
+		}
+		pieColor, pieColorIndex := findColumnByTag(columns, "PIECHART_COLOR")
+		if pieColor == nil {
+			pieColor, pieColorIndex = findColumnByTag(columns, "COLOR")
+		}
+		renderType := "piechart"
+		if isDonut {
+			renderType = "donutchart"
+		}
+		r := renderInfo{
+			Label:          labelValue,
+			Type:           renderType,
+			ValueAxisIndex: &piechartIndex,
+		}
+		if pieCat != nil {
+			r.CategoryIndex = &pieCatIndex
+		}
+		if pieColor != nil {
+			r.ColorIndex = &pieColorIndex
 		}
 		return r
 	}

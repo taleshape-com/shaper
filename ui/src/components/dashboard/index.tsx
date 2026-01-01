@@ -21,6 +21,7 @@ import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
+import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 
 export interface DashboardProps {
@@ -364,7 +365,7 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
-            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot") || query.render.type === "piechart" || query.render.type === "donutchart";
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
             return (
@@ -525,6 +526,17 @@ const renderContent = (
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
+      />
+    );
+  }
+  if (query.render.type === "piechart" || query.render.type === "donutchart") {
+    return (
+      <DashboardPieChart
+        chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
+        headers={query.columns}
+        data={query.rows as (string | number | boolean)[][]}
+        isDonut={query.render.type === "donutchart"}
       />
     );
   }

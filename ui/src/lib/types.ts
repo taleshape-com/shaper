@@ -134,6 +134,8 @@ export type Result = {
           | "barchartHorizontalStacked"
           | "barchartVertical"
           | "barchartVerticalStacked"
+          | "piechart"
+          | "donutchart"
           label?: string;
           markLines: MarkLine[];
         }
