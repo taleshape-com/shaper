@@ -19,14 +19,14 @@ import { EChart } from "./EChart";
 const chartPadding = 16;
 
 interface PieChartProps extends React.HTMLAttributes<HTMLDivElement> {
-  chartId: string;
-  label?: string;
-  data: { name: string; value: number; color?: string }[];
-  extraDataByName: Record<string, Record<string, any>>;
-  valueType: Column["type"];
-  valueColumnName?: string;
-  valueFormatter: (value: number) => string;
-  isDonut?: boolean;
+	chartId: string;
+	label?: string;
+	data: { name: string; value: number; color?: string }[];
+	extraDataByName: Record<string, Record<string, any>>;
+	valueType: Column["type"];
+	valueColumnName?: string;
+	valueFormatter: (value: number) => string;
+	isDonut?: boolean;
 }
 
 const PieChart = (props: PieChartProps) => {
@@ -108,7 +108,7 @@ const PieChart = (props: PieChartProps) => {
       animationDelay: 100,
       animationDelayUpdate: 100,
       minAngle: 1,
-      endAngle: isPercent && totalValue < 1 ? totalValue * -360 + 90 : 'auto',
+      endAngle: isPercent && totalValue < 1 ? totalValue * -360 + 90 : "auto",
       cursor: "crosshair",
     };
 
@@ -133,7 +133,7 @@ const PieChart = (props: PieChartProps) => {
       const formattedTotal = valueFormatter(totalValue);
       if (formattedTotal.length < 10 && !(isPercent && totalValue === 1)) {
         titles.push({
-          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("Total")}}` : ''}`,
+          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("Total")}}` : ""}`,
           left: "center",
           top: centerY * 0.96,
           textStyle: {
@@ -182,10 +182,10 @@ const PieChart = (props: PieChartProps) => {
           // Show value with its column name if available
           const formattedValue = echartsEncode(valueFormatter(params.value));
           if (valueColumnName) {
-            const v = data.length < 2 ? '' : echartsEncode(valueColumnName);
+            const v = data.length < 2 ? "" : echartsEncode(valueColumnName);
             tooltipContent += `<div class="mt-1 flex justify-between space-x-2">
               <span class="font-medium">${v}</span>
-              <span>${formattedValue} ${isPercent ? '' : `(${percentage}%)`}</span>
+              <span>${formattedValue} ${isPercent ? "" : `(${percentage}%)`}</span>
             </div>`;
           } else {
             tooltipContent += `<div class="mt-1">${formattedValue} (${percentage}%)</div>`;

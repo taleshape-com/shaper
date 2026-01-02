@@ -8,11 +8,11 @@ import { getNameIfSet } from "../../lib/utils";
 import { translate } from "../../lib/translate";
 
 type PieProps = {
-  chartId: string;
-  label?: string;
-  headers: Column[];
-  data: (string | number | boolean)[][];
-  isDonut?: boolean;
+	chartId: string;
+	label?: string;
+	headers: Column[];
+	data: (string | number | boolean)[][];
+	isDonut?: boolean;
 };
 
 const DashboardPieChart = ({
@@ -39,9 +39,9 @@ const DashboardPieChart = ({
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
       const name =
-        categoryIndex !== -1
-          ? (row[categoryIndex] ?? "").toString()
-          : (getNameIfSet(valueHeader.name) ?? "");
+				categoryIndex !== -1
+				  ? (row[categoryIndex] ?? "").toString()
+				  : (getNameIfSet(valueHeader.name) ?? "");
 
       return {
         name,
@@ -52,16 +52,16 @@ const DashboardPieChart = ({
     // Calculate total value to determine percentages
     const totalValue = allData.reduce((sum, item) => sum + item.value, 0);
 
-    // Separate items that are >= 2% from those that are < 2%
-    const significantItems = allData.filter(item => totalValue > 0 && (item.value / totalValue) * 100 >= 2);
-    const smallItems = allData.filter(item => totalValue > 0 && (item.value / totalValue) * 100 < 2);
+    // Separate items that are >= 5% from those that are < 5%
+    const significantItems = allData.filter(item => totalValue > 0 && (item.value / totalValue) * 100 >= 5);
+    const smallItems = allData.filter(item => totalValue > 0 && (item.value / totalValue) * 100 < 5);
 
     // Process original data to create extra data for significant items
     data.forEach((row) => {
       const name =
-        categoryIndex !== -1
-          ? (row[categoryIndex] ?? "").toString()
-          : (getNameIfSet(valueHeader.name) ?? "");
+				categoryIndex !== -1
+				  ? (row[categoryIndex] ?? "").toString()
+				  : (getNameIfSet(valueHeader.name) ?? "");
 
       // Only add extra data for significant items (not for "Other")
       const isSignificant = significantItems.some(item => item.name === name);
@@ -100,9 +100,9 @@ const DashboardPieChart = ({
       // For single small items, add normal extra data like other significant items
       data.forEach((row) => {
         const name =
-          categoryIndex !== -1
-            ? (row[categoryIndex] ?? "").toString()
-            : (getNameIfSet(valueHeader.name) ?? "");
+					categoryIndex !== -1
+					  ? (row[categoryIndex] ?? "").toString()
+					  : (getNameIfSet(valueHeader.name) ?? "");
 
         // Add extra data for the single small item
         const isSmall = smallItems.some(item => item.name === name);
@@ -136,11 +136,11 @@ const DashboardPieChart = ({
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
       const name =
-        categoryIndex !== -1
-          ? (row[categoryIndex] ?? "").toString()
-          : (getNameIfSet(valueHeader.name) ?? "");
+				categoryIndex !== -1
+				  ? (row[categoryIndex] ?? "").toString()
+				  : (getNameIfSet(valueHeader.name) ?? "");
       const color =
-        colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
+				colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
 
       return {
         name,
@@ -156,9 +156,9 @@ const DashboardPieChart = ({
       return allData;
     }
 
-    // Separate items that are >= 2% from those that are < 2%
-    const significantItems = allData.filter(item => (item.value / totalValue) * 100 >= 2);
-    const smallItems = allData.filter(item => (item.value / totalValue) * 100 < 2);
+    // Separate items that are >= 5% from those that are < 5%
+    const significantItems = allData.filter(item => (item.value / totalValue) * 100 >= 5);
+    const smallItems = allData.filter(item => (item.value / totalValue) * 100 < 5);
 
     // If there's only one small item, keep it as is instead of combining into "Other"
     if (smallItems.length === 0) {
