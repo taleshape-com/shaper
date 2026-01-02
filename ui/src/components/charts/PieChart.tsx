@@ -88,6 +88,11 @@ const PieChart = (props: PieChartProps) => {
         length: 12,
         length2: 0,
       },
+      itemStyle: {
+        borderRadius: 2,
+        borderColor: theme.backgroundColorSecondary,
+        borderWidth: isDonut ? 2 : 1.5,
+      },
       animationDelay: 100,
       animationDelayUpdate: 100,
       cursor: "crosshair",
