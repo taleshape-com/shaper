@@ -23,7 +23,6 @@ interface PieChartProps extends React.HTMLAttributes<HTMLDivElement> {
   data: { name: string; value: number; color?: string }[];
   valueType: Column["type"];
   valueFormatter: (value: number) => string;
-  showLegend?: boolean;
   isDonut?: boolean;
 }
 
@@ -31,7 +30,6 @@ const PieChart = (props: PieChartProps) => {
   const {
     data,
     valueFormatter,
-    showLegend = true,
     className,
     chartId,
     label,
@@ -63,12 +61,10 @@ const PieChart = (props: PieChartProps) => {
     const labelTopOffset = label
       ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1)
       : 0;
-    const legendTopOffset = showLegend ? 35 : 0;
-    const totalTopOffset = labelTopOffset + legendTopOffset;
 
-    // Calculate center position to account for title and legend
-    const availableHeight = chartHeight - totalTopOffset - chartPadding * 2;
-    const centerY = totalTopOffset + chartPadding + availableHeight / 2;
+    // Calculate center position to account for title
+    const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
+    const centerY = labelTopOffset + chartPadding + availableHeight / 2;
 
     const series: PieSeriesOption = {
       type: "pie",
@@ -81,28 +77,20 @@ const PieChart = (props: PieChartProps) => {
           color: categoryColors.get(d.name),
         },
       })),
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 10,
-          shadowOffsetX: 0,
-          shadowColor: "rgba(0, 0, 0, 0.5)",
-        },
-      },
       label: {
         show: chartWidth > 350 && data.length <= 8,
-        formatter: (params: any) => {
-          const percent = params.percent.toFixed(1);
-          return `${params.name}: ${percent}%`;
-        },
         fontFamily: chartFont,
         color: theme.textColorSecondary,
         fontSize: 12,
       },
       labelLine: {
-        show: chartWidth > 350 && data.length <= 8,
+        show: false,
+        length: 12,
+        length2: 0,
       },
       animationDelay: 100,
       animationDelayUpdate: 100,
+      cursor: "crosshair",
     };
 
     return {
@@ -141,29 +129,6 @@ const PieChart = (props: PieChartProps) => {
           </div>`;
         },
       },
-      legend: {
-        show: showLegend,
-        type: "scroll",
-        orient: "horizontal",
-        left: "center",
-        top: labelTopOffset + chartPadding,
-        textStyle: {
-          color: theme.textColor,
-          fontFamily: chartFont,
-          fontWeight: 500,
-        },
-        pageButtonPosition: "end",
-        pageIconColor: theme.textColorSecondary,
-        pageIconInactiveColor: theme.borderColor,
-        pageIcons: {
-          horizontal: [
-            "M10.8284 12.0007L15.7782 16.9504L14.364 18.3646L8 12.0007L14.364 5.63672L15.7782 7.05093L10.8284 12.0007Z",
-            "M13.1717 12.0007L8.22192 7.05093L9.63614 5.63672L16.0001 12.0007L9.63614 18.3646L8.22192 16.9504L13.1717 12.0007Z",
-          ],
-        },
-        pageIconSize: 12,
-        pageFormatter: () => "",
-      },
       series: [series],
     };
   }, [
@@ -172,7 +137,6 @@ const PieChart = (props: PieChartProps) => {
     chartWidth,
     chartHeight,
     label,
-    showLegend,
     valueFormatter,
     isDonut,
   ]);

@@ -3,6 +3,7 @@
 import { Column } from "../../lib/types";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { PieChart } from "../charts/PieChart";
+import { useCallback, useMemo } from "react";
 
 type PieProps = {
   chartId: string;
@@ -29,21 +30,28 @@ const DashboardPieChart = ({
   const colorIndex = headers.findIndex((c) => c.tag === "color");
 
   // Transform data into pie chart format
-  const pieData = data.map((row, rowIndex) => {
-    const value = formatCellValue(row[valueIndex]) as number;
-    const name =
-      categoryIndex !== -1
-        ? (row[categoryIndex] ?? "").toString()
-        : `${valueHeader.name} ${rowIndex + 1}`;
-    const color =
-      colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
+  const pieData = useMemo(() => {
+    return data.map((row, rowIndex) => {
+      const value = formatCellValue(row[valueIndex]) as number;
+      const name =
+        categoryIndex !== -1
+          ? (row[categoryIndex] ?? "").toString()
+          : `${valueHeader.name} ${rowIndex + 1}`;
+      const color =
+        colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
 
-    return {
-      name,
-      value,
-      color: color && color.length > 0 ? color : undefined,
-    };
-  });
+      return {
+        name,
+        value,
+        color: color && color.length > 0 ? color : undefined,
+      };
+    });
+  }, [data, valueHeader, categoryIndex, colorIndex, valueIndex]);
+
+  const valueFormatter = useCallback(
+    (n: number) => formatValue(n, valueHeader.type, true).toString(),
+    [valueHeader.type],
+  );
 
   return (
     <PieChart
@@ -51,10 +59,7 @@ const DashboardPieChart = ({
       label={label}
       data={pieData}
       valueType={valueHeader.type}
-      valueFormatter={(n: number) =>
-        formatValue(n, valueHeader.type, true).toString()
-      }
-      showLegend={pieData.length > 1 && pieData.length <= 10}
+      valueFormatter={valueFormatter}
       isDonut={isDonut}
     />
   );
