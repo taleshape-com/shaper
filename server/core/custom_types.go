@@ -61,6 +61,7 @@ var dbTypes = []struct {
 	{"PIECHART_COLOR", "UNION(\"piechart_color_varchar\" VARCHAR)", "string"},
 	{"DONUTCHART", "UNION(\"donutchart_double\" DOUBLE)", "chart"},
 	{"DONUTCHART_PERCENT", "UNION(\"donutchart_percent_double\" DOUBLE)", "percent"},
+	{"DONUTCHART_CATEGORY", "UNION(\"donutchart_category_varchar\" VARCHAR)", "string"},
 	{"RANGE", "UNION(\"range_interval\" INTERVAL[], \"range_double\" DOUBLE[])", "array"},
 	{"LABELS", "UNION(\"labels_varchar\" VARCHAR[])", "array"},
 	{"COLORS", "UNION(\"colors_varchar\" VARCHAR[])", "array"},
