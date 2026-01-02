@@ -39,6 +39,7 @@ const PieChart = (props: PieChartProps) => {
     label,
     isDonut = false,
     valueColumnName,
+    valueType,
     ...other
   } = props;
 
@@ -46,6 +47,7 @@ const PieChart = (props: PieChartProps) => {
   const [chartWidth, setChartWidth] = React.useState(450);
   const [chartHeight, setChartHeight] = React.useState(300);
   const { isDarkMode } = React.useContext(DarkModeContext);
+  const isPercent = valueType === "percent";
   const otherLabel = translate("Other");
   const breakdownLabel = translate("Breakdown");
 
@@ -73,10 +75,11 @@ const PieChart = (props: PieChartProps) => {
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
     const centerY = labelTopOffset + chartPadding + availableHeight * 0.51;
     const radius = Math.min(Math.min(chartWidth, chartHeight), 800) * 0.32;
+    const totalValue = data.reduce((acc, d) => acc + d.value, 0);
 
     const series: PieSeriesOption = {
       type: "pie",
-      radius: isDonut ? [radius * 0.55, radius] : radius,
+      radius: isDonut ? [radius * 0.57, radius] : radius,
       center: ["50%", centerY],
       data: data.map((d) => ({
         name: d.name,
@@ -86,7 +89,7 @@ const PieChart = (props: PieChartProps) => {
         },
       })),
       label: {
-        show: chartWidth > 350 && data.length <= 8,
+        show: chartWidth > 350 && data.length <= 10,
         fontFamily: chartFont,
         color: theme.textColorSecondary,
         fontSize: 12,
@@ -104,6 +107,8 @@ const PieChart = (props: PieChartProps) => {
       },
       animationDelay: 100,
       animationDelayUpdate: 100,
+      minAngle: 1,
+      endAngle: isPercent && totalValue < 1 ? totalValue * -360 + 90 : 'auto',
       cursor: "crosshair",
     };
 
@@ -125,11 +130,10 @@ const PieChart = (props: PieChartProps) => {
     ];
 
     if (isDonut) {
-      const totalValue = data.reduce((acc, d) => acc + d.value, 0);
       const formattedTotal = valueFormatter(totalValue);
-      if (formattedTotal.length < 10) {
+      if (formattedTotal.length < 10 && !(isPercent && totalValue === 1)) {
         titles.push({
-          text: `{val|${formattedTotal}}\n{label|${translate("Total")}}`,
+          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("Total")}}` : ''}`,
           left: "center",
           top: centerY * 0.96,
           textStyle: {
@@ -178,10 +182,10 @@ const PieChart = (props: PieChartProps) => {
           // Show value with its column name if available
           const formattedValue = echartsEncode(valueFormatter(params.value));
           if (valueColumnName) {
-            const v = echartsEncode(valueColumnName);
+            const v = data.length < 2 ? '' : echartsEncode(valueColumnName);
             tooltipContent += `<div class="mt-1 flex justify-between space-x-2">
               <span class="font-medium">${v}</span>
-              <span>${formattedValue} (${percentage}%)</span>
+              <span>${formattedValue} ${isPercent ? '' : `(${percentage}%)`}</span>
             </div>`;
           } else {
             tooltipContent += `<div class="mt-1">${formattedValue} (${percentage}%)</div>`;
@@ -250,6 +254,7 @@ const PieChart = (props: PieChartProps) => {
     valueColumnName,
     otherLabel,
     breakdownLabel,
+    isPercent,
   ]);
 
   const handleChartReady = useCallback((chart: ECharts) => {
