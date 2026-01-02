@@ -38,6 +38,7 @@ const PieChart = (props: PieChartProps) => {
     chartId,
     label,
     isDonut = false,
+    valueColumnName,
     ...other
   } = props;
 
@@ -45,6 +46,8 @@ const PieChart = (props: PieChartProps) => {
   const [chartWidth, setChartWidth] = React.useState(450);
   const [chartHeight, setChartHeight] = React.useState(300);
   const { isDarkMode } = React.useContext(DarkModeContext);
+  const otherLabel = translate("Other");
+  const breakdownLabel = translate("Breakdown");
 
   const chartOptions = React.useMemo(() => {
     const theme = getThemeColors(isDarkMode);
@@ -174,35 +177,59 @@ const PieChart = (props: PieChartProps) => {
 
           // Show value with its column name if available
           const formattedValue = echartsEncode(valueFormatter(params.value));
-          if (props.valueColumnName) {
-            const valueColumnName = echartsEncode(props.valueColumnName);
+          if (valueColumnName) {
+            const v = echartsEncode(valueColumnName);
             tooltipContent += `<div class="mt-1 flex justify-between space-x-2">
-              <span class="font-medium">${valueColumnName}</span>
+              <span class="font-medium">${v}</span>
               <span>${formattedValue} (${percentage}%)</span>
             </div>`;
           } else {
             tooltipContent += `<div class="mt-1">${formattedValue} (${percentage}%)</div>`;
           }
 
-          // Add extra data if available
-          const extraData = extraDataByName[params.name];
-          if (extraData) {
-            tooltipContent += "<div class=\"mt-2\">";
-            Object.entries(extraData).forEach(([key, valueData]) => {
-              if (Array.isArray(valueData) && valueData.length >= 2) {
-                const [value, columnType] = valueData;
-                tooltipContent += `<div class="flex justify-between space-x-2">
-                  <span class="font-medium">${echartsEncode(key)}</span>
-                  <span>${echartsEncode(formatValue(value, columnType, true))}</span>
-                </div>`;
-              } else {
-                tooltipContent += `<div class="flex justify-between space-x-2">
-                  <span class="font-medium">${echartsEncode(key)}</span>
-                  <span>${echartsEncode(valueData)}</span>
-                </div>`;
-              }
-            });
-            tooltipContent += "</div>";
+          // Handle "Other" category specially - show individual values
+          if (params.name === otherLabel) {
+            const otherData = extraDataByName[params.name];
+            if (otherData) {
+              tooltipContent += "<div class=\"mt-2\">";
+              tooltipContent += `<div class="font-medium mb-1">${echartsEncode(breakdownLabel)}:</div>`;
+              Object.entries(otherData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span>${echartsEncode(key)}</span>
+                    <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                  </div>`;
+                } else {
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span>${echartsEncode(key)}</span>
+                    <span>${echartsEncode(valueData)}</span>
+                  </div>`;
+                }
+              });
+              tooltipContent += "</div>";
+            }
+          } else {
+            // Add extra data for non-"Other" categories
+            const extraData = extraDataByName[params.name];
+            if (extraData) {
+              tooltipContent += "<div class=\"mt-2\">";
+              Object.entries(extraData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span class="font-medium">${echartsEncode(key)}</span>
+                    <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                  </div>`;
+                } else {
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span class="font-medium">${echartsEncode(key)}</span>
+                    <span>${echartsEncode(valueData)}</span>
+                  </div>`;
+                }
+              });
+              tooltipContent += "</div>";
+            }
           }
 
           tooltipContent += "</div>";
@@ -219,6 +246,10 @@ const PieChart = (props: PieChartProps) => {
     label,
     valueFormatter,
     isDonut,
+    extraDataByName,
+    valueColumnName,
+    otherLabel,
+    breakdownLabel,
   ]);
 
   const handleChartReady = useCallback((chart: ECharts) => {
