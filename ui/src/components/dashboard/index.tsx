@@ -23,6 +23,7 @@ import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
+import { getRenderMode } from "../charts/EChart";
 
 export interface DashboardProps {
   id?: string;
@@ -39,7 +40,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -141,7 +142,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -375,7 +376,9 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[240px] h-[calc(45cqh)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge"),
+                    "min-h-[240px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
+                    "h-[calc(45cqh)]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
+                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
                     "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
                     "max-h-[calc(45cqw)]": (numContentSections > 1 || numQueriesInSection > 1),
                     // 4 cols

@@ -66,7 +66,7 @@ const optionSettings = {
 
 // Helper to determine current render mode from global shaper config.
 // Defaults to "interactive" when not set.
-const getRenderMode = (): "interactive" | "pdf" => {
+export const getRenderMode = (): "interactive" | "pdf" => {
   if (typeof window === "undefined") {
     return "interactive";
   }

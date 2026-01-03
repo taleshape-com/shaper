@@ -8,11 +8,11 @@ import { getNameIfSet } from "../../lib/utils";
 import { translate } from "../../lib/translate";
 
 type PieProps = {
-	chartId: string;
-	label?: string;
-	headers: Column[];
-	data: (string | number | boolean)[][];
-	isDonut?: boolean;
+  chartId: string;
+  label?: string;
+  headers: Column[];
+  data: (string | number | boolean)[][];
+  isDonut?: boolean;
 };
 
 const DashboardPieChart = ({
@@ -39,9 +39,9 @@ const DashboardPieChart = ({
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
       const name =
-				categoryIndex !== -1
-				  ? (row[categoryIndex] ?? "").toString()
-				  : (getNameIfSet(valueHeader.name) ?? "");
+        categoryIndex !== -1
+          ? (row[categoryIndex] ?? "").toString()
+          : (getNameIfSet(valueHeader.name) ?? "");
 
       return {
         name,
@@ -59,9 +59,9 @@ const DashboardPieChart = ({
     // Process original data to create extra data for significant items
     data.forEach((row) => {
       const name =
-				categoryIndex !== -1
-				  ? (row[categoryIndex] ?? "").toString()
-				  : (getNameIfSet(valueHeader.name) ?? "");
+        categoryIndex !== -1
+          ? (row[categoryIndex] ?? "").toString()
+          : (getNameIfSet(valueHeader.name) ?? "");
 
       // Only add extra data for significant items (not for "Other")
       const isSignificant = significantItems.some(item => item.name === name);
@@ -100,9 +100,9 @@ const DashboardPieChart = ({
       // For single small items, add normal extra data like other significant items
       data.forEach((row) => {
         const name =
-					categoryIndex !== -1
-					  ? (row[categoryIndex] ?? "").toString()
-					  : (getNameIfSet(valueHeader.name) ?? "");
+          categoryIndex !== -1
+            ? (row[categoryIndex] ?? "").toString()
+            : (getNameIfSet(valueHeader.name) ?? "");
 
         // Add extra data for the single small item
         const isSmall = smallItems.some(item => item.name === name);
@@ -131,16 +131,16 @@ const DashboardPieChart = ({
   }, [data, headers, valueIndex, categoryIndex, colorIndex, valueHeader]);
 
   // Transform data into pie chart format
-  const pieData = useMemo(() => {
+  const pieData = () => {
     // First, calculate all values to determine percentages
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
       const name =
-				categoryIndex !== -1
-				  ? (row[categoryIndex] ?? "").toString()
-				  : (getNameIfSet(valueHeader.name) ?? "");
+        categoryIndex !== -1
+          ? (row[categoryIndex] ?? "").toString()
+          : (getNameIfSet(valueHeader.name) ?? "");
       const color =
-				colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
+        colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
 
       return {
         name,
@@ -178,22 +178,17 @@ const DashboardPieChart = ({
 
     // Return significant items plus the "Other" item
     return [...significantItems, otherItem];
-  }, [data, valueHeader, categoryIndex, colorIndex, valueIndex]);
-
-  const valueFormatter = useCallback(
-    (n: number) => formatValue(n, valueHeader.type, true).toString(),
-    [valueHeader.type],
-  );
+  };
 
   return (
     <PieChart
       chartId={chartId}
       label={label}
-      data={pieData}
+      data={pieData()}
       extraDataByName={extraDataByName}
       valueType={valueHeader.type}
       valueColumnName={getNameIfSet(valueHeader.name)}
-      valueFormatter={valueFormatter}
+      valueFormatter={(n: number) => formatValue(n, valueHeader.type, true).toString()}
       isDonut={isDonut}
     />
   );

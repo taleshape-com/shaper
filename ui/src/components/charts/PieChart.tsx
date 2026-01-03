@@ -19,14 +19,14 @@ import { EChart } from "./EChart";
 const chartPadding = 16;
 
 interface PieChartProps extends React.HTMLAttributes<HTMLDivElement> {
-	chartId: string;
-	label?: string;
-	data: { name: string; value: number; color?: string }[];
-	extraDataByName: Record<string, Record<string, any>>;
-	valueType: Column["type"];
-	valueColumnName?: string;
-	valueFormatter: (value: number) => string;
-	isDonut?: boolean;
+  chartId: string;
+  label?: string;
+  data: { name: string; value: number; color?: string }[];
+  extraDataByName: Record<string, Record<string, any>>;
+  valueType: Column["type"];
+  valueColumnName?: string;
+  valueFormatter: (value: number) => string;
+  isDonut?: boolean;
 }
 
 const PieChart = (props: PieChartProps) => {
@@ -74,7 +74,7 @@ const PieChart = (props: PieChartProps) => {
     // Calculate center position to account for title
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
     const centerY = labelTopOffset + chartPadding + availableHeight * 0.51;
-    const radius = Math.min(Math.min(chartWidth, chartHeight), 800) * 0.32;
+    const radius = Math.min(Math.min(chartWidth, availableHeight), 800) * 0.38;
     const totalValue = data.reduce((acc, d) => acc + d.value, 0);
 
     const series: PieSeriesOption = {

@@ -186,7 +186,7 @@ const Boxplot = (props: BoxplotProps) => {
       });
     }
 
-    const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 0;
+    const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
@@ -298,9 +298,9 @@ const Boxplot = (props: BoxplotProps) => {
       },
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 15 + chartPadding,
+        right: 10 + chartPadding,
         top: 10 + labelTopOffset + chartPadding,
-        bottom: (xAxisLabel ? 35 : 10) + chartPadding,
+        bottom: (xAxisLabel ? 32 : 8) + chartPadding,
         containLabel: true,
       },
       xAxis: {
@@ -348,7 +348,7 @@ const Boxplot = (props: BoxplotProps) => {
         },
         name: xAxisLabel,
         nameLocation: "middle",
-        nameGap: 40,
+        nameGap: 36,
         nameTextStyle: {
           color: textColor,
           fontFamily: chartFont,
@@ -534,7 +534,7 @@ const Boxplot = (props: BoxplotProps) => {
   );
 };
 
-function decodeIndexValue (v: string | number, indexType: Column["type"]): string | number {
+function decodeIndexValue(v: string | number, indexType: Column["type"]): string | number {
   if (isDatableType(indexType)) {
     return new Date(v).getTime();
   }
