@@ -170,10 +170,12 @@ const DashboardPieChart = ({
 
     // Combine small items into "Other" category if there are multiple small items
     const otherValue = smallItems.reduce((sum, item) => sum + item.value, 0);
+    // Use the color from the first small item if available, otherwise use undefined
+    const firstSmallItemWithColor = smallItems.find(item => item.color && item.color.length > 0);
     const otherItem = {
       name: translate("Other"),
       value: otherValue,
-      color: undefined, // Use default color for "Other"
+      color: firstSmallItemWithColor?.color, // Use first available color from small items, or default if none
     };
 
     // Return significant items plus the "Other" item
