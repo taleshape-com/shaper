@@ -131,7 +131,7 @@ const DashboardPieChart = ({
   }, [data, headers, valueIndex, categoryIndex, colorIndex, valueHeader]);
 
   // Transform data into pie chart format
-  const pieData = () => {
+  const pieData = useMemo(() => {
     // First, calculate all values to determine percentages
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
@@ -178,17 +178,22 @@ const DashboardPieChart = ({
 
     // Return significant items plus the "Other" item
     return [...significantItems, otherItem];
-  };
+  }, [data, valueHeader, categoryIndex, colorIndex, valueIndex]);
+
+  const valueFormatter = useCallback(
+    (n: number) => formatValue(n, valueHeader.type, true).toString(),
+    [valueHeader.type],
+  );
 
   return (
     <PieChart
       chartId={chartId}
       label={label}
-      data={pieData()}
+      data={pieData}
       extraDataByName={extraDataByName}
       valueType={valueHeader.type}
       valueColumnName={getNameIfSet(valueHeader.name)}
-      valueFormatter={(n: number) => formatValue(n, valueHeader.type, true).toString()}
+      valueFormatter={valueFormatter}
       isDonut={isDonut}
     />
   );

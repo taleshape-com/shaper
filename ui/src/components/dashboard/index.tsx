@@ -4,7 +4,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
 import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
-import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
+import { cx, getSearchParamString, VarsParamSchema, getRenderMode } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
@@ -23,7 +23,6 @@ import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
-import { getRenderMode } from "../charts/EChart";
 
 export interface DashboardProps {
   id?: string;
@@ -40,7 +39,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard({
+export function Dashboard ({
   id,
   vars,
   getJwt,
@@ -142,7 +141,7 @@ export function Dashboard({
     }
   }, [loading]);
 
-  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">

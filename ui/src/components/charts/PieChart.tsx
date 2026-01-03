@@ -69,12 +69,12 @@ const PieChart = (props: PieChartProps) => {
 
     const labelTopOffset = label
       ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1)
-      : 0;
+      : 10;
 
     // Calculate center position to account for title
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
-    const centerY = labelTopOffset + chartPadding + availableHeight * 0.51;
-    const radius = Math.min(Math.min(chartWidth, availableHeight), 800) * 0.38;
+    const centerY = labelTopOffset + chartPadding + availableHeight * 0.50;
+    const radius = Math.min(Math.min(chartWidth, availableHeight), 800) * 0.40;
     const totalValue = data.reduce((acc, d) => acc + d.value, 0);
 
     const series: PieSeriesOption = {
