@@ -12,7 +12,8 @@ import {
 import { cx } from "../../lib/utils";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column } from "../../lib/types";
-import { echartsEncode } from "../../lib/render";
+import { formatValue, echartsEncode } from "../../lib/render";
+import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
 const chartPadding = 16;
@@ -21,21 +22,24 @@ interface PieChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   label?: string;
   data: { name: string; value: number; color?: string }[];
+  extraDataByName: Record<string, Record<string, any>>;
   valueType: Column["type"];
+  valueColumnName?: string;
   valueFormatter: (value: number) => string;
-  showLegend?: boolean;
   isDonut?: boolean;
 }
 
 const PieChart = (props: PieChartProps) => {
   const {
     data,
+    extraDataByName,
     valueFormatter,
-    showLegend = true,
     className,
     chartId,
     label,
     isDonut = false,
+    valueColumnName,
+    valueType,
     ...other
   } = props;
 
@@ -43,6 +47,9 @@ const PieChart = (props: PieChartProps) => {
   const [chartWidth, setChartWidth] = React.useState(450);
   const [chartHeight, setChartHeight] = React.useState(300);
   const { isDarkMode } = React.useContext(DarkModeContext);
+  const isPercent = valueType === "percent";
+  const otherLabel = translate("Other");
+  const breakdownLabel = translate("Breakdown");
 
   const chartOptions = React.useMemo(() => {
     const theme = getThemeColors(isDarkMode);
@@ -61,18 +68,18 @@ const PieChart = (props: PieChartProps) => {
     );
 
     const labelTopOffset = label
-      ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1)
-      : 0;
-    const legendTopOffset = showLegend ? 35 : 0;
-    const totalTopOffset = labelTopOffset + legendTopOffset;
+      ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1)
+      : 10;
 
-    // Calculate center position to account for title and legend
-    const availableHeight = chartHeight - totalTopOffset - chartPadding * 2;
-    const centerY = totalTopOffset + chartPadding + availableHeight / 2;
+    // Calculate center position to account for title
+    const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
+    const centerY = labelTopOffset + chartPadding + availableHeight * 0.50;
+    const radius = Math.min(Math.min(chartWidth, availableHeight), 800) * 0.40;
+    const totalValue = data.reduce((acc, d) => acc + d.value, 0);
 
     const series: PieSeriesOption = {
       type: "pie",
-      radius: isDonut ? ["40%", "70%"] : "70%",
+      radius: isDonut ? [radius * 0.57, radius] : radius,
       center: ["50%", centerY],
       data: data.map((d) => ({
         name: d.name,
@@ -81,32 +88,32 @@ const PieChart = (props: PieChartProps) => {
           color: categoryColors.get(d.name),
         },
       })),
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 10,
-          shadowOffsetX: 0,
-          shadowColor: "rgba(0, 0, 0, 0.5)",
-        },
-      },
       label: {
-        show: chartWidth > 350 && data.length <= 8,
-        formatter: (params: any) => {
-          const percent = params.percent.toFixed(1);
-          return `${params.name}: ${percent}%`;
-        },
+        show: chartWidth > 350 && data.length <= 10,
         fontFamily: chartFont,
         color: theme.textColorSecondary,
         fontSize: 12,
+        fontWeight: 500,
       },
       labelLine: {
-        show: chartWidth > 350 && data.length <= 8,
+        show: false,
+        length: 12,
+        length2: 0,
+      },
+      itemStyle: {
+        borderRadius: 2,
+        borderColor: theme.backgroundColorSecondary,
+        borderWidth: isDonut ? 2 : 1.5,
       },
       animationDelay: 100,
       animationDelayUpdate: 100,
+      minAngle: 1,
+      endAngle: isPercent && totalValue < 1 ? totalValue * -360 + 90 : "auto",
+      cursor: "crosshair",
     };
 
-    return {
-      title: {
+    const titles: any[] = [
+      {
         text: label,
         textStyle: {
           fontSize: 16,
@@ -120,6 +127,40 @@ const PieChart = (props: PieChartProps) => {
         left: "center",
         top: chartPadding,
       },
+    ];
+
+    if (isDonut) {
+      const formattedTotal = valueFormatter(totalValue);
+      if (formattedTotal.length < 10 && !(isPercent && totalValue === 1)) {
+        titles.push({
+          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("Total")}}` : ""}`,
+          left: "center",
+          top: centerY * 0.96,
+          textStyle: {
+            rich: {
+              val: {
+                fontSize: 20,
+                fontWeight: 600,
+                fontFamily: displayFont,
+                color: theme.textColor,
+                lineHeight: 30,
+              },
+              label: {
+                fontSize: 14,
+                fontWeight: 400,
+                fontFamily: chartFont,
+                color: theme.textColorSecondary,
+                lineHeight: 16,
+              },
+            },
+          },
+          textVerticalAlign: "middle",
+        });
+      }
+    }
+
+    return {
+      title: titles,
       tooltip: {
         trigger: "item",
         confine: true,
@@ -132,37 +173,72 @@ const PieChart = (props: PieChartProps) => {
         },
         formatter: (params: any) => {
           const percentage = params.percent.toFixed(1);
-          return `<div class="text-sm">
+          let tooltipContent = `<div class="text-sm">
             <div class="flex items-center space-x-2">
               <span class="inline-block size-2 rounded-sm" style="background-color: ${echartsEncode(params.color)}"></span>
               <span class="font-medium">${echartsEncode(params.name)}</span>
-            </div>
-            <div class="mt-1">${echartsEncode(valueFormatter(params.value))} (${percentage}%)</div>
-          </div>`;
+            </div>`;
+
+          // Show value with its column name if available
+          const formattedValue = echartsEncode(valueFormatter(params.value));
+          if (valueColumnName) {
+            const v = data.length < 2 ? "" : echartsEncode(valueColumnName);
+            tooltipContent += `<div class="mt-1 flex justify-between space-x-2">
+              <span class="font-medium">${v}</span>
+              <span>${formattedValue} ${isPercent ? "" : `(${percentage}%)`}</span>
+            </div>`;
+          } else {
+            tooltipContent += `<div class="mt-1">${formattedValue} (${percentage}%)</div>`;
+          }
+
+          // Handle "Other" category specially - show individual values
+          if (params.name === otherLabel) {
+            const otherData = extraDataByName[params.name];
+            if (otherData) {
+              tooltipContent += "<div class=\"mt-2\">";
+              tooltipContent += `<div class="font-medium mb-1">${echartsEncode(breakdownLabel)}:</div>`;
+              Object.entries(otherData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span>${echartsEncode(key)}</span>
+                    <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                  </div>`;
+                } else {
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span>${echartsEncode(key)}</span>
+                    <span>${echartsEncode(valueData)}</span>
+                  </div>`;
+                }
+              });
+              tooltipContent += "</div>";
+            }
+          } else {
+            // Add extra data for non-"Other" categories
+            const extraData = extraDataByName[params.name];
+            if (extraData) {
+              tooltipContent += "<div class=\"mt-2\">";
+              Object.entries(extraData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span class="font-medium">${echartsEncode(key)}</span>
+                    <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                  </div>`;
+                } else {
+                  tooltipContent += `<div class="flex justify-between space-x-2">
+                    <span class="font-medium">${echartsEncode(key)}</span>
+                    <span>${echartsEncode(valueData)}</span>
+                  </div>`;
+                }
+              });
+              tooltipContent += "</div>";
+            }
+          }
+
+          tooltipContent += "</div>";
+          return tooltipContent;
         },
-      },
-      legend: {
-        show: showLegend,
-        type: "scroll",
-        orient: "horizontal",
-        left: "center",
-        top: labelTopOffset + chartPadding,
-        textStyle: {
-          color: theme.textColor,
-          fontFamily: chartFont,
-          fontWeight: 500,
-        },
-        pageButtonPosition: "end",
-        pageIconColor: theme.textColorSecondary,
-        pageIconInactiveColor: theme.borderColor,
-        pageIcons: {
-          horizontal: [
-            "M10.8284 12.0007L15.7782 16.9504L14.364 18.3646L8 12.0007L14.364 5.63672L15.7782 7.05093L10.8284 12.0007Z",
-            "M13.1717 12.0007L8.22192 7.05093L9.63614 5.63672L16.0001 12.0007L9.63614 18.3646L8.22192 16.9504L13.1717 12.0007Z",
-          ],
-        },
-        pageIconSize: 12,
-        pageFormatter: () => "",
       },
       series: [series],
     };
@@ -172,9 +248,13 @@ const PieChart = (props: PieChartProps) => {
     chartWidth,
     chartHeight,
     label,
-    showLegend,
     valueFormatter,
     isDonut,
+    extraDataByName,
+    valueColumnName,
+    otherLabel,
+    breakdownLabel,
+    isPercent,
   ]);
 
   const handleChartReady = useCallback((chart: ECharts) => {

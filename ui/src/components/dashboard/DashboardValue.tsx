@@ -59,7 +59,7 @@ function DashboardValue ({ headers, data }: ValueProps) {
 
   const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : "";
   const labelLongestLine = getLongestLineLength(labelText);
-  const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 22, 10);
+  const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 20, 10);
 
   return (
     <div

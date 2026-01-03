@@ -143,3 +143,15 @@ export function getUTCDate (input: Date) {
   date.setTime(date.getTime() - offset);
   return date;
 }
+
+// Helper to determine current render mode from global shaper config.
+// Defaults to "interactive" when not set.
+export const getRenderMode = (): "interactive" | "pdf" => {
+  if (typeof window === "undefined") {
+    return "interactive";
+  }
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const mode = window.shaper?.renderMode;
+  return mode === "pdf" ? "pdf" : "interactive";
+};

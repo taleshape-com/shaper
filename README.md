@@ -23,6 +23,15 @@ For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs
 To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
 
 
+## Support and Managed Hosting
+
+Shaper itself is completely free and open source.
+But we offer managed hosting and proactive support.
+Find out more:
+
+[Plans and Pricing](https://taleshape.com/plans-and-pricing)
+
+
 ## Get in touch
 
 Feel free to open an [issue](https://github.com/taleshape-com/shaper/issues) or start a [discussion](https://github.com/taleshape-com/shaper/discussions) if you have any questions or suggestions.
@@ -46,4 +55,4 @@ See [Github Releases](https://github.com/taleshape-com/shaper/releases)
 
 Shaper is licensed under the [Mozilla Public License 2.0](https://github.com/taleshape-com/shaper/blob/main/LICENSE).
 
-Copyright © 2024-2025 Taleshape OÜ
+Copyright © 2024-2026 Taleshape OÜ

@@ -1046,6 +1046,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if piechart != nil {
 		pieCat, pieCatIndex := findColumnByTag(columns, "PIECHART_CATEGORY")
 		if pieCat == nil {
+			pieCat, pieCatIndex = findColumnByTag(columns, "DONUTCHART_CATEGORY")
+		}
+		if pieCat == nil {
 			pieCat, pieCatIndex = findColumnByTag(columns, "CATEGORY")
 		}
 		pieColor, pieColorIndex := findColumnByTag(columns, "PIECHART_COLOR")

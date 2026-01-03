@@ -4,7 +4,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
 import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
-import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
+import { cx, getSearchParamString, VarsParamSchema, getRenderMode } from "../../lib/utils";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
@@ -375,7 +375,9 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[240px] h-[calc(45cqh)] print:h-[340px]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge"),
+                    "min-h-[240px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
+                    "h-[calc(45cqh)]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
+                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
                     "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
                     "max-h-[calc(45cqw)]": (numContentSections > 1 || numQueriesInSection > 1),
                     // 4 cols

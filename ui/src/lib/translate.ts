@@ -156,6 +156,14 @@ const translations = {
     de: "Max.",
     pt: "máx",
   },
+  "Other": {
+    de: "Andere",
+    pt: "Outros",
+  },
+  "Breakdown": {
+    de: "Aufschlüsselung",
+    pt: "Detalhamento",
+  },
 };
 
 export function translate (s: keyof typeof translations) {

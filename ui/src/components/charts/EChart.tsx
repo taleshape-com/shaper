@@ -21,6 +21,7 @@ import {
 } from "echarts/components";
 import { LabelLayout, UniversalTransition } from "echarts/features";
 import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
+import { getRenderMode } from "../../lib/utils";
 
 interface EChartProps {
   option: echarts.EChartsCoreOption;
@@ -62,18 +63,6 @@ echarts.use([
 const optionSettings = {
   replaceMerge: "series",
   lazyUpdate: true,
-};
-
-// Helper to determine current render mode from global shaper config.
-// Defaults to "interactive" when not set.
-const getRenderMode = (): "interactive" | "pdf" => {
-  if (typeof window === "undefined") {
-    return "interactive";
-  }
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const mode = window.shaper?.renderMode;
-  return mode === "pdf" ? "pdf" : "interactive";
 };
 
 // Detect Safari browser
