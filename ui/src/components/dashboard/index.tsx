@@ -375,18 +375,18 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[240px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
-                    "h-[calc(45cqh)]": !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
-                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && section.queries.some(q => q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
+                    "min-h-[240px]": !singleTable && query.render.type !== "value",
+                    "@xl:h-[calc(45cqh)]": !singleTable && query.render.type !== "value" && section.queries.some(q => q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
+                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && query.render.type !== "value" && section.queries.some(q => q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
                     "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
-                    "max-h-[calc(45cqw)]": (numContentSections > 1 || numQueriesInSection > 1),
+                    "max-h-[calc(45cqw)]": query.render.type !== "table" && query.render.type !== "value" && (numContentSections > 1 || numQueriesInSection > 1),
                     // 4 cols
-                    "h-[calc(16cqw)]": (numQueriesInSection === 4 && numContentSections > 1) ||
+                    "@xl:h-[calc(16cqw)]": query.render.type !== "table" && query.render.type !== "value" && ((numQueriesInSection === 4 && numContentSections > 1) ||
                       numQueriesInSection === 7 ||
                       numQueriesInSection === 8 ||
-                      numQueriesInSection > 9,
+                      numQueriesInSection > 9),
                     // 5 cols
-                    "h-[calc(13cqw)]": (numQueriesInSection === 5 && numContentSections > 1) ||
+                    "@4xl:h-[calc(13cqw)]": query.render.type !== "table" && query.render.type !== "value" && (numQueriesInSection === 5 && numContentSections > 1) ||
                       numQueriesInSection >= 9,
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,
