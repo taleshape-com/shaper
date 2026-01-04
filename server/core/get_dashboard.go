@@ -456,8 +456,10 @@ func mapTag(index int, rInfo renderInfo) string {
 		}
 		return "value"
 	}
-	if rInfo.TrendIndex != nil && index == *rInfo.TrendIndex {
-		return "trend"
+	for _, trendIndex := range rInfo.TrendIndex {
+		if index == trendIndex {
+			return "trend"
+		}
 	}
 	return ""
 }
@@ -579,6 +581,26 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 		}
 	}
 	return nil, -1
+}
+
+func findAllColumnsByTag(columns []*sql.ColumnType, tag string) []int {
+	unionDefinition := ""
+	for _, dbType := range dbTypes {
+		if dbType.Name == tag {
+			unionDefinition = dbType.Definition
+			break
+		}
+	}
+	if unionDefinition == "" {
+		return []int{}
+	}
+	var indices []int
+	for i, c := range columns {
+		if c.DatabaseTypeName() == unionDefinition {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 func findBoxlotColumnIndex(columns []*sql.ColumnType) int {
@@ -1117,13 +1139,14 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 	}
 
-	trendTag, trendTagIndex := findColumnByTag(columns, "TREND")
+	trendTagIndices := findAllColumnsByTag(columns, "TREND")
+	fmt.Println(trendTagIndices)
 	r := renderInfo{
 		Label: labelValue,
 		Type:  "table",
 	}
-	if trendTag != nil {
-		r.TrendIndex = &trendTagIndex
+	if len(trendTagIndices) > 0 {
+		r.TrendIndex = trendTagIndices
 	}
 	return r
 }
