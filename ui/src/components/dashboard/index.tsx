@@ -376,8 +376,8 @@ const DataView = ({
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
                     "min-h-[240px]": !singleTable && query.render.type !== "value",
-                    "@xl:h-[calc(45cqh)]": !singleTable && query.render.type !== "value" && section.queries.some(q => q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
-                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && query.render.type !== "value" && section.queries.some(q => q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart"),
+                    "@xl:h-[calc(45cqh)]": !singleTable && query.render.type !== "value" && query.render.type !== "gauge" && query.render.type !== "piechart" && query.render.type !== "donutchart",
+                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && query.render.type !== "value" && query.render.type !== "gauge" && query.render.type !== "piechart" && query.render.type !== "donutchart",
                     "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
                     "max-h-[calc(45cqw)]": query.render.type !== "table" && query.render.type !== "value" && (numContentSections > 1 || numQueriesInSection > 1),
                     // 4 cols
