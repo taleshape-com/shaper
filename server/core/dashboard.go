@@ -79,7 +79,7 @@ type renderInfo struct {
 	Download        string
 	DownloadIdIndex *int
 	CompareIndex    *int
-	TrendIndex      *int
+	TrendIndex      []int
 	GaugeCategories []GaugeCategory
 	MarkLines       []MarkLine
 }
