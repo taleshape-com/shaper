@@ -42,7 +42,30 @@ function DashboardTable ({ headers, data }: TableProps) {
               <TableRow key={index}>
                 {items.map((item, index) => {
                   const header = headers[index];
-                  const percent = header.tag === "trend" && typeof item === "number" ? Math.round(-100 * (1 - item)) : undefined;
+                  let percent = undefined;
+                  let percentDisplay = undefined;
+                  let percentValue = undefined;
+
+                  if (header.tag === "trend" && typeof item === "number") {
+                    // Calculate the percentage change: -100 * (1 - item) = 100 * (item - 1)
+                    percentValue = -100 * (1 - item);
+
+                    // Format based on the specified ranges
+                    if (percentValue > -0.0001 && percentValue < 0.0001) {
+                      percent = percentValue; // Keep the actual value to determine direction
+                      percentDisplay = "0";
+                    } else if (percentValue > -1 && percentValue < 1) {
+                      percent = Math.round(percentValue * 10000) / 10000; // Round to 4 decimal places
+                      percentDisplay = percent.toString();
+                    } else if (percentValue > -10 && percentValue < 10) {
+                      percent = Math.round(percentValue * 100) / 100; // Round to 2 decimal places
+                      percentDisplay = percent.toString();
+                    } else {
+                      percent = Math.round(percentValue); // Round without decimal places
+                      percentDisplay = percent.toString();
+                    }
+                  }
+
                   const formattedValue = percent !== undefined ? "" : formatValue(item, header.type, true).toString();
                   return (
                     <TableCell key={index} className={cx("text-ctext dark:text-dtext", { "text-right": alignRight(header) })}>
@@ -52,7 +75,7 @@ function DashboardTable ({ headers, data }: TableProps) {
                             "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi max-w-32 ml-auto opacity-55",
                           )}
                         >
-                          {percent > 0 && "+"}{percent}%{
+                          {percent > 0 ? "+" : ""}{percentDisplay}%{
                             percent > 0 ?
                               <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
                               : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
