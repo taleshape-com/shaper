@@ -56,9 +56,9 @@ const translations = {
     de: "Jahr bis heute",
     pt: "Ano até hoje",
   },
-  "Total": {
-    de: "Summe",
-    pt: "Total",
+  "TOTAL": {
+    de: "SUMME",
+    pt: "TOTAL",
   },
   "Save as image": {
     de: "Als Bild speichern",

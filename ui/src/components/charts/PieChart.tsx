@@ -133,7 +133,7 @@ const PieChart = (props: PieChartProps) => {
       const formattedTotal = valueFormatter(totalValue);
       if (formattedTotal.length < 10 && !(isPercent && totalValue === 1)) {
         titles.push({
-          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("Total")}}` : ""}`,
+          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("TOTAL")}}` : ""}`,
           left: "center",
           top: centerY * 0.96,
           textStyle: {
@@ -143,14 +143,14 @@ const PieChart = (props: PieChartProps) => {
                 fontWeight: 600,
                 fontFamily: displayFont,
                 color: theme.textColor,
-                lineHeight: 30,
+                lineHeight: 24,
               },
               label: {
-                fontSize: 14,
-                fontWeight: 400,
+                fontSize: 12,
+                fontWeight: 700,
                 fontFamily: chartFont,
                 color: theme.textColorSecondary,
-                lineHeight: 16,
+                lineHeight: 12,
               },
             },
           },
