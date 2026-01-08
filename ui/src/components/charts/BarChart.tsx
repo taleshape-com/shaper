@@ -278,7 +278,7 @@ const BarChart = (props: BarChartProps) => {
               return sum + value;
             }, 0);
             tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
-              <span class="font-medium">${echartsEncode(translate("Total"))}</span>
+              <span class="font-medium">${echartsEncode(translate("TOTAL"))}</span>
               <span>${echartsEncode(valueFormatter(total))}</span>
             </div>`;
           }
@@ -563,6 +563,7 @@ const BarChart = (props: BarChartProps) => {
       markLine: {
         silent: true,
         symbol: "none",
+        animation: false,
         label: {
           show: false,
         },

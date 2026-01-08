@@ -464,6 +464,7 @@ const Boxplot = (props: BoxplotProps) => {
       markLine: {
         silent: true,
         symbol: "none",
+        animation: false,
         label: {
           show: false,
         },

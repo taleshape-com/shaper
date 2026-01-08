@@ -79,10 +79,12 @@ const DashboardPieChart = ({
         const extraDataForName = extraData[name];
         const formattedValue = formatCellValue(cell);
 
-        if (extraDataForName != null) {
-          extraDataForName[header.name] = [formattedValue, header.type];
-        } else {
-          extraData[name] = { [header.name]: [formattedValue, header.type] };
+        if (formattedValue) {
+          if (extraDataForName != null) {
+            extraDataForName[header.name] = [formattedValue, header.type];
+          } else {
+            extraData[name] = { [header.name]: [formattedValue, header.type] };
+          }
         }
       });
     });
