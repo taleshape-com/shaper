@@ -88,8 +88,8 @@ function DashboardValue ({ headers, data }: ValueProps) {
       <div
         className={cx("overflow-auto py-2", {
           "font-mono": isJSONType(valueHeader.type),
-          "font-semibold": formattedValue.length < 200,
-          "text-center": formattedValue.length < 300,
+          "font-semibold": formattedValue.length < 100,
+          "text-center": formattedValue.length < 100,
           "text-justify": formattedValue.length >= 300,
         })}
         style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.2 }}

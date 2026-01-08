@@ -504,6 +504,7 @@ const LineChart = (props: LineChartProps) => {
         animationDurationUpdate: 100,
         silent: true,
         symbol: "none",
+        animation: false,
         label: {
           show: false,
         },
