@@ -1140,7 +1140,6 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	}
 
 	trendTagIndices := findAllColumnsByTag(columns, "TREND")
-	fmt.Println(trendTagIndices)
 	r := renderInfo{
 		Label: labelValue,
 		Type:  "table",
