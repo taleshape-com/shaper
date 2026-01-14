@@ -254,7 +254,7 @@ const BarChart = (props: BarChartProps) => {
           const indexDim = layout === "horizontal" ? "x" : "y";
           const axisData = params.find((item: any) => item?.axisDim === indexDim);
           const hoverValue = axisData?.axisValue;
-          const title = indexFormatter(indexType === "duration" || indexType === "time" ? new Date(hoverValue).getTime() : hoverValue);
+          const title = indexFormatter(indexType === "duration" || indexType === "time" ? new Date(hoverValue).getTime() : hoverValue, xSpace / 6.5);
 
           let tooltipContent = `<div class="text-sm font-medium">${echartsEncode(title)}</div>`;
 
@@ -408,7 +408,7 @@ const BarChart = (props: BarChartProps) => {
             show: data.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
-                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value);
+                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
               }
               return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value, true);
             },
@@ -474,7 +474,7 @@ const BarChart = (props: BarChartProps) => {
               if (layout === "horizontal") {
                 return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
               }
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value);
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
             },
             fontFamily: chartFont,
             margin: 10,

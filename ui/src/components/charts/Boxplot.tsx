@@ -255,7 +255,7 @@ const Boxplot = (props: BoxplotProps) => {
           }
 
           const indexValue = param.name;
-          const formattedIndex = indexFormatter(decodeIndexValue(indexValue, indexType));
+          const formattedIndex = indexFormatter(decodeIndexValue(indexValue, indexType), xSpace / 7);
           tooltipContent += `<div class="text-sm font-medium">${echartsEncode(formattedIndex)}</div>`;
 
           const extraData = extraDataByIndexAxis[indexValue];
@@ -331,7 +331,7 @@ const Boxplot = (props: BoxplotProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(decodeIndexValue(params.value, indexType), shortenLabel);
+              return indexFormatter(decodeIndexValue(params.value, indexType), xSpace / 5.8);
             },
             fontFamily: chartFont,
             margin: 5,
