@@ -238,7 +238,7 @@ const LineChart = (props: LineChartProps) => {
           }
           const extraData = extraDataByIndexAxis[indexValue];
 
-          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue);
+          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue, xSpace / 6.5);
           let tooltipContent = `<div class="text-sm font-medium">${echartsEncode(formattedIndex)}</div>`;
 
           if (extraData) {
@@ -366,7 +366,7 @@ const LineChart = (props: LineChartProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value);
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
             },
             fontFamily: chartFont,
             margin: 5,
