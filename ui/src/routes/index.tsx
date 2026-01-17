@@ -90,11 +90,11 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
-function Index() {
+function Index () {
   const data = Route.useLoaderData();
   const { sort, order, path = "/" } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
@@ -1070,7 +1070,7 @@ function Index() {
   );
 }
 
-function RuntimeTooltip({
+function RuntimeTooltip ({
   lastRunAt,
   nextRunAt,
   children,

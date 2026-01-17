@@ -24,7 +24,7 @@ export const getDisplayFont = (): string => {
 export const getThemeColors = (isDark: boolean) => {
   if (isDark) {
     return {
-      primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color"),
+      primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color-alternate"),
       backgroundColor: getComputedCssValue(
         "--shaper-dark-mode-background-color",
       ),
@@ -40,7 +40,7 @@ export const getThemeColors = (isDark: boolean) => {
     };
   } else {
     return {
-      primaryColor: getComputedCssValue("--shaper-primary-color"),
+      primaryColor: getComputedCssValue("--shaper-primary-color-alternate"),
       backgroundColor: getComputedCssValue("--shaper-background-color"),
       backgroundColorSecondary: getComputedCssValue(
         "--shaper-background-color-secondary",
@@ -115,8 +115,8 @@ export const downloadChartAsImage = (
 // ECharts color utilities
 const echartsColors = {
   primary: {
-    light: "var(--shaper-primary-color)",
-    dark: "var(--shaper-dark-mode-primary-color)",
+    light: "var(--shaper-primary-color-alternate)",
+    dark: "var(--shaper-dark-mode-primary-color-alternate)",
   },
   color2: {
     light: "var(--shaper-color-two)",
@@ -141,18 +141,6 @@ const echartsColors = {
   color7: {
     light: "var(--shaper-color-seven)",
     dark: "var(--shaper-color-seven)",
-  },
-  color8: {
-    light: "var(--shaper-color-eight)",
-    dark: "var(--shaper-color-eight)",
-  },
-  color9: {
-    light: "var(--shaper-color-nine)",
-    dark: "var(--shaper-color-nine)",
-  },
-  color10: {
-    light: "var(--shaper-color-ten)",
-    dark: "var(--shaper-color-ten)",
   },
 } as const;
 
@@ -197,8 +185,8 @@ export const getEChartsColor = (
   const color = echartsColors[colorKey];
   if (!color) {
     const fallbackVar = isDark
-      ? "--shaper-dark-mode-primary-color"
-      : "--shaper-primary-color";
+      ? "--shaper-dark-mode-primary-color-alternate"
+      : "--shaper-primary-color-alternate";
     return getComputedCssValue(fallbackVar);
   }
 
