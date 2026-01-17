@@ -62,32 +62,33 @@
   --shaper-display-font: SourceSansPro;
   --shaper-reference-line-color: #b5b5b5;
 
-  --shaper-color-two: #abdaf7;
-  --shaper-color-three: #f079c7;
-  --shaper-color-four: #ce1e1e;
-  --shaper-color-five: #ffbf7b;
-  --shaper-color-six: #fb7777;
-  --shaper-color-seven: #65d65b;
-  --shaper-color-eight: #4d4dff;
-  --shaper-color-nine: #c992ff;
+  --shaper-color-two: #7e8a99;
+  --shaper-color-three: #ec7cb5;
+  --shaper-color-four: #e5de7c;
+  --shaper-color-five: #f5b067;
+  --shaper-color-six: #ee7979;
+  --shaper-color-seven: #67b983;
+  --shaper-color-eight: #6a6ad9;
+  --shaper-color-nine: #b181df;
   --shaper-color-ten: #c4c4c4;
 
-  --shaper-primary-color: #567ef7;
-  --shaper-primary-color-alternate: #2857c8;
+  --shaper-primary-color: #a2cae6;
+  --shaper-primary-color-alternate: #558fb9;
   --shaper-text-color: #3d3f45;
   --shaper-text-color-secondary: #545964;
   --shaper-text-color-invert: #fff;
   --shaper-text-color-button: #fff;
   --shaper-background-color: #fff;
-  --shaper-background-color-secondary: #f5f7fb;
-  --shaper-background-color-alternate: #ebeff7;
-  --shaper-background-color-invert: #131a25;
+  --shaper-background-color-secondary: #f9fbfd;
+  --shaper-background-color-alternate: #eeeef3;
+  --shaper-background-color-invert: #353d4b;
   --shaper-border-color: #d3dfee;
-  --shaper-error-color: #eb3647;
-  --shaper-error-color-alternate: #d01114;
+  --shaper-error-color: #e85260;
+  --shaper-error-color-alternate: #ca4a56;
 
-  --shaper-dark-mode-primary-color: #567ef7;
-  --shaper-dark-mode-primary-color-alternate: #2732d1;
+  --shaper-dark-mode-primary-color: #73add3;
+  --shaper-dark-mode-primary-color-alternate: #5a98c2;
+  --shaper-dark-mode-background-color-secondary: #28252e;
   --shaper-dark-mode-text-color: rgb(239, 240, 244);
   --shaper-dark-mode-text-color-secondary: rgb(215, 216, 221);
   --shaper-dark-mode-text-color-invert: #171924;
@@ -95,10 +96,10 @@
   --shaper-dark-mode-background-color: #3a3b48;
   --shaper-dark-mode-background-color-secondary: #424453;
   --shaper-dark-mode-background-color-alternate: #585a72;
-  --shaper-dark-mode-background-color-invert: #ebecf2;
+  --shaper-dark-mode-background-color-invert: #f5f5f5;
   --shaper-dark-mode-border-color: #777985;
-  --shaper-dark-mode-error-color: #ff4d4f;
-  --shaper-dark-mode-error-color-alternate: #d23537;
+  --shaper-dark-mode-error-color: #e85260;
+  --shaper-dark-mode-error-color-alternate: #ca4a56;
 }
 
 .shaper-scope {
