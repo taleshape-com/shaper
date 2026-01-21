@@ -367,6 +367,8 @@ const DataView = ({
             }
             const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot") || query.render.type === "piechart" || query.render.type === "donutchart";
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+            const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
+            const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
             const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
             return (
               <Card
@@ -375,19 +377,30 @@ const DataView = ({
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
                   {
-                    "min-h-[240px]": !singleTable && query.render.type !== "value",
-                    "@xl:h-[calc(45cqh)]": !singleTable && query.render.type !== "value" && query.render.type !== "gauge" && query.render.type !== "piechart" && query.render.type !== "donutchart",
-                    "h-[340px]": getRenderMode() === "pdf" && !singleTable && query.render.type !== "value" && query.render.type !== "gauge" && query.render.type !== "piechart" && query.render.type !== "donutchart",
-                    "@sm:h-[calc(90cqh)]": query.render.type !== "table" && numContentSections === 1 && numQueriesInSection === 1,
-                    "max-h-[calc(45cqw)]": query.render.type !== "table" && query.render.type !== "value" && (numContentSections > 1 || numQueriesInSection > 1),
+                    "min-h-[240px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
+                    "h-[calc(50cqh-3.1rem)]": sectionHasBigChart,
+                    // pdf
+                    "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart,
+                    // single chart and not table
+                    "@sm:h-[calc(100cqh-5.2rem)]": section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                    // max heights:
+                    // 1 or 2 cols
+                    "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
+                    // 3 cols
+                    "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
+                      numQueriesInSection > 4 ||
+                      numQueriesInSection === 3 ||
+                      (numQueriesInSection === 4 && numContentSections > 1)),
                     // 4 cols
-                    "@xl:h-[calc(16cqw)]": query.render.type !== "table" && query.render.type !== "value" && ((numQueriesInSection === 4 && numContentSections > 1) ||
+                    "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
+                      (numQueriesInSection === 4 && numContentSections > 1) ||
                       numQueriesInSection === 7 ||
                       numQueriesInSection === 8 ||
                       numQueriesInSection > 9),
                     // 5 cols
-                    "@4xl:h-[calc(13cqw)]": query.render.type !== "table" && query.render.type !== "value" && (numQueriesInSection === 5 && numContentSections > 1) ||
+                    "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
                       numQueriesInSection >= 9,
+                    // not height related:
                     "break-before-avoid": singleTable,
                     "p-4": !isChartQuery,
                   },
@@ -401,7 +414,7 @@ const DataView = ({
                     id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                   />
                 ) : query.render.label && (
-                  <h2 className="text-md pb-4 mx-4 text-center font-semibold font-display">
+                  <h2 className="text-md pb-2 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
                 )}
@@ -444,7 +457,7 @@ const DataView = ({
         <a
           href={data.footerLink}
           target="_blank"
-          className="no-underline text-ctext2 text-xs"
+          className="no-underline text-ctext2 dark:text-dtext2 text-xs"
         >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
       )}
     </div>
