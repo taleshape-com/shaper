@@ -444,7 +444,7 @@ const DataView = ({
         <a
           href={data.footerLink}
           target="_blank"
-          className="no-underline text-ctext2 text-xs"
+          className="no-underline text-ctext2 dark:text-dtext2 text-xs"
         >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
       )}
     </div>

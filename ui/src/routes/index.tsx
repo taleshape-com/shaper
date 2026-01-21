@@ -803,7 +803,7 @@ function Index () {
                                   lastRunAt={app.taskInfo.lastRunAt}
                                   nextRunAt={app.taskInfo.nextRunAt}
                                 >
-                                  <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                  <span className="bg-cerr dark:bg-derr text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                     Task Error
                                   </span>
                                 </RuntimeTooltip>
@@ -812,7 +812,7 @@ function Index () {
                                   <RuntimeTooltip
                                     lastRunAt={app.taskInfo.lastRunAt}
                                   >
-                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                       Next Run:{" "}
                                       <RelativeDate
                                         refresh

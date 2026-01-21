@@ -179,7 +179,7 @@ export function MenuProvider ({
             search={isHome ? undefined : { path: currentPath }}
             className={cx("block px-4 py-3", {
               "hover:underline": !isHome,
-              "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isHome,
+              "bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb": isHome,
             })}
           >
             <Tooltip content={"Go to " + (isHome ? "/" : currentPath)} showArrow={false}>
@@ -193,7 +193,7 @@ export function MenuProvider ({
             disabled={isNewPage}
             className={cx("block px-4 py-3", {
               "hover:underline": !isNewPage,
-              "bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti": isNewPage,
+              "bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb": isNewPage,
             })}
           >
             <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
