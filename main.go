@@ -69,67 +69,68 @@ const USAGE = `Version: {{.Version}}
 `
 
 type Config struct {
-	DeprecatedSchema           string
-	LogLevel                   string
-	SessionExp                 time.Duration
-	InviteExp                  time.Duration
-	Address                    string
-	DataDir                    string
-	ExecutableModTime          time.Time
-	BasePath                   string
-	CustomCSS                  string
-	Favicon                    string
-	JWTExp                     time.Duration
-	NoPublicSharing            bool
-	NoPasswordProtectedSharing bool
-	NoTasks                    bool
-	NodeIDFile                 string
-	TLSDomain                  string
-	TLSEmail                   string
-	TLSCache                   string
-	HTTPSHost                  string
-	PdfDateFormat              string
-	NatsServers                string
-	NatsHost                   string
-	NatsPort                   int
-	NatsToken                  string
-	NatsJSDir                  string
-	NatsJSKey                  string
-	NatsMaxStore               int64 // in bytes
-	StateStreamName            string
-	IngestStreamName           string
-	ConfigKVBucketName         string
-	TmpDashboardsKVBucketName  string
-	TmpDashboardsTTL           time.Duration
-	IngestStreamMaxAge         time.Duration
-	StateStreamMaxAge          time.Duration
-	IngestConsumerNameFile     string
-	IngestSubjectPrefix        string
-	StateSubjectPrefix         string
-	TasksStreamName            string
-	TasksSubjectPrefix         string
-	TaskQueueConsumerName      string
-	TaskResultsStreamName      string
-	TaskResultsSubjectPrefix   string
-	TaskResultsStreamMaxAge    time.Duration
-	TaskBroadcastSubject       string
-	SQLiteDB                   string
-	DuckDB                     string
-	DuckDBExtDir               string
-	DuckDBSecretDir            string
-	InitSQL                    string
-	InitSQLFile                string
-	SnapshotTime               string
-	SnapshotS3Bucket           string
-	SnapshotS3Region           string
-	SnapshotS3Endpoint         string
-	SnapshotS3AccessKey        string
-	SnapshotS3SecretKey        string
-	SnapshotStream             string
-	SnapshotConsumerName       string
-	SnapshotSubjectPrefix      string
-	NoSnapshots                bool
-	NoAutoRestore              bool
+	DeprecatedSchema              string
+	LogLevel                      string
+	SessionExp                    time.Duration
+	InviteExp                     time.Duration
+	Address                       string
+	DataDir                       string
+	ExecutableModTime             time.Time
+	BasePath                      string
+	CustomCSS                     string
+	Favicon                       string
+	JWTExp                        time.Duration
+	NoPublicSharing               bool
+	NoPasswordProtectedSharing    bool
+	NoTasks                       bool
+	NodeIDFile                    string
+	TLSDomain                     string
+	TLSEmail                      string
+	TLSCache                      string
+	HTTPSHost                     string
+	PdfDateFormat                 string
+	NatsServers                   string
+	NatsHost                      string
+	NatsPort                      int
+	NatsToken                     string
+	NatsJSDir                     string
+	NatsJSKey                     string
+	NatsMaxStore                  int64 // in bytes
+	StateStreamName               string
+	IngestStreamName              string
+	ConfigKVBucketName            string
+	TmpDashboardsKVBucketName     string
+	TmpDashboardsTTL              time.Duration
+	IngestStreamMaxAge            time.Duration
+	StateStreamMaxAge             time.Duration
+	IngestConsumerNameFile        string
+	IngestSubjectPrefix           string
+	StateSubjectPrefix            string
+	TasksStreamName               string
+	TasksSubjectPrefix            string
+	TaskQueueConsumerName         string
+	TaskResultsStreamName         string
+	TaskResultsSubjectPrefix      string
+	TaskResultsStreamMaxAge       time.Duration
+	TaskBroadcastSubject          string
+	SQLiteDB                      string
+	DuckDB                        string
+	DuckDBExtDir                  string
+	DuckDBSecretDir               string
+	DuckDBAllowUnsignedExtensions bool
+	InitSQL                       string
+	InitSQLFile                   string
+	SnapshotTime                  string
+	SnapshotS3Bucket              string
+	SnapshotS3Region              string
+	SnapshotS3Endpoint            string
+	SnapshotS3AccessKey           string
+	SnapshotS3SecretKey           string
+	SnapshotStream                string
+	SnapshotConsumerName          string
+	SnapshotSubjectPrefix         string
+	NoSnapshots                   bool
+	NoAutoRestore                 bool
 }
 
 func main() {
@@ -210,6 +211,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	duckdbSecretDir := flags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
+	duckdbAllowUnsignedExtensions := flags.BoolLong("duckdb-allow-unsigned-extensions", "Allow loading unsigned DuckDB extensions")
 	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
@@ -330,67 +332,68 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		}
 
 		config := Config{
-			DeprecatedSchema:           *deprecatedSchema,
-			LogLevel:                   *logLevel,
-			Address:                    *addr,
-			DataDir:                    *dataDir,
-			ExecutableModTime:          executableModTime,
-			BasePath:                   bpath,
-			CustomCSS:                  *customCSS,
-			Favicon:                    *favicon,
-			JWTExp:                     *jwtExp,
-			SessionExp:                 *sessionExp,
-			InviteExp:                  *inviteExp,
-			NoPublicSharing:            *noPublicSharing,
-			NoPasswordProtectedSharing: *noPasswordProtectedSharing,
-			NoTasks:                    *noTasks,
-			NodeIDFile:                 *nodeIDFile,
-			TLSDomain:                  *tlsDomain,
-			TLSEmail:                   *tlsEmail,
-			TLSCache:                   tlsCacheDir,
-			HTTPSHost:                  *httpsHost,
-			PdfDateFormat:              *pdfDateFormat,
-			NatsServers:                *natsServers,
-			NatsHost:                   *natsHost,
-			NatsPort:                   *natsPort,
-			NatsToken:                  *natsToken,
-			NatsJSDir:                  natsDir,
-			NatsJSKey:                  *natsJSKey,
-			NatsMaxStore:               maxStore,
-			StateStreamName:            *streamPrefix + *stateStream,
-			IngestStreamName:           *streamPrefix + *ingestStream,
-			ConfigKVBucketName:         *streamPrefix + *configKVBucket,
-			TmpDashboardsKVBucketName:  *streamPrefix + *tmpDashboardsKVBucket,
-			TmpDashboardsTTL:           *tmpDashboardsTTL,
-			IngestStreamMaxAge:         *ingestStreamMaxAge,
-			StateStreamMaxAge:          *stateStreamMaxAge,
-			IngestConsumerNameFile:     *ingestConsumerNameFile,
-			IngestSubjectPrefix:        *subjectPrefix + *ingestSubjectPrefix,
-			StateSubjectPrefix:         *subjectPrefix + *stateSubjectPrefix,
-			TasksStreamName:            *streamPrefix + *tasksStream,
-			TasksSubjectPrefix:         *subjectPrefix + *tasksSubjectPrefix,
-			TaskQueueConsumerName:      *taskQueueConsumerName,
-			TaskResultsStreamName:      *streamPrefix + *taskResultsStream,
-			TaskResultsSubjectPrefix:   *subjectPrefix + *taskResultsSubjectPrefix,
-			TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
-			TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
-			SQLiteDB:                   *sqliteDB,
-			DuckDB:                     *duckdb,
-			DuckDBExtDir:               *duckdbExtDir,
-			DuckDBSecretDir:            *duckdbSecretDir,
-			InitSQL:                    *initSQL,
-			InitSQLFile:                initSQLFilePath,
-			SnapshotTime:               *snapshotTime,
-			SnapshotS3Bucket:           *snapshotS3Bucket,
-			SnapshotS3Region:           *snapshotS3Region,
-			SnapshotS3Endpoint:         *snapshotS3Endpoint,
-			SnapshotS3AccessKey:        *snapshotS3AccessKey,
-			SnapshotS3SecretKey:        *snapshotS3SecretKey,
-			SnapshotStream:             *streamPrefix + *snapshotStream,
-			SnapshotConsumerName:       *snapshotConsumerName,
-			SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
-			NoSnapshots:                *noSnapshots,
-			NoAutoRestore:              *noAutoRestore,
+			DeprecatedSchema:              *deprecatedSchema,
+			LogLevel:                      *logLevel,
+			Address:                       *addr,
+			DataDir:                       *dataDir,
+			ExecutableModTime:             executableModTime,
+			BasePath:                      bpath,
+			CustomCSS:                     *customCSS,
+			Favicon:                       *favicon,
+			JWTExp:                        *jwtExp,
+			SessionExp:                    *sessionExp,
+			InviteExp:                     *inviteExp,
+			NoPublicSharing:               *noPublicSharing,
+			NoPasswordProtectedSharing:    *noPasswordProtectedSharing,
+			NoTasks:                       *noTasks,
+			NodeIDFile:                    *nodeIDFile,
+			TLSDomain:                     *tlsDomain,
+			TLSEmail:                      *tlsEmail,
+			TLSCache:                      tlsCacheDir,
+			HTTPSHost:                     *httpsHost,
+			PdfDateFormat:                 *pdfDateFormat,
+			NatsServers:                   *natsServers,
+			NatsHost:                      *natsHost,
+			NatsPort:                      *natsPort,
+			NatsToken:                     *natsToken,
+			NatsJSDir:                     natsDir,
+			NatsJSKey:                     *natsJSKey,
+			NatsMaxStore:                  maxStore,
+			StateStreamName:               *streamPrefix + *stateStream,
+			IngestStreamName:              *streamPrefix + *ingestStream,
+			ConfigKVBucketName:            *streamPrefix + *configKVBucket,
+			TmpDashboardsKVBucketName:     *streamPrefix + *tmpDashboardsKVBucket,
+			TmpDashboardsTTL:              *tmpDashboardsTTL,
+			IngestStreamMaxAge:            *ingestStreamMaxAge,
+			StateStreamMaxAge:             *stateStreamMaxAge,
+			IngestConsumerNameFile:        *ingestConsumerNameFile,
+			IngestSubjectPrefix:           *subjectPrefix + *ingestSubjectPrefix,
+			StateSubjectPrefix:            *subjectPrefix + *stateSubjectPrefix,
+			TasksStreamName:               *streamPrefix + *tasksStream,
+			TasksSubjectPrefix:            *subjectPrefix + *tasksSubjectPrefix,
+			TaskQueueConsumerName:         *taskQueueConsumerName,
+			TaskResultsStreamName:         *streamPrefix + *taskResultsStream,
+			TaskResultsSubjectPrefix:      *subjectPrefix + *taskResultsSubjectPrefix,
+			TaskResultsStreamMaxAge:       *taskResultsStreamMaxAge,
+			TaskBroadcastSubject:          *subjectPrefix + *taskBroadcastSubject,
+			SQLiteDB:                      *sqliteDB,
+			DuckDB:                        *duckdb,
+			DuckDBExtDir:                  *duckdbExtDir,
+			DuckDBSecretDir:               *duckdbSecretDir,
+			DuckDBAllowUnsignedExtensions: *duckdbAllowUnsignedExtensions,
+			InitSQL:                       *initSQL,
+			InitSQLFile:                   initSQLFilePath,
+			SnapshotTime:                  *snapshotTime,
+			SnapshotS3Bucket:              *snapshotS3Bucket,
+			SnapshotS3Region:              *snapshotS3Region,
+			SnapshotS3Endpoint:            *snapshotS3Endpoint,
+			SnapshotS3AccessKey:           *snapshotS3AccessKey,
+			SnapshotS3SecretKey:           *snapshotS3SecretKey,
+			SnapshotStream:                *streamPrefix + *snapshotStream,
+			SnapshotConsumerName:          *snapshotConsumerName,
+			SnapshotSubjectPrefix:         *subjectPrefix + *snapshotSubjectPrefix,
+			NoSnapshots:                   *noSnapshots,
+			NoAutoRestore:                 *noAutoRestore,
 		}
 		signals.HandleInterrupt(Run(config))
 		return nil
@@ -557,11 +560,23 @@ func Run(cfg Config) func(context.Context) {
 	logger.Info("SQLite opened", slog.Any("file", sqliteDBxFile))
 
 	// connect to duckdb
-	duckDBConnector, err := duckdb.NewConnector(duckDBFile, nil)
+	var duckDBConnector *duckdb.Connector
+	duckDBPath := duckDBFile
+	if cfg.DuckDBAllowUnsignedExtensions {
+		// Add allow_unsigned_extensions to DSN before opening database
+		if strings.Contains(duckDBPath, "?") {
+			duckDBPath = duckDBPath + "&allow_unsigned_extensions=true"
+		} else {
+			duckDBPath = duckDBPath + "?allow_unsigned_extensions=true"
+		}
+		logger.Warn("DuckDB unsigned extensions enabled - extension signature verification is disabled")
+	}
+	duckDBConnector, err = duckdb.NewConnector(duckDBPath, nil)
 	if err != nil {
-		logger.Error("Failed to create DuckDB connector", slog.String("file", duckDBFile), slog.Any("error", err))
+		logger.Error("Failed to create DuckDB connector", slog.String("file", duckDBPath), slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	duckDbSqlDb := sql.OpenDB(duckDBConnector)
 	// This is important to avoid leaking variables or temp tables/views. Must not reuse connections.
 	duckDbSqlDb.SetMaxIdleConns(0)
