@@ -14,13 +14,17 @@ type ValueProps = {
   data: (string | number | boolean)[][];
 };
 
-const getLongestLineLength = (text: string) => {
-  return Math.max(...text.split("\n").map(line => line.length));
-};
-
-const calcFontSize = (width: number, longestLine: number, factor: number, min: number, max: number, round: number) => {
-  if (!width || !longestLine) return min;
-  return Math.max(min, Math.min(max, Math.floor((width / longestLine) * factor / round) * round));
+const calcFontSize = (width: number, text: string, max: number) => {
+  const min = 16;
+  if (!width || !text.length || text.includes("\n")) return min;
+  const res = Math.max(min, Math.min(max, (width / text.length) * 1.8));
+  if (res <= 24) {
+    return min;
+  }
+  if (res < 32) {
+    return 24;
+  }
+  return max;
 };
 
 const getComparePercent = (
@@ -53,7 +57,8 @@ function DashboardValue ({ headers, data }: ValueProps) {
   const compareValue = compareIndex !== -1 ? data[0][compareIndex] : undefined;
   const percent = getComparePercent(value, compareValue);
   const formattedValue = formatValue(value, valueHeader.type, true).toString();
-  const hasLabel = valueHeader.name !== value && valueHeader.name !== formattedValue && valueHeader.name !== `'${value}'`;
+  const label = getNameIfSet(valueHeader.name);
+  const hasLabel = !!label && label !== value && label !== formattedValue && label !== `'${value}'`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -68,28 +73,24 @@ function DashboardValue ({ headers, data }: ValueProps) {
     return () => ro.disconnect();
   }, []);
 
-  const valueLongestLine = getLongestLineLength(formattedValue);
   const maxFontSize = valueHeader.type === "number" || valueHeader.type === "percent" || valueHeader.type === "boolean"
     ? 40
     : isDatableType(valueHeader.type)
       ? 36
       : 32;
-  const valueFontSize = calcFontSize(containerWidth, valueLongestLine, 1.8, 16, maxFontSize, 10);
+  const valueFontSize = calcFontSize(containerWidth, formattedValue, maxFontSize);
 
-  const labelText = hasLabel && getNameIfSet(valueHeader.name) ? valueHeader.name : "";
-  const labelLongestLine = getLongestLineLength(labelText);
-  const labelFontSize = calcFontSize(containerWidth, labelLongestLine, 1.2, 16, 20, 10);
+  const labelFontSize = valueFontSize === 16 ? 14 : 18;
 
   return (
     <div
-      className={"h-full w-full flex flex-col justify-center"}
+      className={cx("h-full w-full flex flex-col", { "justify-center": hasLabel || valueFontSize > 16 })}
       ref={containerRef}
     >
       <div
         className={cx("overflow-auto py-2", {
           "font-mono": isJSONType(valueHeader.type),
-          "font-semibold": formattedValue.length < 100,
-          "text-center": formattedValue.length < 100,
+          "font-semibold text-center": hasLabel || (formattedValue.length <= 100 && !formattedValue.includes("\n")),
           "text-justify": formattedValue.length >= 300,
         })}
         style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.2 }}
@@ -104,12 +105,12 @@ function DashboardValue ({ headers, data }: ValueProps) {
           : <TextWithLinks text={formattedValue} />}
       </div>
       {
-        hasLabel && getNameIfSet(valueHeader.name) && (
+        hasLabel && (
           <div
             className={cx("font-medium font-display text-center")}
             style={{ fontSize: `${labelFontSize}px`, lineHeight: 1.2 }}
           >
-            <TextWithLinks text={valueHeader.name} />
+            <TextWithLinks text={label} />
           </div>
         )
       }
