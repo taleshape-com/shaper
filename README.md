@@ -2,6 +2,18 @@
 
 **Open Source, SQL-driven Data Dashboards powered by DuckDB.**
 
+Build analytics dashboards simply by writing SQL:
+
+```sql
+SELECT 'Sessions per Week'::LABEL;
+SELECT
+  date_trunc('week', created_at)::XAXIS,
+  category::CATEGORY,
+  count()::BARCHART_STACKED,
+FROM dataset
+GROUP BY ALL ORDER BY ALL;
+```
+
 Learn more:
 https://taleshape.com/shaper/docs/
 
