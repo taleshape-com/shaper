@@ -14,12 +14,34 @@ FROM dataset
 GROUP BY ALL ORDER BY ALL;
 ```
 
-Learn more:
-https://taleshape.com/shaper/docs/
-
 [
 ![Screenshot](https://taleshape.com/_astro/session_dashboard.DjtFqCnO_Z15ug1D.webp)
 ](https://taleshape.com/shaper/docs/)
+
+Learn more:
+https://taleshape.com/shaper/docs/
+
+
+## Features
+
+**Business Intelligence**
+
+- **Open Source** & Self-Hosted
+- **SQL-First** and AI-Ready
+- **Git-Based** Workflow
+- Query across **Data Sources**
+
+**Embedded Analytics**
+
+- **White-Labeling** & custom styles
+- **Row-level security** via JWT tokens
+- Embed **Without IFrame** through JS & React SDKs
+
+**Automated Reporting**
+
+- Generate **PDF, PNG, CSV & Excel**
+- Scheduled **Alerts & Reports**
+- Sharable **Password-Protected Links**
 
 
 ## Quickstart
