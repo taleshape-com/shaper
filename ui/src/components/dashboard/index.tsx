@@ -571,7 +571,7 @@ const renderContent = (
   }
   return (
     <div
-      className={cx("overflow-auto", { "h-full": numQueriesInSection > 1 })}
+      className={cx({ "overflow-auto h-full": numQueriesInSection > 1 })}
     >
       <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />
     </div>
