@@ -238,6 +238,7 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 				fmt.Printf("Recreated expired dashboard for '%s%s'\n", fPath, name)
 
 				url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", d.baseURL, dashboardID, d.port)
+				fmt.Fprintf(os.Stdout, "Opening %s ...\n", url)
 				if err := OpenURL(url); err != nil {
 					fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
 				}
@@ -255,6 +256,7 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 		notified := d.notifyClients(dashboardID)
 		if !notified {
 			url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", d.baseURL, dashboardID, d.port)
+			fmt.Fprintf(os.Stdout, "Opening %s ...\n", url)
 			if err := OpenURL(url); err != nil {
 				fmt.Printf("ERROR: Failed opening '%s' in browser: %s\n", url, err)
 			}
@@ -277,6 +279,7 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 	fmt.Printf("Created new dashboard for '%s%s'\n", fPath, name)
 
 	url := fmt.Sprintf("%s/dashboards/%s?dev=ws://localhost:%d/ws", d.baseURL, dashboardID, d.port)
+	fmt.Fprintf(os.Stdout, "Opening %s ...\n", url)
 	if err := OpenURL(url); err != nil {
 		fmt.Printf("ERROR: Failed opening '%s' in browser: %s\b", url, err)
 	}
