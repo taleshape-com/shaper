@@ -365,7 +365,8 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
-            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot") || query.render.type === "piechart" || query.render.type === "donutchart";
+            const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+            const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
             const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
@@ -375,14 +376,20 @@ const DataView = ({
                 key={queryIndex}
                 id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                 className={cx(
-                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
-                    "min-h-[240px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
-                    "h-[calc(50cqh-3.1rem)]": sectionHasBigChart,
+                    "break-inside-avoid": !singleTable,
+                    "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                    "h-[240px]": isChartQuery && !isBigChartQuery,
+                    "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
+                    // single table
+                    "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
                     // pdf
                     "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart,
+                    // fill screen height if only 2 sections
+                    "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
                     // single chart and not table
-                    "@sm:h-[calc(100cqh-5.2rem)]": section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                    "@sm:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
                     // max heights:
                     // 1 or 2 cols
                     "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
@@ -425,7 +432,6 @@ const DataView = ({
                     queryIndex,
                     data.minTimeValue,
                     data.maxTimeValue,
-                    numQueriesInSection,
                   )
                 }
               </Card>
@@ -477,7 +483,6 @@ const renderContent = (
   queryIndex: number,
   minTimeValue: number,
   maxTimeValue: number,
-  numQueriesInSection: number,
 ) => {
   if (query.rows.length === 0) {
     return (
@@ -569,13 +574,7 @@ const renderContent = (
   if (query.render.type === "value") {
     return <DashboardValue headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
   }
-  return (
-    <div
-      className={cx({ "overflow-auto h-full": numQueriesInSection > 1 })}
-    >
-      <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />
-    </div>
-  );
+  return <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
 };
 
 const fetchDashboard = async (

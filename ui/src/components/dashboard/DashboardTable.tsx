@@ -22,13 +22,13 @@ type TableProps = {
 
 function DashboardTable ({ headers, data }: TableProps) {
   return (
-    <TableRoot>
+    <TableRoot className="h-full overflow-auto">
       <Table>
-        <TableHead className="z-10 sticky top-0">
+        <TableHead>
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell
-                className={cx("text-ctext dark:text-dtext", {
+                className={cx("text-ctext dark:text-dtext z-10 sticky top-0", {
                   "text-right": alignRight(header),
                 })}
                 key={header.name}

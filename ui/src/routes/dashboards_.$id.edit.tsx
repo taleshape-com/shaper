@@ -618,7 +618,7 @@ function DashboardEditor () {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto relative">
+        <div className="flex-grow overflow-y-auto relative @xl:px-[4%] @2xl:px-[6%] @4xl:px-[10%]">
           {previewError && <PreviewError>{previewError}</PreviewError>}
           <Dashboard
             id={previewId}

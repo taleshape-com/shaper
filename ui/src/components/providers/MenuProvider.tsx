@@ -245,7 +245,7 @@ export function MenuProvider ({
         </div>
       </div>
 
-      <div className={cx({ "sm:ml-56 print:ml-0": actuallyOpen })}>
+      <div className={cx("@container", { "sm:ml-56 print:ml-0": actuallyOpen })}>
         {children}
       </div>
     </MenuContext.Provider>
