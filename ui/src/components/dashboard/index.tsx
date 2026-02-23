@@ -39,7 +39,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -141,7 +141,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -365,7 +365,8 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
-            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot") || query.render.type === "piechart" || query.render.type === "donutchart";
+            const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+            const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
             const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
             const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
@@ -375,12 +376,17 @@ const DataView = ({
                 key={queryIndex}
                 id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                 className={cx(
-                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
+                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
-                    "min-h-[240px]": !singleTable && section.queries.some(q => q.render.type !== "value"),
-                    "h-[calc(50cqh-3.1rem)]": sectionHasBigChart,
+                    "break-inside-avoid": !singleTable,
+                    "h-[360px]": isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                    "h-[240px]": isChartQuery && !isBigChartQuery,
+                    "@sm:h-[360px]": numQueriesInSection > 1 && sectionHasBigChart,
+                    "max-h-[calc(100vh-3.5rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
                     // pdf
                     "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart,
+                    // fill screen height if only 2 sections
+                    "@sm:h-[calc(50cqh-3.1rem)]": sectionHasBigChart && numContentSections === 2,
                     // single chart and not table
                     "@sm:h-[calc(100cqh-5.2rem)]": section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
                     // max heights:
@@ -569,13 +575,7 @@ const renderContent = (
   if (query.render.type === "value") {
     return <DashboardValue headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
   }
-  return (
-    <div
-      className={cx({ "overflow-auto h-full": numQueriesInSection > 1 })}
-    >
-      <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />
-    </div>
-  );
+  return <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
 };
 
 const fetchDashboard = async (
