@@ -20,7 +20,7 @@ type TableProps = {
   data: (string | number | boolean)[][];
 };
 
-function DashboardTable({ headers, data }: TableProps) {
+function DashboardTable ({ headers, data }: TableProps) {
   return (
     <TableRoot className="h-full overflow-auto">
       <Table>

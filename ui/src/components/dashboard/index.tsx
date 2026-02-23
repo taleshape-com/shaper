@@ -39,7 +39,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard({
+export function Dashboard ({
   id,
   vars,
   getJwt,
@@ -141,7 +141,7 @@ export function Dashboard({
     }
   }, [loading]);
 
-  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -379,16 +379,17 @@ const DataView = ({
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
                     "break-inside-avoid": !singleTable,
-                    "h-[360px]": isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                    "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
                     "h-[240px]": isChartQuery && !isBigChartQuery,
-                    "@sm:h-[360px]": numQueriesInSection > 1 && sectionHasBigChart,
-                    "max-h-[calc(100vh-3.5rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
+                    "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
+                    // single table
+                    "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
                     // pdf
                     "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart,
                     // fill screen height if only 2 sections
-                    "@sm:h-[calc(50cqh-3.1rem)]": sectionHasBigChart && numContentSections === 2,
+                    "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
                     // single chart and not table
-                    "@sm:h-[calc(100cqh-5.2rem)]": section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                    "@sm:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
                     // max heights:
                     // 1 or 2 cols
                     "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
@@ -431,7 +432,6 @@ const DataView = ({
                     queryIndex,
                     data.minTimeValue,
                     data.maxTimeValue,
-                    numQueriesInSection,
                   )
                 }
               </Card>
@@ -483,7 +483,6 @@ const renderContent = (
   queryIndex: number,
   minTimeValue: number,
   maxTimeValue: number,
-  numQueriesInSection: number,
 ) => {
   if (query.rows.length === 0) {
     return (

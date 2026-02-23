@@ -171,7 +171,7 @@ function DashboardViewComponent () {
 
   const menuTitle = title;
   const MenuButton = (
-    <MenuTrigger className="-ml-1 mt-0.5 py-[6px]" title={menuTitle}>
+    <MenuTrigger className="-ml-1 mt-0.5 py-[6px] xl:fixed xl:top-1 xl:left-2 xl:ml-0" title={menuTitle}>
       {!dev && (
         <>
           <Link
@@ -226,7 +226,7 @@ function DashboardViewComponent () {
         <meta name="description" content={title} />
       </Helmet>
 
-      <div className="h-dvh relative">
+      <div className="h-dvh relative @xl:px-[4%] @2xl:px-[6%] @4xl:px-[10%]">
         <Dashboard
           id={params.id}
           vars={vars}
