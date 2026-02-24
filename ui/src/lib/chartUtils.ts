@@ -54,17 +54,94 @@ export const getThemeColors = (isDark: boolean) => {
 };
 
 // Function to download chart as image
-export const downloadChartAsImage = (
+export const downloadChartAsImage = async (
   chartInstance: ECharts,
   isDarkMode: boolean,
   chartId: string,
   label?: string,
-): void => {
+): Promise<void> => {
   // Get the current chart's dimensions and options
   const chartDom = chartInstance.getDom();
   const { width, height } = chartDom.getBoundingClientRect();
-  const chartOptions = chartInstance.getOption();
+  const chartOptions = chartInstance.getOption() as any;
   chartOptions.animation = false;
+
+  // Check for watermark URL in CSS variables
+  const watermarkUrlRaw = getComputedCssValue("--shaper-watermark-url");
+  let watermarkUrl = "";
+  if (
+    watermarkUrlRaw &&
+    watermarkUrlRaw !== "none" &&
+    watermarkUrlRaw !== "var(--shaper-watermark-url)"
+  ) {
+    const match = watermarkUrlRaw.match(/url\(['"]?(.*?)['"]?\)/);
+    watermarkUrl = match ? match[1] : watermarkUrlRaw;
+  }
+
+  const watermarkHeight = watermarkUrl ? 34 : 0;
+  const newHeight = height + watermarkHeight;
+
+  if (watermarkUrl) {
+    // Adjust grid to keep it at the same position from top
+    if (chartOptions.grid) {
+      const grids = Array.isArray(chartOptions.grid)
+        ? chartOptions.grid
+        : [chartOptions.grid];
+      grids.forEach((grid: any) => {
+        if (grid.bottom !== undefined) {
+          if (typeof grid.bottom === "number") {
+            grid.bottom += watermarkHeight;
+          } else if (
+            typeof grid.bottom === "string" &&
+            grid.bottom.endsWith("px")
+          ) {
+            grid.bottom = `${parseFloat(grid.bottom) + watermarkHeight}px`;
+          }
+        } else {
+          grid.bottom = watermarkHeight;
+        }
+      });
+    }
+
+    // Pre-load image to ensure it's rendered in getDataURL and to get its dimensions
+    let imgWidth = 0;
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const aspectRatio = img.naturalWidth / img.naturalHeight;
+        imgWidth = 25 * aspectRatio;
+        resolve(null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = watermarkUrl;
+      setTimeout(() => resolve(null), 2000); // Timeout after 2 seconds
+    });
+
+    // Add watermark graphic
+    const watermarkGraphic = {
+      type: "image",
+      right: 8,
+      bottom: 8,
+      style: {
+        image: watermarkUrl,
+        height: 25,
+        width: imgWidth || undefined,
+      },
+      z: 1000,
+    };
+
+    if (!chartOptions.graphic) {
+      chartOptions.graphic = [watermarkGraphic];
+    } else if (Array.isArray(chartOptions.graphic)) {
+      if (chartOptions.graphic.length === 1 && Array.isArray(chartOptions.graphic[0].elements)) {
+        chartOptions.graphic[0].elements.push(watermarkGraphic);
+      } else {
+        chartOptions.graphic = [...chartOptions.graphic, watermarkGraphic];
+      }
+    } else {
+      chartOptions.graphic = [chartOptions.graphic, watermarkGraphic];
+    }
+  }
 
   // Create a temporary container for the canvas chart
   const tempContainer = document.createElement("div");
@@ -72,14 +149,14 @@ export const downloadChartAsImage = (
   tempContainer.style.top = "-9999px";
   tempContainer.style.left = "-9999px";
   tempContainer.style.width = `${width}px`;
-  tempContainer.style.height = `${height}px`;
+  tempContainer.style.height = `${newHeight}px`;
   document.body.appendChild(tempContainer);
 
   // Create a temporary chart with canvas renderer
   const tempChart = echarts.init(tempContainer, null, {
     renderer: "canvas",
     width: width,
-    height: height,
+    height: newHeight,
   });
 
   // Apply the same options to the temporary chart
