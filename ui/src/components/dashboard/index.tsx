@@ -379,6 +379,8 @@ const DataView = ({
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
                   {
                     "break-inside-avoid": !singleTable,
+                    "min-h-[240px]": isChartQuery,
+                    "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
                     "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
                     "h-[240px]": isChartQuery && !isBigChartQuery,
                     "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,

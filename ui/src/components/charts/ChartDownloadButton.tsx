@@ -23,7 +23,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
   id,
 }) => {
   const { isDarkMode } = React.useContext(DarkModeContext);
-  const handleDownload = React.useCallback(() => {
+  const handleDownload = React.useCallback(async () => {
     let chart: ECharts | null = null;
     const chartElement = document.querySelector(`[data-chart-id="${chartId}"]`) as HTMLElement;
     if (chartElement) {
@@ -33,7 +33,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
       }
     }
     if (chart) {
-      downloadChartAsImage(chart, isDarkMode, chartId, label);
+      await downloadChartAsImage(chart, isDarkMode, chartId, label);
       return;
     }
     console.warn(`Could not find chart element with id: ${chartId}`);
