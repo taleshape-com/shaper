@@ -78,8 +78,10 @@ export const downloadChartAsImage = async (
     watermarkUrl = match ? match[1] : watermarkUrlRaw;
   }
 
-  const watermarkHeight = watermarkUrl ? 34 : 0;
-  const newHeight = height + watermarkHeight;
+  const watermarkGap = 10;
+  const watermarkHeight = 17;
+  const watermarkPadding = 5;
+  const newHeight = height + watermarkGap * 2 + watermarkHeight + watermarkPadding;
 
   if (watermarkUrl) {
     // Adjust grid to keep it at the same position from top
@@ -87,18 +89,50 @@ export const downloadChartAsImage = async (
       const grids = Array.isArray(chartOptions.grid)
         ? chartOptions.grid
         : [chartOptions.grid];
+      const spaceBottom = watermarkGap + watermarkHeight + watermarkPadding;
       grids.forEach((grid: any) => {
         if (grid.bottom !== undefined) {
           if (typeof grid.bottom === "number") {
-            grid.bottom += watermarkHeight;
+            grid.bottom += spaceBottom;
           } else if (
             typeof grid.bottom === "string" &&
             grid.bottom.endsWith("px")
           ) {
-            grid.bottom = `${parseFloat(grid.bottom) + watermarkHeight}px`;
+            grid.bottom = `${parseFloat(grid.bottom) + spaceBottom}px`;
           }
         } else {
-          grid.bottom = watermarkHeight;
+          grid.bottom = spaceBottom;
+        }
+        if (grid.top !== undefined) {
+          if (typeof grid.top === "number") {
+            grid.top += watermarkGap;
+          } else if (
+            typeof grid.top === "string" &&
+            grid.top.endsWith("px")
+          ) {
+            grid.top = `${parseFloat(grid.top) + watermarkGap}px`;
+          }
+        } else {
+          grid.top = watermarkGap;
+        }
+      });
+    }
+    if (chartOptions.legend) {
+      const legends = Array.isArray(chartOptions.legend)
+        ? chartOptions.legend
+        : [chartOptions.legend];
+      legends.forEach((legend: any) => {
+        if (legend.top !== undefined) {
+          if (typeof legend.top === "number") {
+            legend.top += watermarkGap;
+          } else if (
+            typeof legend.top === "string" &&
+            legend.top.endsWith("px")
+          ) {
+            legend.top = `${parseFloat(legend.top) + watermarkGap}px`;
+          }
+        } else {
+          legend.top = watermarkGap;
         }
       });
     }
@@ -109,7 +143,7 @@ export const downloadChartAsImage = async (
       const img = new Image();
       img.onload = () => {
         const aspectRatio = img.naturalWidth / img.naturalHeight;
-        imgWidth = 25 * aspectRatio;
+        imgWidth = watermarkHeight * aspectRatio;
         resolve(null);
       };
       img.onerror = () => resolve(null);
@@ -120,11 +154,11 @@ export const downloadChartAsImage = async (
     // Add watermark graphic
     const watermarkGraphic = {
       type: "image",
-      right: 8,
-      bottom: 8,
+      right: watermarkPadding,
+      bottom: watermarkPadding,
       style: {
         image: watermarkUrl,
-        height: 25,
+        height: watermarkHeight,
         width: imgWidth || undefined,
       },
       z: 1000,

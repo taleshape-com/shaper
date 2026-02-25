@@ -423,7 +423,7 @@ const DataView = ({
                     id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                   />
                 ) : query.render.label && (
-                  <h2 className="text-md pb-2 mx-4 text-center font-semibold font-display">
+                  <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
                     {query.render.label}
                   </h2>
                 )}

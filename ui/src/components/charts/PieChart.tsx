@@ -69,7 +69,7 @@ const PieChart = (props: PieChartProps) => {
 
     const labelTopOffset = label
       ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1)
-      : 10;
+      : 25;
 
     // Calculate center position to account for title
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
@@ -79,7 +79,7 @@ const PieChart = (props: PieChartProps) => {
 
     const series: PieSeriesOption = {
       type: "pie",
-      radius: isDonut ? [radius * 0.57, radius] : radius,
+      radius: isDonut ? [radius * 0.66, radius] : radius,
       center: ["50%", centerY],
       data: data.map((d) => ({
         name: d.name,
@@ -93,12 +93,7 @@ const PieChart = (props: PieChartProps) => {
         fontFamily: chartFont,
         color: theme.textColorSecondary,
         fontSize: 12,
-        fontWeight: 500,
-      },
-      labelLine: {
-        show: false,
-        length: 12,
-        length2: 0,
+        fontWeight: 400,
       },
       itemStyle: {
         borderRadius: 2,
@@ -116,8 +111,8 @@ const PieChart = (props: PieChartProps) => {
       {
         text: label,
         textStyle: {
-          fontSize: 16,
-          lineHeight: 16,
+          fontSize: 15,
+          lineHeight: 15,
           fontFamily: displayFont,
           fontWeight: 600,
           color: theme.textColor,
@@ -147,7 +142,7 @@ const PieChart = (props: PieChartProps) => {
               },
               label: {
                 fontSize: 12,
-                fontWeight: 700,
+                fontWeight: 400,
                 fontFamily: chartFont,
                 color: theme.textColorSecondary,
                 lineHeight: 12,
