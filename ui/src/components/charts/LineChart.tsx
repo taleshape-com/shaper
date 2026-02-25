@@ -176,8 +176,8 @@ const LineChart = (props: LineChartProps) => {
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
-    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 36 : 58) : 0);
-    const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
+    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
+    const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
@@ -200,8 +200,8 @@ const LineChart = (props: LineChartProps) => {
       title: {
         text: label,
         textStyle: {
-          fontSize: 16,
-          lineHeight: 16,
+          fontSize: 15,
+          lineHeight: 15,
           fontFamily: displayFont,
           fontWeight: 600,
           color: textColor,
@@ -332,7 +332,7 @@ const LineChart = (props: LineChartProps) => {
       },
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 10 + chartPadding,
+        right: 10 + chartPadding + (yAxisLabel ? 20 : 0),
         top: 10 + legendTopOffset + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 32 : 8) + chartPadding,
         containLabel: true,
@@ -388,7 +388,7 @@ const LineChart = (props: LineChartProps) => {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
-          fontSize: 14,
+          fontSize: 12,
         },
       },
       yAxis: {
@@ -447,7 +447,7 @@ const LineChart = (props: LineChartProps) => {
         cursor: "default",
         style: {
           text: yAxisLabel,
-          font: `500 14px ${chartFont}`,
+          font: `500 12px ${chartFont}`,
           fill: textColor,
           width: chartHeight,
           textAlign: "center",

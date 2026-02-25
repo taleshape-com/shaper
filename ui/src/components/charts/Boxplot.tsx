@@ -186,7 +186,7 @@ const Boxplot = (props: BoxplotProps) => {
       });
     }
 
-    const labelTopOffset = label ? 36 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
+    const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
@@ -196,8 +196,8 @@ const Boxplot = (props: BoxplotProps) => {
       title: {
         text: label,
         textStyle: {
-          fontSize: 16,
-          lineHeight: 16,
+          fontSize: 14,
+          lineHeight: 14,
           fontFamily: displayFont,
           fontWeight: 600,
           color: textColor,
@@ -298,7 +298,7 @@ const Boxplot = (props: BoxplotProps) => {
       },
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 10 + chartPadding,
+        right: 10 + chartPadding + (yAxisLabel ? 20 : 0),
         top: 10 + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 32 : 8) + chartPadding,
         containLabel: true,
@@ -353,7 +353,7 @@ const Boxplot = (props: BoxplotProps) => {
           color: textColor,
           fontFamily: chartFont,
           fontWeight: 500,
-          fontSize: 14,
+          fontSize: 12,
         },
         jitter: chartWidth / xData.length * 0.95,
       },
@@ -408,7 +408,7 @@ const Boxplot = (props: BoxplotProps) => {
         cursor: "default",
         style: {
           text: yAxisLabel,
-          font: `500 14px ${chartFont}`,
+          font: `500 12px ${chartFont}`,
           fill: textColor,
           width: chartHeight,
           textAlign: "center",
