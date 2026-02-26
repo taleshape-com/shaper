@@ -22,6 +22,7 @@ import { PublicLink } from "../components/PublicLink";
 import { useToast } from "../hooks/useToast";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
+import { DashboardWrapper } from "../components/DashboardWrapper";
 
 export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
@@ -226,7 +227,7 @@ function DashboardViewComponent () {
         <meta name="description" content={title} />
       </Helmet>
 
-      <div className="h-dvh relative @xl:px-[4%] @2xl:px-[6%] @4xl:px-[10%]">
+      <DashboardWrapper className="h-dvh relative">
         <Dashboard
           id={params.id}
           vars={vars}
@@ -244,7 +245,7 @@ function DashboardViewComponent () {
             Preview
           </div>
         )}
-      </div>
+      </DashboardWrapper>
     </MenuProvider>
   );
 }

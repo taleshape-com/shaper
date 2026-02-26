@@ -54,6 +54,9 @@ export default {
         sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],
         display: ['var(--shaper-display-font)', ...defaultTheme.fontFamily.sans],
       },
+      screens: {
+        '4xl': '1948px',
+      },
       // Custom container query sizes that match the Tailwind breakpoints
       containers: {
         'sm': '640px',
