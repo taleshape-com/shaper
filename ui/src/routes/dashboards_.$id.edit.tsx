@@ -51,6 +51,7 @@ import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
+import { DashboardWrapper } from "../components/DashboardWrapper";
 
 const MIN_SHOW_LOADING = 300;
 
@@ -618,7 +619,7 @@ function DashboardEditor () {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto relative @xl:px-[4%] @2xl:px-[6%] @4xl:px-[10%]">
+        <DashboardWrapper className="flex-grow overflow-y-auto relative">
           {previewError && <PreviewError>{previewError}</PreviewError>}
           <Dashboard
             id={previewId}
@@ -630,7 +631,7 @@ function DashboardEditor () {
             onDataChange={handleDataChange}
             loading={isPreviewLoading}
           />
-        </div>
+        </DashboardWrapper>
       </div>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

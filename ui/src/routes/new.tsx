@@ -42,6 +42,7 @@ import {
 } from "../components/tremor/Select";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
+import { DashboardWrapper } from "../components/DashboardWrapper";
 
 const defaultDashboardQuery = `SELECT 'Dashboard Title'::SECTION;
 
@@ -527,7 +528,7 @@ function NewDashboard () {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto relative">
+        <DashboardWrapper className="flex-grow overflow-y-auto relative">
           {previewError && <PreviewError>{previewError}</PreviewError>}
           {appType === "dashboard" ? (
             <Dashboard
@@ -543,7 +544,7 @@ function NewDashboard () {
           ) : (
             <TaskResults data={taskData} loading={isPreviewLoading} />
           )}
-        </div>
+        </DashboardWrapper>
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
