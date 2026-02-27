@@ -23,6 +23,7 @@ import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
+import { TableDownloadButton } from "../charts/TableDownloadButton";
 
 export interface DashboardProps {
   id?: string;
@@ -422,10 +423,22 @@ const DataView = ({
                     className="absolute top-2 right-2 z-40"
                     id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                   />
-                ) : query.render.label && (
-                  <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
-                    {query.render.label}
-                  </h2>
+                ) : (
+                  <>
+                    {query.render.label && (
+                      <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
+                        {query.render.label}
+                      </h2>
+                    )}
+                    {query.render.type === "table" && (
+                      <TableDownloadButton
+                        headers={query.columns}
+                        data={query.rows as (string | number | boolean)[][]}
+                        label={query.render.label}
+                        id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                      />
+                    )}
+                  </>
                 )}
                 {
                   renderContent(

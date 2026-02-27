@@ -64,6 +64,10 @@ const translations = {
     de: "Als Bild speichern",
     pt: "Salvar como imagem",
   },
+  "Save as CSV": {
+    de: "Als CSV speichern",
+    pt: "Salvar como CSV",
+  },
   "in %% seconds": {
     de: "in %% Sekunden",
     pt: "em %% segundos",
