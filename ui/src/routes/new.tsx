@@ -6,6 +6,7 @@ import {
   isRedirect,
   useNavigate,
   Link,
+  redirect,
 } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
@@ -109,6 +110,12 @@ export const Route = createFileRoute("/new")({
     vars: varsParamSchema,
     path: z.string().optional(),
   }),
+  beforeLoad: () => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.editEnabled && !systemConfig.tasksEnabled) {
+      throw redirect({ to: "/" });
+    }
+  },
   component: NewDashboard,
 });
 
@@ -117,8 +124,9 @@ function NewDashboard () {
   const auth = useAuth();
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/new" });
+  const systemConfig = getSystemConfig();
   const [appType, setAppType] = useState<"dashboard" | "task">(() =>
-    getStoredAppType(),
+    systemConfig.editEnabled ? getStoredAppType() : "task",
   );
   const [editorQuery, setEditorQuery] = useState("");
   const [runningQuery, setRunningQuery] = useState("");
@@ -450,7 +458,7 @@ function NewDashboard () {
                   aria-hidden={true}
                 />
                 New
-                {getSystemConfig().tasksEnabled ? (
+                {systemConfig.tasksEnabled && systemConfig.editEnabled ? (
                   <Select value={appType} onValueChange={handleTypeChange}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
@@ -472,6 +480,8 @@ function NewDashboard () {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                ) : systemConfig.tasksEnabled ? (
+                  " Task"
                 ) : (
                   " Dashboard"
                 )}

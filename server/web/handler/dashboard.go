@@ -23,6 +23,11 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 					Error string `json:"error"`
 				}{Error: "Unauthorized"}, "  ")
 		}
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
 
 		var request struct {
 			Name      string `json:"name"`
@@ -103,6 +108,11 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
 
 		var request struct {
 			Name string `json:"name"`
@@ -139,6 +149,11 @@ func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
 
 		var request struct {
 			Visibility string `json:"visibility"`
@@ -168,6 +183,11 @@ func SaveDashboardPassword(app *core.App) echo.HandlerFunc {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
+		}
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
 		}
 
 		var request struct {
@@ -205,6 +225,11 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
+		}
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
 		}
 
 		var request struct {
@@ -285,6 +310,11 @@ func DeleteDashboard(app *core.App) echo.HandlerFunc {
 				struct {
 					Error string `json:"error"`
 				}{Error: "Unauthorized"}, "  ")
+		}
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
 		}
 
 		err := core.DeleteDashboard(app, c.Request().Context(), c.Param("id"))

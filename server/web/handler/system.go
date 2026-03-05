@@ -14,6 +14,7 @@ func GetSystemConfig(app *core.App) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, map[string]bool{
 			"loginRequired":                   app.LoginRequired,
 			"tasksEnabled":                    !app.NoTasks,
+			"editEnabled":                     !app.NoEdit,
 			"publicSharingEnabled":            !app.NoPublicSharing,
 			"passwordProtectedSharingEnabled": !app.NoPasswordProtectedSharing,
 		})

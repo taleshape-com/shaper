@@ -5,6 +5,7 @@ import { localStorageJwtKey } from "./auth";
 export interface ISystemConfig {
   loginRequired: boolean;
   tasksEnabled: boolean;
+  editEnabled: boolean;
   publicSharingEnabled: boolean;
   passwordProtectedSharingEnabled: boolean;
 }
@@ -47,6 +48,7 @@ const configChanged = (existingSystemConfig: ISystemConfig) => {
   const refreshedSystemConfig = getSystemConfig();
   return existingSystemConfig.loginRequired !== refreshedSystemConfig.loginRequired ||
     existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled ||
+    existingSystemConfig.editEnabled !== refreshedSystemConfig.editEnabled ||
     existingSystemConfig.publicSharingEnabled !== refreshedSystemConfig.publicSharingEnabled ||
     existingSystemConfig.passwordProtectedSharingEnabled !== refreshedSystemConfig.passwordProtectedSharingEnabled;
 };

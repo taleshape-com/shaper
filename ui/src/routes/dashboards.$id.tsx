@@ -23,6 +23,7 @@ import { useToast } from "../hooks/useToast";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { DashboardWrapper } from "../components/DashboardWrapper";
+import { getSystemConfig } from "../lib/system";
 
 export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
@@ -171,19 +172,22 @@ function DashboardViewComponent () {
   };
 
   const menuTitle = title;
+  const systemConfig = getSystemConfig();
   const MenuButton = (
     <MenuTrigger className="-ml-1 mt-0.5 py-[6px] xl:fixed xl:top-1 xl:left-2 xl:ml-0" title={menuTitle}>
       {!dev && (
         <>
-          <Link
-            to="/dashboards/$id/edit"
-            params={{ id: params.id }}
-            search={() => ({ vars })}
-            className="block px-4 py-3 hover:underline"
-          >
-            <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
-            Edit Dashboard
-          </Link>
+          {systemConfig.editEnabled && (
+            <Link
+              to="/dashboards/$id/edit"
+              params={{ id: params.id }}
+              search={() => ({ vars })}
+              className="block px-4 py-3 hover:underline"
+            >
+              <RiPencilLine className="size-4 inline mr-1.5 mb-1" />
+              Edit Dashboard
+            </Link>
+          )}
           <div className="mt-6 px-4">
             <div className="text-sm font-medium text-ctext2 dark:text-dtext2 mb-2">
               Dashboard ID
