@@ -2,6 +2,10 @@
 
 **Open Source, SQL-driven Data Dashboards powered by DuckDB.**
 
+> **Looking for a professional setup without configuring servers?** Focus on your insights while we handle the operations and infrastructure. [Get a dedicated, managed Shaper instance with expert support.](https://taleshape.com/plans-and-pricing)
+
+---
+
 Build analytics dashboards simply by writing SQL:
 
 ```sql
@@ -57,13 +61,14 @@ For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs
 To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
 
 
-## Support and Managed Hosting
+## Managed Hosting and Expert Support
 
-Shaper itself is completely free and open source.
-But we offer managed hosting and proactive support.
-Find out more:
+Shaper is 100% free and open source. We offer managed hosting and proactive support for teams that want to focus on analytics, not infrastructure:
 
-[Plans and Pricing](https://taleshape.com/plans-and-pricing)
+- **MANAGED**: Full-service hosting on a dedicated server. We handle the setup, updates, and 24/7 monitoring.
+- **DATA PARTNER**: Everything in MANAGED plus your own fractional data engineer to help you scale and integrate.
+
+[**View Plans and Pricing**](https://taleshape.com/plans-and-pricing)
 
 
 ## Get in touch
