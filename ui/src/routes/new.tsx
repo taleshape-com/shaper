@@ -508,7 +508,7 @@ function NewDashboard () {
                 onClick={() => setShowCreateDialog(true)}
                 disabled={creating}
                 variant="secondary"
-                className={cx({ "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
+                className={cx("my-2", { "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
               >
                 Create
               </Button>
