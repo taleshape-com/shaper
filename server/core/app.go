@@ -34,6 +34,7 @@ type App struct {
 	NoPublicSharing            bool
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
+	NoEdit                     bool
 	StateConsumeCtx            jetstream.ConsumeContext
 	TaskConsumeCtx             jetstream.ConsumeContext
 	TaskResultConsumeCtx       jetstream.ConsumeContext
@@ -75,6 +76,7 @@ func New(
 	noPublicSharing bool,
 	noPasswordProtectedSharing bool,
 	noTasks bool,
+	noEdit bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
@@ -120,6 +122,9 @@ func New(
 	if noTasks {
 		logger.Info("Tasks functionality disabled.")
 	}
+	if noEdit {
+		logger.Info("Dashboard editing via UI disabled.")
+	}
 
 	app := &App{
 		Name:                       name,
@@ -136,6 +141,7 @@ func New(
 		NoPublicSharing:            noPublicSharing,
 		NoPasswordProtectedSharing: noPasswordProtectedSharing,
 		NoTasks:                    noTasks,
+		NoEdit:                     noEdit,
 		IngestSubjectPrefix:        ingestSubjectPrefix,
 		StateSubjectPrefix:         stateSubjectPrefix,
 		StateStreamName:            stateStreamName,

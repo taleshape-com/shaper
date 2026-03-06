@@ -52,6 +52,7 @@ import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
 import { DashboardWrapper } from "../components/DashboardWrapper";
+import { redirect } from "@tanstack/react-router";
 
 const MIN_SHOW_LOADING = 300;
 
@@ -61,6 +62,16 @@ export const Route = createFileRoute("/dashboards_/$id/edit")({
   }),
   shouldReload: (match) => {
     return match.cause === "enter";
+  },
+  beforeLoad: ({ params, search }) => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.editEnabled) {
+      throw redirect({
+        to: "/dashboards/$id",
+        params: { id: params.id },
+        search: { vars: search.vars },
+      });
+    }
   },
   loader: async ({ params: { id }, context: { queryApi } }) => {
     const data = await queryApi(`dashboards/${id}/info`);

@@ -935,7 +935,7 @@ function Index () {
                                 <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
                               </Tooltip>
                             </button>
-                          ) : (
+                          ) : (!(app.type === "dashboard" && !getSystemConfig().editEnabled) && (
                             <Link
                               to={
                                 app.type === "dashboard"
@@ -952,19 +952,21 @@ function Index () {
                                 <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
                               </Tooltip>
                             </Link>
+                          ))}
+                          {!(app.type === "dashboard" && !getSystemConfig().editEnabled) && (
+                            <button
+                              onClick={() => {
+                                setDeleteDialog(app);
+                              }}
+                            >
+                              <Tooltip showArrow={false} content="Delete">
+                                <RiDeleteBinLine
+                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
+                                  aria-hidden={true}
+                                />
+                              </Tooltip>
+                            </button>
                           )}
-                          <button
-                            onClick={() => {
-                              setDeleteDialog(app);
-                            }}
-                          >
-                            <Tooltip showArrow={false} content="Delete">
-                              <RiDeleteBinLine
-                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
-                                aria-hidden={true}
-                              />
-                            </Tooltip>
-                          </button>
                         </div>
                       </TableCell>
                     </TableRow>

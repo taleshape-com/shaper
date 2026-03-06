@@ -83,6 +83,7 @@ type Config struct {
 	NoPublicSharing            bool
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
+	NoEdit                     bool
 	NodeIDFile                 string
 	TLSDomain                  string
 	TLSEmail                   string
@@ -193,6 +194,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
+	noEdit := flags.BoolLong("no-edit", "Disable editing dashboards via the UI")
 	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
@@ -344,6 +346,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			NoPublicSharing:            *noPublicSharing,
 			NoPasswordProtectedSharing: *noPasswordProtectedSharing,
 			NoTasks:                    *noTasks,
+			NoEdit:                     *noEdit,
 			NodeIDFile:                 *nodeIDFile,
 			TLSDomain:                  *tlsDomain,
 			TLSEmail:                   *tlsEmail,
@@ -641,6 +644,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.NoPublicSharing,
 		cfg.NoPasswordProtectedSharing,
 		cfg.NoTasks,
+		cfg.NoEdit,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,
