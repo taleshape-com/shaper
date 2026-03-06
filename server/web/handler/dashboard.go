@@ -23,11 +23,6 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 					Error string `json:"error"`
 				}{Error: "Unauthorized"}, "  ")
 		}
-		if app.NoEdit {
-			return c.JSONPretty(http.StatusForbidden, struct {
-				Error string `json:"error"`
-			}{Error: "Editing is disabled"}, "  ")
-		}
 
 		var request struct {
 			Name      string `json:"name"`
@@ -40,6 +35,13 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 				struct {
 					Error string `json:"error"`
 				}{Error: "Invalid request"}, "  ")
+		}
+
+		// Allow creating temporary dashboards even if editing is disabled. They are needed during development
+		if app.NoEdit && !request.Temporary {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
 		}
 
 		// Validate dashboard name
@@ -226,11 +228,6 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
 		}
-		if app.NoEdit {
-			return c.JSONPretty(http.StatusForbidden, struct {
-				Error string `json:"error"`
-			}{Error: "Editing is disabled"}, "  ")
-		}
 
 		var request struct {
 			Content string `json:"content"`
@@ -239,6 +236,12 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
 			}{Error: "Invalid request"}, "  ")
+		}
+
+		if app.NoEdit && !strings.HasPrefix(c.Param("id"), core.TMP_DASHBOARD_PREFIX) {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
 		}
 
 		err := core.SaveDashboardQuery(app, c.Request().Context(), c.Param("id"), request.Content)
