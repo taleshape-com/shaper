@@ -120,6 +120,8 @@ export function MenuProvider ({
 
   const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
 
+  const config = getSystemConfig();
+
   // Determine the correct documentation URL based on current route
   const getDocumentationUrl = () => {
     const docsLink = "https://taleshape.com/shaper/docs";
@@ -187,18 +189,24 @@ export function MenuProvider ({
               Browse
             </Tooltip>
           </Link>
-          <Link
-            to="/new"
-            search={{ path: currentPath }}
-            disabled={isNewPage}
-            className={cx("block px-4 py-3", {
-              "hover:underline": !isNewPage,
-              "bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb": isNewPage,
-            })}
-          >
-            <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
-            New
-          </Link>
+          {(config.editEnabled || config.tasksEnabled) && (
+            <Link
+              to="/new"
+              search={{ path: currentPath }}
+              disabled={isNewPage}
+              className={cx("block px-4 py-3", {
+                "hover:underline": !isNewPage,
+                "bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb": isNewPage,
+              })}
+            >
+              <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
+              {config.tasksEnabled
+                ? config.editEnabled
+                  ? "New"
+                  : "New Task"
+                : "New Dashboard"}
+            </Link>
+          )}
           {extraContent}
         </div>
 
@@ -226,7 +234,7 @@ export function MenuProvider ({
             <RiAdminLine className="size-4 inline mr-1 -mt-1" />
             Admin
           </Link>
-          {getSystemConfig().loginRequired && (
+          {config.loginRequired && (
             <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
               <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
                 {userName}
