@@ -3,6 +3,7 @@
 import { getJwt } from "../lib/auth";
 import { useCallback } from "react";
 import { goToLoginPage } from "../lib/utils";
+import { fetchWithRetry } from "../lib/fetchWithRetry";
 
 export type QueryApiFunc = (url: string, options?: { method?: "POST" | "DELETE"; body?: any; signal?: AbortSignal }) => Promise<any>;
 
@@ -10,7 +11,7 @@ export type QueryApiFunc = (url: string, options?: { method?: "POST" | "DELETE";
 export const useQueryApi = (): QueryApiFunc => {
   return useCallback((async (url, options = {}) => {
     const jwt = await getJwt();
-    const response = await fetch(`${window.shaper.defaultBaseUrl}api/${url}`, {
+    const response = await fetchWithRetry(`${window.shaper.defaultBaseUrl}api/${url}`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: jwt,

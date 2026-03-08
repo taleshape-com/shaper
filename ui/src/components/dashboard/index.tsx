@@ -5,6 +5,7 @@ import { Result } from "../../lib/types";
 import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema, getRenderMode } from "../../lib/utils";
+import { fetchWithRetry } from "../../lib/fetchWithRetry";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
@@ -601,7 +602,7 @@ const fetchDashboard = async (
 ): Promise<Result> => {
   const jwt = await getJwt();
   const searchParams = getSearchParamString(vars);
-  const res = await fetch(`${baseUrl}api/dashboards/${id}?${searchParams}`, {
+  const res = await fetchWithRetry(`${baseUrl}api/dashboards/${id}?${searchParams}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: jwt,
