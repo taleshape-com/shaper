@@ -7,7 +7,6 @@ export function DashboardWrapper ({ children, className }: {
   className?: string;
 }) {
   const { isMenuOpen } = useContext(MenuContext);
-  console.log({ isMenuOpen });
   return <div className={cx(className, {
     "xl:px-[4%] 2xl:px-[6%] 4xl:px-[10%]": isMenuOpen,
     // same as above minus 224px (the width of the menu)
