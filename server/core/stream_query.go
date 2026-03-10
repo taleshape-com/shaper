@@ -55,26 +55,56 @@ func StreamQueryCSV(
 	}
 	query := sqls[queryIndex]
 
-	// Create a CSV writer
-	csvWriter := csv.NewWriter(writer)
-	defer csvWriter.Flush()
-
 	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
+	defer conn.Close()
 
 	// Execute the query and get rows
 	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
-	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
-	if varCleanup != "" {
-		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
-			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+	defer func() {
+		if varCleanup != "" {
+			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+				app.Logger.ErrorContext(ctx, "Error cleaning up vars", "error", cleanupErr)
+			}
 		}
+	}()
+
+	return StreamSQLToCSVWithConn(conn, ctx, varPrefix+query+";", writer)
+}
+
+// StreamSQLToCSV executes a single SQL query and streams the result as CSV.
+func StreamSQLToCSV(
+	app *App,
+	ctx context.Context,
+	sqlQuery string,
+	writer io.Writer,
+) error {
+	conn, err := app.DuckDB.Connx(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting conn: %v", err)
 	}
+	defer conn.Close()
+
+	return StreamSQLToCSVWithConn(conn, ctx, sqlQuery, writer)
+}
+
+// StreamSQLToCSVWithConn executes a single SQL query using an existing connection and streams the result as CSV.
+func StreamSQLToCSVWithConn(
+	conn *sqlx.Conn,
+	ctx context.Context,
+	sqlQuery string,
+	writer io.Writer,
+) error {
+	// Create a CSV writer
+	csvWriter := csv.NewWriter(writer)
+	defer csvWriter.Flush()
+
+	rows, err := conn.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return fmt.Errorf("error executing query: %w", err)
 	}
@@ -102,9 +132,6 @@ func StreamQueryCSV(
 	for rows.Next() {
 		// Scan the row into our value containers
 		if err := rows.Scan(valuePtrs...); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				return fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
-			}
 			return fmt.Errorf("error scanning row: %w", err)
 		}
 
@@ -116,23 +143,14 @@ func StreamQueryCSV(
 
 		// Write the record
 		if err := csvWriter.Write(record); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				return fmt.Errorf("Error closing rows after csv write error. CSV Err: %v. Close Err: %v", err, closeErr)
-			}
 			return fmt.Errorf("error writing record: %w", err)
 		}
 
 		// Flush periodically to ensure streaming
 		csvWriter.Flush()
 		if err := csvWriter.Error(); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				return fmt.Errorf("Error closing rows after csv flush error. CSV Err: %v. Close Err: %v", err, closeErr)
-			}
 			return fmt.Errorf("error flushing CSV writer: %w", err)
 		}
-	}
-	if err := conn.Close(); err != nil {
-		return fmt.Errorf("Error closing conn: %v", err)
 	}
 
 	return rows.Err()

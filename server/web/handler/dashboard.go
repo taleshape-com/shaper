@@ -16,12 +16,16 @@ import (
 
 func CreateDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if _, hasId := claims["dashboardId"]; hasId {
-			return c.JSONPretty(http.StatusUnauthorized,
-				struct {
-					Error string `json:"error"`
-				}{Error: "Unauthorized"}, "  ")
+		actor := core.ActorFromContext(c.Request().Context())
+
+		if userToken, ok := c.Get("user").(*jwt.Token); ok {
+			claims := userToken.Claims.(jwt.MapClaims)
+			if _, hasId := claims["dashboardId"]; hasId {
+				return c.JSONPretty(http.StatusUnauthorized,
+					struct {
+						Error string `json:"error"`
+					}{Error: "Unauthorized"}, "  ")
+			}
 		}
 
 		var request struct {
@@ -35,6 +39,14 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 				struct {
 					Error string `json:"error"`
 				}{Error: "Invalid request"}, "  ")
+		}
+
+		// API keys can only create temporary dashboards
+		if actor != nil && actor.Type == core.ActorAPIKey && !request.Temporary {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct {
+					Error string `json:"error"`
+				}{Error: "API keys are only allowed to create temporary dashboards"}, "  ")
 		}
 
 		// Allow creating temporary dashboards even if editing is disabled. They are needed during development
