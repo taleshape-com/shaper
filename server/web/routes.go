@@ -138,6 +138,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
 	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
+	e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
 	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.GET("/version", handler.GetVersion(app))
