@@ -146,7 +146,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
 	apiWithAuth.POST("/folders/:id/name", handler.RenameFolder(app))
 	apiWithAuth.POST("/move", handler.MoveItems(app))
-	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
+	e.POST("/api/dashboards", handler.CreateDashboard(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))
 	apiWithAuth.GET("/dashboards/:id/info", handler.GetDashboardInfo(app))
