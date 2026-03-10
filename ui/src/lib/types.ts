@@ -55,6 +55,9 @@ export type Column = {
   | "compare"
   | "trend"
   | "color"
+  | "small"
+  | "medium"
+  | "large"
   | "";
 };
 

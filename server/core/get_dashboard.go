@@ -454,6 +454,9 @@ func mapTag(index int, rInfo renderInfo) string {
 		if rInfo.CompareIndex != nil && index == *rInfo.CompareIndex {
 			return "compare"
 		}
+		if rInfo.ValueSize != "" && (rInfo.ValueIndex == nil || index == *rInfo.ValueIndex) {
+			return rInfo.ValueSize
+		}
 		return "value"
 	}
 	for _, trendIndex := range rInfo.TrendIndex {
@@ -1120,13 +1123,27 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 	}
 
-	// TODO: assert that COMPARE can only be used if both values are the same type
 	if len(rows) == 1 {
 		firstRow := rows[0]
+		valueSize := ""
+		var valueIndex *int
+		if _, i := findColumnByTag(columns, "TEXT_SMALL"); i != -1 {
+			valueSize = "small"
+			valueIndex = &i
+		} else if _, i := findColumnByTag(columns, "TEXT_MEDIUM"); i != -1 {
+			valueSize = "medium"
+			valueIndex = &i
+		} else if _, i := findColumnByTag(columns, "TEXT_LARGE"); i != -1 {
+			valueSize = "large"
+			valueIndex = &i
+		}
+
 		if len(firstRow) == 1 {
 			return renderInfo{
-				Label: labelValue,
-				Type:  "value",
+				Label:      labelValue,
+				Type:       "value",
+				ValueSize:  valueSize,
+				ValueIndex: valueIndex,
 			}
 		}
 		compareTag, compareTagIndex := findColumnByTag(columns, "COMPARE")
@@ -1135,6 +1152,8 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 				Label:        labelValue,
 				CompareIndex: &compareTagIndex,
 				Type:         "value",
+				ValueSize:    valueSize,
+				ValueIndex:   valueIndex,
 			}
 		}
 	}
