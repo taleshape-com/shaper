@@ -15,7 +15,7 @@ require (
 	github.com/labstack/echo-jwt/v4 v4.4.0
 	github.com/labstack/echo/v4 v4.15.1
 	github.com/labstack/gommon v0.4.2
-	github.com/minio/minio-go/v7 v7.0.98
+	github.com/minio/minio-go/v7 v7.0.99
 	github.com/nats-io/nats-server/v2 v2.12.4
 	github.com/nats-io/nats.go v1.49.0
 	github.com/nrednav/cuid2 v1.1.0
