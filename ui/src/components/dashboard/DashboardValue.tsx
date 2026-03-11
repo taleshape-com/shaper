@@ -48,7 +48,7 @@ const getComparePercent = (
 };
 
 function DashboardValue ({ headers, data }: ValueProps) {
-  const valueIndex = headers.findIndex(header => header.tag === "value");
+  const valueIndex = headers.findIndex(header => header.tag === "value" || header.tag === "small" || header.tag === "medium" || header.tag === "large");
   const valueHeader = headers[valueIndex];
   const value = data[0][valueIndex];
   const compareIndex = headers.findIndex(header => header.tag === "compare");
@@ -78,20 +78,29 @@ function DashboardValue ({ headers, data }: ValueProps) {
     : isDatableType(valueHeader.type)
       ? 36
       : 32;
-  const valueFontSize = calcFontSize(containerWidth, formattedValue, maxFontSize);
 
-  const labelFontSize = valueFontSize === 16 ? 14 : 18;
+  let valueFontSize = calcFontSize(containerWidth, formattedValue, maxFontSize);
+
+  if (valueHeader.tag === "small") {
+    valueFontSize = 16;
+  } else if (valueHeader.tag === "medium") {
+    valueFontSize = 24;
+  } else if (valueHeader.tag === "large") {
+    valueFontSize = 32;
+  }
+
+  const labelFontSize = valueFontSize <= 16 ? 14 : 18;
 
   return (
     <div
-      className={cx("h-full w-full flex flex-col", { "justify-center": hasLabel || valueFontSize > 16 })}
+      className="h-full w-full flex flex-col justify-center"
       ref={containerRef}
     >
       <div
         className={cx("overflow-auto py-2", {
           "font-mono": isJSONType(valueHeader.type),
-          "font-semibold text-center": hasLabel || (formattedValue.length <= 100 && !formattedValue.includes("\n")),
-          "text-justify": formattedValue.length >= 300,
+          "font-semibold text-center": valueHeader.tag === "large" || (valueHeader.tag === "value" && (hasLabel || (formattedValue.length <= 100 && !formattedValue.includes("\n")))),
+          "text-justify": valueHeader.tag === "small" || (valueHeader.tag === "value" && formattedValue.length >= 300),
         })}
         style={{ fontSize: `${valueFontSize}px`, lineHeight: 1.2 }}
       >
