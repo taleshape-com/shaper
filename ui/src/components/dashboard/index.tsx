@@ -25,6 +25,7 @@ import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 import { TableDownloadButton } from "../charts/TableDownloadButton";
+import { FullscreenButton } from "./FullscreenButton";
 
 export interface DashboardProps {
   id?: string;
@@ -193,6 +194,26 @@ const DataView = ({
   getJwt,
   loading,
 }: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean }) => {
+  const [fullscreenId, setFullscreenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && fullscreenId) {
+        setFullscreenId(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fullscreenId]);
+
+  useEffect(() => {
+    if (fullscreenId) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [fullscreenId]);
+
   const sections: Result["sections"] = data.sections.length > 0 && data.sections[0].type === "header"
     ? data.sections
     : [
@@ -367,6 +388,8 @@ const DataView = ({
             if (query.render.type === "placeholder") {
               return <div key={queryIndex}></div>;
             }
+            const currentId = `${sectionIndex}-${queryIndex}`;
+            const isFullscreen = fullscreenId === currentId;
             const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
             const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
             const singleTable = numQueriesInSection === 1 && query.render.type === "table";
@@ -379,7 +402,7 @@ const DataView = ({
                 id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                 className={cx(
                   "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
-                  {
+                  isFullscreen ? "fixed inset-0 z-[100] m-0 rounded-none h-screen w-screen overflow-auto p-8" : {
                     "break-inside-avoid": !singleTable,
                     "min-h-[240px]": isChartQuery,
                     "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
@@ -417,11 +440,18 @@ const DataView = ({
                   },
                 )}
               >
+                {(isChartQuery || query.render.type === "table") && (
+                  <FullscreenButton
+                    isFullscreen={isFullscreen}
+                    onToggle={() => setFullscreenId(isFullscreen ? null : currentId)}
+                    className={cx("right-2", isFullscreen && "top-8 right-8")}
+                  />
+                )}
                 {isChartQuery ? (
                   <ChartDownloadButton
                     chartId={`${sectionIndex}-${queryIndex}`}
                     label={query.render.label}
-                    className="absolute top-2 right-2 z-40"
+                    className={cx("absolute top-2 right-10 z-40", isFullscreen && "top-8 right-16")}
                     id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                   />
                 ) : (
@@ -436,6 +466,7 @@ const DataView = ({
                         headers={query.columns}
                         data={query.rows as (string | number | boolean)[][]}
                         label={query.render.label}
+                        className={cx("right-10", isFullscreen && "top-8 right-16")}
                         id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                       />
                     )}
