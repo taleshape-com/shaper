@@ -54,6 +54,9 @@ func StreamQueryCSV(
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
 	}
 	query := sqls[queryIndex]
+	if !isAllowedStatement(query) {
+		return fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
+	}
 
 	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
@@ -84,6 +87,9 @@ func StreamSQLToCSV(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
+	if !isAllowedStatement(sqlQuery) {
+		return fmt.Errorf("disallowed SQL statement")
+	}
 	conn, err := app.DuckDB.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
@@ -191,6 +197,9 @@ func StreamQueryXLSX(
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
 	}
 	query := sqls[queryIndex]
+	if !isAllowedStatement(query) {
+		return fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
+	}
 
 	// Create a new XLSX file
 	xlsx := excelize.NewFile()
@@ -494,6 +503,9 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
 			continue
+		}
+		if !isAllowedStatement(sqlString) {
+			return "", "", fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
 		}
 		if nextIsDownload {
 			nextIsDownload = false

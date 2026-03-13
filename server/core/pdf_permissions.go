@@ -41,6 +41,9 @@ func DashboardContainsMatchingPdfDownload(app *App, ctx context.Context, parentD
 		if sqlString == "" {
 			continue
 		}
+		if !isAllowedStatement(sqlString) {
+			return false, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
+		}
 		if nextIsDownload {
 			nextIsDownload = false
 			continue
