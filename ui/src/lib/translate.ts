@@ -68,6 +68,14 @@ const translations = {
     de: "Als CSV speichern",
     pt: "Salvar como CSV",
   },
+  "Fullscreen": {
+    de: "Vollbild",
+    pt: "Tela cheia",
+  },
+  "Exit fullscreen": {
+    de: "Vollbild beenden",
+    pt: "Sair da tela cheia",
+  },
   "in %% seconds": {
     de: "in %% Sekunden",
     pt: "em %% segundos",
