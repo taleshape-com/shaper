@@ -103,6 +103,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			nextIsDownload = false
 			continue
 		}
+		if hideNextContentSection && !isSideEffect(sqlString) && !canStartSection(sqlString) {
+			continue
+		}
 		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
 		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
@@ -634,6 +637,19 @@ func isSideEffect(sqlString string) bool {
 		}
 	}
 	return false
+}
+
+// TODO: This uses simple string matching. There are some edge cases where hidden section won't end correctly.
+// For example, if someone manually writes the union type `UNION("section_varchar" VARCHAR)` instead of `SECTION`, it won't be recognized.
+// Also, if you construct the result by reading from a table/view/variable, this might lead to more queries being hidden than intended.
+// TODO: Currently header sections are not hidden. The first header section should be hidden though.
+func canStartSection(sqlString string) bool {
+	upper := strings.ToUpper(sqlString)
+	return strings.Contains(upper, "SECTION") ||
+		strings.Contains(upper, "DROPDOWN") ||
+		strings.Contains(upper, "DATEPICKER") ||
+		strings.Contains(upper, "DOWNLOAD_") ||
+		strings.Contains(upper, "INPUT")
 }
 
 func isLabel(columns []*sql.ColumnType, rows Rows) bool {
