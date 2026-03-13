@@ -36,8 +36,8 @@ func TestIsAllowedStatement(t *testing.T) {
 
 		// Side Effects (Allowed)
 		{"Set", "SET VARIABLE x = 1", true},
-		{"Attach", "ATTACH 'file.db' AS other", true},
-		{"Use", "USE other", true},
+		{"Attach", "ATTACH 'file.db' AS other", false},
+		{"Use", "USE other", false},
 		{"Create Temp Table", "CREATE TEMPORARY TABLE foo AS SELECT 1", true},
 		{"Begin", "BEGIN TRANSACTION", true},
 		{"Commit", "COMMIT", true},

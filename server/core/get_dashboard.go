@@ -22,8 +22,6 @@ const QUERY_MAX_ROWS = 3000
 // These SQL statements are used only for their side effects and not to display anything.
 // They are not visible in the dashboard output.
 var sideEffectSQLStatements = [][]string{
-	{"ATTACH"},
-	{"USE"},
 	{"SET", "VARIABLE"},
 	{"SET"},
 	{"BEGIN"},
