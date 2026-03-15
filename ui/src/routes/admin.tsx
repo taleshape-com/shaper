@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-function Admin () {
+function Admin() {
   const location = useLocation();
   const queryApi = useQueryApi();
   const [version, setVersion] = useState<string | null>(null);
@@ -48,8 +48,8 @@ function Admin () {
       <div className="px-4 pb-2 min-h-dvh flex flex-col">
         <div className="flex">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <h1 className="text-2xl font-semibold font-display flex-grow pb-2 pt-2.5">
-            <RiAdminLine className="size-5 inline mr-1 -mt-1" />
+          <h1 className="font-semibold font-display flex-grow pb-2 pt-2.5 my-2">
+            <RiAdminLine className="size-4 inline ml-1 mr-1 -mt-1" />
             Admin
           </h1>
         </div>
