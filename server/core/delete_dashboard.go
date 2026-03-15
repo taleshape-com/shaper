@@ -28,7 +28,7 @@ func DeleteDashboard(app *App, ctx context.Context, id string) error {
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("dashboard not found")
+		return ErrDashboardNotFound
 	}
 	err = app.SubmitState(ctx, "delete_dashboard", DeleteDashboardPayload{
 		ID:        id,

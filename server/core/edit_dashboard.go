@@ -4,12 +4,15 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/nats-io/nats.go/jetstream"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -45,6 +48,9 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 	if strings.HasPrefix(id, TMP_DASHBOARD_PREFIX) {
 		entry, err := app.TmpDashboardsKv.Get(ctx, id)
 		if err != nil {
+			if errors.Is(err, jetstream.ErrKeyNotFound) {
+				return Dashboard{}, ErrDashboardNotFound
+			}
 			return Dashboard{}, fmt.Errorf("failed to get dashboard: %w", err)
 		}
 		var d TmpDashboard
@@ -67,6 +73,9 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 		FROM apps
 		WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dashboard, ErrDashboardNotFound
+		}
 		return dashboard, fmt.Errorf("failed to get dashboard: %w", err)
 	}
 
@@ -105,7 +114,7 @@ func SaveDashboardName(app *App, ctx context.Context, id string, name string) er
 	var folderID *string
 	err := app.Sqlite.GetContext(ctx, &folderID, `SELECT folder_id FROM apps WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
-		return fmt.Errorf("dashboard not found")
+		return ErrDashboardNotFound
 	}
 	// Check for duplicate name in same folder (excluding current dashboard)
 	var count int
@@ -145,7 +154,7 @@ func SaveDashboardVisibility(app *App, ctx context.Context, id string, visibilit
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("dashboard not found")
+		return ErrDashboardNotFound
 	}
 	if visibility == "" {
 		visibility = "private"
@@ -180,6 +189,9 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 	if strings.HasPrefix(id, TMP_DASHBOARD_PREFIX) {
 		entry, err := app.TmpDashboardsKv.Get(ctx, id)
 		if err != nil {
+			if errors.Is(err, jetstream.ErrKeyNotFound) {
+				return ErrDashboardNotFound
+			}
 			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 		var d TmpDashboard
@@ -199,7 +211,7 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("dashboard not found")
+		return ErrDashboardNotFound
 	}
 
 	err = app.SubmitState(ctx, "update_dashboard_content", UpdateDashboardContentPayload{
@@ -225,7 +237,7 @@ func SaveDashboardPassword(app *App, ctx context.Context, id string, password st
 		return fmt.Errorf("failed to query dashboard: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("dashboard not found")
+		return ErrDashboardNotFound
 	}
 	// Hash the password using bcrypt
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -249,6 +261,9 @@ func VerifyDashboardPassword(app *App, ctx context.Context, id string, password 
 	err := app.Sqlite.GetContext(ctx, &passwordHash,
 		`SELECT password_hash FROM apps WHERE id = $1 AND type = 'dashboard' AND password_hash IS NOT NULL`, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrDashboardNotFound
+		}
 		return false, fmt.Errorf("failed to get dashboard password hash: %w", err)
 	}
 
