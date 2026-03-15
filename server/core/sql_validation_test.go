@@ -77,7 +77,7 @@ func TestIsAllowedStatement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, isAllowedStatement(tt.sql), "SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedStatement(tt.sql), "SQL: %s", tt.sql)
 		})
 	}
 }

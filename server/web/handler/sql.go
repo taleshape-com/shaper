@@ -48,6 +48,13 @@ func ExecuteSQL(app *core.App) echo.HandlerFunc {
 				}{Error: "Only one SQL query is allowed"}, "  ")
 		}
 
+		if !core.IsAllowedStatement(queries[0]) {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: "disallowed SQL statement"}, "  ")
+		}
+
 		// Set headers for CSV file download
 		c.Response().Header().Set(echo.HeaderContentType, "text/csv")
 		c.Response().Header().Set("X-Content-Type-Options", "nosniff")
@@ -58,7 +65,7 @@ func ExecuteSQL(app *core.App) echo.HandlerFunc {
 		err = core.StreamSQLToCSV(app, c.Request().Context(), queries[0]+";", writer)
 		if err != nil {
 			if !c.Response().Committed {
-				return c.JSONPretty(http.StatusInternalServerError,
+				return c.JSONPretty(http.StatusBadRequest,
 					struct {
 						Error string `json:"error"`
 					}{Error: err.Error()}, "  ")

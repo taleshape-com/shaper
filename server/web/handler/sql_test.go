@@ -74,6 +74,48 @@ func TestExecuteSQL(t *testing.T) {
 		}
 	})
 
+	t.Run("disallowed SQL statement", func(t *testing.T) {
+		reqBody, _ := json.Marshal(map[string]string{
+			"sql": "DELETE FROM users",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/sql", bytes.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := ExecuteSQL(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", rec.Code)
+		}
+
+		if !strings.Contains(rec.Body.String(), "disallowed SQL statement") {
+			t.Errorf("unexpected error message: %s", rec.Body.String())
+		}
+	})
+
+	t.Run("allowed side effect", func(t *testing.T) {
+		reqBody, _ := json.Marshal(map[string]string{
+			"sql": "SET VARIABLE x = 1",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/sql", bytes.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := ExecuteSQL(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rec.Code)
+		}
+	})
+
 	t.Run("empty SQL", func(t *testing.T) {
 		reqBody, _ := json.Marshal(map[string]string{
 			"sql": "",
