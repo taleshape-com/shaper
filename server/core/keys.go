@@ -19,13 +19,46 @@ import (
 
 const API_KEY_PREFIX = "shaperkey."
 
+const (
+	PermissionReadMetrics = "read:metrics"
+	PermissionIngestData  = "ingest:data"
+	PermissionDeploy      = "deploy"
+	PermissionQueryData   = "query:data"
+)
+
+var AllPermissions = []string{
+	PermissionReadMetrics,
+	PermissionIngestData,
+	PermissionDeploy,
+	PermissionQueryData,
+}
+
 type APIKey struct {
-	ID        string    `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Hash      string    `db:"hash" json:"-"`
-	Salt      string    `db:"salt" json:"-"`
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-	CreatedBy *string   `db:"created_by" json:"createdBy,omitempty"`
+	ID              string    `db:"id" json:"id"`
+	Name            string    `db:"name" json:"name"`
+	Hash            string    `db:"hash" json:"-"`
+	Salt            string    `db:"salt" json:"-"`
+	Permissions     *string   `db:"permissions" json:"-"`
+	PermissionsList []string  `db:"-" json:"permissions"`
+	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
+	CreatedBy       *string   `db:"created_by" json:"createdBy,omitempty"`
+}
+
+func (k APIKey) HasPermission(permission string) bool {
+	if k.Permissions == nil || *k.Permissions == "" {
+		return true // Default to all permissions for legacy keys
+	}
+	var perms []string
+	err := json.Unmarshal([]byte(*k.Permissions), &perms)
+	if err != nil {
+		return false
+	}
+	for _, p := range perms {
+		if p == permission {
+			return true
+		}
+	}
+	return false
 }
 
 type APIKeyListResult struct {
@@ -33,27 +66,37 @@ type APIKeyListResult struct {
 }
 
 type CreateAPIKeyPayload struct {
-	ID        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Name      string    `json:"name"`
-	Hash      string    `json:"hash"`
-	Salt      string    `json:"salt"`
-	CreatedBy string    `json:"createdBy"`
+	ID          string    `json:"id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Name        string    `json:"name"`
+	Hash        string    `json:"hash"`
+	Salt        string    `json:"salt"`
+	Permissions []string  `json:"permissions"`
+	CreatedBy   string    `json:"createdBy"`
 }
 
 func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
 	keys := []APIKey{}
 	err := app.Sqlite.SelectContext(ctx, &keys,
-		`SELECT id, name, created_at, created_by
+		`SELECT id, name, permissions, created_at, created_by
 		 FROM api_keys
 		 ORDER BY created_at desc`)
 	if err != nil {
-		err = fmt.Errorf("error listing api keys: %w", err)
+		return APIKeyListResult{}, fmt.Errorf("error listing api keys: %w", err)
 	}
-	return APIKeyListResult{Keys: keys}, err
+
+	for i := range keys {
+		if keys[i].Permissions == nil || *keys[i].Permissions == "" {
+			keys[i].PermissionsList = AllPermissions
+		} else {
+			_ = json.Unmarshal([]byte(*keys[i].Permissions), &keys[i].PermissionsList)
+		}
+	}
+
+	return APIKeyListResult{Keys: keys}, nil
 }
 
-func CreateAPIKey(app *App, ctx context.Context, name string) (string, string, error) {
+func CreateAPIKey(app *App, ctx context.Context, name string, permissions []string) (string, string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", "", fmt.Errorf("no actor in context")
@@ -68,13 +111,18 @@ func CreateAPIKey(app *App, ctx context.Context, name string) (string, string, e
 	mac.Write([]byte(key))
 	hash := hex.EncodeToString(mac.Sum(nil))
 
+	if permissions == nil {
+		permissions = AllPermissions
+	}
+
 	payload := CreateAPIKeyPayload{
-		ID:        id,
-		Timestamp: time.Now(),
-		Name:      name,
-		Hash:      hash,
-		Salt:      salt,
-		CreatedBy: actor.String(),
+		ID:          id,
+		Timestamp:   time.Now(),
+		Name:        name,
+		Hash:        hash,
+		Salt:        salt,
+		Permissions: permissions,
+		CreatedBy:   actor.String(),
 	}
 	err := app.SubmitState(ctx, "create_api_key", payload)
 	return id, key, err
@@ -87,12 +135,19 @@ func HandleCreateAPIKey(app *App, data []byte) bool {
 		app.Logger.Error("failed to unmarshal create api key payload", slog.Any("error", err))
 		return false
 	}
+
+	perms, err := json.Marshal(payload.Permissions)
+	if err != nil {
+		app.Logger.Error("failed to marshal api key permissions", slog.Any("error", err))
+		return false
+	}
+
 	// Insert into DB
 	_, err = app.Sqlite.Exec(
 		`INSERT OR IGNORE INTO api_keys (
-			id, hash, salt, name, created_at, updated_at, created_by, updated_by
-		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
-		payload.ID, payload.Hash, payload.Salt, payload.Name, payload.Timestamp, payload.CreatedBy,
+			id, hash, salt, name, permissions, created_at, updated_at, created_by, updated_by
+		) VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $7)`,
+		payload.ID, payload.Hash, payload.Salt, payload.Name, string(perms), payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert api key into DB", slog.Any("error", err))
@@ -143,6 +198,54 @@ func HandleDeleteAPIKey(app *App, data []byte) bool {
 		`DELETE FROM api_keys WHERE id = $1`, payload.ID)
 	if err != nil {
 		app.Logger.Error("failed to execute DELETE statement", slog.Any("error", err))
+		return false
+	}
+	return true
+}
+
+type UpdateAPIKeyPermissionsPayload struct {
+	ID          string    `json:"id"`
+	Permissions []string  `json:"permissions"`
+	Timestamp   time.Time `json:"timestamp"`
+	UpdatedBy   string    `json:"updatedBy"`
+}
+
+func UpdateAPIKeyPermissions(app *App, ctx context.Context, id string, permissions []string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
+
+	payload := UpdateAPIKeyPermissionsPayload{
+		ID:          id,
+		Permissions: permissions,
+		Timestamp:   time.Now(),
+		UpdatedBy:   actor.String(),
+	}
+
+	return app.SubmitState(ctx, "update_api_key_permissions", payload)
+}
+
+func HandleUpdateAPIKeyPermissions(app *App, data []byte) bool {
+	var payload UpdateAPIKeyPermissionsPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal update api key permissions payload", slog.Any("error", err))
+		return false
+	}
+
+	perms, err := json.Marshal(payload.Permissions)
+	if err != nil {
+		app.Logger.Error("failed to marshal api key permissions", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.Sqlite.Exec(
+		`UPDATE api_keys SET permissions = $1, updated_at = $2, updated_by = $3 WHERE id = $4`,
+		string(perms), payload.Timestamp, payload.UpdatedBy, payload.ID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to update api key permissions in DB", slog.Any("error", err))
 		return false
 	}
 	return true

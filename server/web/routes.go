@@ -74,9 +74,17 @@ func SetAPIKeyActor(app *core.App, contextKey string) func(next echo.HandlerFunc
 				return next(c)
 			}
 
+			var permissions string
+			if apiKey, ok := c.Get("api_key_obj").(*core.APIKey); ok {
+				if apiKey.Permissions != nil {
+					permissions = *apiKey.Permissions
+				}
+			}
+
 			actor := &core.Actor{
-				Type: core.ActorAPIKey,
-				ID:   apiKeyID,
+				Type:        core.ActorAPIKey,
+				ID:          apiKeyID,
+				Permissions: permissions,
 			}
 			ctx := core.ContextWithActor(c.Request().Context(), actor)
 			c.SetRequest(c.Request().WithContext(ctx))
@@ -87,6 +95,21 @@ func SetAPIKeyActor(app *core.App, contextKey string) func(next echo.HandlerFunc
 }
 
 const keyAuthContextKey = "api_key_token"
+
+func RequirePermission(permission string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			actor := core.ActorFromContext(c.Request().Context())
+			if actor == nil {
+				return echo.ErrUnauthorized
+			}
+			if !actor.HasPermission(permission) {
+				return echo.NewHTTPError(http.StatusForbidden, "Missing required permission: "+permission)
+			}
+			return next(c)
+		}
+	}
+}
 
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
 	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
@@ -105,14 +128,15 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			valid, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			storedKey, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
 			if err != nil {
 				return false, err
 			}
-			if valid {
+			if storedKey != nil {
 				c.Set(keyAuthContextKey, key)
+				c.Set("api_key_obj", storedKey)
 			}
-			return valid, nil
+			return storedKey != nil, nil
 		},
 	}
 	apiKeyActor := SetAPIKeyActor(app, keyAuthContextKey)
@@ -126,7 +150,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.HEAD("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
+	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(core.PermissionReadMetrics))
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))
@@ -136,10 +160,10 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
-	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
-	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
-	e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor)
-	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
+	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(core.PermissionIngestData))
+	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(core.PermissionDeploy))
+	e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(core.PermissionQueryData))
+	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(core.PermissionDeploy))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.GET("/version", handler.GetVersion(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
@@ -147,7 +171,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
 	apiWithAuth.POST("/folders/:id/name", handler.RenameFolder(app))
 	apiWithAuth.POST("/move", handler.MoveItems(app))
-	e.POST("/api/dashboards", handler.CreateDashboard(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor))
+	e.POST("/api/dashboards", handler.CreateDashboard(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(core.PermissionQueryData))
+
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))
 	apiWithAuth.GET("/dashboards/:id/info", handler.GetDashboardInfo(app))
@@ -171,6 +196,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
 	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
+	apiWithAuth.PUT("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
 	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
 	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
 

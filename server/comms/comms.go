@@ -57,13 +57,12 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 		return true
 	}
 
-	valid, err := core.ValidateAPIKey(c.Sqlite, context.Background(), opts.Token)
+	storedKey, err := core.ValidateAPIKey(c.Sqlite, context.Background(), opts.Token)
 	if err != nil {
 		return false
 	}
-	if valid {
-		keyId := core.GetAPIKeyID(opts.Token)
-		auth.RegisterUser(c.createUser("key."+keyId, false))
+	if storedKey != nil {
+		auth.RegisterUser(c.createUser("key."+storedKey.ID, false))
 		return true
 	}
 
