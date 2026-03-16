@@ -20,10 +20,10 @@ import (
 const API_KEY_PREFIX = "shaperkey."
 
 const (
-	PermissionReadMetrics = "read:metrics"
-	PermissionIngestData  = "ingest:data"
+	PermissionReadMetrics = "metrics"
+	PermissionIngestData  = "data:ingest"
 	PermissionDeploy      = "deploy"
-	PermissionQueryData   = "query:data"
+	PermissionQueryData   = "data:query"
 )
 
 var AllPermissions = []string{

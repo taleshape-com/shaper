@@ -47,26 +47,26 @@ import {
 } from "../components/tremor/DropdownMenu";
 
 interface APIKey {
-  id: string;
-  name: string;
-  permissions: string[];
-  createdAt: string;
+	id: string;
+	name: string;
+	permissions: string[];
+	createdAt: string;
 }
 
 const PERMISSIONS = [
-  { label: "Read Metrics", value: "read:metrics" },
-  { label: "Ingest Data", value: "ingest:data" },
+  { label: "Read Metrics", value: "metrics" },
+  { label: "Ingest Data", value: "data:ingest" },
   { label: "Deploy", value: "deploy" },
-  { label: "Query Data", value: "query:data" },
+  { label: "Query Data", value: "data:query" },
 ];
 
 interface NewAPIKeyResponse {
-  id: string;
-  key: string;
+	id: string;
+	key: string;
 }
 
 type APIKeysResponse = {
-  keys: APIKey[];
+	keys: APIKey[];
 };
 
 export const Route = createFileRoute("/admin/keys")({
@@ -103,9 +103,9 @@ function Admin () {
       toast({
         title: "Error",
         description:
-          error instanceof Error
-            ? error.message
-            : "An error occurred",
+					error instanceof Error
+					  ? error.message
+					  : "An error occurred",
         variant: "error",
       });
     }
@@ -126,9 +126,9 @@ function Admin () {
       toast({
         title: "Error",
         description:
-          error instanceof Error
-            ? error.message
-            : "An error occurred",
+					error instanceof Error
+					  ? error.message
+					  : "An error occurred",
         variant: "error",
       });
     }
@@ -152,9 +152,9 @@ function Admin () {
       toast({
         title: "Error",
         description:
-          error instanceof Error
-            ? error.message
-            : "An error occurred",
+					error instanceof Error
+					  ? error.message
+					  : "An error occurred",
         variant: "error",
       });
     }
@@ -165,14 +165,14 @@ function Admin () {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold mb-4">
           <RiKeyFill className="size-4 inline mr-1 -mt-0.5" />
-          API Keys
+					API Keys
         </h2>
         <Button onClick={() => setShowNewKeyDialog(true)}>
           <RiAddFill
             className="-ml-1 mr-0.5 size-4 shrink-0"
             aria-hidden={true}
           />
-          New
+					New
         </Button>
       </div>
 
@@ -185,7 +185,7 @@ function Admin () {
             aria-hidden={true}
           />
           <p className="mt-2 text-ctext2 dark:text-dtext2 font-medium">
-            No API keys found
+						No API keys found
           </p>
         </div>
       ) : (
@@ -246,7 +246,7 @@ function Admin () {
                       className="text-cerr dark:text-derr hover:text-cerra dark:hover:text-derra hover:underline"
                       onClick={() => setDeleteKeyDialog(key)}
                     >
-                      Delete
+											Delete
                     </button>
                   </TableCell>
                 </TableRow>
@@ -278,7 +278,7 @@ function Admin () {
                 }
               }}
             >
-              Delete
+							Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -298,7 +298,7 @@ function Admin () {
             </DialogTitle>
             {!newKey && (
               <DialogDescription>
-                Enter a name to identify this API key
+								Enter a name to identify this API key
               </DialogDescription>
             )}
           </DialogHeader>
@@ -321,13 +321,13 @@ function Admin () {
                     }}
                     variant="primary"
                   >
-                    Copy
+										Copy
                   </Button>
                 </div>
               </div>
 
               <p className="text-sm text-cerr dark:text-derr">
-                Make sure to copy this key now. You won't be able to see it again!
+								Make sure to copy this key now. You won't be able to see it again!
               </p>
 
               <DialogFooter>
@@ -338,7 +338,7 @@ function Admin () {
                     setNewKey(null);
                   }}
                 >
-                  Close
+									Close
                 </Button>
               </DialogFooter>
             </div>
@@ -352,8 +352,8 @@ function Admin () {
                   (p) => formData.get(`perm-${p.value}`) === "on",
                 ).map((p) => p.value);
                 handleCreateKey(
-                  formData.get("name") as string,
-                  selectedPerms,
+									formData.get("name") as string,
+									selectedPerms,
                 );
               }}
             >

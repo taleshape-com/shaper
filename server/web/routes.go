@@ -32,9 +32,16 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 					ID:   userID,
 				}
 			} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
+				var permissions string
+				if apiKey, ok := c.Get("api_key_obj").(*core.APIKey); ok {
+					if apiKey.Permissions != nil {
+						permissions = *apiKey.Permissions
+					}
+				}
 				actor = &core.Actor{
-					Type: core.ActorAPIKey,
-					ID:   apiKeyID,
+					Type:        core.ActorAPIKey,
+					ID:          apiKeyID,
+					Permissions: permissions,
 				}
 			} else if !app.LoginRequired {
 				actor = &core.Actor{
