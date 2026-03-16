@@ -38,27 +38,9 @@ type APIKey struct {
 	Name            string    `db:"name" json:"name"`
 	Hash            string    `db:"hash" json:"-"`
 	Salt            string    `db:"salt" json:"-"`
-	Permissions     *string   `db:"permissions" json:"-"`
 	PermissionsList []string  `db:"-" json:"permissions"`
 	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
 	CreatedBy       *string   `db:"created_by" json:"createdBy,omitempty"`
-}
-
-func (k APIKey) HasPermission(permission string) bool {
-	if k.Permissions == nil || *k.Permissions == "" {
-		return true // Default to all permissions for legacy keys
-	}
-	var perms []string
-	err := json.Unmarshal([]byte(*k.Permissions), &perms)
-	if err != nil {
-		return false
-	}
-	for _, p := range perms {
-		if p == permission {
-			return true
-		}
-	}
-	return false
 }
 
 type APIKeyListResult struct {
@@ -76,7 +58,11 @@ type CreateAPIKeyPayload struct {
 }
 
 func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
-	keys := []APIKey{}
+	type dbKey struct {
+		APIKey
+		Permissions *string `db:"permissions"`
+	}
+	keys := []dbKey{}
 	err := app.Sqlite.SelectContext(ctx, &keys,
 		`SELECT id, name, permissions, created_at, created_by
 		 FROM api_keys
@@ -85,15 +71,17 @@ func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
 		return APIKeyListResult{}, fmt.Errorf("error listing api keys: %w", err)
 	}
 
+	result := make([]APIKey, len(keys))
 	for i := range keys {
+		result[i] = keys[i].APIKey
 		if keys[i].Permissions == nil || *keys[i].Permissions == "" {
-			keys[i].PermissionsList = AllPermissions
+			result[i].PermissionsList = AllPermissions
 		} else {
-			_ = json.Unmarshal([]byte(*keys[i].Permissions), &keys[i].PermissionsList)
+			_ = json.Unmarshal([]byte(*keys[i].Permissions), &result[i].PermissionsList)
 		}
 	}
 
-	return APIKeyListResult{Keys: keys}, nil
+	return APIKeyListResult{Keys: result}, nil
 }
 
 func CreateAPIKey(app *App, ctx context.Context, name string, permissions []string) (string, string, error) {
