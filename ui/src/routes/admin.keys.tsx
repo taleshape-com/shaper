@@ -236,7 +236,10 @@ function Admin () {
                               handleUpdatePermissions(key, perm.value)
                             }
                           >
-                            {perm.label}
+                            <div className="flex gap-6 w-full justify-between items-end">
+                              <span>{perm.label}</span>
+                              <span className="font-mono text-xs text-ctext2">{perm.value}</span>
+                            </div>
                           </DropdownMenuCheckboxItem>
                         ))}
                       </DropdownMenuContent>
@@ -255,7 +258,8 @@ function Admin () {
             </TableBody>
           </Table>
         </TableRoot>
-      )}
+      )
+      }
 
       <Dialog open={deleteKeyDialog !== null} onOpenChange={(open) => !open && setDeleteKeyDialog(null)}>
         <DialogContent>
@@ -399,6 +403,6 @@ function Admin () {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
