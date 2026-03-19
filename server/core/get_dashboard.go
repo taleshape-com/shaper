@@ -55,6 +55,7 @@ var sideEffectSQLStatements = [][]string{
 // These SQL statements are allowed to read data.
 var allowedDataReadingStatements = [][]string{
 	{"SELECT"},
+	{"FROM"},
 	{"SUMMARIZE"},
 	{"DESC"},
 	{"DESCRIBE"},
