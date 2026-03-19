@@ -52,7 +52,7 @@ func (a Actor) HasPermission(ctx context.Context, db *sqlx.DB, permission string
 	}
 
 	if permissions == nil || *permissions == "" {
-		return true // Default for legacy keys
+		return false
 	}
 	var perms []string
 	err = json.Unmarshal([]byte(*permissions), &perms)

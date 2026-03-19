@@ -77,7 +77,7 @@ func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
 	for i := range keys {
 		result[i] = keys[i].APIKey
 		if keys[i].Permissions == nil || *keys[i].Permissions == "" {
-			result[i].PermissionsList = AllPermissions
+			result[i].PermissionsList = []string{}
 		} else {
 			_ = json.Unmarshal([]byte(*keys[i].Permissions), &result[i].PermissionsList)
 		}

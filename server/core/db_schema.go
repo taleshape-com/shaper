@@ -3,6 +3,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -82,6 +83,10 @@ func initSQLite(sdb *sqlx.DB) error {
 	}
 	// Ignore errors if column already exists
 	sdb.Exec(`ALTER TABLE api_keys ADD COLUMN permissions TEXT`)
+
+	// Give all permissions to legacy keys
+	allPerms, _ := json.Marshal(AllPermissions)
+	sdb.Exec(`UPDATE api_keys SET permissions = $1 WHERE permissions IS NULL OR permissions = ''`, string(allPerms))
 
 	// Create users table
 	_, err = sdb.Exec(`
