@@ -28,11 +28,11 @@ const (
 )
 
 var AllPermissions = []string{
-	PermissionReadMetrics,
-	PermissionIngestData,
+	PermissionGenerateJWT,
 	PermissionDeploy,
 	PermissionQueryData,
-	PermissionGenerateJWT,
+	PermissionIngestData,
+	PermissionReadMetrics,
 }
 
 type APIKey struct {
