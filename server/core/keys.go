@@ -20,11 +20,11 @@ import (
 const API_KEY_PREFIX = "shaperkey."
 
 const (
-	PermissionReadMetrics = "metrics"
-	PermissionIngestData  = "data:ingest"
+	PermissionGenerateJWT = "jwt"
 	PermissionDeploy      = "deploy"
 	PermissionQueryData   = "data:query"
-	PermissionGenerateJWT = "jwt"
+	PermissionIngestData  = "data:ingest"
+	PermissionReadMetrics = "metrics"
 )
 
 var AllPermissions = []string{
