@@ -3,6 +3,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -70,6 +71,7 @@ func initSQLite(sdb *sqlx.DB) error {
 			hash TEXT NOT NULL,
 			salt TEXT NOT NULL,
 			name TEXT NOT NULL,
+			permissions TEXT,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			created_by TEXT,
@@ -79,6 +81,12 @@ func initSQLite(sdb *sqlx.DB) error {
 	if err != nil {
 		return fmt.Errorf("error creating config table: %w", err)
 	}
+	// Ignore errors if column already exists
+	sdb.Exec(`ALTER TABLE api_keys ADD COLUMN permissions TEXT`)
+
+	// Give all permissions to legacy keys
+	allPerms, _ := json.Marshal(AllPermissions)
+	sdb.Exec(`UPDATE api_keys SET permissions = $1 WHERE permissions IS NULL OR permissions = ''`, string(allPerms))
 
 	// Create users table
 	_, err = sdb.Exec(`

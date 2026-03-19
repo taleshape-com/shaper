@@ -3,6 +3,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -104,6 +105,11 @@ func GetDashboardInfo(app *core.App) echo.HandlerFunc {
 
 		dashboard, err := core.GetDashboardInfo(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			c.Logger().Error("error getting dashboard query:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -145,6 +151,11 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 
 		err := core.SaveDashboardName(app, c.Request().Context(), c.Param("id"), request.Name)
 		if err != nil {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			c.Logger().Error("error saving dashboard name:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -180,6 +191,11 @@ func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 
 		err := core.SaveDashboardVisibility(app, c.Request().Context(), c.Param("id"), request.Visibility)
 		if err != nil {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			c.Logger().Error("error saving visibility:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -221,6 +237,11 @@ func SaveDashboardPassword(app *core.App) echo.HandlerFunc {
 
 		err := core.SaveDashboardPassword(app, c.Request().Context(), c.Param("id"), request.Password)
 		if err != nil {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			c.Logger().Error("error saving dashboard password:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -258,6 +279,11 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 
 		err := core.SaveDashboardQuery(app, c.Request().Context(), c.Param("id"), request.Content)
 		if err != nil {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			c.Logger().Error("error saving dashboard query:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -301,6 +327,11 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		}
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+			}
 			c.Logger().Error("error getting dashboard:", slog.Any("error", err))
 			// If the JWT is restricted to a dashboardId, we don't return the actual error to the client.
 			// But if the JWT is generic, we return it.
@@ -334,11 +365,15 @@ func DeleteDashboard(app *core.App) echo.HandlerFunc {
 
 		err := core.DeleteDashboard(app, c.Request().Context(), c.Param("id"))
 		if err != nil {
-			c.Logger().Error("error deleting dashboard:", slog.Any("error", err))
-			return c.JSONPretty(http.StatusBadRequest,
-				struct {
+			if errors.Is(err, core.ErrDashboardNotFound) {
+				return c.JSONPretty(http.StatusNotFound, struct {
 					Error string `json:"error"`
 				}{Error: err.Error()}, "  ")
+			}
+			c.Logger().Error("error deleting dashboard:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
 		}
 
 		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
@@ -578,7 +613,7 @@ func GetDashboardStatus(app *core.App) echo.HandlerFunc {
 			c.Logger().Error("error getting dashboard status:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
-			}{Error: "not found"}, "  ")
+			}{Error: "Dashboard Not Found"}, "  ")
 		}
 		if dashboard.Visibility == nil ||
 			(*dashboard.Visibility == "private") ||
@@ -586,7 +621,7 @@ func GetDashboardStatus(app *core.App) echo.HandlerFunc {
 			(app.NoPasswordProtectedSharing && *dashboard.Visibility == "password-protected") {
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
-			}{Error: "not found"}, "  ")
+			}{Error: "Dashboard Not Found"}, "  ")
 		}
 		return c.JSON(http.StatusOK, struct {
 			Visibility string `json:"visibility"`
