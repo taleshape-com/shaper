@@ -24,6 +24,7 @@ const (
 	PermissionIngestData  = "data:ingest"
 	PermissionDeploy      = "deploy"
 	PermissionQueryData   = "data:query"
+	PermissionGenerateJWT = "jwt"
 )
 
 var AllPermissions = []string{
@@ -31,6 +32,7 @@ var AllPermissions = []string{
 	PermissionIngestData,
 	PermissionDeploy,
 	PermissionQueryData,
+	PermissionGenerateJWT,
 }
 
 type APIKey struct {

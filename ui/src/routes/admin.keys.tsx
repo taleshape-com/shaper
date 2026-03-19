@@ -58,6 +58,7 @@ const PERMISSIONS = [
   { label: "Ingest Data", value: "data:ingest" },
   { label: "Deploy", value: "deploy" },
   { label: "Query Data", value: "data:query" },
+  { label: "Generate JWT", value: "jwt" },
 ];
 
 interface NewAPIKeyResponse {
