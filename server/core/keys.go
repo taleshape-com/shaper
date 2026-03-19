@@ -101,10 +101,6 @@ func CreateAPIKey(app *App, ctx context.Context, name string, permissions []stri
 	mac.Write([]byte(key))
 	hash := hex.EncodeToString(mac.Sum(nil))
 
-	if permissions == nil {
-		permissions = AllPermissions
-	}
-
 	payload := CreateAPIKeyPayload{
 		ID:          id,
 		Timestamp:   time.Now(),
