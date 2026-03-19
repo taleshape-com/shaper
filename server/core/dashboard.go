@@ -2,7 +2,12 @@
 
 package core
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrDashboardNotFound = errors.New("Dashboard Not Found")
 
 const TMP_DASHBOARD_PREFIX = "shaper-tmp."
 

@@ -97,6 +97,18 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
 
+		// Check permission
+		var actor *core.Actor
+		if authInfo.IsUser {
+			actor = &core.Actor{Type: core.ActorUser, ID: authInfo.UserID}
+		} else if authInfo.APIKeyID != "" {
+			actor = &core.Actor{Type: core.ActorAPIKey, ID: authInfo.APIKeyID}
+		}
+
+		if actor != nil && !actor.HasPermission(c.Request().Context(), app.Sqlite, core.PermissionGenerateJWT) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "Missing required permission: " + core.PermissionGenerateJWT})
+		}
+
 		// Add user or API key info to claims
 		claims := jwt.MapClaims{
 			"exp": time.Now().Add(app.JWTExp).Unix(),

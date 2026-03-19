@@ -55,6 +55,7 @@ var sideEffectSQLStatements = [][]string{
 // These SQL statements are allowed to read data.
 var allowedDataReadingStatements = [][]string{
 	{"SELECT"},
+	{"FROM"},
 	{"SUMMARIZE"},
 	{"DESC"},
 	{"DESCRIBE"},
@@ -110,7 +111,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if sqlString == "" {
 			continue
 		}
-		if !isAllowedStatement(sqlString) {
+		if !IsAllowedStatement(sqlString) {
 			return result, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
 		}
 		if nextIsDownload {
@@ -660,7 +661,7 @@ func matchesPrefix(upperSql string, prefix []string) bool {
 	return true
 }
 
-func isAllowedStatement(sql string) bool {
+func IsAllowedStatement(sql string) bool {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
@@ -674,11 +675,11 @@ func isAllowedStatement(sql string) bool {
 			return false
 		}
 		for _, cte := range ctes {
-			if !isAllowedStatement(cte) {
+			if !IsAllowedStatement(cte) {
 				return false
 			}
 		}
-		return isAllowedStatement(remaining)
+		return IsAllowedStatement(remaining)
 	}
 
 	// Handle parenthesized queries like (SELECT 1)
@@ -687,7 +688,7 @@ func isAllowedStatement(sql string) bool {
 		if err != nil {
 			return false
 		}
-		if !isAllowedStatement(inner) {
+		if !IsAllowedStatement(inner) {
 			return false
 		}
 		remaining = strings.TrimSpace(remaining)
@@ -706,7 +707,7 @@ func isAllowedStatement(sql string) bool {
 				} else if strings.HasPrefix(restUpper, "DISTINCT") {
 					rest = strings.TrimSpace(rest[len("DISTINCT"):])
 				}
-				return isAllowedStatement(rest)
+				return IsAllowedStatement(rest)
 			}
 		}
 		// Also handle ORDER BY, LIMIT etc which can follow a parenthesized query
@@ -737,7 +738,7 @@ func isAllowedStatement(sql string) bool {
 				if rest == "" {
 					return true
 				}
-				return isAllowedStatement(rest)
+				return IsAllowedStatement(rest)
 			}
 			return true
 		}

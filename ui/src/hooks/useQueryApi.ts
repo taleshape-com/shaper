@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { goToLoginPage } from "../lib/utils";
 import { fetchWithRetry } from "../lib/fetchWithRetry";
 
-export type QueryApiFunc = (url: string, options?: { method?: "POST" | "DELETE"; body?: any; signal?: AbortSignal }) => Promise<any>;
+export type QueryApiFunc = (url: string, options?: { method?: "GET" | "POST" | "PUT" | "DELETE"; body?: any; signal?: AbortSignal }) => Promise<any>;
 
 // Use to call API with JWT authentication and redirect to login page on 401
 export const useQueryApi = (): QueryApiFunc => {

@@ -30,14 +30,36 @@ import {
   TableRow,
 } from "../components/tremor/Table";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { RiAddFill, RiKeyFill, RiTableFill } from "@remixicon/react";
+import {
+  RiAddFill,
+  RiArrowDownSLine,
+  RiKeyFill,
+  RiTableFill,
+} from "@remixicon/react";
 import { Tooltip } from "../components/tremor/Tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/tremor/DropdownMenu";
 
 interface APIKey {
   id: string;
   name: string;
+  permissions: string[];
   createdAt: string;
 }
+
+const PERMISSIONS = [
+  { label: "Generate JWT", value: "jwt" },
+  { label: "Deploy", value: "deploy" },
+  { label: "Query Data", value: "data:query" },
+  { label: "Ingest Data", value: "data:ingest" },
+  { label: "Read Metrics", value: "metrics" },
+];
 
 interface NewAPIKeyResponse {
   id: string;
@@ -90,13 +112,39 @@ function Admin () {
     }
   };
 
-  const handleCreateKey = async (name: string) => {
+  const handleCreateKey = async (name: string, permissions: string[]) => {
     try {
       const data = await queryApi("keys", {
         method: "POST",
-        body: { name },
+        body: { name, permissions },
       });
       setNewKey(data);
+      router.invalidate();
+    } catch (error) {
+      if (isRedirect(error)) {
+        return navigate(error.options);
+      }
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An error occurred",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleUpdatePermissions = async (key: APIKey, permission: string) => {
+    const newPermissions = key.permissions.includes(permission)
+      ? key.permissions.filter((p) => p !== permission)
+      : [...key.permissions, permission];
+
+    try {
+      await queryApi(`keys/${key.id}/permissions`, {
+        method: "PUT",
+        body: { permissions: newPermissions },
+      });
       router.invalidate();
     } catch (error) {
       if (isRedirect(error)) {
@@ -148,12 +196,13 @@ function Admin () {
               <TableRow>
                 <TableHeaderCell className="text-md text-ctext dark:text-dtext">Name</TableHeaderCell>
                 <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">Created</TableHeaderCell>
+                <TableHeaderCell className="text-md text-ctext dark:text-dtext">Permissions</TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {data.keys.map((key) => (
-                <TableRow key={key.id}>
+                <TableRow key={key.id} className="[tbody_&]:odd:bg-cbgs [tbody_&]:odd:dark:bg-dbgs [tbody_&]:hover:bg-cbga [tbody_&]:dark:hover:bg-dbga">
                   <TableCell className="font-medium text-ctext dark:text-dtext">
                     {key.name}
                   </TableCell>
@@ -164,6 +213,37 @@ function Admin () {
                     >
                       {new Date(key.createdAt).toLocaleDateString()}
                     </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          className="flex items-center gap-1 py-1 my-0"
+                        >
+                          {key.permissions?.length ?? 0} Permissions
+                          <RiArrowDownSLine className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuLabel>Manage Permissions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {PERMISSIONS.map((perm) => (
+                          <DropdownMenuCheckboxItem
+                            key={perm.value}
+                            checked={key.permissions?.includes(perm.value) ?? false}
+                            onCheckedChange={() =>
+                              handleUpdatePermissions(key, perm.value)
+                            }
+                          >
+                            <div className="flex gap-6 w-full justify-between items-end">
+                              <span>{perm.label}</span>
+                              <span className="font-mono text-xs text-ctext2">{perm.value}</span>
+                            </div>
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                   <TableCell>
                     <button
@@ -178,7 +258,8 @@ function Admin () {
             </TableBody>
           </Table>
         </TableRoot>
-      )}
+      )
+      }
 
       <Dialog open={deleteKeyDialog !== null} onOpenChange={(open) => !open && setDeleteKeyDialog(null)}>
         <DialogContent>
@@ -272,16 +353,45 @@ function Admin () {
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
-                handleCreateKey(formData.get("name") as string);
+                const selectedPerms = PERMISSIONS.filter(
+                  (p) => formData.get(`perm-${p.value}`) === "on",
+                ).map((p) => p.value);
+                handleCreateKey(
+                  formData.get("name") as string,
+                  selectedPerms,
+                );
               }}
             >
-              <Input
-                id="name"
-                name="name"
-                placeholder="Enter key name"
-                required
-                autoFocus
-              />
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Enter key name"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Permissions</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PERMISSIONS.map((perm) => (
+                    <label
+                      key={perm.value}
+                      className="flex items-center gap-2 p-2 rounded border border-cb dark:border-db cursor-pointer hover:bg-cbga dark:hover:bg-dbga"
+                    >
+                      <input
+                        type="checkbox"
+                        name={`perm-${perm.value}`}
+                        defaultChecked={false}
+                        className="rounded border-cb dark:border-db text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               <DialogFooter>
                 <DialogClose asChild>
@@ -293,6 +403,6 @@ function Admin () {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
