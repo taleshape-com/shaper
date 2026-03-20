@@ -45,16 +45,16 @@ function Admin () {
         <meta name="description" content="Admin Settings" />
       </Helmet>
 
-      <div className="px-4 pb-2 min-h-dvh flex flex-col">
+      <div className="px-3 pb-2 min-h-dvh flex flex-col">
         <div className="flex">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <h1 className="font-semibold font-display flex-grow pb-2 pt-2.5 my-2">
+          <h1 className="font-semibold font-display flex-grow pb-4 pt-3.5">
             <RiAdminLine className="size-4 inline ml-1 mr-1 -mt-1" />
             Admin
           </h1>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow flex flex-col">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow flex flex-col mt-2">
           <div className="px-6 pt-6">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>

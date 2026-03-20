@@ -111,16 +111,16 @@ function Settings () {
         <title>Settings</title>
       </Helmet>
 
-      <div className="px-4 pb-2 min-h-dvh flex flex-col">
+      <div className="px-3 pb-3 min-h-dvh flex flex-col">
         <div className="flex">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <h1 className="font-semibold font-display flex-grow pb-2 pt-2.5 my-2">
+          <h1 className="font-semibold font-display flex-grow pb-4 pt-3.5">
             <RiSettings4Line className="size-4 inline ml-1 mr-1 -mt-1" />
-						Settings
+            Settings
           </h1>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-3 mt-2">
           <div className="bg-cbgs dark:bg-dbgs rounded-md shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Update Profile</h2>
             <form onSubmit={handleUpdateName} className="space-y-4 max-w-md">

@@ -567,8 +567,8 @@ function Index () {
         />
       </Helmet>
 
-      <div className="pb-4 h-dvh flex flex-col">
-        <div className="flex pl-1 pr-1 md:pr-2">
+      <div className="pb-3 h-dvh flex flex-col">
+        <div className="flex pl-1 pr-1 md:px-2">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
           <div className="flex-grow flex pb-3 pt-2.5 gap-2 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
@@ -588,7 +588,7 @@ function Index () {
                         : { path: breadcrumb.path }
                     }
                     className={cx(
-                      "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 rounded",
+                      "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -mx-1 rounded",
                       "whitespace-nowrap",
                       {
                         "outline-2 outline-dashed -outline-offset-2 outline-cprimary dark:outline-dprimary":
@@ -625,7 +625,7 @@ function Index () {
           </div>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:mt-2 md:mx-4 md:p-4 h-[calc(100%-4rem)]">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:mt-2 md:mx-3 md:p-3 h-[calc(100%-4rem)]">
           {data.apps.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <RiLayoutFill
