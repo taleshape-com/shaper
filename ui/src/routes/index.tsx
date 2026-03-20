@@ -567,10 +567,10 @@ function Index () {
         />
       </Helmet>
 
-      <div className="pb-4 md:px-4 h-dvh flex flex-col">
-        <div className="flex pl-4 pr-2 md:px-0">
+      <div className="pb-4 h-dvh flex flex-col">
+        <div className="flex pl-1 pr-1 md:pr-2">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-1 overflow-x-auto">
+          <div className="flex-grow flex pb-3 pt-2.5 gap-2 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (
                 <div key={breadcrumb.path} className="flex items-center gap-1">
@@ -625,7 +625,7 @@ function Index () {
           </div>
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-4 h-[calc(100%-4rem)]">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:mt-2 md:mx-4 md:p-4 h-[calc(100%-4rem)]">
           {data.apps.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <RiLayoutFill

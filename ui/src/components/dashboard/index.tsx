@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { ErrorBoundary } from "react-error-boundary";
-import { Result } from "../../lib/types";
+import { Result, AuthError } from "../../lib/types";
 import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
-import { cx, getSearchParamString, VarsParamSchema, getRenderMode } from "../../lib/utils";
+import { cx, getSearchParamString, VarsParamSchema, getRenderMode, goToLoginPage } from "../../lib/utils";
 import { fetchWithRetry } from "../../lib/fetchWithRetry";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
@@ -111,6 +111,14 @@ export function Dashboard ({
       // Swallow abort errors (they are expected when a new request starts)
       if ((err as any)?.name === "AbortError") {
         return;
+      }
+      if (err instanceof AuthError) {
+        // Only redirect to login if we are in the main app (not embedded)
+        // We detect this by checking if baseUrl is default and not in PDF mode
+        if (baseUrl === window.shaper.defaultBaseUrl && getRenderMode() !== "pdf") {
+          onError?.(goToLoginPage() as unknown as Error);
+          return;
+        }
       }
       setError(err as Error);
       onError?.(err as Error);
@@ -634,6 +642,9 @@ const fetchDashboard = async (
     },
     signal,
   });
+  if (res.status === 401) {
+    throw new AuthError("Session expired");
+  }
   const json = await res.json();
   if (res.status !== 200) {
     throw new Error(

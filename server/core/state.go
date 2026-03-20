@@ -73,6 +73,10 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleDeleteSession
 	case "delete_user":
 		handler = HandleDeleteUser
+	case "update_user_password":
+		handler = HandleUpdateUserPassword
+	case "update_user_name":
+		handler = HandleUpdateUserName
 	case "create_invite":
 		handler = HandleCreateInvite
 	case "claim_invite":

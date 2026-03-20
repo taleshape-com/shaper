@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import React, { useState, useEffect, useCallback } from "react";
-import { cx, parseJwt } from "../../lib/utils";
+import React, { useState, useEffect } from "react";
+import { cx } from "../../lib/utils";
 import {
   RiMenuLine,
   RiLayoutLine,
@@ -10,13 +10,20 @@ import {
   RiLogoutBoxRLine,
   RiBook2Line,
   RiExternalLinkLine,
+  RiSettings4Line,
 } from "@remixicon/react";
-import { logout, getJwt } from "../../lib/auth";
-import { isRedirect, Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { Button } from "../../components/tremor/Button";
+import { logout, useAuth } from "../../lib/auth";
+import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { MenuContext } from "../../contexts/MenuContext";
 import { getSystemConfig } from "../../lib/system";
 import { Tooltip } from "../tremor/Tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../tremor/DropdownMenu";
 
 const isLg = () => window.innerWidth >= 1024;
 const MENU_STATE_KEY = "shaper-menu-open";
@@ -25,6 +32,7 @@ export function MenuProvider ({
   children,
   isHome = false,
   isAdmin = false,
+  isSettings = false,
   isNewPage = false,
   currentPath = "/",
   appType,
@@ -32,6 +40,7 @@ export function MenuProvider ({
   children: React.ReactNode;
   isHome?: boolean;
   isAdmin?: boolean;
+  isSettings?: boolean;
   isNewPage?: boolean;
   currentPath?: string;
   appType?: "dashboard" | "task";
@@ -62,25 +71,7 @@ export function MenuProvider ({
   const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
   const [title, setTitle] = useState<string | React.ReactNode | undefined>(undefined);
-  const [userName, setUserName] = useState<string>("");
-
-  const fetchUserName = useCallback(async () => {
-    try {
-      const jwt = await getJwt();
-      const decoded = parseJwt(jwt);
-      setUserName(decoded.userName || "");
-    } catch (error) {
-      if (isRedirect(error)) {
-        navigate(error.options);
-        return;
-      }
-      console.error("Failed to fetch username:", error);
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    fetchUserName();
-  }, [fetchUserName]);
+  const { userName, refreshUserName } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -153,6 +144,7 @@ export function MenuProvider ({
       setIsMenuOpen,
       setExtraContent,
       setTitle,
+      refreshUserName,
     }}>
       <div
         className={cx(
@@ -220,34 +212,67 @@ export function MenuProvider ({
             Docs
             <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
-          <Link
-            to="/admin"
-            disabled={isAdmin}
-            className={cx(
-              "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
-              {
-                "text-ctext2 dark:text-dtext2": !isAdmin,
-                "underline cursor-default": isAdmin,
-              },
-            )}
-          >
-            <RiAdminLine className="size-4 inline mr-1 -mt-1" />
-            Admin
-          </Link>
-          {config.loginRequired && (
-            <div className="flex items-center gap-2 pt-4 mx-4 border-t border-cb dark:border-db">
-              <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow">
-                {userName}
-              </span>
-              <Button
-                onClick={async () => {
-                  navigate((await logout()).options);
-                }}
-                variant="light"
-              >
-                <RiLogoutBoxRLine className="size-4 inline mr-0.5 -ml-0.5 -mt-0.5" />
-                Logout
-              </Button>
+          {!userName && (
+            <Link
+              to="/admin"
+              disabled={isAdmin}
+              className={cx(
+                "block px-4 pt-2 hover:text-ctext hover:dark:text-dtext text-sm hover:underline",
+                {
+                  "text-ctext2 dark:text-dtext2": !isAdmin,
+                  "underline cursor-default": isAdmin,
+                },
+              )}
+            >
+              <RiAdminLine className="size-4 inline mr-1 -mt-1" />
+              Admin
+            </Link>
+          )}
+          {userName && (
+            <div className="pt-4 mx-4 border-t border-cb dark:border-db">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 w-full text-left outline-none group">
+                    <span className="text-sm text-ctext2 dark:text-dtext2 overflow-hidden whitespace-nowrap text-ellipsis flex-grow group-hover:text-ctext group-hover:dark:text-dtext">
+                      {userName}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="top" className="w-48">
+                  <DropdownMenuItem disabled={isSettings}>
+                    <Link
+                      to="/settings"
+                      className={cx("flex gap-2 items-center", {
+                        "underline cursor-default": isSettings,
+                      })}
+                    >
+                      <RiSettings4Line className="size-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={isAdmin} className="mt-1">
+                    <Link
+                      to="/admin"
+                      className={cx("flex gap-2 items-center", {
+                        "underline cursor-default": isAdmin,
+                      })}
+                    >
+                      <RiAdminLine className="size-4" />
+                      Admin
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      navigate((await logout()).options);
+                    }}
+                  >
+                    <RiLogoutBoxRLine className="size-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>

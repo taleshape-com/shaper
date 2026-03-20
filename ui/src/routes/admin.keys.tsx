@@ -142,7 +142,7 @@ function Admin () {
 
     try {
       await queryApi(`keys/${key.id}/permissions`, {
-        method: "PUT",
+        method: "POST",
         body: { permissions: newPermissions },
       });
       router.invalidate();

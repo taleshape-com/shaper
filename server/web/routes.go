@@ -182,12 +182,14 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		apiWithAuth.POST("/run/task", handler.RunTask(app))
 	}
 	apiWithAuth.GET("/users", handler.ListUsers(app))
+	apiWithAuth.POST("/users/:id/password", handler.UpdatePassword(app))
+	apiWithAuth.POST("/users/:id/name", handler.UpdateName(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
 	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
 	apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
 	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
-	apiWithAuth.PUT("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
+	apiWithAuth.POST("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
 	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
 	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
 

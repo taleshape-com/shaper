@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
+export class AuthError extends Error {
+  constructor (message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
 export interface IApp {
   id: string;
   name: string;
