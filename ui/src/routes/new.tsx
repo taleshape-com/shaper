@@ -445,7 +445,7 @@ function NewDashboard () {
                           ? undefined
                           : { path: breadcrumb.path }
                       }
-                      className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -my-1 -mx-1 rounded whitespace-nowrap"
+                      className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -mx-1 rounded whitespace-nowrap"
                     >
                       {breadcrumb.name}
                     </Link>

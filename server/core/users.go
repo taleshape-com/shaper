@@ -166,6 +166,151 @@ func HandleDeleteInvite(app *App, data []byte) bool {
 	return true
 }
 
+type UpdateUserPasswordPayload struct {
+	UserID           string    `json:"userId"`
+	PasswordHash     string    `json:"passwordHash"`
+	Timestamp        time.Time `json:"timestamp"`
+	UpdatedBy        string    `json:"updatedBy"`
+	ExcludeSessionID string    `json:"excludeSessionId,omitempty"`
+}
+
+func getUser(app *App, ctx context.Context, id string) (*User, error) {
+	var user User
+	err := app.Sqlite.GetContext(ctx, &user, `SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+	return &user, nil
+}
+
+func UpdateUserPassword(app *App, ctx context.Context, userID string, currentPassword string, newPassword string, excludeSessionID string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
+
+	// Get current user to check password
+	user, err := getUser(app, ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	// Validate current password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
+		return fmt.Errorf("invalid current password")
+	}
+
+	// Generate new password hash
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	payload := UpdateUserPasswordPayload{
+		UserID:           userID,
+		PasswordHash:     string(passwordHash),
+		Timestamp:        time.Now(),
+		UpdatedBy:        actor.String(),
+		ExcludeSessionID: excludeSessionID,
+	}
+
+	return app.SubmitState(ctx, "update_user_password", payload)
+}
+
+func HandleUpdateUserPassword(app *App, data []byte) bool {
+	var payload UpdateUserPasswordPayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal update user password payload", slog.Any("error", err))
+		return false
+	}
+
+	tx, err := app.Sqlite.Begin()
+	if err != nil {
+		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
+		return false
+	}
+	defer tx.Rollback()
+
+	// Update password hash
+	_, err = tx.Exec(
+		`UPDATE users SET password_hash = $1, updated_at = $2, updated_by = $3 WHERE id = $4`,
+		payload.PasswordHash, payload.Timestamp, payload.UpdatedBy, payload.UserID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to update user password in DB", slog.Any("error", err))
+		return false
+	}
+
+	// Invalidate other sessions for this user
+	query := `DELETE FROM sessions WHERE user_id = $1`
+	args := []any{payload.UserID}
+	if payload.ExcludeSessionID != "" {
+		query += ` AND id != $2`
+		args = append(args, payload.ExcludeSessionID)
+	}
+	_, err = tx.Exec(query, args...)
+	if err != nil {
+		app.Logger.Error("failed to delete user sessions", slog.Any("error", err))
+		return false
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		app.Logger.Error("failed to commit transaction", slog.Any("error", err))
+		return false
+	}
+	return true
+}
+
+type UpdateUserNamePayload struct {
+	UserID    string    `json:"userId"`
+	Name      string    `json:"name"`
+	Timestamp time.Time `json:"timestamp"`
+	UpdatedBy string    `json:"updatedBy"`
+}
+
+func UpdateUserName(app *App, ctx context.Context, userID string, newName string) error {
+	actor := ActorFromContext(ctx)
+	if actor == nil {
+		return fmt.Errorf("no actor in context")
+	}
+
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return fmt.Errorf("name cannot be empty")
+	}
+
+	payload := UpdateUserNamePayload{
+		UserID:    userID,
+		Name:      newName,
+		Timestamp: time.Now(),
+		UpdatedBy: actor.String(),
+	}
+
+	return app.SubmitState(ctx, "update_user_name", payload)
+}
+
+func HandleUpdateUserName(app *App, data []byte) bool {
+	var payload UpdateUserNamePayload
+	err := json.Unmarshal(data, &payload)
+	if err != nil {
+		app.Logger.Error("failed to unmarshal update user name payload", slog.Any("error", err))
+		return false
+	}
+
+	_, err = app.Sqlite.Exec(
+		`UPDATE users SET name = $1, updated_at = $2, updated_by = $3 WHERE id = $4`,
+		payload.Name, payload.Timestamp, payload.UpdatedBy, payload.UserID,
+	)
+	if err != nil {
+		app.Logger.Error("failed to update user name in DB", slog.Any("error", err))
+		return false
+	}
+
+	return true
+}
+
 type UserList struct {
 	Users                    []User   `json:"users"`
 	Invites                  []Invite `json:"invites"`

@@ -560,7 +560,7 @@ function DashboardEditor () {
                   content="Click to edit dashboard name"
                 >
                   <h1
-                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
+                    className="font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-1 rounded inline-block"
                     onClick={() => setEditingName(true)}
                   >
                     {name}

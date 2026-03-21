@@ -140,10 +140,7 @@ DropdownMenuContent.displayName = "DropdownMenuContent";
 
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitives.Item>,
-  Omit<
-    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Item>,
-    "asChild"
-  > & {
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Item> & {
     shortcut?: string;
     hint?: string;
   }

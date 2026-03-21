@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { isEqual } from "lodash";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   localStorageTokenKey,
   localStorageVariablesKey,
+  localStorageJwtKey,
   AuthContext,
   Variables,
   getVariables,
   getVariablesString,
   refreshJwt,
+  getJwt,
 } from "../../lib/auth";
+import { parseJwt } from "../../lib/utils";
 
 const getSessionToken = async (email: string, password: string) => {
   const response = await fetch(`${window.shaper.defaultBaseUrl}api/login`, {
@@ -30,6 +33,24 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
     getVariables(getVariablesString()),
   );
   const [hash, setHash] = useState<string>(getVariablesString());
+  const [userName, setUserName] = useState<string>("");
+  const [userId, setUserId] = useState<string>("");
+
+  const updateUserInfoFromJwt = useCallback((jwt: string | null) => {
+    if (!jwt) {
+      setUserName("");
+      setUserId("");
+      return;
+    }
+    try {
+      const decoded = parseJwt(jwt);
+      setUserName(decoded.userName || "");
+      setUserId(decoded.userId || "");
+    } catch {
+      setUserName("");
+      setUserId("");
+    }
+  }, []);
 
   const updateJwtWithVars = useCallback(async (token: string, vars: Variables) => {
     const jwt = await refreshJwt(token, vars);
@@ -42,8 +63,23 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
     localStorage.setItem(localStorageVariablesKey, JSON.stringify(vars));
     setHash(JSON.stringify(vars));
     setVariables(vars);
+    updateUserInfoFromJwt(jwt);
     return true;
-  }, []);
+  }, [updateUserInfoFromJwt]);
+
+  const refreshUserName = useCallback(async () => {
+    try {
+      const jwt = await getJwt(true);
+      updateUserInfoFromJwt(jwt);
+    } catch (error) {
+      console.error("Failed to refresh username:", error);
+    }
+  }, [updateUserInfoFromJwt]);
+
+  useEffect(() => {
+    const jwt = localStorage.getItem(localStorageJwtKey);
+    updateUserInfoFromJwt(jwt);
+  }, [updateUserInfoFromJwt]);
 
   const login = useCallback(
     async (email: string, password: string, vars?: Variables) => {
@@ -76,6 +112,9 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
         hash,
         variables,
         updateVariables,
+        userName,
+        userId,
+        refreshUserName,
       }}
     >
       {children}
