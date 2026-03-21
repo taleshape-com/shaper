@@ -7,11 +7,9 @@ export const MenuContext = React.createContext<{
   setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean | null>>;
   setExtraContent: React.Dispatch<React.SetStateAction<React.ReactNode>>;
   setTitle: React.Dispatch<React.SetStateAction<string | React.ReactNode | undefined>>;
-  refreshUserName: () => Promise<void>;
-    }>({
-      isMenuOpen: false,
-      setIsMenuOpen: () => { },
-      setExtraContent: () => { },
-      setTitle: () => { },
-      refreshUserName: async () => { },
-    });
+}>({
+  isMenuOpen: false,
+  setIsMenuOpen: () => { },
+  setExtraContent: () => { },
+  setTitle: () => { },
+});

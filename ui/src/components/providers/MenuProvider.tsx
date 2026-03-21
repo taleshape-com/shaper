@@ -71,7 +71,7 @@ export function MenuProvider ({
   const [defaultOpen, setDefaultOpen] = useState(isLg());
   const [extraContent, setExtraContent] = useState<React.ReactNode | null>(null);
   const [title, setTitle] = useState<string | React.ReactNode | undefined>(undefined);
-  const { userName, refreshUserName } = useAuth();
+  const { userName } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -144,7 +144,6 @@ export function MenuProvider ({
       setIsMenuOpen,
       setExtraContent,
       setTitle,
-      refreshUserName,
     }}>
       <div
         className={cx(
