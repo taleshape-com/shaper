@@ -174,7 +174,7 @@ type UpdateUserPasswordPayload struct {
 	ExcludeSessionID string    `json:"excludeSessionId,omitempty"`
 }
 
-func GetUser(app *App, ctx context.Context, id string) (*User, error) {
+func getUser(app *App, ctx context.Context, id string) (*User, error) {
 	var user User
 	err := app.Sqlite.GetContext(ctx, &user, `SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
@@ -190,7 +190,7 @@ func UpdateUserPassword(app *App, ctx context.Context, userID string, currentPas
 	}
 
 	// Get current user to check password
-	user, err := GetUser(app, ctx, userID)
+	user, err := getUser(app, ctx, userID)
 	if err != nil {
 		return err
 	}
