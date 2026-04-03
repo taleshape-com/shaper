@@ -3,17 +3,27 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"shaper/server/core"
 	"shaper/server/pdf"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"github.com/nrednav/cuid2"
 )
+
+type PdfDownloadIntent struct {
+	DashboardID string         `json:"dashboardId"`
+	QueryParams url.Values     `json:"queryParams"`
+	Variables   map[string]any `json:"variables"`
+	JWTToken    string         `json:"jwtToken"`
+}
 
 func CreateDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -493,7 +503,7 @@ func DownloadQuery(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.HandlerFunc {
+func RequestDashboardPdf(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		jwtToken := c.Get("user").(*jwt.Token)
 		claims := jwtToken.Claims.(jwt.MapClaims)
@@ -524,7 +534,57 @@ func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 				}{Error: "Unauthorized"}, "  ")
 			}
 		}
+
+		intent := PdfDownloadIntent{
+			DashboardID: idParam,
+			QueryParams: c.QueryParams(),
+			Variables:   variables,
+			JWTToken:    jwtToken.Raw,
+		}
+
+		j, err := json.Marshal(intent)
+		if err != nil {
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+
+		key := cuid2.Generate()
+		_, err = app.PdfDownloadsKv.Put(c.Request().Context(), key, j)
+		if err != nil {
+			c.Logger().Error("failed to put pdf download intent into KV:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+
+		return c.JSON(http.StatusOK, struct {
+			Key string `json:"key"`
+		}{
+			Key: key,
+		})
+	}
+}
+
+func DownloadPdfByKey(app *core.App, internalUrl string, pdfDateFormat string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		key := c.Param("key")
 		filename := c.Param("filename")
+
+		entry, err := app.PdfDownloadsKv.Get(c.Request().Context(), key)
+		if err != nil {
+			return c.JSONPretty(http.StatusNotFound, struct {
+				Error string `json:"error"`
+			}{Error: "Download not found or expired"}, "  ")
+		}
+
+		var intent PdfDownloadIntent
+		if err := json.Unmarshal(entry.Value(), &intent); err != nil {
+			c.Logger().Error("failed to unmarshal pdf download intent:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
 
 		c.Response().Header().Set(echo.HeaderContentType, "application/pdf")
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
@@ -537,16 +597,16 @@ func DownloadPdf(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 		writer := c.Response().Writer
 
 		// Start the streaming query and write directly to response
-		err := pdf.StreamDashboardPdf(
+		err = pdf.StreamDashboardPdf(
 			c.Request().Context(),
 			app.Logger,
 			writer,
 			internalUrl,
 			pdfDateFormat,
-			idParam,
-			c.QueryParams(),
-			variables,
-			jwtToken,
+			intent.DashboardID,
+			intent.QueryParams,
+			intent.Variables,
+			&jwt.Token{Raw: intent.JWTToken},
 		)
 
 		if err != nil {

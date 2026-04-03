@@ -28,7 +28,7 @@ https://taleshape.com/shaper/docs/
 
 ## Features
 
-**Business Intelligence**
+**Data Visualization**
 
 - **Open Source** & Self-Hosted
 - **SQL-First** and AI-Ready

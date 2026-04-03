@@ -31,25 +31,57 @@ function DashboardButton ({
     setIsLoading(true);
     try {
       const jwt = await getJwt();
-      const url = `${baseUrl}${data[0][0]}`;
-      const response = await fetch(url, {
-        headers: {
-          Authorization: jwt,
-        },
-      });
+      const originalUrl = `${data[0][0]}`;
+      const isPdf = originalUrl.includes("/pdf/");
 
-      if (!response.ok) {
-        throw new Error("Download failed");
+      if (isPdf) {
+        const [urlWithoutParams, params] = originalUrl.split("?");
+        const parts = urlWithoutParams.split("/");
+        // Expected: /api/dashboards/:id/pdf/:filename
+        const dashboardId = parts[3];
+        const filename = parts[5];
+
+        const response = await fetch(`${baseUrl}/api/dashboards/${dashboardId}/pdf${params ? `?${params}` : ""}`, {
+          method: "POST",
+          headers: {
+            Authorization: jwt,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to request PDF");
+        }
+
+        const { key } = await response.json();
+        const downloadUrl = `${baseUrl}/api/download/${key}/${filename}`;
+
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        const url = `${baseUrl}${originalUrl}`;
+        const response = await fetch(url, {
+          headers: {
+            Authorization: jwt,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Download failed");
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = url.split("#")[0].split("?")[0].split("/").pop() ?? "download";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = url.split("#")[0].split("?")[0].split("/").pop() ?? "download";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
     } catch (error) {
       console.error("Download error:", error);
       // Handle error (e.g., show an error message to the user)

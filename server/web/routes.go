@@ -172,7 +172,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
 	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.GET("/dashboards/:id/pdf/:filename", handler.DownloadPdf(app, internalUrl, pdfDateFormat))
+	apiWithAuth.POST("/dashboards/:id/pdf", handler.RequestDashboardPdf(app))
+	e.GET("/api/download/:key/:filename", handler.DownloadPdfByKey(app, internalUrl, pdfDateFormat))
 	if !app.NoTasks {
 		apiWithAuth.POST("/tasks", handler.CreateTask(app))
 		apiWithAuth.GET("/tasks/:id", handler.GetTask(app))
