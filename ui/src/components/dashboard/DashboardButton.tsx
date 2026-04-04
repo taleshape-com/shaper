@@ -31,57 +31,27 @@ function DashboardButton ({
     setIsLoading(true);
     try {
       const jwt = await getJwt();
-      const originalUrl = `${data[0][0]}`;
-      const isPdf = originalUrl.includes("/pdf/");
+      const response = await fetch(`${baseUrl}${data[0][0]}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: jwt,
+        },
+      });
 
-      if (isPdf) {
-        const [urlWithoutParams, params] = originalUrl.split("?");
-        const parts = urlWithoutParams.split("/");
-        // Expected: /api/dashboards/:id/pdf/:filename
-        const dashboardId = parts[3];
-        const filename = parts[5];
-
-        const response = await fetch(`${baseUrl}/api/dashboards/${dashboardId}/pdf${params ? `?${params}` : ""}`, {
-          method: "POST",
-          headers: {
-            Authorization: jwt,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to request PDF");
-        }
-
-        const { key } = await response.json();
-        const downloadUrl = `${baseUrl}/api/download/${key}/${filename}`;
-
-        const link = document.createElement("a");
-        link.href = downloadUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      } else {
-        const url = `${baseUrl}${originalUrl}`;
-        const response = await fetch(url, {
-          headers: {
-            Authorization: jwt,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Download failed");
-        }
-
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = downloadUrl;
-        link.download = url.split("#")[0].split("?")[0].split("/").pop() ?? "download";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+      if (!response.ok) {
+        throw new Error("Download request failed");
       }
+
+      const { url } = await response.json();
+      const downloadUrl = `${baseUrl?.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}${url}`;
+      const filename = downloadUrl.split("/").pop() || "download";
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } catch (error) {
       console.error("Download error:", error);
       // Handle error (e.g., show an error message to the user)

@@ -171,9 +171,8 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
-	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.POST("/dashboards/:id/pdf", handler.RequestDashboardPdf(app))
-	e.GET("/api/download/:key/:filename", handler.DownloadPdfByKey(app, internalUrl, pdfDateFormat))
+	apiWithAuth.GET("/dashboards/:id/download/:filename", handler.RequestDashboardDownload(app))
+	e.GET("/api/download/:key/:filename", handler.DownloadFileByKey(app, internalUrl, pdfDateFormat))
 	if !app.NoTasks {
 		apiWithAuth.POST("/tasks", handler.CreateTask(app))
 		apiWithAuth.GET("/tasks/:id", handler.GetTask(app))
@@ -237,6 +236,7 @@ func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, set
 		return func(c echo.Context) error {
 			token := extractAuthorizationToken(c)
 			if core.IsAPIKeyToken(token) || !app.LoginRequired {
+
 				return apiKeyChain(c)
 			}
 			return jwtChain(c)

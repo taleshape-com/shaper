@@ -41,7 +41,7 @@ type App struct {
 	JetStream                  jetstream.JetStream
 	ConfigKV                   jetstream.KeyValue
 	TmpDashboardsKv            jetstream.KeyValue
-	PdfDownloadsKv             jetstream.KeyValue
+	DownloadsKv                jetstream.KeyValue
 	NATSConn                   *nats.Conn
 	StateSubjectPrefix         string
 	IngestSubjectPrefix        string
@@ -51,8 +51,8 @@ type App struct {
 	ConfigKVBucketName         string
 	TmpDashboardsKVBucketName  string
 	TmpDashboardsTTL           time.Duration
-	PdfDownloadsKVBucketName   string
-	PdfDownloadsTTL            time.Duration
+	DownloadsKVBucketName      string
+	DownloadsTTL               time.Duration
 	TasksStreamName            string
 	TasksSubjectPrefix         string
 	TaskQueueConsumerName      string
@@ -87,8 +87,8 @@ func New(
 	configKVBucketName string,
 	tmpDashboardsKVBucketName string,
 	tmpDashboardsTTL time.Duration,
-	pdfDownloadsKVBucketName string,
-	pdfDownloadsTTL time.Duration,
+	downloadsKVBucketName string,
+	downloadsTTL time.Duration,
 	tasksStreamName string,
 	tasksSubjectPrefix string,
 	taskQueueConsumerName string,
@@ -154,8 +154,8 @@ func New(
 		ConfigKVBucketName:         configKVBucketName,
 		TmpDashboardsKVBucketName:  tmpDashboardsKVBucketName,
 		TmpDashboardsTTL:           tmpDashboardsTTL,
-		PdfDownloadsKVBucketName:   pdfDownloadsKVBucketName,
-		PdfDownloadsTTL:            pdfDownloadsTTL,
+		DownloadsKVBucketName:      downloadsKVBucketName,
+		DownloadsTTL:               downloadsTTL,
 		TasksStreamName:            tasksStreamName,
 		TasksSubjectPrefix:         tasksSubjectPrefix,
 		TaskQueueConsumerName:      taskQueueConsumerName,
@@ -248,14 +248,14 @@ func (app *App) setupStreamAndConsumer() error {
 	}
 	app.TmpDashboardsKv = tmpDashboardsKV
 
-	pdfDownloadsKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
-		Bucket: app.PdfDownloadsKVBucketName,
-		TTL:    app.PdfDownloadsTTL,
+	downloadsKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
+		Bucket: app.DownloadsKVBucketName,
+		TTL:    app.DownloadsTTL,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or update pdf downloads KV: %w", err)
+		return fmt.Errorf("failed to create or update downloads KV: %w", err)
 	}
-	app.PdfDownloadsKv = pdfDownloadsKV
+	app.DownloadsKv = downloadsKV
 
 	if !app.NoTasks {
 		taskBroadcastSub, err := app.NATSConn.Subscribe(app.TaskBroadcastSubject, app.HandleTaskBroadcast)

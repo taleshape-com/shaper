@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	chromeio "github.com/chromedp/cdproto/io"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -56,8 +57,27 @@ func StreamDashboardPdf(
 	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
 	headerImage := ""
 	footerLink := ""
+	errorMessage := ""
 	err = chromedp.Run(ctx, chromedp.Tasks{
 		chromedp.Navigate(urlstr),
+		// Wait for either the dashboard to load or an error to appear
+		chromedp.WaitReady(`.shaper-scope .shaper-custom-dashboard-header, #shaper-error-message`),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// Check if error message is present
+			var nodes []*cdp.Node
+			err := chromedp.Nodes("#shaper-error-message", &nodes, chromedp.AtLeast(0)).Do(ctx)
+			if err != nil {
+				return err
+			}
+			if len(nodes) > 0 {
+				err = chromedp.Text("#shaper-error-message", &errorMessage).Do(ctx)
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("UI Error: %s", errorMessage)
+			}
+			return nil
+		}),
 		// Get header image and footer link from dashboard
 		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-header`, "data-header-image", &headerImage, nil),
 		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-footer`, "data-footer-link", &footerLink, nil),

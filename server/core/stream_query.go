@@ -11,7 +11,6 @@ import (
 	"math"
 	"net/url"
 	"shaper/server/util"
-	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +31,7 @@ func StreamQueryCSV(
 	ctx context.Context,
 	dashboardId string,
 	params url.Values,
-	queryID string,
+	queryID int,
 	variables map[string]any,
 	writer io.Writer,
 ) error {
@@ -46,16 +45,12 @@ func StreamQueryCSV(
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
-	queryIndex, err := strconv.Atoi(queryID)
-	if err != nil {
-		return fmt.Errorf("invalid query ID '%s': %w", queryID, err)
+	if len(sqls) <= queryID || queryID < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
-	if len(sqls) <= queryIndex || queryIndex < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
-	}
-	query := sqls[queryIndex]
+	query := sqls[queryID]
 	if !IsAllowedStatement(query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
+		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
 	conn, err := app.DuckDB.Connx(ctx)
@@ -174,7 +169,7 @@ func StreamQueryXLSX(
 	ctx context.Context,
 	dashboardId string,
 	params url.Values,
-	queryID string,
+	queryID int,
 	variables map[string]any,
 	writer io.Writer,
 ) error {
@@ -189,16 +184,12 @@ func StreamQueryXLSX(
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
-	queryIndex, err := strconv.Atoi(queryID)
-	if err != nil {
-		return fmt.Errorf("invalid query ID '%s': %w", queryID, err)
+	if len(sqls) <= queryID || queryID < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
-	if len(sqls) <= queryIndex || queryIndex < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
-	}
-	query := sqls[queryIndex]
+	query := sqls[queryID]
 	if !IsAllowedStatement(query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
+		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
 	// Create a new XLSX file
@@ -259,7 +250,7 @@ func StreamQueryXLSX(
 	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
 	if varCleanup != "" {
 		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
-			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryID, cleanupErr)
 		}
 	}
 	if err != nil {

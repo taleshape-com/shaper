@@ -151,7 +151,7 @@ export function Dashboard ({
         {menuButton}
         <div>
           <div className="p-4 z-50 flex justify-center items-center">
-            <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
+            <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded">
               {error.message}
             </div>
           </div>

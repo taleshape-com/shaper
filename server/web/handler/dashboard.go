@@ -3,6 +3,8 @@
 package handler
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,18 +13,27 @@ import (
 	"net/url"
 	"shaper/server/core"
 	"shaper/server/pdf"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/nrednav/cuid2"
 )
 
-type PdfDownloadIntent struct {
-	DashboardID string         `json:"dashboardId"`
-	QueryParams url.Values     `json:"queryParams"`
-	Variables   map[string]any `json:"variables"`
-	JWTToken    string         `json:"jwtToken"`
+type DownloadIntent struct {
+	Type        string     `json:"type"`
+	DashboardID string     `json:"dashboardId"`
+	QueryID     int        `json:"queryId"`
+	QueryParams url.Values `json:"queryParams"`
+	JWTToken    string     `json:"jwtToken"`
+}
+
+var downloadFileTypes = map[string]bool{
+	"pdf":  true,
+	"csv":  true,
+	"xlsx": true,
 }
 
 func CreateDashboard(app *core.App) echo.HandlerFunc {
@@ -314,26 +325,9 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 		}
 		idClaim, hasId := claims["dashboardId"]
 		if hasId && idClaim != idParam {
-			parentId, ok := idClaim.(string)
-			if !ok {
-				c.Logger().Error("invalid dashboardId claim type:", slog.Any("type", idClaim))
-				return c.JSONPretty(http.StatusUnauthorized, struct {
-					Error string `json:"error"`
-				}{Error: "Unauthorized"}, "  ")
-			}
-			contains, err := core.DashboardContainsMatchingPdfDownload(app, c.Request().Context(), parentId, idParam, c.QueryParams(), variables)
-			if err != nil {
-				// internal server error
-				c.Logger().Error("error checking dashboard content:", slog.String("parent", parentId), slog.String("dashboard", idParam), slog.Any("error", err))
-				return c.JSONPretty(http.StatusInternalServerError, struct {
-					Error string `json:"error"`
-				}{Error: "Internal server error"}, "  ")
-			}
-			if !contains {
-				return c.JSONPretty(http.StatusUnauthorized, struct {
-					Error string `json:"error"`
-				}{Error: "Unauthorized"}, "  ")
-			}
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 		result, err := core.GetDashboard(app, c.Request().Context(), idParam, c.QueryParams(), variables)
 		if err != nil {
@@ -390,156 +384,73 @@ func DeleteDashboard(app *core.App) echo.HandlerFunc {
 	}
 }
 
-// Supports .csv and .xlsx
-func DownloadQuery(app *core.App) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if id, hasId := claims["dashboardId"]; hasId && id != c.Param("id") {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
-		}
-		variables := map[string]any{}
-		if vars, hasVariables := claims["variables"]; hasVariables {
-			variables = vars.(map[string]any)
-		}
-		// Validate filename extension
-		filename := c.Param("filename")
-
-		if strings.HasSuffix(strings.ToLower(filename), ".csv") {
-			// Set headers for CSV file download
-			c.Response().Header().Set(echo.HeaderContentType, "text/csv")
-			c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
-
-			// Disable response buffering
-			c.Response().Header().Set("X-Content-Type-Options", "nosniff")
-			c.Response().Header().Set("Transfer-Encoding", "chunked")
-
-			// Create a writer that writes to the response
-			writer := c.Response().Writer
-
-			// Start the streaming query and write directly to response
-			err := core.StreamQueryCSV(
-				app,
-				c.Request().Context(),
-				c.Param("id"),
-				c.QueryParams(),
-				c.Param("query"),
-				variables,
-				writer,
-			)
-
-			if err != nil {
-				// If headers haven't been sent yet, return JSON error
-				if c.Response().Committed {
-					// If we've already started streaming, log the error since we can't modify the response
-					c.Logger().Error("streaming error after response started:", slog.Any("error", err))
-					return err
-				}
-				c.Logger().Error("error downloading CSV:", slog.Any("error", err))
-				// Not returning the actual error to the client for security reasons.
-				return c.JSONPretty(
-					http.StatusInternalServerError,
-					struct {
-						Error string `json:"error"`
-					}{Error: "error downloading csv file"},
-					"  ",
-				)
-			}
-
-			return nil
-		}
-
-		if strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
-			// Set headers for Excel file download
-			c.Response().Header().Set(echo.HeaderContentType, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-			c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
-
-			// Disable response buffering
-			c.Response().Header().Set("X-Content-Type-Options", "nosniff")
-			c.Response().Header().Set("Transfer-Encoding", "chunked")
-
-			// Create a writer that writes to the response
-			writer := c.Response().Writer
-
-			err := core.StreamQueryXLSX(
-				app,
-				c.Request().Context(),
-				c.Param("id"),
-				c.QueryParams(),
-				c.Param("query"),
-				variables,
-				writer,
-			)
-
-			if err != nil {
-				// If headers haven't been sent yet, return JSON error
-				if c.Response().Committed {
-					// If we've already started streaming, log the error since we can't modify the response
-					c.Logger().Error("streaming error after response started:", slog.Any("error", err))
-					return err
-				}
-				c.Logger().Error("error downloading .xlsx file:", slog.Any("error", err))
-				// Not returning the actual error to the client for security reasons.
-				return c.JSONPretty(
-					http.StatusInternalServerError,
-					struct {
-						Error string `json:"error"`
-					}{Error: "error downloading xlsx file"},
-					"  ",
-				)
-			}
-
-			return nil
-		}
-
-		return c.JSONPretty(
-			http.StatusBadRequest,
-			struct {
-				Error string `json:"error"`
-			}{Error: "Invalid filename extension. Must be .csv or .xlsx"},
-			"  ",
-		)
-	}
-}
-
-func RequestDashboardPdf(app *core.App) echo.HandlerFunc {
+func RequestDashboardDownload(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		jwtToken := c.Get("user").(*jwt.Token)
 		claims := jwtToken.Claims.(jwt.MapClaims)
 		idParam := c.Param("id")
-		variables := map[string]any{}
-		if vars, hasVariables := claims["variables"]; hasVariables {
-			variables = vars.(map[string]any)
+		filename := c.Param("filename")
+		queryVars := c.QueryParam("vars")
+		queryId := c.QueryParam("query_id")
+		varsAsQueryParams := url.Values{}
+		if queryVars != "" {
+			err := json.Unmarshal([]byte(queryVars), &varsAsQueryParams)
+			if err != nil {
+				c.Logger().Error("invalid vars query param:", slog.Any("error", err), slog.String("vars", queryVars))
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "Invalid vars query parameter"}, "  ")
+			}
 		}
 		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
-			parentId, ok := idClaim.(string)
-			if !ok {
-				c.Logger().Error("invalid dashboardId claim type:", slog.Any("type", idClaim))
-				return c.JSONPretty(http.StatusUnauthorized, struct {
-					Error string `json:"error"`
-				}{Error: "Unauthorized"}, "  ")
-			}
-			contains, err := core.DashboardContainsMatchingPdfDownload(app, c.Request().Context(), parentId, idParam, c.QueryParams(), variables)
-			if err != nil {
-				// internal server error
-				c.Logger().Error("error checking dashboard content:", slog.String("parent", parentId), slog.String("dashboard", idParam), slog.Any("error", err))
-				return c.JSONPretty(http.StatusInternalServerError, struct {
-					Error string `json:"error"`
-				}{Error: "Internal server error"}, "  ")
-			}
-			if !contains {
-				return c.JSONPretty(http.StatusUnauthorized, struct {
-					Error string `json:"error"`
-				}{Error: "Unauthorized"}, "  ")
-			}
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
 
-		intent := PdfDownloadIntent{
+		// type is extension of filename
+		fileType := ""
+		if parts := strings.Split(filename, "."); len(parts) > 1 {
+			fileType = parts[len(parts)-1]
+		}
+		// assert allowed file types
+		if !downloadFileTypes[strings.ToLower(fileType)] {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid file type"}, "  ")
+		}
+		queryIdInt := 0
+		if queryId != "" {
+			var err error
+			queryIdInt, err = strconv.Atoi(queryId)
+			if err != nil {
+				c.Logger().Error("invalid query_id query param:", slog.Any("error", err), slog.String("query_id", queryId))
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "Invalid query_id query parameter"}, "  ")
+			}
+		}
+		// new claims are same as old, but we set a new exp time and set the dashboardId
+		newClaims := jwt.MapClaims{}
+		for k, v := range claims {
+			newClaims[k] = v
+		}
+		newClaims["exp"] = time.Now().Add(app.JWTExp).Unix()
+		newClaims["dashboardId"] = idParam
+		downloadJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+		downloadJWTStr, err := downloadJWT.SignedString(app.JWTSecret)
+		if err != nil {
+			c.Logger().Error("failed to sign download JWT token:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+		intent := DownloadIntent{
+			Type:        fileType,
 			DashboardID: idParam,
-			QueryParams: c.QueryParams(),
-			Variables:   variables,
-			JWTToken:    jwtToken.Raw,
+			QueryID:     queryIdInt,
+			QueryParams: varsAsQueryParams,
+			JWTToken:    downloadJWTStr,
 		}
 
 		j, err := json.Marshal(intent)
@@ -549,99 +460,88 @@ func RequestDashboardPdf(app *core.App) echo.HandlerFunc {
 			}{Error: "Internal server error"}, "  ")
 		}
 
-		key := cuid2.Generate()
-		_, err = app.PdfDownloadsKv.Put(c.Request().Context(), key, j)
+		token, err := generateDownloadToken()
 		if err != nil {
-			c.Logger().Error("failed to put pdf download intent into KV:", slog.Any("error", err))
+			c.Logger().Error("failed to generate download token:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+		_, err = app.DownloadsKv.Put(c.Request().Context(), token, j)
+		if err != nil {
+			c.Logger().Error("failed to put download intent into KV:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
 			}{Error: "Internal server error"}, "  ")
 		}
 
+		u := fmt.Sprintf("/api/download/%s/%s", token, filename)
+
 		return c.JSON(http.StatusOK, struct {
-			Key string `json:"key"`
+			URL string `json:"url"`
 		}{
-			Key: key,
+			URL: u,
 		})
 	}
 }
 
-func DownloadPdfByKey(app *core.App, internalUrl string, pdfDateFormat string) echo.HandlerFunc {
+func DownloadFileByKey(app *core.App, internalUrl string, pdfDateFormat string) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		key := c.Param("key")
 		filename := c.Param("filename")
 
-		entry, err := app.PdfDownloadsKv.Get(c.Request().Context(), key)
+		entry, err := app.DownloadsKv.Get(c.Request().Context(), key)
 		if err != nil {
 			return c.JSONPretty(http.StatusNotFound, struct {
 				Error string `json:"error"`
 			}{Error: "Download not found or expired"}, "  ")
 		}
 
-		var intent PdfDownloadIntent
+		var intent DownloadIntent
 		if err := json.Unmarshal(entry.Value(), &intent); err != nil {
-			c.Logger().Error("failed to unmarshal pdf download intent:", slog.Any("error", err))
+			c.Logger().Error("failed to unmarshal download intent:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
 			}{Error: "Internal server error"}, "  ")
 		}
 
-		c.Response().Header().Set(echo.HeaderContentType, "application/pdf")
+		// Set headers based on type
+		contentType := "application/octet-stream"
+		switch strings.ToLower(intent.Type) {
+		case "pdf":
+			contentType = "application/pdf"
+		case "csv":
+			contentType = "text/csv"
+		case "xlsx":
+			contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		}
+
+		c.Response().Header().Set(echo.HeaderContentType, contentType)
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
 
 		// Disable response buffering
 		c.Response().Header().Set("X-Content-Type-Options", "nosniff")
 		c.Response().Header().Set("Transfer-Encoding", "chunked")
+		// Disable caching so CDNSs and such doesn't cache the one-time download URL including the token in the URL
+		c.Response().Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
 		// Create a writer that writes to the response
 		writer := c.Response().Writer
 
-		// Start the streaming query and write directly to response
-		err = pdf.StreamDashboardPdf(
-			c.Request().Context(),
-			app.Logger,
-			writer,
-			internalUrl,
-			pdfDateFormat,
-			intent.DashboardID,
-			intent.QueryParams,
-			intent.Variables,
-			&jwt.Token{Raw: intent.JWTToken},
-		)
-
-		if err != nil {
-			// If headers haven't been sent yet, return JSON error
-			if c.Response().Committed {
-				// If we've already started streaming, log the error since we can't modify the response
-				c.Logger().Error("streaming error after response started:", slog.Any("error", err))
-				return err
+		token, err := jwt.Parse(intent.JWTToken, func(token *jwt.Token) (any, error) {
+			if token.Method.Alg() != echojwt.AlgorithmHS256 {
+				return nil, &echojwt.TokenError{Token: token, Err: fmt.Errorf("unexpected jwt signing method=%v", token.Header["alg"])}
 			}
-			c.Logger().Error("error downloading PDF:", slog.Any("error", err))
-			return c.JSONPretty(
-				http.StatusBadRequest,
-				struct {
-					Error string `json:"error"`
-				}{Error: err.Error()},
-				"  ",
-			)
+			return app.JWTSecret, nil
+		})
+		if err != nil || !token.Valid {
+			c.Logger().Error("invalid JWT token in download intent:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
 		}
-
-		return nil
-	}
-}
-
-func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		var request struct {
-			DashboardId string `json:"dashboardId"`
-			Content     string `json:"content"`
-		}
-		if err := c.Bind(&request); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
-		}
-
-		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
-		if _, hasId := claims["dashboardId"]; hasId {
+		claims := token.Claims.(jwt.MapClaims)
+		if id, hasId := claims["dashboardId"]; !hasId || id != intent.DashboardID {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
 			}{Error: "Unauthorized"}, "  ")
@@ -651,18 +551,64 @@ func PreviewDashboardQuery(app *core.App) echo.HandlerFunc {
 			variables = vars.(map[string]any)
 		}
 
-		result, err := core.QueryDashboard(app, c.Request().Context(), core.DashboardQuery{
-			Content: request.Content,
-			ID:      request.DashboardId,
-		}, c.QueryParams(), variables)
-
-		if err != nil {
+		var streamErr error
+		switch strings.ToLower(intent.Type) {
+		case "pdf":
+			streamErr = pdf.StreamDashboardPdf(
+				c.Request().Context(),
+				app.Logger,
+				writer,
+				internalUrl,
+				pdfDateFormat,
+				intent.DashboardID,
+				intent.QueryParams,
+				variables,
+				token,
+			)
+		case "csv":
+			streamErr = core.StreamQueryCSV(
+				app,
+				c.Request().Context(),
+				intent.DashboardID,
+				intent.QueryParams,
+				intent.QueryID,
+				variables,
+				writer,
+			)
+		case "xlsx":
+			streamErr = core.StreamQueryXLSX(
+				app,
+				c.Request().Context(),
+				intent.DashboardID,
+				intent.QueryParams,
+				intent.QueryID,
+				variables,
+				writer,
+			)
+		default:
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
-			}{Error: err.Error()}, "  ")
+			}{Error: "Invalid download type"}, "  ")
 		}
 
-		return c.JSONPretty(http.StatusOK, result, "  ")
+		if streamErr != nil {
+			// If headers haven't been sent yet, return JSON error
+			if c.Response().Committed {
+				// If we've already started streaming, log the error since we can't modify the response
+				c.Logger().Error("streaming error after response started:", slog.Any("error", err))
+				return streamErr
+			}
+			c.Logger().Error("error downloading file:", slog.Any("error", streamErr))
+			return c.JSONPretty(
+				http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: streamErr.Error()},
+				"  ",
+			)
+		}
+
+		return nil
 	}
 }
 
@@ -689,4 +635,12 @@ func GetDashboardStatus(app *core.App) echo.HandlerFunc {
 			Visibility: *dashboard.Visibility,
 		})
 	}
+}
+
+func generateDownloadToken() (string, error) {
+	bytes := make([]byte, 32) // 32 bytes = 64 hex chars
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
