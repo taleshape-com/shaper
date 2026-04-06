@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/jmoiron/sqlx"
 )
 
 func TestStreamSQLToCSV(t *testing.T) {
@@ -46,17 +46,18 @@ func TestResolveDownloadQueryID(t *testing.T) {
 		{
 			name: "single matching download type",
 			sqls: []string{
-				"SELECT 1 as id, 'CSV' as DOWNLOAD_CSV",
-				"SELECT 2 as id",
+				"SELECT 'Shaper Demo Dashboard'::SECTION;",
+				"SELECT ('sessions-' || today())::DOWNLOAD_CSV AS CSV;",
+				"SELECT * FROM dataset;",
 			},
 			downloadType: "csv",
-			want:         0,
+			want:         2,
 		},
 		{
 			name: "single data query (no special types)",
 			sqls: []string{
-				"SELECT 'Title' as LABEL",
-				"SELECT 1 as id, 'data' as name",
+				"SELECT 'Label'::LABEL;",
+				"SELECT 'Hello World';",
 			},
 			downloadType: "csv",
 			want:         1,
@@ -64,8 +65,10 @@ func TestResolveDownloadQueryID(t *testing.T) {
 		{
 			name: "multiple matching download types (fail)",
 			sqls: []string{
-				"SELECT 1 as id, 'CSV' as DOWNLOAD_CSV",
-				"SELECT 2 as id, 'CSV' as DOWNLOAD_CSV",
+				"SELECT ('sessions-' || today())::DOWNLOAD_CSV AS CSV;",
+				"SELECT * FROM dataset;",
+				"SELECT ('sessions-' || today())::DOWNLOAD_CSV AS CSV;",
+				"SELECT * FROM dataset;",
 			},
 			downloadType: "csv",
 			wantErr:      true,
@@ -82,21 +85,8 @@ func TestResolveDownloadQueryID(t *testing.T) {
 		{
 			name: "labels plural is fine",
 			sqls: []string{
-				"SELECT ['a', 'b'] as LABELS",
-				"SELECT 1 as id",
-			},
-			downloadType: "csv",
-			want:         0, // Both match data query criteria, so it should fail? 
-			// Wait, "SELECT ['a', 'b'] as LABELS" does NOT contain any excluded types.
-			// "SELECT 1 as id" also does NOT contain any excluded types.
-			// So this should fail because count == 2.
-			wantErr: true,
-		},
-		{
-			name: "one label one data",
-			sqls: []string{
-				"SELECT 'title' as LABEL",
-				"SELECT ['a', 'b'] as LABELS, 1 as value",
+				"SELECT 'GAUGE with RANGE, LABELS and COLORS'::LABEL;",
+				"SELECT 75::GAUGE, [0, 33, 66, 100]::RANGE, ['Bad', 'Okay', 'Good']::LABELS;",
 			},
 			downloadType: "csv",
 			want:         1,
