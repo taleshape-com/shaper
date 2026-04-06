@@ -58,6 +58,7 @@ var sideEffectSQLStatements = [][]string{
 var allowedDataReadingStatements = [][]string{
 	{"SELECT"},
 	{"FROM"},
+	{"VALUES"},
 	{"SUMMARIZE"},
 	{"DESC"},
 	{"DESCRIBE"},
