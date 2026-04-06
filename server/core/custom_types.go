@@ -41,6 +41,7 @@ var dbTypes = []struct {
 	{"SECTION", "UNION(\"section_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_CSV", "UNION(\"download_csv_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_XLSX", "UNION(\"download_xlsx_varchar\" VARCHAR)", "string"},
+	{"DOWNLOAD_JSON", "UNION(\"download_json_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_PDF", "UNION(\"download_pdf_varchar\" VARCHAR)", "string"},
 	{"DATEPICKER", "UNION(\"datepicker_date\" DATE)", "date"},
 	{"DATEPICKER_FROM", "UNION(\"datepicker_from_date\" DATE)", "date"},

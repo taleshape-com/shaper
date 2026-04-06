@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { RiFileDownloadLine, RiLoader3Fill } from "@remixicon/react";
+import {
+  RiCodeSSlashLine,
+  RiFileDownloadLine,
+  RiFileExcel2Line,
+  RiFilePdf2Line,
+  RiFileTextLine,
+  RiLoader3Fill,
+} from "@remixicon/react";
 import { Column, Result } from "../../lib/types";
 import { Button } from "../tremor/Button";
 import { Label } from "../tremor/Label";
@@ -17,6 +24,22 @@ type ButtonProps = {
   idPrefix: string;
 };
 
+const getIcon = (url: string) => {
+  const extension = url.split("?")[0].split(".").pop()?.toLowerCase();
+  switch (extension) {
+  case "csv":
+    return RiFileTextLine;
+  case "xlsx":
+    return RiFileExcel2Line;
+  case "pdf":
+    return RiFilePdf2Line;
+  case "json":
+    return RiCodeSSlashLine;
+  default:
+    return RiFileDownloadLine;
+  }
+};
+
 function DashboardButton ({
   label,
   data,
@@ -27,11 +50,13 @@ function DashboardButton ({
 }: ButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
+  const relativeUrl = data[0][0] as string;
+  const Icon = getIcon(relativeUrl);
+
   const handleDownload = async () => {
     setIsLoading(true);
     try {
       const jwt = await getJwt();
-      const relativeUrl = data[0][0];
       const separator = relativeUrl.includes("?") ? "&" : "?";
       const response = await fetch(`${baseUrl}${relativeUrl}${separator}mode=url`, {
         headers: {
@@ -83,7 +108,7 @@ function DashboardButton ({
           {isLoading ? (
             <RiLoader3Fill className="ml-1.5 size-4 text-ctext2 dark:text-dtext2 animate-spin" />
           ) : (
-            <RiFileDownloadLine className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
+            <Icon className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
           )}
         </span>
       </Button >

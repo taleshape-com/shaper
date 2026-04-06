@@ -233,7 +233,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			MarkLines:       rInfo.MarkLines,
 		}
 
-		if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
 			nextIsDownload = true
 		}
 
@@ -1024,6 +1024,10 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	xlsxColumn, _ := findColumnByTag(columns, "DOWNLOAD_XLSX")
 	if xlsxColumn != nil {
 		return "xlsx"
+	}
+	jsonColumn, _ := findColumnByTag(columns, "DOWNLOAD_JSON")
+	if jsonColumn != nil {
+		return "json"
 	}
 	pdfColumn, _ := findColumnByTag(columns, "DOWNLOAD_PDF")
 	if pdfColumn != nil {

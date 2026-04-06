@@ -5,6 +5,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -35,6 +36,37 @@ func TestStreamSQLToCSV(t *testing.T) {
 	}
 }
 
+func TestStreamSQLToJSON(t *testing.T) {
+	db, err := sqlx.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("failed to open duckdb: %v", err)
+	}
+	defer db.Close()
+
+	app := &App{DuckDB: db}
+	ctx := context.Background()
+	buf := &bytes.Buffer{}
+
+	sql := "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"
+	err = StreamSQLToJSON(app, ctx, sql, buf)
+	if err != nil {
+		t.Fatalf("StreamSQLToJSON failed: %v", err)
+	}
+
+	// json.Encoder adds newlines
+	// Note: maps in Go are randomized, but since we only have 2 columns, it should be stable enough or we should check for contents
+	// For this simple test with few columns it usually works, but it's better to be careful.
+	// Actually for 1.21+ Go maps have some order but not guaranteed.
+	// Let's just check if it contains expected strings.
+	got := buf.String()
+	if !strings.Contains(got, "{\"id\":1,\"name\":\"hello\"}") && !strings.Contains(got, "{\"name\":\"hello\",\"id\":1}") {
+		t.Errorf("got %q, missing expected object", got)
+	}
+	if !strings.Contains(got, "{\"id\":2,\"name\":\"world\"}") && !strings.Contains(got, "{\"name\":\"world\",\"id\":2}") {
+		t.Errorf("got %q, missing expected object", got)
+	}
+}
+
 func TestResolveDownloadQueryID(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -51,6 +83,16 @@ func TestResolveDownloadQueryID(t *testing.T) {
 				"SELECT * FROM dataset;",
 			},
 			downloadType: "csv",
+			want:         2,
+		},
+		{
+			name: "single matching json download type",
+			sqls: []string{
+				"SELECT 'Shaper Demo Dashboard'::SECTION;",
+				"SELECT ('sessions-' || today())::DOWNLOAD_JSON AS JSON;",
+				"SELECT * FROM dataset;",
+			},
+			downloadType: "json",
 			want:         2,
 		},
 		{

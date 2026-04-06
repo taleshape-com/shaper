@@ -34,6 +34,7 @@ var downloadFileTypes = map[string]bool{
 	"pdf":  true,
 	"csv":  true,
 	"xlsx": true,
+	"json": true,
 	"png":  true,
 }
 
@@ -674,6 +675,8 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 		contentType = "image/png"
 	case "csv":
 		contentType = "text/csv"
+	case "json":
+		contentType = "application/json"
 	case "xlsx":
 		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	}
@@ -740,6 +743,16 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 		)
 	case "csv":
 		streamErr = core.StreamQueryCSV(
+			app,
+			c.Request().Context(),
+			intent.DashboardID,
+			intent.QueryParams,
+			intent.QueryID,
+			variables,
+			writer,
+		)
+	case "json":
+		streamErr = core.StreamQueryJSON(
 			app,
 			c.Request().Context(),
 			intent.DashboardID,
