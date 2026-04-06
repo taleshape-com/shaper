@@ -31,7 +31,9 @@ function DashboardButton ({
     setIsLoading(true);
     try {
       const jwt = await getJwt();
-      const response = await fetch(`${baseUrl}${data[0][0]}`, {
+      const relativeUrl = data[0][0];
+      const separator = relativeUrl.includes("?") ? "&" : "?";
+      const response = await fetch(`${baseUrl}${relativeUrl}${separator}mode=url`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: jwt,
