@@ -537,6 +537,133 @@ func DownloadFileByKey(app *core.App, internalUrl string, pdfDateFormat string) 
 	}
 }
 
+func DownloadSQL(app *core.App, internalUrl string, pdfDateFormat string) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		actor := core.ActorFromContext(c.Request().Context())
+		if actor == nil {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			SQL string `json:"sql"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: "Invalid request body"}, "  ")
+		}
+
+		sql := strings.TrimSpace(request.SQL)
+		if sql == "" {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: "SQL is required"}, "  ")
+		}
+
+		// Create temporary dashboard
+		id, err := core.CreateDashboard(app, c.Request().Context(), "Download", sql, "", true, "")
+		if err != nil {
+			c.Logger().Error("error creating temporary dashboard for download:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError,
+				struct {
+					Error string `json:"error"`
+				}{Error: "Failed to create temporary dashboard"}, "  ")
+		}
+
+		filename := c.Param("filename")
+		fileType := ""
+		if parts := strings.Split(filename, "."); len(parts) > 1 {
+			fileType = parts[len(parts)-1]
+		}
+		if !downloadFileTypes[strings.ToLower(fileType)] {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid file type"}, "  ")
+		}
+
+		var claims jwt.MapClaims
+		if actor.Type == core.ActorAPIKey {
+			claims = jwt.MapClaims{
+				"apiKeyId": actor.ID,
+			}
+		} else if actor.Type == core.ActorNoAuth {
+			claims = jwt.MapClaims{}
+		} else {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct {
+					Error string `json:"error"`
+				}{Error: "This endpoint only supports API key authentication"}, "  ")
+		}
+
+		newClaims := jwt.MapClaims{}
+		for k, v := range claims {
+			newClaims[k] = v
+		}
+		newClaims["exp"] = time.Now().Add(app.JWTExp).Unix()
+		newClaims["dashboardId"] = id
+		downloadJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+		downloadJWTStr, err := downloadJWT.SignedString(app.JWTSecret)
+		if err != nil {
+			c.Logger().Error("failed to sign download JWT token:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+
+		intent := DownloadIntent{
+			Type:        fileType,
+			DashboardID: id,
+			QueryID:     -1,
+			QueryParams: url.Values{},
+			JWTToken:    downloadJWTStr,
+		}
+
+		mode := c.QueryParam("mode")
+		if mode == "" {
+			mode = "default"
+		}
+
+		if mode == "default" {
+			return streamFile(app, c, internalUrl, pdfDateFormat, intent, filename)
+		}
+
+		j, err := json.Marshal(intent)
+		if err != nil {
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+
+		token, err := generateDownloadToken()
+		if err != nil {
+			c.Logger().Error("failed to generate download token:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+		_, err = app.DownloadsKv.Put(c.Request().Context(), token, j)
+		if err != nil {
+			c.Logger().Error("failed to put download intent into KV:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusInternalServerError, struct {
+				Error string `json:"error"`
+			}{Error: "Internal server error"}, "  ")
+		}
+
+		u := fmt.Sprintf("/api/download/%s/%s", token, filename)
+
+		return c.JSON(http.StatusOK, struct {
+			URL string `json:"url"`
+		}{
+			URL: u,
+		})
+	}
+}
+
 func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat string, intent DownloadIntent, filename string) error {
 	// Set headers based on type
 	contentType := "application/octet-stream"
