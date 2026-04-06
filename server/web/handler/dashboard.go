@@ -419,7 +419,7 @@ func RequestDashboardDownload(app *core.App) echo.HandlerFunc {
 				Error string `json:"error"`
 			}{Error: "Invalid file type"}, "  ")
 		}
-		queryIdInt := 0
+		queryIdInt := -1
 		if queryId != "" {
 			var err error
 			queryIdInt, err = strconv.Atoi(queryId)

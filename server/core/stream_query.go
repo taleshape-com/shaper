@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"net/url"
+	"regexp"
 	"shaper/server/util"
 	"strings"
 	"time"
@@ -23,6 +24,44 @@ import (
 const MICROSECONDS_PER_DAY = 24.0 * 60.0 * 60.0 * 1_000_000.0
 
 const EXCEL_INTERVAL_FORMAT = "[h]:mm:ss"
+
+var excludedTypesRegex = regexp.MustCompile(`\b(LABEL|SECTION|XLINE|YLINE|DROPDOWN|DOWNLOAD_CSV|DOWNLOAD_XLSX|DOWNLOAD_PDF|DATEPICKER|DATEPICKER_FROM|DATEPICKER_TO|PLACEHOLDER|INPUT|RELOAD|HEADER_IMAGE|FOOTER_LINK)\b`)
+
+func resolveDownloadQueryID(sqls []string, downloadType string) (int, error) {
+	upperType := "DOWNLOAD_" + strings.ToUpper(downloadType)
+	foundIndex := -1
+	count := 0
+	for i, s := range sqls {
+		if strings.Contains(strings.ToUpper(s), upperType) {
+			foundIndex = i
+			count++
+		}
+	}
+	if count == 1 {
+		return foundIndex, nil
+	}
+
+	foundIndex = -1
+	count = 0
+	for i, s := range sqls {
+		if isSideEffect(s) {
+			continue
+		}
+		upper := strings.ToUpper(s)
+		if !excludedTypesRegex.MatchString(upper) {
+			foundIndex = i
+			count++
+		}
+	}
+	if count == 1 {
+		return foundIndex, nil
+	}
+
+	if count == 0 {
+		return -1, fmt.Errorf("could not find a matching query for %s download", strings.ToUpper(downloadType))
+	}
+	return -1, fmt.Errorf("found %d potential queries for %s download, please specify which one with query_id", count, strings.ToUpper(downloadType))
+}
 
 // Stream the result of a dashboard query as CSV file to client.
 // Same as dashboard, it handles variables from JWT and from URL params.
@@ -43,6 +82,13 @@ func StreamQueryCSV(
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return fmt.Errorf("failed to split SQL queries: %w", err)
+	}
+
+	if queryID == -1 {
+		queryID, err = resolveDownloadQueryID(sqls, "csv")
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(sqls) <= queryID || queryID < 0 {
@@ -182,6 +228,13 @@ func StreamQueryXLSX(
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
 		return fmt.Errorf("failed to split SQL queries: %w", err)
+	}
+
+	if queryID == -1 {
+		queryID, err = resolveDownloadQueryID(sqls, "xlsx")
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(sqls) <= queryID || queryID < 0 {
