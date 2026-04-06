@@ -43,6 +43,7 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
     <div className="absolute inset-0 pointer-events-none print:hidden">
       <button
         className={cx(
+          "shaper-chart-download-button",
           "absolute top-2 right-2 z-50",
           "p-1.5 rounded-md",
           "bg-cbg dark:bg-dbg",

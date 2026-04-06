@@ -34,6 +34,7 @@ var downloadFileTypes = map[string]bool{
 	"pdf":  true,
 	"csv":  true,
 	"xlsx": true,
+	"png":  true,
 }
 
 func CreateDashboard(app *core.App) echo.HandlerFunc {
@@ -542,6 +543,8 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 	switch strings.ToLower(intent.Type) {
 	case "pdf":
 		contentType = "application/pdf"
+	case "png":
+		contentType = "image/png"
 	case "csv":
 		contentType = "text/csv"
 	case "xlsx":
@@ -592,6 +595,17 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			writer,
 			internalUrl,
 			pdfDateFormat,
+			intent.DashboardID,
+			intent.QueryParams,
+			variables,
+			token,
+		)
+	case "png":
+		streamErr = pdf.StreamDashboardPng(
+			c.Request().Context(),
+			app.Logger,
+			writer,
+			internalUrl,
 			intent.DashboardID,
 			intent.QueryParams,
 			variables,

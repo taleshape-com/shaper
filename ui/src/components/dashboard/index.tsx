@@ -42,7 +42,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -144,7 +144,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -405,7 +405,9 @@ const DataView = ({
                       // single table
                       "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
                       // pdf
-                      "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart,
+                      "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
+                      // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
+                      "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
                       // fill screen height if only 2 sections
                       "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
                       // single chart and not table
