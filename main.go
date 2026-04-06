@@ -499,7 +499,8 @@ func Run(cfg Config) func(context.Context) {
 	}
 
 	handlerOptions := &slog.HandlerOptions{
-		Level: logLevel,
+		Level:       logLevel,
+		ReplaceAttr: util.RedactSensitiveAttrs,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, handlerOptions))
 
