@@ -386,8 +386,26 @@ func DeleteDashboard(app *core.App) echo.HandlerFunc {
 
 func RequestDashboardDownload(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		jwtToken := c.Get("user").(*jwt.Token)
-		claims := jwtToken.Claims.(jwt.MapClaims)
+		actor := core.ActorFromContext(c.Request().Context())
+		if actor == nil {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+		}
+
+		var claims jwt.MapClaims
+		if actor.Type == core.ActorAPIKey {
+			claims = jwt.MapClaims{
+				// TODO: should we also set apiKeyName here? this code is messy
+				"apiKeyId": actor.ID,
+			}
+		} else if actor.Type == core.ActorNoAuth {
+			claims = jwt.MapClaims{}
+		} else {
+			jwtToken := c.Get("user").(*jwt.Token)
+			claims = jwtToken.Claims.(jwt.MapClaims)
+		}
 		idParam := c.Param("id")
 		filename := c.Param("filename")
 		queryVars := c.QueryParam("vars")

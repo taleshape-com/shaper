@@ -38,7 +38,7 @@ func resolveDownloadQueryID(sqls []string, downloadType string) (int, error) {
 		}
 	}
 	if count == 1 {
-		return foundIndex, nil
+		return foundIndex + 1, nil
 	}
 
 	foundIndex = -1
