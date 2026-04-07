@@ -343,7 +343,7 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 			// But if the JWT is generic, we return it.
 			// In practice this means that if you are logged in and editing dashboards you see error messages, but if a dashboard is embedded or shared publicly you don't.
 			errMsg := err.Error()
-			if hasId {
+			if hasId && !strings.HasPrefix(idParam, core.TMP_DASHBOARD_PREFIX) {
 				errMsg = "error getting dashboard"
 			}
 			return c.JSONPretty(http.StatusInternalServerError, struct {
@@ -461,9 +461,13 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 		downloadJWTStr, err := downloadJWT.SignedString(app.JWTSecret)
 		if err != nil {
 			c.Logger().Error("failed to sign download JWT token:", slog.Any("error", err))
+			errMsg := "Internal server error"
+			if strings.HasPrefix(idParam, core.TMP_DASHBOARD_PREFIX) {
+				errMsg = err.Error()
+			}
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: errMsg}, "  ")
 		}
 		intent := DownloadIntent{
 			Type:        fileType,
@@ -484,24 +488,36 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 
 		j, err := json.Marshal(intent)
 		if err != nil {
+			errMsg := "Internal server error"
+			if strings.HasPrefix(idParam, core.TMP_DASHBOARD_PREFIX) {
+				errMsg = err.Error()
+			}
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: errMsg}, "  ")
 		}
 
 		token, err := generateDownloadToken()
 		if err != nil {
 			c.Logger().Error("failed to generate download token:", slog.Any("error", err))
+			errMsg := "Internal server error"
+			if strings.HasPrefix(idParam, core.TMP_DASHBOARD_PREFIX) {
+				errMsg = err.Error()
+			}
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: errMsg}, "  ")
 		}
 		_, err = app.DownloadsKv.Put(c.Request().Context(), token, j)
 		if err != nil {
 			c.Logger().Error("failed to put download intent into KV:", slog.Any("error", err))
+			errMsg := "Internal server error"
+			if strings.HasPrefix(idParam, core.TMP_DASHBOARD_PREFIX) {
+				errMsg = err.Error()
+			}
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: errMsg}, "  ")
 		}
 
 		u := fmt.Sprintf("/api/download/%s/%s", token, filename)
@@ -531,7 +547,7 @@ func DownloadFileByKey(app *core.App, internalUrl string, pdfDateFormat string) 
 			c.Logger().Error("failed to unmarshal download intent:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: err.Error()}, "  ")
 		}
 
 		return streamFile(app, c, internalUrl, pdfDateFormat, intent, filename)
@@ -573,7 +589,7 @@ func DownloadSQL(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 			return c.JSONPretty(http.StatusInternalServerError,
 				struct {
 					Error string `json:"error"`
-				}{Error: "Failed to create temporary dashboard"}, "  ")
+				}{Error: err.Error()}, "  ")
 		}
 
 		filename := c.Param("filename")
@@ -613,7 +629,7 @@ func DownloadSQL(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 			c.Logger().Error("failed to sign download JWT token:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: err.Error()}, "  ")
 		}
 
 		intent := DownloadIntent{
@@ -637,7 +653,7 @@ func DownloadSQL(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 		if err != nil {
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: err.Error()}, "  ")
 		}
 
 		token, err := generateDownloadToken()
@@ -645,14 +661,14 @@ func DownloadSQL(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 			c.Logger().Error("failed to generate download token:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: err.Error()}, "  ")
 		}
 		_, err = app.DownloadsKv.Put(c.Request().Context(), token, j)
 		if err != nil {
 			c.Logger().Error("failed to put download intent into KV:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`
-			}{Error: "Internal server error"}, "  ")
+			}{Error: err.Error()}, "  ")
 		}
 
 		u := fmt.Sprintf("/api/download/%s/%s", token, filename)
@@ -701,15 +717,24 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 	})
 	if err != nil || !token.Valid {
 		c.Logger().Error("invalid JWT token in download intent:", slog.Any("error", err))
+		errMsg := "Unauthorized"
+		if strings.HasPrefix(intent.DashboardID, core.TMP_DASHBOARD_PREFIX) {
+			errMsg = err.Error()
+		}
 		return c.JSONPretty(http.StatusUnauthorized, struct {
 			Error string `json:"error"`
-		}{Error: "Unauthorized"}, "  ")
+		}{Error: errMsg}, "  ")
 	}
 	claims := token.Claims.(jwt.MapClaims)
-	if id, hasId := claims["dashboardId"]; !hasId || id != intent.DashboardID {
+	idClaim, hasId := claims["dashboardId"]
+	if !hasId || idClaim != intent.DashboardID {
+		errMsg := "Unauthorized"
+		if strings.HasPrefix(intent.DashboardID, core.TMP_DASHBOARD_PREFIX) {
+			errMsg = "Unauthorized: dashboardId mismatch"
+		}
 		return c.JSONPretty(http.StatusUnauthorized, struct {
 			Error string `json:"error"`
-		}{Error: "Unauthorized"}, "  ")
+		}{Error: errMsg}, "  ")
 	}
 	variables := map[string]any{}
 	if vars, hasVariables := claims["variables"]; hasVariables {
@@ -785,11 +810,15 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			return streamErr
 		}
 		c.Logger().Error("error downloading file:", slog.Any("error", streamErr))
+		errMsg := streamErr.Error()
+		if hasId && !strings.HasPrefix(intent.DashboardID, core.TMP_DASHBOARD_PREFIX) {
+			errMsg = "error downloading file"
+		}
 		return c.JSONPretty(
 			http.StatusBadRequest,
 			struct {
 				Error string `json:"error"`
-			}{Error: streamErr.Error()},
+			}{Error: errMsg},
 			"  ",
 		)
 	}
