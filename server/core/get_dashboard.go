@@ -96,6 +96,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	if err != nil {
 		return result, err
 	}
+	// Used to set params for download links
+	downloadLinkParams := url.Values{}
 
 	var minTimeValue int64 = math.MaxInt64
 	var maxTimeValue int64
@@ -263,9 +265,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					filename = v.(duckdb.Union).Value.(string)
 				}
 				queryString := ""
-				downloadLinkParams := url.Values{}
 				if len(queryParams) > 0 {
-					vars, err := json.Marshal(collectDownloadLinkParams)
+					vars, err := json.Marshal(downloadLinkParams)
 					if err != nil {
 						return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
 					}
@@ -295,6 +296,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		if err != nil {
+			return result, err
+		}
+		err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
 		}

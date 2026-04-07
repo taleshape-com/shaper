@@ -4,6 +4,7 @@ package handler
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -410,13 +411,21 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 		}
 		idParam := c.Param("id")
 		filename := c.Param("filename")
-		queryVars := c.QueryParam("vars")
+		queryVarsParam := c.QueryParam("vars")
 		queryId := c.QueryParam("query_id")
 		varsAsQueryParams := url.Values{}
-		if queryVars != "" {
-			err := json.Unmarshal([]byte(queryVars), &varsAsQueryParams)
+		if queryVarsParam != "" {
+			// base64 decode
+			queryVarsJSON, err := base64.RawURLEncoding.DecodeString(strings.TrimSuffix(queryVarsParam, "=="))
 			if err != nil {
-				c.Logger().Error("invalid vars query param:", slog.Any("error", err), slog.String("vars", queryVars))
+				c.Logger().Error("invalid base64 in vars query param:", slog.Any("error", err), slog.String("vars", queryVarsParam))
+				return c.JSONPretty(http.StatusBadRequest, struct {
+					Error string `json:"error"`
+				}{Error: "Invalid vars query parameter"}, "  ")
+			}
+			err = json.Unmarshal(queryVarsJSON, &varsAsQueryParams)
+			if err != nil {
+				c.Logger().Error("invalid vars query param:", slog.Any("error", err), slog.String("vars", queryVarsParam), slog.String("json", string(queryVarsJSON)))
 				return c.JSONPretty(http.StatusBadRequest, struct {
 					Error string `json:"error"`
 				}{Error: "Invalid vars query parameter"}, "  ")
