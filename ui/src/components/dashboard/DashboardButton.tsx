@@ -83,7 +83,9 @@ function DashboardButton ({
       console.error("Download error:", error);
       // Handle error (e.g., show an error message to the user)
     } finally {
-      setIsLoading(false);
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     }
   };
 

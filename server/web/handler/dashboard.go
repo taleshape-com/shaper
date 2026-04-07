@@ -803,19 +803,20 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 	}
 
 	if streamErr != nil {
-		// If headers haven't been sent yet, return JSON error
 		if c.Response().Committed {
 			// If we've already started streaming, log the error since we can't modify the response
 			c.Logger().Error("streaming error after response started:", slog.Any("error", streamErr))
 			return streamErr
 		}
+		// If headers haven't been sent yet, return JSON error
 		c.Logger().Error("error downloading file:", slog.Any("error", streamErr))
 		errMsg := streamErr.Error()
 		if hasId && !strings.HasPrefix(intent.DashboardID, core.TMP_DASHBOARD_PREFIX) {
 			errMsg = "error downloading file"
 		}
+		// TODO: since these downloads are handled by the browser, the user won't see the JSON. The browser doesn't even load the body for error responses here. need some better experience for errors for downloads. maybe we have to go back to doing downloads via JS?
 		return c.JSONPretty(
-			http.StatusBadRequest,
+			http.StatusInternalServerError,
 			struct {
 				Error string `json:"error"`
 			}{Error: errMsg},
