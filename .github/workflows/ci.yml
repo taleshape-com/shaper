@@ -76,7 +76,7 @@ jobs:
     permissions:
       contents: write
       packages: write
-    container: debian:12-slim
+    container: debian:13-slim
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
