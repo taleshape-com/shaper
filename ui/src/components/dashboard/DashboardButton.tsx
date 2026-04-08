@@ -64,13 +64,11 @@ function DashboardButton ({
           Authorization: jwt,
         },
       });
-
+      const json = await response.json();
       if (!response.ok) {
-        throw new Error("Download request failed");
+        throw new Error("Download request failed: " + (json.error || response.statusText));
       }
-
-      const { url } = await response.json();
-      const downloadUrl = `${baseUrl?.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}${url}`;
+      const downloadUrl = `${baseUrl?.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}${json.url}`;
       const filename = downloadUrl.split("/").pop() || "download";
 
       const link = document.createElement("a");
@@ -80,8 +78,8 @@ function DashboardButton ({
       link.click();
       link.remove();
     } catch (error) {
+      // TODO: Handle error (e.g., show an error message to the user)
       console.error("Download error:", error);
-      // Handle error (e.g., show an error message to the user)
     } finally {
       setTimeout(() => {
         setIsLoading(false);

@@ -397,17 +397,14 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 				}{Error: "Unauthorized"}, "  ")
 		}
 
-		var claims jwt.MapClaims
-		if actor.Type == core.ActorAPIKey {
-			claims = jwt.MapClaims{
-				// TODO: should we also set apiKeyName here? this code is messy
-				"apiKeyId": actor.ID,
+		claims := jwt.MapClaims{}
+		if jwtToken, ok := c.Get("user").(*jwt.Token); ok {
+			if c, ok := jwtToken.Claims.(jwt.MapClaims); ok {
+				claims = c
 			}
-		} else if actor.Type == core.ActorNoAuth {
-			claims = jwt.MapClaims{}
-		} else {
-			jwtToken := c.Get("user").(*jwt.Token)
-			claims = jwtToken.Claims.(jwt.MapClaims)
+		} else if actor.Type == core.ActorAPIKey {
+			// TODO: should we also set apiKeyName here? this code is messy
+			claims["apiKeyId"] = actor.ID
 		}
 		idParam := c.Param("id")
 		filename := c.Param("filename")
