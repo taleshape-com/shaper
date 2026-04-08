@@ -413,7 +413,7 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 		varsAsQueryParams := url.Values{}
 		if queryVarsParam != "" {
 			// base64 decode
-			queryVarsJSON, err := base64.RawURLEncoding.DecodeString(strings.TrimSuffix(queryVarsParam, "=="))
+			queryVarsJSON, err := base64.StdEncoding.DecodeString(queryVarsParam)
 			if err != nil {
 				c.Logger().Error("invalid base64 in vars query param:", slog.Any("error", err), slog.String("vars", queryVarsParam))
 				return c.JSONPretty(http.StatusBadRequest, struct {

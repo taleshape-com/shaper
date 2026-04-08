@@ -79,6 +79,10 @@ function DashboardButton ({
       link.remove();
     } catch (error) {
       // TODO: Handle error (e.g., show an error message to the user)
+      //       We either have to switch to buffering in memory again or we change the server so the file is rendered and cached before the download link is returned.
+      //       The problem with that is that it defeats the purpose of streaming the file. Then we have to wait on the server side until the file is rendered,
+      //       and we probably slow things down because we have to write the file to disk on the server which I don't want to do - especially for large files.
+      //       One thing to consider is to buffer in JS, but show the user a progress bar in the app (instead of the browsers own functionality).
       console.error("Download error:", error);
     } finally {
       setTimeout(() => {

@@ -265,18 +265,28 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					filename = v.(duckdb.Union).Value.(string)
 				}
 				queryString := ""
-				if len(queryParams) > 0 {
+				linkParams := url.Values{}
+				// Using query params directly for pdf, but using downloadLinkParams for other downloads since there we don't collect vars again.
+				// This matters especially for vars that are not explicitly set and need to be populated with their default value.
+				// Hope we can simplify this in the future.
+				if rInfo.Download == "pdf" {
+					if len(queryParams) > 0 {
+						vars, err := json.Marshal(queryParams)
+						if err != nil {
+							return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+						}
+						linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					}
+				} else {
 					vars, err := json.Marshal(downloadLinkParams)
 					if err != nil {
 						return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
 					}
-					downloadLinkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					linkParams.Add("query_id", strconv.Itoa(queryIndex+1))
 				}
-				if rInfo.Download != "pdf" {
-					downloadLinkParams.Add("query_id", strconv.Itoa(queryIndex+1))
-				}
-				if len(downloadLinkParams) > 0 {
-					queryString = "?" + downloadLinkParams.Encode()
+				if len(linkParams) > 0 {
+					queryString = "?" + linkParams.Encode()
 				}
 				if rInfo.Download == "pdf" {
 					id := dashboardQuery.ID
@@ -1923,7 +1933,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 	return nil
 }
 
-// TODO: This shares a lot of code with collectVars
+// TODO: This shares a lot of code with collectVars. Also, should we really collect vars upfront like this? Or should we collect them when doing the actual download?
 func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
