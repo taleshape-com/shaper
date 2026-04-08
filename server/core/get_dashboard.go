@@ -5,6 +5,8 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
@@ -56,6 +58,7 @@ var sideEffectSQLStatements = [][]string{
 var allowedDataReadingStatements = [][]string{
 	{"SELECT"},
 	{"FROM"},
+	{"VALUES"},
 	{"SUMMARIZE"},
 	{"DESC"},
 	{"DESCRIBE"},
@@ -232,7 +235,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			MarkLines:       rInfo.MarkLines,
 		}
 
-		if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
 			nextIsDownload = true
 		}
 
@@ -262,8 +265,28 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					filename = v.(duckdb.Union).Value.(string)
 				}
 				queryString := ""
-				if len(downloadLinkParams) > 0 {
-					queryString = "?" + downloadLinkParams.Encode()
+				linkParams := url.Values{}
+				// Using query params directly for pdf, but using downloadLinkParams for other downloads since there we don't collect vars again.
+				// This matters especially for vars that are not explicitly set and need to be populated with their default value.
+				// Hope we can simplify this in the future.
+				if rInfo.Download == "pdf" {
+					if len(queryParams) > 0 {
+						vars, err := json.Marshal(queryParams)
+						if err != nil {
+							return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+						}
+						linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					}
+				} else {
+					vars, err := json.Marshal(downloadLinkParams)
+					if err != nil {
+						return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+					}
+					linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					linkParams.Add("query_id", strconv.Itoa(queryIndex+1))
+				}
+				if len(linkParams) > 0 {
+					queryString = "?" + linkParams.Encode()
 				}
 				if rInfo.Download == "pdf" {
 					id := dashboardQuery.ID
@@ -275,9 +298,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 							id = v.(duckdb.Union).Value.(string)
 						}
 					}
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
 				} else {
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
 				}
 			}
 		}
@@ -1016,6 +1039,10 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	xlsxColumn, _ := findColumnByTag(columns, "DOWNLOAD_XLSX")
 	if xlsxColumn != nil {
 		return "xlsx"
+	}
+	jsonColumn, _ := findColumnByTag(columns, "DOWNLOAD_JSON")
+	if jsonColumn != nil {
+		return "json"
 	}
 	pdfColumn, _ := findColumnByTag(columns, "DOWNLOAD_PDF")
 	if pdfColumn != nil {
@@ -1906,7 +1933,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 	return nil
 }
 
-// TODO: This shares a lot of code with collectVars
+// TODO: This shares a lot of code with collectVars. Also, should we really collect vars upfront like this? Or should we collect them when doing the actual download?
 func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {

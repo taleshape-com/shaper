@@ -25,6 +25,7 @@ const (
 	PermissionQueryData   = "data:query"
 	PermissionIngestData  = "data:ingest"
 	PermissionReadMetrics = "metrics"
+	PermissionReadDashboard = "dashboard:read"
 )
 
 var AllPermissions = []string{
@@ -33,6 +34,7 @@ var AllPermissions = []string{
 	PermissionQueryData,
 	PermissionIngestData,
 	PermissionReadMetrics,
+	PermissionReadDashboard,
 }
 
 type APIKey struct {

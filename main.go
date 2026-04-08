@@ -102,6 +102,8 @@ type Config struct {
 	ConfigKVBucketName         string
 	TmpDashboardsKVBucketName  string
 	TmpDashboardsTTL           time.Duration
+	DownloadsKVBucketName      string
+	DownloadsTTL               time.Duration
 	IngestStreamMaxAge         time.Duration
 	StateStreamMaxAge          time.Duration
 	IngestConsumerNameFile     string
@@ -223,6 +225,8 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
 	tmpDashboardsKVBucket := flags.StringLong("tmp-dashboards-kv-bucket", "shaper-tmp-dashboards", "Name for NATS KV bucket to store temporary dashboards")
 	tmpDashboardsTTL := flags.DurationLong("tmp-dashboards-ttl", 24*time.Hour, "TTL for temporary dashboards")
+	downloadsKVBucket := flags.StringLong("downloads-kv-bucket", "shaper-downloads", "Name for NATS KV bucket to store download intents")
+	downloadsTTL := flags.DurationLong("downloads-ttl", 10*time.Minute, "TTL for download intents")
 	tasksStream := flags.StringLong("tasks-stream", "shaper-tasks", "NATS stream name for scheduled task execution")
 	taskResultsStream := flags.StringLong("task-results-stream", "shaper-task-results", "NATS stream name for task results")
 	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
@@ -365,6 +369,8 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			ConfigKVBucketName:         *streamPrefix + *configKVBucket,
 			TmpDashboardsKVBucketName:  *streamPrefix + *tmpDashboardsKVBucket,
 			TmpDashboardsTTL:           *tmpDashboardsTTL,
+			DownloadsKVBucketName:      *streamPrefix + *downloadsKVBucket,
+			DownloadsTTL:               *downloadsTTL,
 			IngestStreamMaxAge:         *ingestStreamMaxAge,
 			StateStreamMaxAge:          *stateStreamMaxAge,
 			IngestConsumerNameFile:     *ingestConsumerNameFile,
@@ -493,7 +499,8 @@ func Run(cfg Config) func(context.Context) {
 	}
 
 	handlerOptions := &slog.HandlerOptions{
-		Level: logLevel,
+		Level:       logLevel,
+		ReplaceAttr: util.RedactSensitiveAttrs,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, handlerOptions))
 
@@ -652,6 +659,8 @@ func Run(cfg Config) func(context.Context) {
 		cfg.ConfigKVBucketName,
 		cfg.TmpDashboardsKVBucketName,
 		cfg.TmpDashboardsTTL,
+		cfg.DownloadsKVBucketName,
+		cfg.DownloadsTTL,
 		cfg.TasksStreamName,
 		cfg.TasksSubjectPrefix,
 		cfg.TaskQueueConsumerName,

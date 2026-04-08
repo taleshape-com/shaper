@@ -151,7 +151,7 @@ export function Dashboard ({
         {menuButton}
         <div>
           <div className="p-4 z-50 flex justify-center items-center">
-            <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
+            <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded">
               {error.message}
             </div>
           </div>
@@ -405,7 +405,9 @@ const DataView = ({
                       // single table
                       "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
                       // pdf
-                      "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart,
+                      "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
+                      // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
+                      "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
                       // fill screen height if only 2 sections
                       "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
                       // single chart and not table

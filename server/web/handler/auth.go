@@ -122,7 +122,11 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["apiKeyId"] = authInfo.APIKeyID
 			claims["apiKeyName"] = authInfo.APIKeyName
 		}
-		if loginRequest.DashboardID != "" {
+		if loginRequest.DashboardID == "" {
+			if authInfo.APIKeyID != "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing dashboardId"})
+			}
+		} else {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}
 		if len(loginRequest.Variables) > 0 {

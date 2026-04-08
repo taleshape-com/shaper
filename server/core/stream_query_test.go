@@ -5,10 +5,11 @@ package core
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/jmoiron/sqlx"
 )
 
 func TestStreamSQLToCSV(t *testing.T) {
@@ -32,5 +33,118 @@ func TestStreamSQLToCSV(t *testing.T) {
 	expected := "id,name\n1,hello\n2,world\n"
 	if buf.String() != expected {
 		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
+
+func TestStreamSQLToJSON(t *testing.T) {
+	db, err := sqlx.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("failed to open duckdb: %v", err)
+	}
+	defer db.Close()
+
+	app := &App{DuckDB: db}
+	ctx := context.Background()
+	buf := &bytes.Buffer{}
+
+	sql := "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"
+	err = StreamSQLToJSON(app, ctx, sql, buf)
+	if err != nil {
+		t.Fatalf("StreamSQLToJSON failed: %v", err)
+	}
+
+	// json.Encoder adds newlines
+	// Note: maps in Go are randomized, but since we only have 2 columns, it should be stable enough or we should check for contents
+	// For this simple test with few columns it usually works, but it's better to be careful.
+	// Actually for 1.21+ Go maps have some order but not guaranteed.
+	// Let's just check if it contains expected strings.
+	got := buf.String()
+	if !strings.Contains(got, "{\"id\":1,\"name\":\"hello\"}") && !strings.Contains(got, "{\"name\":\"hello\",\"id\":1}") {
+		t.Errorf("got %q, missing expected object", got)
+	}
+	if !strings.Contains(got, "{\"id\":2,\"name\":\"world\"}") && !strings.Contains(got, "{\"name\":\"world\",\"id\":2}") {
+		t.Errorf("got %q, missing expected object", got)
+	}
+}
+
+func TestResolveDownloadQueryID(t *testing.T) {
+	tests := []struct {
+		name         string
+		sqls         []string
+		downloadType string
+		want         int
+		wantErr      bool
+	}{
+		{
+			name: "single matching download type",
+			sqls: []string{
+				"SELECT 'Shaper Demo Dashboard'::SECTION;",
+				"SELECT ('sessions-' || today())::DOWNLOAD_CSV AS CSV;",
+				"SELECT * FROM dataset;",
+			},
+			downloadType: "csv",
+			want:         2,
+		},
+		{
+			name: "single matching json download type",
+			sqls: []string{
+				"SELECT 'Shaper Demo Dashboard'::SECTION;",
+				"SELECT ('sessions-' || today())::DOWNLOAD_JSON AS JSON;",
+				"SELECT * FROM dataset;",
+			},
+			downloadType: "json",
+			want:         2,
+		},
+		{
+			name: "single data query (no special types)",
+			sqls: []string{
+				"SELECT 'Label'::LABEL;",
+				"SELECT 'Hello World';",
+			},
+			downloadType: "csv",
+			want:         1,
+		},
+		{
+			name: "multiple matching download types (fail)",
+			sqls: []string{
+				"SELECT ('sessions-' || today())::DOWNLOAD_CSV AS CSV;",
+				"SELECT * FROM dataset;",
+				"SELECT ('sessions-' || today())::DOWNLOAD_CSV AS CSV;",
+				"SELECT * FROM dataset;",
+			},
+			downloadType: "csv",
+			wantErr:      true,
+		},
+		{
+			name: "multiple data queries (fail)",
+			sqls: []string{
+				"SELECT 1 as id",
+				"SELECT 2 as id",
+			},
+			downloadType: "csv",
+			wantErr:      true,
+		},
+		{
+			name: "labels plural is fine",
+			sqls: []string{
+				"SELECT 'GAUGE with RANGE, LABELS and COLORS'::LABEL;",
+				"SELECT 75::GAUGE, [0, 33, 66, 100]::RANGE, ['Bad', 'Okay', 'Good']::LABELS;",
+			},
+			downloadType: "csv",
+			want:         1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveDownloadQueryID(tt.sqls, tt.downloadType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("resolveDownloadQueryID() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("resolveDownloadQueryID() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

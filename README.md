@@ -19,7 +19,7 @@ GROUP BY ALL ORDER BY ALL;
 ```
 
 [
-![Screenshot](https://taleshape.com/_astro/session_dashboard.DjtFqCnO_Z15ug1D.webp)
+![Screenshot](https://taleshape.com/images/session_dashboard.png)
 ](https://taleshape.com/shaper/docs/)
 
 Learn more:
@@ -28,7 +28,7 @@ https://taleshape.com/shaper/docs/
 
 ## Features
 
-**Business Intelligence**
+**Data Visualization**
 
 - **Open Source** & Self-Hosted
 - **SQL-First** and AI-Ready

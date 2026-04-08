@@ -41,6 +41,7 @@ type App struct {
 	JetStream                  jetstream.JetStream
 	ConfigKV                   jetstream.KeyValue
 	TmpDashboardsKv            jetstream.KeyValue
+	DownloadsKv                jetstream.KeyValue
 	NATSConn                   *nats.Conn
 	StateSubjectPrefix         string
 	IngestSubjectPrefix        string
@@ -50,6 +51,8 @@ type App struct {
 	ConfigKVBucketName         string
 	TmpDashboardsKVBucketName  string
 	TmpDashboardsTTL           time.Duration
+	DownloadsKVBucketName      string
+	DownloadsTTL               time.Duration
 	TasksStreamName            string
 	TasksSubjectPrefix         string
 	TaskQueueConsumerName      string
@@ -84,6 +87,8 @@ func New(
 	configKVBucketName string,
 	tmpDashboardsKVBucketName string,
 	tmpDashboardsTTL time.Duration,
+	downloadsKVBucketName string,
+	downloadsTTL time.Duration,
 	tasksStreamName string,
 	tasksSubjectPrefix string,
 	taskQueueConsumerName string,
@@ -149,6 +154,8 @@ func New(
 		ConfigKVBucketName:         configKVBucketName,
 		TmpDashboardsKVBucketName:  tmpDashboardsKVBucketName,
 		TmpDashboardsTTL:           tmpDashboardsTTL,
+		DownloadsKVBucketName:      downloadsKVBucketName,
+		DownloadsTTL:               downloadsTTL,
 		TasksStreamName:            tasksStreamName,
 		TasksSubjectPrefix:         tasksSubjectPrefix,
 		TaskQueueConsumerName:      taskQueueConsumerName,
@@ -240,6 +247,15 @@ func (app *App) setupStreamAndConsumer() error {
 		return fmt.Errorf("failed to create or update temporary dashboards KV: %w", err)
 	}
 	app.TmpDashboardsKv = tmpDashboardsKV
+
+	downloadsKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
+		Bucket: app.DownloadsKVBucketName,
+		TTL:    app.DownloadsTTL,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update downloads KV: %w", err)
+	}
+	app.DownloadsKv = downloadsKV
 
 	if !app.NoTasks {
 		taskBroadcastSub, err := app.NATSConn.Subscribe(app.TaskBroadcastSubject, app.HandleTaskBroadcast)

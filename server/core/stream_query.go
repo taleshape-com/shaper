@@ -6,12 +6,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"net/url"
+	"regexp"
 	"shaper/server/util"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,44 @@ const MICROSECONDS_PER_DAY = 24.0 * 60.0 * 60.0 * 1_000_000.0
 
 const EXCEL_INTERVAL_FORMAT = "[h]:mm:ss"
 
+var excludedTypesRegex = regexp.MustCompile(`\b(LABEL|SECTION|XLINE|YLINE|DROPDOWN|DOWNLOAD_CSV|DOWNLOAD_XLSX|DOWNLOAD_JSON|DOWNLOAD_PDF|DATEPICKER|DATEPICKER_FROM|DATEPICKER_TO|PLACEHOLDER|INPUT|RELOAD|HEADER_IMAGE|FOOTER_LINK)\b`)
+
+func resolveDownloadQueryID(sqls []string, downloadType string) (int, error) {
+	upperType := "DOWNLOAD_" + strings.ToUpper(downloadType)
+	foundIndex := -1
+	count := 0
+	for i, s := range sqls {
+		if strings.Contains(strings.ToUpper(s), upperType) {
+			foundIndex = i
+			count++
+		}
+	}
+	if count == 1 {
+		return foundIndex + 1, nil
+	}
+
+	foundIndex = -1
+	count = 0
+	for i, s := range sqls {
+		if isSideEffect(s) {
+			continue
+		}
+		upper := strings.ToUpper(s)
+		if !excludedTypesRegex.MatchString(upper) {
+			foundIndex = i
+			count++
+		}
+	}
+	if count == 1 {
+		return foundIndex, nil
+	}
+
+	if count == 0 {
+		return -1, fmt.Errorf("could not find a matching query for %s download", strings.ToUpper(downloadType))
+	}
+	return -1, fmt.Errorf("found %d potential queries for %s download, please specify which one with query_id", count, strings.ToUpper(downloadType))
+}
+
 // Stream the result of a dashboard query as CSV file to client.
 // Same as dashboard, it handles variables from JWT and from URL params.
 func StreamQueryCSV(
@@ -32,7 +71,7 @@ func StreamQueryCSV(
 	ctx context.Context,
 	dashboardId string,
 	params url.Values,
-	queryID string,
+	queryID int,
 	variables map[string]any,
 	writer io.Writer,
 ) error {
@@ -46,16 +85,19 @@ func StreamQueryCSV(
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
-	queryIndex, err := strconv.Atoi(queryID)
-	if err != nil {
-		return fmt.Errorf("invalid query ID '%s': %w", queryID, err)
+	if queryID == -1 {
+		queryID, err = resolveDownloadQueryID(sqls, "csv")
+		if err != nil {
+			return err
+		}
 	}
-	if len(sqls) <= queryIndex || queryIndex < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
+
+	if len(sqls) <= queryID || queryID < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
-	query := sqls[queryIndex]
+	query := sqls[queryID]
 	if !IsAllowedStatement(query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
+		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
 	conn, err := app.DuckDB.Connx(ctx)
@@ -97,6 +139,174 @@ func StreamSQLToCSV(
 	defer conn.Close()
 
 	return StreamSQLToCSVWithConn(conn, ctx, sqlQuery, writer)
+}
+
+// Stream the result of a dashboard query as JSON file to client.
+// Same as dashboard, it handles variables from JWT and from URL params.
+func StreamQueryJSON(
+	app *App,
+	ctx context.Context,
+	dashboardId string,
+	params url.Values,
+	queryID int,
+	variables map[string]any,
+	writer io.Writer,
+) error {
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
+	if err != nil {
+		return fmt.Errorf("error getting dashboard: %w", err)
+	}
+	cleanContent := util.StripSQLComments(dashboard.Content)
+	sqls, err := util.SplitSQLQueries(cleanContent)
+	if err != nil {
+		return fmt.Errorf("failed to split SQL queries: %w", err)
+	}
+
+	if queryID == -1 {
+		queryID, err = resolveDownloadQueryID(sqls, "json")
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(sqls) <= queryID || queryID < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+	}
+	query := sqls[queryID]
+	if !IsAllowedStatement(query) {
+		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+	}
+
+	conn, err := app.DuckDB.Connx(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting conn: %v", err)
+	}
+	defer conn.Close()
+
+	// Execute the query and get rows
+	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
+	if err != nil {
+		return fmt.Errorf("failed to get variable prefix: %w", err)
+	}
+	defer func() {
+		if varCleanup != "" {
+			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+				app.Logger.ErrorContext(ctx, "Error cleaning up vars", "error", cleanupErr)
+			}
+		}
+	}()
+
+	return StreamSQLToJSONWithConn(conn, ctx, varPrefix+query+";", writer)
+}
+
+// StreamSQLToJSON executes a single SQL query and streams the result as JSON.
+func StreamSQLToJSON(
+	app *App,
+	ctx context.Context,
+	sqlQuery string,
+	writer io.Writer,
+) error {
+	if !IsAllowedStatement(sqlQuery) {
+		return fmt.Errorf("disallowed SQL statement")
+	}
+	conn, err := app.DuckDB.Connx(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting conn: %v", err)
+	}
+	defer conn.Close()
+
+	return StreamSQLToJSONWithConn(conn, ctx, sqlQuery, writer)
+}
+
+// StreamSQLToJSONWithConn executes a single SQL query using an existing connection and streams the result as JSON.
+func StreamSQLToJSONWithConn(
+	conn *sqlx.Conn,
+	ctx context.Context,
+	sqlQuery string,
+	writer io.Writer,
+) error {
+	rows, err := conn.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	// Get column names
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("error getting columns: %w", err)
+	}
+
+	if _, err := writer.Write([]byte("[")); err != nil {
+		return fmt.Errorf("error writing JSON start: %w", err)
+	}
+
+	// Prepare containers for row data
+	values := make([]any, len(columns))
+	valuePtrs := make([]any, len(columns))
+	for i := range values {
+		valuePtrs[i] = &values[i]
+	}
+
+	first := true
+	// Stream rows
+	for rows.Next() {
+		if !first {
+			if _, err := writer.Write([]byte(",")); err != nil {
+				return fmt.Errorf("error writing JSON separator: %w", err)
+			}
+		}
+		first = false
+
+		// Scan the row into our value containers
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return fmt.Errorf("error scanning row: %w", err)
+		}
+
+		// Convert values to map
+		rowMap := make(map[string]any)
+		for i, colName := range columns {
+			rowMap[colName] = jsonValue(values[i])
+		}
+
+		// Write the record
+		encoder := json.NewEncoder(writer)
+		if err := encoder.Encode(rowMap); err != nil {
+			return fmt.Errorf("error encoding JSON record: %w", err)
+		}
+	}
+
+	if _, err := writer.Write([]byte("]")); err != nil {
+		return fmt.Errorf("error writing JSON end: %w", err)
+	}
+
+	return rows.Err()
+}
+
+func jsonValue(value any) any {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case []byte:
+		if isUUID(v) {
+			return formatUUID(v)
+		}
+		return string(v)
+	case duckdb.Interval:
+		return intervalToString(v)
+	case duckdb.Union:
+		return jsonValue(v.Value)
+	case []any:
+		res := make([]any, len(v))
+		for i, item := range v {
+			res[i] = jsonValue(item)
+		}
+		return res
+	default:
+		return v
+	}
 }
 
 // StreamSQLToCSVWithConn executes a single SQL query using an existing connection and streams the result as CSV.
@@ -174,7 +384,7 @@ func StreamQueryXLSX(
 	ctx context.Context,
 	dashboardId string,
 	params url.Values,
-	queryID string,
+	queryID int,
 	variables map[string]any,
 	writer io.Writer,
 ) error {
@@ -189,16 +399,19 @@ func StreamQueryXLSX(
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
-	queryIndex, err := strconv.Atoi(queryID)
-	if err != nil {
-		return fmt.Errorf("invalid query ID '%s': %w", queryID, err)
+	if queryID == -1 {
+		queryID, err = resolveDownloadQueryID(sqls, "xlsx")
+		if err != nil {
+			return err
+		}
 	}
-	if len(sqls) <= queryIndex || queryIndex < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryIndex)
+
+	if len(sqls) <= queryID || queryID < 0 {
+		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
-	query := sqls[queryIndex]
+	query := sqls[queryID]
 	if !IsAllowedStatement(query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
+		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
 	// Create a new XLSX file
@@ -259,7 +472,7 @@ func StreamQueryXLSX(
 	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
 	if varCleanup != "" {
 		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
-			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryID, cleanupErr)
 		}
 	}
 	if err != nil {

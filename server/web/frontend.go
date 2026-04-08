@@ -9,9 +9,9 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
+	"shaper/server/web/webutil"
 	"strings"
 	"time"
 
@@ -81,7 +81,7 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.Ha
 				return echo.NewHTTPError(http.StatusInternalServerError, "Error reading file")
 			}
 
-			defaultBaseUrl := strings.TrimSuffix(getRequestURL(c.Request()).String(), "/embed/shaper.js")
+			defaultBaseUrl := strings.TrimSuffix(webutil.GetRequestURL(c.Request()).String(), "/embed/shaper.js")
 			// Inject default base URL and custom CSS
 			content = fmt.Appendf(content, "\nshaper.defaultBaseUrl = %q;\nshaper.customCSS = %q;\n", defaultBaseUrl, customCSS)
 
@@ -106,39 +106,6 @@ func servePdfViewHTML(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
 		http.ServeContent(c.Response(), c.Request(), "pdfview.html", modTime, bytes.NewReader(pdfViewHTML))
 		return nil
 	}
-}
-
-// getRequestURL reconstructs the full URL, handling reverse proxy scenarios
-func getRequestURL(r *http.Request) *url.URL {
-	// Start with the scheme (http/https)
-	scheme := "http"
-	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-
-	// Determine the host
-	host := r.Host
-	if host == "" {
-		host = r.Header.Get("X-Forwarded-Host")
-	}
-	if host == "" {
-		host = r.Header.Get("Host")
-	}
-	if host == "" {
-		host = r.URL.Host
-	}
-
-	// Construct the full URL
-	fullURL := url.URL{
-		Scheme: scheme,
-		Host:   host,
-		Path:   r.URL.Path,
-	}
-
-	// Add query parameters
-	fullURL.RawQuery = r.URL.RawQuery
-
-	return &fullURL
 }
 
 func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, basePath string) echo.HandlerFunc {

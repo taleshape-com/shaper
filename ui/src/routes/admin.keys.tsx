@@ -59,6 +59,7 @@ const PERMISSIONS = [
   { label: "Query Data", value: "data:query" },
   { label: "Ingest Data", value: "data:ingest" },
   { label: "Read Metrics", value: "metrics" },
+  { label: "Read Dashboard", value: "dashboard:read" },
 ];
 
 interface NewAPIKeyResponse {
