@@ -526,6 +526,10 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 			}{Error: errMsg}, "  ")
 		}
 
+		// TODO: I want to people able to return a full URL here before making this functionality publicly available.
+		//       We already know the basepath, but we don't know the scheme, host and port for certain because of possible reverse proxy setups.
+		//       We can try to reconstruct the url depending on if TLS is configured and by looking at the request headers.
+		//       But we need a fallback so the user can configure the base URL. Probably as a flag in main.go
 		u := fmt.Sprintf("/api/download/%s/%s", token, filename)
 
 		return c.JSON(http.StatusOK, struct {
