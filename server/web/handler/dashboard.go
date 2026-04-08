@@ -623,13 +623,9 @@ func DownloadSQL(app *core.App, internalUrl string, pdfDateFormat string) echo.H
 				}{Error: "This endpoint only supports API key authentication"}, "  ")
 		}
 
-		newClaims := jwt.MapClaims{}
-		for k, v := range claims {
-			newClaims[k] = v
-		}
-		newClaims["exp"] = time.Now().Add(app.JWTExp).Unix()
-		newClaims["dashboardId"] = id
-		downloadJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+		claims["exp"] = time.Now().Add(app.JWTExp).Unix()
+		claims["dashboardId"] = id
+		downloadJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		downloadJWTStr, err := downloadJWT.SignedString(app.JWTSecret)
 		if err != nil {
 			c.Logger().Error("failed to sign download JWT token:", slog.Any("error", err))
@@ -705,7 +701,6 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 
 	c.Response().Header().Set(echo.HeaderContentType, contentType)
 	c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", filename))
-
 	// Disable response buffering
 	c.Response().Header().Set("X-Content-Type-Options", "nosniff")
 	c.Response().Header().Set("Transfer-Encoding", "chunked")
