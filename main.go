@@ -201,7 +201,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
 	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
-	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
+	basePath := flags.StringLong("basepath", "/", "Base URL the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath. Can be a path starting with a slash or a full URL. If you want to use the download API with mode=url, you also have to set basepath to a full URL, otherwise URLs will be relative only. Does not apply if tls-domain set")
 	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
@@ -320,10 +320,13 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		}
 
 		bpath := *basePath
+		if *tlsDomain != "" {
+			bpath = "https://" + *tlsDomain + "/"
+		}
 		if bpath == "" {
 			bpath = "/"
 		}
-		if bpath[0] != '/' {
+		if !strings.HasPrefix(bpath, "http://") && !strings.HasPrefix(bpath, "https://") && bpath[0] != '/' {
 			bpath = "/" + bpath
 		}
 		if bpath[len(bpath)-1] != '/' {

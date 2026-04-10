@@ -68,7 +68,9 @@ function DashboardButton ({
       if (!response.ok) {
         throw new Error("Download request failed: " + (json.error || response.statusText));
       }
-      const downloadUrl = `${baseUrl?.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}${json.url}`;
+      const downloadUrl = (json.url as string).startsWith("http://") || (json.url as string).startsWith("https://")
+        ? json.url
+        : `${baseUrl?.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl}${json.url}`;
       const filename = downloadUrl.split("/").pop() || "download";
 
       const link = document.createElement("a");
