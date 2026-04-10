@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"shaper/server/core"
 	"strings"
 	"time"
@@ -119,14 +120,22 @@ func Start(
 		app.Logger.Info("Open https://" + tlsDomain + " in your browser")
 	} else {
 		app.Logger.Info("Web server is listening at " + addr + "")
-		if app.BasePath == "/" {
-			logPrefix := ""
-			if !strings.HasPrefix(addr, ":") {
-				logPrefix = "http://"
-			}
-			app.Logger.Info("Open " + logPrefix + addr + " in your browser")
+		if strings.HasPrefix(app.BasePath, "http://") || strings.HasPrefix(app.BasePath, "https://") {
+			app.Logger.Info("Open " + app.BasePath + " in your browser")
 		} else {
-			app.Logger.Info("Custom base path set. Opening the app in your browser directly won't work as expected. You are likely using a reverse proxy and need to access the app through it.", slog.Any("basepath", app.BasePath))
+			u, err := url.Parse(app.BasePath)
+			if err != nil {
+				e.Logger.Fatal("Error parsing base path", slog.Any("basepath", app.BasePath), slog.Any("error", err))
+			}
+			if u.Path == "/" {
+				logPrefix := ""
+				if !strings.HasPrefix(addr, ":") {
+					logPrefix = "http://"
+				}
+				app.Logger.Info("Open " + logPrefix + addr + " in your browser")
+			} else {
+				app.Logger.Info("Custom base path set. Opening the app in your browser directly won't work as expected. You are likely using a reverse proxy and need to access the app through it.", slog.Any("basepath", app.BasePath))
+			}
 		}
 	}
 
