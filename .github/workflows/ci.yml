@@ -213,7 +213,7 @@ jobs:
           rm checksums-*.txt
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             bin/shaper-linux-*
