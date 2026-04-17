@@ -42,7 +42,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -144,7 +144,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -220,6 +220,35 @@ const DataView = ({
     (section) => section.type === "content",
   ).length;
 
+  type HeaderSection = Extract<Result["sections"][number], { type: "header" }>;
+  const groupedSections: {
+    header: HeaderSection;
+    headerIndex: number;
+    contentSections: { section: (typeof sections)[0]; index: number }[];
+  }[] = [];
+
+  sections.forEach((section, index) => {
+    if (section.type === "header" && (section.queries.length > 0 || section.title)) {
+      groupedSections.push({
+        header: section as HeaderSection,
+        headerIndex: index,
+        contentSections: [],
+      });
+    } else {
+      const lastGroup = groupedSections[groupedSections.length - 1];
+      if (lastGroup) {
+        lastGroup.contentSections.push({ section, index });
+      } else {
+        // Fallback for safety (though index 0 is guaranteed to be a header)
+        groupedSections.push({
+          header: { type: "header", queries: [] } as HeaderSection,
+          headerIndex: -1,
+          contentSections: [{ section, index }],
+        });
+      }
+    }
+  });
+
   return (<ChartHoverProvider>
     <div className={cx("relative w-full h-full shaper-scope", { "overflow-hidden max-h-screen": !!fullscreenId })}>
       <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
@@ -231,42 +260,40 @@ const DataView = ({
           />
         )}
       </div>
-      {sections.map((section, sectionIndex) => {
-        if (section.type === "header") {
-          const queries = section.queries.filter(
-            (query) => query.rows.length > 0,
-          );
-          return (
-            <section
-              key={sectionIndex}
-              id={toCssId(`header${sectionIndex}`)}
+      {groupedSections.map((group, groupIndex) => (
+        <section key={groupIndex} className="break-inside-avoid">
+          {group.headerIndex !== -1 && (
+            <div
+              key={group.headerIndex}
+              id={toCssId(`header${group.headerIndex}`)}
               className={cx("flex flex-wrap items-center ml-2 mr-4", {
-                "mt-3 mb-3": section.queries.length > 0 || section.title,
-                "mt-8": section.title && sectionIndex !== 0,
-                "my-2": section.queries.length === 0 && !section.title && sectionIndex === 0,
+                "mt-3 mb-3": group.header.queries.length > 0 || group.header.title,
+                "mt-8": group.header.title && group.headerIndex !== 0,
+                "my-2": group.header.queries.length === 0 && !group.header.title && group.headerIndex === 0,
               })}
             >
               <div
                 className={cx("@sm:flex-grow flex items-center ml-1", {
-                  "w-full @sm:w-fit": section.title,
+                  "w-full @sm:w-fit": group.header.title,
                 })}
               >
-                {sectionIndex === 0 ? (
+                {group.headerIndex === 0 ? (
                   <>
                     {menuButton}
-                    {section.title ? (
+                    {group.header.title ? (
                       <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
-                        {section.title}
+                        {group.header.title}
                       </h1>
                     ) : null}
                   </>
-                ) : section.title ? (
+                ) : group.header.title ? (
                   <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
-                    {section.title}
+                    {group.header.title}
                   </h2>
                 ) : null}
               </div>
-              {queries.map(({ render, columns, rows }, index) => {
+              {group.header.queries.filter(q => q.rows.length > 0).map(({ render, columns, rows }, index) => {
+                const sectionIndex = group.headerIndex;
                 if (render.type === "dropdown") {
                   return (
                     <DashboardDropdown
@@ -346,142 +373,142 @@ const DataView = ({
                   );
                 }
               })}
-            </section>
-          );
-        }
-
-        const numQueriesInSection = section.queries.length;
-
-        return (
-          <section
-            key={sectionIndex}
-            id={toCssId(`content${sectionIndex}`)}
-            className={cx("grid grid-cols-1 ml-4", {
-              "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
-              "@sm:grid-cols-3 print:grid-cols-3":
-                numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
-              "@lg:grid-cols-2 print:grid-cols-2":
-                numQueriesInSection === 2 ||
-                (numContentSections === 1 && numQueriesInSection === 4),
-              "@lg:grid-cols-3":
-                numQueriesInSection > 4 ||
-                numQueriesInSection === 3 ||
-                (numQueriesInSection === 4 && numContentSections > 1),
-              "@xl:grid-cols-4":
-                (numQueriesInSection === 4 && numContentSections > 1) ||
-                numQueriesInSection === 7 ||
-                numQueriesInSection === 8 ||
-                numQueriesInSection > 9,
-              "@4xl:grid-cols-5":
-                (numQueriesInSection === 5 && numContentSections > 1) ||
-                numQueriesInSection >= 9,
-            })}
-          >
-            {section.queries.map((query, queryIndex) => {
-              if (query.render.type === "placeholder") {
-                return <div key={queryIndex}></div>;
-              }
-              const currentId = `${sectionIndex}-${queryIndex}`;
-              const isFullscreen = fullscreenId === currentId;
-              const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
-              const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
-              const singleTable = numQueriesInSection === 1 && query.render.type === "table";
-              const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
-              const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
-              const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
-              return (
-                <Card
-                  key={queryIndex}
-                  id={toCssId(`content${sectionIndex}-${cardCssId}`)}
-                  className={cx(
-                    "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
-                    isFullscreen ? "absolute inset-0 z-[100] m-0 rounded-none h-full w-full overflow-auto p-8" : {
-                      "break-inside-avoid": !singleTable,
-                      "min-h-[240px]": isChartQuery,
-                      "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
-                      "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
-                      "h-[240px]": isChartQuery && !isBigChartQuery,
-                      "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
-                      // single table
-                      "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
-                      // pdf
-                      "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
-                      // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
-                      "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
-                      // fill screen height if only 2 sections
-                      "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
-                      // single chart and not table
-                      "@sm:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
-                      // max heights:
-                      // 1 or 2 cols
-                      "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
-                      // 3 cols
-                      "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
-                        numQueriesInSection > 4 ||
-                        numQueriesInSection === 3 ||
-                        (numQueriesInSection === 4 && numContentSections > 1)),
-                      // 4 cols
-                      "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
-                        (numQueriesInSection === 4 && numContentSections > 1) ||
-                        numQueriesInSection === 7 ||
-                        numQueriesInSection === 8 ||
-                        numQueriesInSection > 9),
-                      // 5 cols
-                      "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
-                        numQueriesInSection >= 9,
-                      // not height related:
-                      "break-before-avoid": singleTable,
-                      "p-4": !isChartQuery,
-                    },
-                  )}
-                >
-                  {(isChartQuery || query.render.type === "table") && (
-                    <FullscreenButton
-                      isFullscreen={isFullscreen}
-                      onToggle={() => setFullscreenId(isFullscreen ? null : currentId)}
-                      className={cx("right-2", isFullscreen && "top-8 right-8")}
-                    />
-                  )}
-                  {isChartQuery ? (
-                    <ChartDownloadButton
-                      chartId={`${sectionIndex}-${queryIndex}`}
-                      label={query.render.label}
-                      className={cx("absolute top-2 right-10 z-40", isFullscreen && "top-8 right-16")}
-                      id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
-                    />
-                  ) : (
-                    <>
-                      {query.render.label && (
-                        <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
-                          {query.render.label}
-                        </h2>
+            </div>
+          )}
+          {group.contentSections.map(({ section, index: sectionIndex }) => {
+            const numQueriesInSection = section.queries.length;
+            return (
+              <div
+                key={sectionIndex}
+                id={toCssId(`content${sectionIndex}`)}
+                className={cx("grid grid-cols-1 ml-4", {
+                  "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+                  "@sm:grid-cols-3 print:grid-cols-3":
+                    numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
+                  "@lg:grid-cols-2 print:grid-cols-2":
+                    numQueriesInSection === 2 ||
+                    (numContentSections === 1 && numQueriesInSection === 4),
+                  "@lg:grid-cols-3":
+                    numQueriesInSection > 4 ||
+                    numQueriesInSection === 3 ||
+                    (numQueriesInSection === 4 && numContentSections > 1),
+                  "@xl:grid-cols-4":
+                    (numQueriesInSection === 4 && numContentSections > 1) ||
+                    numQueriesInSection === 7 ||
+                    numQueriesInSection === 8 ||
+                    numQueriesInSection > 9,
+                  "@4xl:grid-cols-5":
+                    (numQueriesInSection === 5 && numContentSections > 1) ||
+                    numQueriesInSection >= 9,
+                })}
+              >
+                {section.queries.map((query, queryIndex) => {
+                  if (query.render.type === "placeholder") {
+                    return <div key={queryIndex}></div>;
+                  }
+                  const currentId = `${sectionIndex}-${queryIndex}`;
+                  const isFullscreen = fullscreenId === currentId;
+                  const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+                  const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
+                  const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+                  const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
+                  const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
+                  const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
+                  return (
+                    <Card
+                      key={queryIndex}
+                      id={toCssId(`content${sectionIndex}-${cardCssId}`)}
+                      className={cx(
+                        "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
+                        isFullscreen ? "absolute inset-0 z-[100] m-0 rounded-none h-full w-full overflow-auto p-8" : {
+                          "break-inside-avoid": !singleTable,
+                          "min-h-[240px]": isChartQuery,
+                          "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
+                          "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                          "h-[240px]": isChartQuery && !isBigChartQuery,
+                          "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
+                          // single table
+                          "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
+                          // pdf
+                          "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
+                          // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
+                          "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
+                          // fill screen height if only 2 sections
+                          "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
+                          // single chart and not table
+                          "@sm:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                          // max heights:
+                          // 1 or 2 cols
+                          "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
+                          // 3 cols
+                          "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
+                            numQueriesInSection > 4 ||
+                            numQueriesInSection === 3 ||
+                            (numQueriesInSection === 4 && numContentSections > 1)),
+                          // 4 cols
+                          "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
+                            (numQueriesInSection === 4 && numContentSections > 1) ||
+                            numQueriesInSection === 7 ||
+                            numQueriesInSection === 8 ||
+                            numQueriesInSection > 9),
+                          // 5 cols
+                          "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
+                            numQueriesInSection >= 9,
+                          // not height related:
+                          "break-before-avoid": singleTable,
+                          "p-4": !isChartQuery,
+                        },
                       )}
-                      {query.render.type === "table" && (
-                        <TableDownloadButton
-                          headers={query.columns}
-                          data={query.rows as (string | number | boolean)[][]}
-                          label={query.render.label}
-                          className={cx("right-10", isFullscreen && "top-8 right-16")}
-                          id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                    >
+                      {(isChartQuery || query.render.type === "table") && (
+                        <FullscreenButton
+                          isFullscreen={isFullscreen}
+                          onToggle={() => setFullscreenId(isFullscreen ? null : currentId)}
+                          className={cx("right-2", isFullscreen && "top-8 right-8")}
                         />
                       )}
-                    </>
-                  )}
-                  {
-                    renderContent(
-                      query,
-                      sectionIndex,
-                      queryIndex,
-                      data.minTimeValue,
-                      data.maxTimeValue,
-                    )
-                  }
-                </Card>
-              );
-            })}
-          </section>
-        );
-      })}
+                      {isChartQuery ? (
+                        <ChartDownloadButton
+                          chartId={`${sectionIndex}-${queryIndex}`}
+                          label={query.render.label}
+                          className={cx("absolute top-2 right-10 z-40", isFullscreen && "top-8 right-16")}
+                          id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                        />
+                      ) : (
+                        <>
+                          {query.render.label && (
+                            <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
+                              {query.render.label}
+                            </h2>
+                          )}
+                          {query.render.type === "table" && (
+                            <TableDownloadButton
+                              headers={query.columns}
+                              data={query.rows as (string | number | boolean)[][]}
+                              label={query.render.label}
+                              className={cx("right-10", isFullscreen && "top-8 right-16")}
+                              id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                            />
+                          )}
+                        </>
+                      )}
+                      {
+                        renderContent(
+                          query,
+                          sectionIndex,
+                          queryIndex,
+                          data.minTimeValue,
+                          data.maxTimeValue,
+                        )
+                      }
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </section>
+      ))}
       {
         numContentSections === 0 ? (
           <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
