@@ -42,7 +42,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard({
+export function Dashboard ({
   id,
   vars,
   getJwt,
@@ -144,7 +144,7 @@ export function Dashboard({
     }
   }, [loading]);
 
-  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     return (
       <div className="antialiased text-ctext dark:text-dtext">
@@ -228,18 +228,19 @@ const DataView = ({
   }[] = [];
 
   sections.forEach((section, index) => {
-    if (section.type === "header" && (section.queries.length > 0 || section.title)) {
-      groupedSections.push({
-        header: section as HeaderSection,
-        headerIndex: index,
-        contentSections: [],
-      });
+    if (section.type === "header") {
+      if (section.queries.length > 0 || section.title) {
+        groupedSections.push({
+          header: section as HeaderSection,
+          headerIndex: index,
+          contentSections: [],
+        });
+      }
     } else {
       const lastGroup = groupedSections[groupedSections.length - 1];
       if (lastGroup) {
         lastGroup.contentSections.push({ section, index });
       } else {
-        // Fallback for safety (though index 0 is guaranteed to be a header)
         groupedSections.push({
           header: { type: "header", queries: [] } as HeaderSection,
           headerIndex: -1,
