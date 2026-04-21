@@ -222,29 +222,31 @@ const DataView = ({
 
   type HeaderSection = Extract<Result["sections"][number], { type: "header" }>;
   const groupedSections: {
-    header: HeaderSection;
-    headerIndex: number;
-    contentSections: { section: (typeof sections)[0]; index: number }[];
+    sections: { section: Result["sections"][number]; index: number }[];
   }[] = [];
 
   sections.forEach((section, index) => {
+    const lastGroup = groupedSections[groupedSections.length - 1];
+    const lastGroupHasSubstantialContent = lastGroup?.sections.some(
+      (s) => s.section.type === "content" && s.section.queries.length > 0,
+    );
+
     if (section.type === "header") {
       if (section.queries.length > 0 || section.title) {
-        groupedSections.push({
-          header: section as HeaderSection,
-          headerIndex: index,
-          contentSections: [],
-        });
+        if (!lastGroup || lastGroupHasSubstantialContent) {
+          groupedSections.push({
+            sections: [{ section, index }],
+          });
+        } else {
+          lastGroup.sections.push({ section, index });
+        }
       }
     } else {
-      const lastGroup = groupedSections[groupedSections.length - 1];
       if (lastGroup) {
-        lastGroup.contentSections.push({ section, index });
+        lastGroup.sections.push({ section, index });
       } else {
         groupedSections.push({
-          header: { type: "header", queries: [] } as HeaderSection,
-          headerIndex: -1,
-          contentSections: [{ section, index }],
+          sections: [{ section, index }],
         });
       }
     }
@@ -263,121 +265,128 @@ const DataView = ({
       </div>
       {groupedSections.map((group, groupIndex) => (
         <section key={groupIndex} className="break-inside-avoid">
-          {group.headerIndex !== -1 && (
-            <div
-              key={group.headerIndex}
-              id={toCssId(`header${group.headerIndex}`)}
-              className={cx("flex flex-wrap items-center ml-2 mr-4", {
-                "mt-3 mb-3": group.header.queries.length > 0 || group.header.title,
-                "mt-8": group.header.title && group.headerIndex !== 0,
-                "my-2": group.header.queries.length === 0 && !group.header.title && group.headerIndex === 0,
-              })}
-            >
-              <div
-                className={cx("@sm:flex-grow flex items-center ml-1", {
-                  "w-full @sm:w-fit": group.header.title,
-                })}
-              >
-                {group.headerIndex === 0 ? (
-                  <>
-                    {menuButton}
-                    {group.header.title ? (
-                      <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
-                        {group.header.title}
-                      </h1>
+          {group.sections.map(({ section, index: sectionIndex }) => {
+            if (section.type === "header") {
+              const header = section as HeaderSection;
+              const queries = header.queries.filter(
+                (query) => query.rows.length > 0,
+              );
+              return (
+                <div
+                  key={sectionIndex}
+                  id={toCssId(`header${sectionIndex}`)}
+                  className={cx("flex flex-wrap items-center ml-2 mr-4", {
+                    "mt-3 mb-3": header.queries.length > 0 || header.title,
+                    "mt-8": header.title && sectionIndex !== 0,
+                    "my-2": header.queries.length === 0 && !header.title && sectionIndex === 0,
+                  })}
+                >
+                  <div
+                    className={cx("@sm:flex-grow flex items-center ml-1", {
+                      "w-full @sm:w-fit": header.title,
+                    })}
+                  >
+                    {sectionIndex === 0 ? (
+                      <>
+                        {menuButton}
+                        {header.title ? (
+                          <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
+                            {header.title}
+                          </h1>
+                        ) : null}
+                      </>
+                    ) : header.title ? (
+                      <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
+                        {header.title}
+                      </h2>
                     ) : null}
-                  </>
-                ) : group.header.title ? (
-                  <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
-                    {group.header.title}
-                  </h2>
-                ) : null}
-              </div>
-              {group.header.queries.filter(q => q.rows.length > 0).map(({ render, columns, rows }, index) => {
-                const sectionIndex = group.headerIndex;
-                if (render.type === "dropdown") {
-                  return (
-                    <DashboardDropdown
-                      key={index}
-                      idPrefix={`header${sectionIndex}-${render.type}-`}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "dropdownMulti") {
-                  return (
-                    <DashboardDropdownMulti
-                      key={index}
-                      idPrefix={`header${sectionIndex}-${render.type}-`}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "button") {
-                  return (
-                    <DashboardButton
-                      key={index}
-                      idPrefix={`header${sectionIndex}-${render.type}-`}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      baseUrl={baseUrl}
-                      getJwt={getJwt}
-                    />
-                  );
-                }
-                if (render.type === "datepicker") {
-                  return (
-                    <DashboardDatePicker
-                      key={index}
-                      idPrefix={`header${sectionIndex}-${render.type}-`}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "daterangePicker") {
-                  return (
-                    <DashboardDateRangePicker
-                      key={index}
-                      idPrefix={`header${sectionIndex}-${render.type}-`}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-                if (render.type === "input") {
-                  return (
-                    <DashboardInput
-                      key={index}
-                      idPrefix={`header${sectionIndex}-${render.type}-`}
-                      label={render.label}
-                      headers={columns}
-                      data={rows}
-                      vars={vars}
-                      onChange={onVarsChanged}
-                    />
-                  );
-                }
-              })}
-            </div>
-          )}
-          {group.contentSections.map(({ section, index: sectionIndex }) => {
+                  </div>
+                  {queries.map(({ render, columns, rows }, index) => {
+                    if (render.type === "dropdown") {
+                      return (
+                        <DashboardDropdown
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "dropdownMulti") {
+                      return (
+                        <DashboardDropdownMulti
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "button") {
+                      return (
+                        <DashboardButton
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          baseUrl={baseUrl}
+                          getJwt={getJwt}
+                        />
+                      );
+                    }
+                    if (render.type === "datepicker") {
+                      return (
+                        <DashboardDatePicker
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "daterangePicker") {
+                      return (
+                        <DashboardDateRangePicker
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "input") {
+                      return (
+                        <DashboardInput
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                  })}
+                </div>
+              );
+            }
+
             const numQueriesInSection = section.queries.length;
+
             return (
               <div
                 key={sectionIndex}
