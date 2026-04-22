@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"shaper/server/util"
+	"strings"
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
@@ -68,6 +70,7 @@ type App struct {
 	TaskBroadcastSubject       string
 	TaskBroadcastSubscription  *nats.Subscription
 	TaskTimers                 map[string]*time.Timer
+	InternalDBName             string
 }
 
 func New(
@@ -111,14 +114,25 @@ func New(
 		return nil, err
 	}
 
+	internalDBName := ""
 	if duckDBDSN != ":memory:" {
-		if err := initDuckDB(duckDbx); err != nil {
+		var err error
+		internalDBName, err = initDuckDB(duckDbx)
+		if err != nil {
 			return nil, err
 		}
 
 		// TODO: Remove this once data is migrated for all active users
 		if err := migrateSystemData(sqliteDbx, duckDbx, deprecatedSchema, logger); err != nil {
 			return nil, err
+		}
+
+		if initSQL != "" {
+			logger.Info("Executing init-sql")
+			varPrefix, _ := buildVarPrefixWithDBName(internalDBName, nil, nil)
+			if _, err := duckDbx.Exec(varPrefix + initSQL); err != nil {
+				return nil, fmt.Errorf("failed to execute init-sql: %w", err)
+			}
 		}
 	}
 
@@ -180,6 +194,7 @@ func New(
 		TaskResultsStreamMaxAge:    taskResultsStreamMaxAge,
 		TaskBroadcastSubject:       taskBroadcastSubject,
 		TaskTimers:                 make(map[string]*time.Timer),
+		InternalDBName:             internalDBName,
 	}
 	return app, nil
 }
@@ -217,13 +232,16 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		}
 	}
 
-	if err := initDuckDB(dbx); err != nil {
+	dbName, err := initDuckDB(dbx)
+	if err != nil {
 		cleanup()
 		return nil, nil, fmt.Errorf("failed to initialize DuckDB: %w", err)
 	}
+	app.InternalDBName = dbName
 
 	if app.InitSQL != "" {
-		_, err := dbx.Exec(app.InitSQL)
+		varPrefix, _ := buildVarPrefix(app, nil, nil)
+		_, err := dbx.Exec(varPrefix + app.InitSQL)
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("failed to execute init-sql: %w", err)
@@ -425,15 +443,55 @@ func isLoginRequired(sdb *sqlx.DB) (bool, error) {
 	return count > 0, err
 }
 
-func initDuckDB(duckDbx *sqlx.DB) error {
+func initDuckDB(duckDbx *sqlx.DB) (string, error) {
+	var name string
+	if err := duckDbx.Get(&name, "SELECT current_database()"); err != nil {
+		return "", err
+	}
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(duckDbx, t.Name, t.Definition); err != nil {
-			return fmt.Errorf("failed to create custom type %s: %w", t.Name, err)
+			return "", fmt.Errorf("failed to create custom type %s: %w", t.Name, err)
 		}
 	}
 	if err := createBoxlotFunction(duckDbx); err != nil {
-		return fmt.Errorf("failed to create BOXPLOT function: %w", err)
+		return "", fmt.Errorf("failed to create BOXPLOT function: %w", err)
 	}
-	return nil
+	return name, nil
+}
+
+// buildVarPrefix prepends session state like search_path and variables to SQL queries.
+func buildVarPrefix(app *App, singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	dbName := ""
+	if app != nil {
+		dbName = app.InternalDBName
+	}
+	return buildVarPrefixWithDBName(dbName, singleVars, multiVars)
+}
+
+func buildVarPrefixWithDBName(dbName string, singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	varPrefix := strings.Builder{}
+	varCleanup := strings.Builder{}
+
+	if dbName != "" {
+		varPrefix.WriteString(fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';\n", util.EscapeSQLIdentifier(dbName)))
+	}
+
+	for k, v := range singleVars {
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
+	}
+	for k, v := range multiVars {
+		l := ""
+		for i, p := range v {
+			prefix := ", "
+			if i == 0 {
+				prefix = ""
+			}
+			l += fmt.Sprintf("%s'%s'", prefix, util.EscapeSQLString(p))
+		}
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", util.EscapeSQLIdentifier(k), l))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
+	}
+	return varPrefix.String(), varCleanup.String()
 }
