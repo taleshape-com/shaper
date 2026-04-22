@@ -28,7 +28,7 @@ const EXCEL_INTERVAL_FORMAT = "[h]:mm:ss"
 
 var excludedTypesRegex = regexp.MustCompile(`\b(LABEL|SECTION|XLINE|YLINE|DROPDOWN|DOWNLOAD_CSV|DOWNLOAD_XLSX|DOWNLOAD_JSON|DOWNLOAD_PDF|DATEPICKER|DATEPICKER_FROM|DATEPICKER_TO|PLACEHOLDER|INPUT|RELOAD|HEADER_IMAGE|FOOTER_LINK)\b`)
 
-func resolveDownloadQueryID(sqls []string, downloadType string) (int, error) {
+func resolveDownloadQueryID(app *App, sqls []string, downloadType string) (int, error) {
 	upperType := "DOWNLOAD_" + strings.ToUpper(downloadType)
 	foundIndex := -1
 	count := 0
@@ -45,7 +45,7 @@ func resolveDownloadQueryID(sqls []string, downloadType string) (int, error) {
 	foundIndex = -1
 	count = 0
 	for i, s := range sqls {
-		if isSideEffect(s) {
+		if isSideEffect(app, s) {
 			continue
 		}
 		upper := strings.ToUpper(s)
@@ -86,7 +86,7 @@ func StreamQueryCSV(
 	}
 
 	if queryID == -1 {
-		queryID, err = resolveDownloadQueryID(sqls, "csv")
+		queryID, err = resolveDownloadQueryID(app, sqls, "csv")
 		if err != nil {
 			return err
 		}
@@ -96,18 +96,23 @@ func StreamQueryCSV(
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
 	query := sqls[queryID]
-	if !IsAllowedStatement(query) {
+	if !IsAllowedStatement(app, query) {
 		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
 
 	// Execute the query and get rows
-	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
@@ -129,10 +134,15 @@ func StreamSQLToCSV(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
-	if !IsAllowedStatement(sqlQuery) {
+	if !IsAllowedStatement(app, sqlQuery) {
 		return fmt.Errorf("disallowed SQL statement")
 	}
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -163,7 +173,7 @@ func StreamQueryJSON(
 	}
 
 	if queryID == -1 {
-		queryID, err = resolveDownloadQueryID(sqls, "json")
+		queryID, err = resolveDownloadQueryID(app, sqls, "json")
 		if err != nil {
 			return err
 		}
@@ -173,18 +183,23 @@ func StreamQueryJSON(
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
 	query := sqls[queryID]
-	if !IsAllowedStatement(query) {
+	if !IsAllowedStatement(app, query) {
 		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
 
 	// Execute the query and get rows
-	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
@@ -206,10 +221,15 @@ func StreamSQLToJSON(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
-	if !IsAllowedStatement(sqlQuery) {
+	if !IsAllowedStatement(app, sqlQuery) {
 		return fmt.Errorf("disallowed SQL statement")
 	}
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -400,7 +420,7 @@ func StreamQueryXLSX(
 	}
 
 	if queryID == -1 {
-		queryID, err = resolveDownloadQueryID(sqls, "xlsx")
+		queryID, err = resolveDownloadQueryID(app, sqls, "xlsx")
 		if err != nil {
 			return err
 		}
@@ -410,7 +430,7 @@ func StreamQueryXLSX(
 		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
 	}
 	query := sqls[queryID]
-	if !IsAllowedStatement(query) {
+	if !IsAllowedStatement(app, query) {
 		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
 	}
 
@@ -459,13 +479,18 @@ func StreamQueryXLSX(
 		}),
 	}
 
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 
 	// Execute the query and get rows
-	varPrefix, varCleanup, err := getVarPrefix(conn, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
@@ -704,7 +729,7 @@ func createStyle(xlsx *excelize.File, style *excelize.Style) int {
 	return styleID
 }
 
-func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]any) (string, string, error) {
+func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []string, queryParams url.Values, variables map[string]any) (string, string, error) {
 	nextIsDownload := false
 	// TODO: currently variables have to be defined in the order they are used. create a dependency graph for queryies instead
 	singleVars, multiVars, err := getTokenVars(variables)
@@ -717,7 +742,7 @@ func getVarPrefix(conn *sqlx.Conn, ctx context.Context, sqlQueries []string, que
 		if sqlString == "" {
 			continue
 		}
-		if !IsAllowedStatement(sqlString) {
+		if !IsAllowedStatement(app, sqlString) {
 			return "", "", fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
 		}
 		if nextIsDownload {

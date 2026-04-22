@@ -39,7 +39,12 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 	if len(sqls) == 0 {
 		return nil, "", fmt.Errorf("no SQL queries found in task content")
 	}
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return nil, "", fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get database connection: %w", err)
 	}
