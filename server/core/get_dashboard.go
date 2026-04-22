@@ -25,7 +25,6 @@ const QUERY_MAX_ROWS = 3000
 // They are not visible in the dashboard output.
 var sideEffectSQLStatements = [][]string{
 	{"SET", "VARIABLE"},
-	{"SET"},
 	{"BEGIN"},
 	{"COMMIT"},
 	{"ROLLBACK"},
