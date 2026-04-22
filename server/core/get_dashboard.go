@@ -25,7 +25,6 @@ const QUERY_MAX_ROWS = 3000
 // They are not visible in the dashboard output.
 var sideEffectSQLStatements = [][]string{
 	{"SET", "VARIABLE"},
-	{"SET"},
 	{"BEGIN"},
 	{"COMMIT"},
 	{"ROLLBACK"},
@@ -104,7 +103,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	headerImage := ""
 	footerLink := ""
 
-	conn, err := app.DuckDB.Connx(ctx)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return result, fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}
@@ -114,14 +119,14 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if sqlString == "" {
 			continue
 		}
-		if !IsAllowedStatement(sqlString) {
+		if !IsAllowedStatement(app, sqlString) {
 			return result, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
 		}
 		if nextIsDownload {
 			nextIsDownload = false
 			continue
 		}
-		if hideNextContentSection && !isSideEffect(sqlString) && !canStartSection(sqlString) {
+		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
 			continue
 		}
 		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
@@ -160,7 +165,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 		}
 
-		if isSideEffect(sqlString) {
+		if isSideEffect(app, sqlString) {
 			continue
 		}
 
@@ -658,8 +663,11 @@ func findBoxlotColumnIndex(columns []*sql.ColumnType) int {
 
 // Some SQL statements are only used for their side effects and should not be shown on the dashboard.
 // We ignore case and extra whitespace when matching the statements
-func isSideEffect(sqlString string) bool {
+func isSideEffect(app *App, sqlString string) bool {
 	upper := strings.ToUpper(strings.TrimSpace(sqlString))
+	if app != nil && app.DuckDBDSN == ":memory:" && strings.HasPrefix(upper, "ATTACH") {
+		return true
+	}
 	for _, stmt := range sideEffectSQLStatements {
 		if matchesPrefix(upper, stmt) {
 			return true
@@ -684,7 +692,7 @@ func matchesPrefix(upperSql string, prefix []string) bool {
 	return true
 }
 
-func IsAllowedStatement(sql string) bool {
+func IsAllowedStatement(app *App, sql string) bool {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
@@ -698,11 +706,11 @@ func IsAllowedStatement(sql string) bool {
 			return false
 		}
 		for _, cte := range ctes {
-			if !IsAllowedStatement(cte) {
+			if !IsAllowedStatement(app, cte) {
 				return false
 			}
 		}
-		return IsAllowedStatement(remaining)
+		return IsAllowedStatement(app, remaining)
 	}
 
 	// Handle parenthesized queries like (SELECT 1)
@@ -711,7 +719,7 @@ func IsAllowedStatement(sql string) bool {
 		if err != nil {
 			return false
 		}
-		if !IsAllowedStatement(inner) {
+		if !IsAllowedStatement(app, inner) {
 			return false
 		}
 		remaining = strings.TrimSpace(remaining)
@@ -730,7 +738,7 @@ func IsAllowedStatement(sql string) bool {
 				} else if strings.HasPrefix(restUpper, "DISTINCT") {
 					rest = strings.TrimSpace(rest[len("DISTINCT"):])
 				}
-				return IsAllowedStatement(rest)
+				return IsAllowedStatement(app, rest)
 			}
 		}
 		// Also handle ORDER BY, LIMIT etc which can follow a parenthesized query
@@ -741,7 +749,7 @@ func IsAllowedStatement(sql string) bool {
 	}
 
 	// Check against side effects
-	if isSideEffect(sql) {
+	if isSideEffect(app, sql) {
 		return true
 	}
 
@@ -761,7 +769,7 @@ func IsAllowedStatement(sql string) bool {
 				if rest == "" {
 					return true
 				}
-				return IsAllowedStatement(rest)
+				return IsAllowedStatement(app, rest)
 			}
 			return true
 		}

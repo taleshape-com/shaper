@@ -588,7 +588,13 @@ func Run(cfg Config) func(context.Context) {
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
-	if cfg.DuckDBSecretDir != "" {
+	if cfg.DuckDB == ":memory:" {
+		_, err := duckdbSqlxDb.Exec("SET allow_persistent_secrets = false")
+		if err != nil {
+			logger.Error("Failed to disable persistent secrets", slog.Any("error", err))
+			os.Exit(1)
+		}
+	} else if cfg.DuckDBSecretDir != "" {
 		_, err := duckdbSqlxDb.Exec("SET secret_directory = ?", cfg.DuckDBSecretDir)
 		if err != nil {
 			logger.Error("Failed to set DuckDB secret directory", slog.String("path", cfg.DuckDBSecretDir), slog.Any("error", err))
@@ -597,17 +603,18 @@ func Run(cfg Config) func(context.Context) {
 		logger.Info("Set DuckDB secret directory", slog.Any("path", cfg.DuckDBSecretDir))
 	}
 
+	initSQL := ""
 	if cfg.InitSQL != "" {
-		logger.Info("Executing init-sql")
-		// Substitute environment variables in the SQL
 		sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
-		if sql == "" {
-			logger.Info("init-sql specified but empty, skipping")
-		} else {
-			_, err := duckdbSqlxDb.Exec(sql)
-			if err != nil {
-				logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
-				os.Exit(1)
+		if sql != "" {
+			initSQL += sql + ";\n"
+			if cfg.DuckDB != ":memory:" {
+				logger.Info("Executing init-sql")
+				_, err := duckdbSqlxDb.Exec(sql)
+				if err != nil {
+					logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
+					os.Exit(1)
+				}
 			}
 		}
 	}
@@ -626,11 +633,14 @@ func Run(cfg Config) func(context.Context) {
 			if len(sql) == 0 {
 				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
-				logger.Info("Executing init-sql-file")
-				_, err = duckdbSqlxDb.Exec(sql)
-				if err != nil {
-					logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
-					os.Exit(1)
+				initSQL += sql + ";\n"
+				if cfg.DuckDB != ":memory:" {
+					logger.Info("Executing init-sql-file")
+					_, err = duckdbSqlxDb.Exec(sql)
+					if err != nil {
+						logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
+						os.Exit(1)
+					}
 				}
 			}
 		}
@@ -645,6 +655,10 @@ func Run(cfg Config) func(context.Context) {
 		Version,
 		sqliteDbx,
 		duckdbSqlxDb,
+		duckDBFile,
+		cfg.DuckDBExtDir,
+		cfg.DuckDBSecretDir,
+		initSQL,
 		cfg.DeprecatedSchema,
 		logger,
 		cfg.BasePath,

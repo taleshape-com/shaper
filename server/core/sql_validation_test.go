@@ -77,9 +77,18 @@ func TestIsAllowedStatement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedStatement(tt.sql), "SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedStatement(nil, tt.sql), "SQL: %s", tt.sql)
 		})
 	}
+}
+
+func TestIsAllowedStatementMemory(t *testing.T) {
+	appMemory := &App{DuckDBDSN: ":memory:"}
+	appFile := &App{DuckDBDSN: "file.db"}
+
+	assert.True(t, IsAllowedStatement(appMemory, "ATTACH 'data.db' AS data"))
+	assert.False(t, IsAllowedStatement(appFile, "ATTACH 'data.db' AS data"))
+	assert.False(t, IsAllowedStatement(nil, "ATTACH 'data.db' AS data"))
 }
 
 func TestSplitWithStatement(t *testing.T) {

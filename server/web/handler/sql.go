@@ -48,7 +48,7 @@ func ExecuteSQL(app *core.App) echo.HandlerFunc {
 				}{Error: "Only one SQL query is allowed"}, "  ")
 		}
 
-		if !core.IsAllowedStatement(queries[0]) {
+		if !core.IsAllowedStatement(app, queries[0]) {
 			return c.JSONPretty(http.StatusBadRequest,
 				struct {
 					Error string `json:"error"`
