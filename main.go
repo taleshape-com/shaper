@@ -588,7 +588,13 @@ func Run(cfg Config) func(context.Context) {
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
-	if cfg.DuckDBSecretDir != "" {
+	if cfg.DuckDB == ":memory:" {
+		_, err := duckdbSqlxDb.Exec("SET allow_persistent_secrets = false")
+		if err != nil {
+			logger.Error("Failed to disable persistent secrets", slog.Any("error", err))
+			os.Exit(1)
+		}
+	} else if cfg.DuckDBSecretDir != "" {
 		_, err := duckdbSqlxDb.Exec("SET secret_directory = ?", cfg.DuckDBSecretDir)
 		if err != nil {
 			logger.Error("Failed to set DuckDB secret directory", slog.String("path", cfg.DuckDBSecretDir), slog.Any("error", err))

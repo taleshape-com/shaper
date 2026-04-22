@@ -203,18 +203,17 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		}
 	}
 
+	// Always disable persistent secrets for in-memory mode to ensure isolation from central secret store
+	if _, err := dbx.Exec("SET allow_persistent_secrets = false"); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to disable persistent secrets: %w", err)
+	}
+
 	if app.DuckDBExtDir != "" {
 		_, err := dbx.Exec("SET extension_directory = ?", app.DuckDBExtDir)
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("failed to set DuckDB extension directory: %w", err)
-		}
-	}
-	if app.DuckDBSecretDir != "" {
-		_, err := dbx.Exec("SET secret_directory = ?", app.DuckDBSecretDir)
-		if err != nil {
-			cleanup()
-			return nil, nil, fmt.Errorf("failed to set DuckDB secret directory: %w", err)
 		}
 	}
 
