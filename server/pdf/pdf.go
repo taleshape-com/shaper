@@ -40,11 +40,15 @@ func StreamDashboardPdf(
 	params url.Values,
 	variables map[string]any,
 	jwtToken *jwt.Token,
+	noChromeSandbox bool,
 ) error {
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.WindowSize(int(BROWSER_WIDTH), int(BROWSER_HEIGHT)),
 	)
+	if noChromeSandbox {
+		opts = append(opts, chromedp.NoSandbox)
+	}
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
 	defer cancel()
 	ctx, cancel = chromedp.NewContext(allocCtx)
@@ -137,11 +141,15 @@ func StreamDashboardPng(
 	params url.Values,
 	variables map[string]any,
 	jwtToken *jwt.Token,
+	noChromeSandbox bool,
 ) error {
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.WindowSize(int(PNG_BROWSER_WIDTH), int(BROWSER_HEIGHT)),
 	)
+	if noChromeSandbox {
+		opts = append(opts, chromedp.NoSandbox)
+	}
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
 	defer cancel()
 	ctx, cancel = chromedp.NewContext(allocCtx)

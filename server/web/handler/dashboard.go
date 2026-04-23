@@ -759,6 +759,7 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			intent.QueryParams,
 			variables,
 			token,
+			app.NoChromeSandbox,
 		)
 	case "png":
 		streamErr = pdf.StreamDashboardPng(
@@ -770,6 +771,7 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			intent.QueryParams,
 			variables,
 			token,
+			app.NoChromeSandbox,
 		)
 	case "csv":
 		streamErr = core.StreamQueryCSV(

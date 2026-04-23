@@ -133,6 +133,7 @@ type Config struct {
 	SnapshotSubjectPrefix      string
 	NoSnapshots                bool
 	NoAutoRestore              bool
+	NoChromeSandbox            bool
 }
 
 func main() {
@@ -193,6 +194,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional, can use AWS_REGION environment variable)")
 	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
 	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
+	noChromeSandbox := flags.BoolLong("no-chrome-sandbox", "Disable Chrome sandbox for PDF/PNG generation")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
@@ -403,6 +405,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
 			NoSnapshots:                *noSnapshots,
 			NoAutoRestore:              *noAutoRestore,
+			NoChromeSandbox:            *noChromeSandbox,
 		}
 		signals.HandleInterrupt(Run(config))
 		return nil
@@ -658,6 +661,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.NoPasswordProtectedSharing,
 		cfg.NoTasks,
 		cfg.NoEdit,
+		cfg.NoChromeSandbox,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,

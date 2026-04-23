@@ -43,6 +43,7 @@ type App struct {
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
 	NoEdit                     bool
+	NoChromeSandbox            bool
 	StateConsumeCtx            jetstream.ConsumeContext
 	TaskConsumeCtx             jetstream.ConsumeContext
 	TaskResultConsumeCtx       jetstream.ConsumeContext
@@ -93,6 +94,7 @@ func New(
 	noPasswordProtectedSharing bool,
 	noTasks bool,
 	noEdit bool,
+	noChromeSandbox bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
@@ -156,6 +158,9 @@ func New(
 	if noEdit {
 		logger.Info("Dashboard editing via UI disabled.")
 	}
+	if noChromeSandbox {
+		logger.Info("Chrome sandbox disabled for PDF/PNG generation.")
+	}
 
 	app := &App{
 		Name:                       name,
@@ -177,6 +182,7 @@ func New(
 		NoPasswordProtectedSharing: noPasswordProtectedSharing,
 		NoTasks:                    noTasks,
 		NoEdit:                     noEdit,
+		NoChromeSandbox:            noChromeSandbox,
 		IngestSubjectPrefix:        ingestSubjectPrefix,
 		StateSubjectPrefix:         stateSubjectPrefix,
 		StateStreamName:            stateStreamName,
