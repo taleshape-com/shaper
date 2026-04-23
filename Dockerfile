@@ -41,6 +41,8 @@ ENV SHAPER_DIR=/data
 # Override default DuckDB extension directory to persist downloaded extensions together with data
 ENV SHAPER_DUCKDB_EXT_DIR=/data/duckdb_extensions
 ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
+# Disable Chrome sandbox. As non-root user we don't have the permissions to sandbox and the docker container already is our sandbox.
+ENV SHAPER_NO_CHROME_SANDBOX=true
 
 EXPOSE 5454
 HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
