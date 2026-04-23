@@ -7,9 +7,9 @@
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
 FROM debian:13.4-slim
 
-# install wget for healthchecks and dependencies for headless-shell
+# install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root
 RUN apt-get update -y \
-  && apt-get install --no-install-recommends -y wget ca-certificates libnspr4 libnss3 libexpat1 libfontconfig1 libuuid1 socat \
+  && apt-get install --no-install-recommends -y wget ca-certificates libnspr4 libnss3 libexpat1 libfontconfig1 libuuid1 socat gosu \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -53,7 +53,9 @@ RUN groupadd -r shaper && useradd -r -g shaper shaper \
 # Copy the correct binary based on architecture
 COPY bin/shaper-linux-${TARGETARCH} /usr/local/bin/shaper
 
-# Run as non-root user to restrict file access
-USER shaper
+# Copy and setup entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/shaper"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["/usr/local/bin/shaper"]
