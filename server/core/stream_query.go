@@ -148,7 +148,8 @@ func StreamSQLToCSV(
 	}
 	defer conn.Close()
 
-	return StreamSQLToCSVWithConn(conn, ctx, sqlQuery, writer)
+	varPrefix, _ := buildVarPrefix(app, nil, nil)
+	return StreamSQLToCSVWithConn(conn, ctx, varPrefix+sqlQuery, writer)
 }
 
 // Stream the result of a dashboard query as JSON file to client.
@@ -235,7 +236,8 @@ func StreamSQLToJSON(
 	}
 	defer conn.Close()
 
-	return StreamSQLToJSONWithConn(conn, ctx, sqlQuery, writer)
+	varPrefix, _ := buildVarPrefix(app, nil, nil)
+	return StreamSQLToJSONWithConn(conn, ctx, varPrefix+sqlQuery, writer)
 }
 
 // StreamSQLToJSONWithConn executes a single SQL query using an existing connection and streams the result as JSON.
@@ -749,7 +751,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 			nextIsDownload = false
 			continue
 		}
-		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
+		varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
 		// run query
 		data := Rows{}
 		rows, err := conn.QueryxContext(ctx, varPrefix+string(sqlString)+";")
@@ -799,7 +801,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 			return "", "", err
 		}
 	}
-	varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
+	varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
 	return varPrefix, varCleanup, nil
 }
 

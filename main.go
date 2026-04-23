@@ -608,14 +608,6 @@ func Run(cfg Config) func(context.Context) {
 		sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
 		if sql != "" {
 			initSQL += sql + ";\n"
-			if cfg.DuckDB != ":memory:" {
-				logger.Info("Executing init-sql")
-				_, err := duckdbSqlxDb.Exec(sql)
-				if err != nil {
-					logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
-					os.Exit(1)
-				}
-			}
 		}
 	}
 	if cfg.InitSQLFile != "" {
@@ -634,14 +626,6 @@ func Run(cfg Config) func(context.Context) {
 				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
 				initSQL += sql + ";\n"
-				if cfg.DuckDB != ":memory:" {
-					logger.Info("Executing init-sql-file")
-					_, err = duckdbSqlxDb.Exec(sql)
-					if err != nil {
-						logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
-						os.Exit(1)
-					}
-				}
 			}
 		}
 	}

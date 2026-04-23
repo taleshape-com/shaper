@@ -10,6 +10,7 @@ import (
 // These SQL statements are used only for their side effects and not to display anything.
 // They are not visible in the dashboard output.
 var sideEffectSQLStatements = [][]string{
+	{"USE"},
 	{"SET", "VARIABLE"},
 	{"BEGIN"},
 	{"COMMIT"},

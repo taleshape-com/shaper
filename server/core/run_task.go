@@ -96,7 +96,8 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 
 		start := time.Now()
 
-		rows, err := tx.QueryxContext(ctx, sqlString)
+		varPrefix, _ := buildVarPrefix(app, nil, nil)
+		rows, err := tx.QueryxContext(ctx, varPrefix+sqlString)
 		duration := time.Since(start).Milliseconds()
 		queryResult.Duration = duration
 

@@ -82,7 +82,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
 			continue
 		}
-		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
+		varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
 		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
 		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
@@ -1326,28 +1326,6 @@ func getAxisType(rows Rows, index int) (string, error) {
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
 // NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
-func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
-	varPrefix := strings.Builder{}
-	varCleanup := strings.Builder{}
-	for k, v := range singleVars {
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
-	}
-	for k, v := range multiVars {
-		l := ""
-		for i, p := range v {
-			prefix := ", "
-			if i == 0 {
-				prefix = ""
-			}
-			l += fmt.Sprintf("%s'%s'", prefix, util.EscapeSQLString(p))
-		}
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", util.EscapeSQLIdentifier(k), l))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
-	}
-	return varPrefix.String(), varCleanup.String()
-}
-
 func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
