@@ -45,7 +45,15 @@ ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
 EXPOSE 5454
 HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
 
+# Create a non-root user and setup directories
+RUN groupadd -r shaper && useradd -r -g shaper shaper \
+  && mkdir -p /data /var/lib/shaper \
+  && chown -R shaper:shaper /data /var/lib/shaper
+
 # Copy the correct binary based on architecture
 COPY bin/shaper-linux-${TARGETARCH} /usr/local/bin/shaper
+
+# Run as non-root user to restrict file access
+USER shaper
 
 ENTRYPOINT ["/usr/local/bin/shaper"]
