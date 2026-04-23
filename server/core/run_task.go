@@ -86,6 +86,14 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			ResultRows:    [][]any{},
 		}
 
+		if !IsAllowedTaskStatement(sqlString) {
+			errMsg := "Statement not allowed in tasks (e.g., INSTALL, LOAD, SET configuration)"
+			queryResult.Error = &errMsg
+			success = false
+			result.Queries = append(result.Queries, queryResult)
+			break
+		}
+
 		start := time.Now()
 
 		varPrefix, _ := buildVarPrefix(app, nil, nil)

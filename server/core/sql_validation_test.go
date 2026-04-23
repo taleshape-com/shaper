@@ -82,6 +82,53 @@ func TestIsAllowedStatement(t *testing.T) {
 	}
 }
 
+func TestIsAllowedTaskStatement(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		expected bool
+	}{
+		// Basic Allowed
+		{"Select", "SELECT * FROM users", true},
+		{"Insert", "INSERT INTO users VALUES (1)", true},
+		{"Update", "UPDATE users SET name = 'foo'", true},
+		{"Delete", "DELETE FROM users", true},
+		{"Create Table", "CREATE TABLE users (id INT)", true},
+		{"Drop Table", "DROP TABLE users", true},
+
+		// Disallowed
+		{"Install", "INSTALL httpfs", false},
+		{"Load", "LOAD httpfs", false},
+		{"Set Config", "SET threads = 4", false},
+		{"Reset Config", "RESET threads", false},
+		{"Attach", "ATTACH 'file.db' AS other", true},
+		{"Detach", "DETACH other", true},
+		{"Pragma", "PRAGMA threads=4", false},
+
+		// Allowed Side Effects
+		{"Set Variable", "SET VARIABLE x = 1", true},
+		{"Reset Variable", "RESET VARIABLE x", true},
+		{"Begin", "BEGIN TRANSACTION", true},
+		{"Commit", "COMMIT", true},
+
+		// WITH Statements
+		{"With Select", "WITH t AS (SELECT 1) SELECT * FROM t", true},
+		{"With Install", "WITH t AS (SELECT 1) INSTALL httpfs", false},
+		{"With Disallowed in CTE", "WITH t AS (INSTALL httpfs) SELECT 1", false},
+
+		// Nested Queries
+		{"Parenthesized Select", "(SELECT 1)", true},
+		{"Union", "(SELECT 1) UNION SELECT 2", true},
+		{"Union with Disallowed", "(SELECT 1) UNION (INSTALL httpfs)", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "SQL: %s", tt.sql)
+		})
+	}
+}
+
 func TestIsAllowedStatementMemory(t *testing.T) {
 	appMemory := &App{DuckDBDSN: ":memory:"}
 	appFile := &App{DuckDBDSN: "file.db"}
