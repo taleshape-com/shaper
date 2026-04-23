@@ -4,10 +4,12 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -24,6 +26,10 @@ type App struct {
 	Version                    string
 	Sqlite                     *sqlx.DB
 	DuckDB                     *sqlx.DB
+	DuckDBDSN                  string
+	DuckDBExtDir               string
+	DuckDBSecretDir            string
+	InitSQL                    string
 	Logger                     *slog.Logger
 	LoginRequired              bool
 	BasePath                   string
@@ -70,6 +76,10 @@ func New(
 	version string,
 	sqliteDbx *sqlx.DB,
 	duckDbx *sqlx.DB,
+	duckDBDSN string,
+	duckDBExtDir string,
+	duckDBSecretDir string,
+	initSQL string,
 	deprecatedSchema string,
 	logger *slog.Logger,
 	baseURL string,
@@ -101,13 +111,15 @@ func New(
 		return nil, err
 	}
 
-	if err := initDuckDB(duckDbx); err != nil {
-		return nil, err
-	}
+	if duckDBDSN != ":memory:" {
+		if err := initDuckDB(duckDbx); err != nil {
+			return nil, err
+		}
 
-	// TODO: Remove this once data is migrated for all active users
-	if err := migrateSystemData(sqliteDbx, duckDbx, deprecatedSchema, logger); err != nil {
-		return nil, err
+		// TODO: Remove this once data is migrated for all active users
+		if err := migrateSystemData(sqliteDbx, duckDbx, deprecatedSchema, logger); err != nil {
+			return nil, err
+		}
 	}
 
 	loginRequired, err := isLoginRequired(sqliteDbx)
@@ -137,6 +149,10 @@ func New(
 		Version:                    version,
 		Sqlite:                     sqliteDbx,
 		DuckDB:                     duckDbx,
+		DuckDBDSN:                  duckDBDSN,
+		DuckDBExtDir:               duckDBExtDir,
+		DuckDBSecretDir:            duckDBSecretDir,
+		InitSQL:                    initSQL,
 		Logger:                     logger,
 		LoginRequired:              loginRequired,
 		BasePath:                   baseURL,
@@ -166,6 +182,55 @@ func New(
 		TaskTimers:                 make(map[string]*time.Timer),
 	}
 	return app, nil
+}
+
+func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
+	if app.DuckDBDSN != ":memory:" {
+		return app.DuckDB, func() {}, nil
+	}
+
+	connector, err := duckdb.NewConnector(app.DuckDBDSN, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create DuckDB connector: %w", err)
+	}
+	db := sql.OpenDB(connector)
+	db.SetMaxIdleConns(0)
+	dbx := sqlx.NewDb(db, "duckdb")
+
+	cleanup := func() {
+		if err := dbx.Close(); err != nil {
+			app.Logger.Error("failed to close in-memory DuckDB", slog.Any("error", err))
+		}
+	}
+
+	// Always disable persistent secrets for in-memory mode to ensure isolation from central secret store
+	if _, err := dbx.Exec("SET allow_persistent_secrets = false"); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to disable persistent secrets: %w", err)
+	}
+
+	if app.DuckDBExtDir != "" {
+		_, err := dbx.Exec("SET extension_directory = ?", app.DuckDBExtDir)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to set DuckDB extension directory: %w", err)
+		}
+	}
+
+	if err := initDuckDB(dbx); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to initialize DuckDB: %w", err)
+	}
+
+	if app.InitSQL != "" {
+		_, err := dbx.Exec(app.InitSQL)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to execute init-sql: %w", err)
+		}
+	}
+
+	return dbx, cleanup, nil
 }
 
 func (app *App) Init(nc *nats.Conn) error {
