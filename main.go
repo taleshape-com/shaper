@@ -646,6 +646,11 @@ func Run(cfg Config) func(context.Context) {
 		}
 	}
 
+	if _, err := duckdbSqlxDb.Exec("SET lock_configuration = true"); err != nil {
+		logger.Error("Failed to lock DuckDB configuration", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	nodeID := getOrGenerateNodeID(cfg.DataDir, cfg.NodeIDFile, "node-id.txt")
 	ingestConsumerName := getOrGenerateConsumerName(cfg.DataDir, cfg.IngestConsumerNameFile, "ingest-consumer-name.txt", "shaper-ingest-consumer-", nodeID)
 
