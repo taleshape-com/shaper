@@ -38,13 +38,13 @@ function DashboardDropdown ({
   const selectedValue = Array.isArray(varField) ? varField[0] : varField;
 
   return (
-    <>
+    <div className="flex items-center print:hidden">
       {label && (
-        <Label htmlFor={label} className="ml-3 pr-1 print:hidden">
+        <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:
         </Label>
       )}
-      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
+      <div className={cx("select-none", { ["ml-2"]: !label })}>
         <Select
           onValueChange={(value) => {
             if (value === EMPTY) {
@@ -78,7 +78,7 @@ function DashboardDropdown ({
           </SelectContent>
         </Select>
       </div>
-    </>
+    </div>
   );
 }
 

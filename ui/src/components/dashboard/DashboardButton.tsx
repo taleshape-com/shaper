@@ -94,9 +94,9 @@ function DashboardButton ({
   };
 
   return (
-    <>
+    <div className="flex items-center print:hidden">
       {label && (
-        <Label className="ml-3 pr-1 print:hidden">
+        <Label className="ml-3 pr-1 shrink-0">
           {label}:
         </Label>
       )}
@@ -104,7 +104,7 @@ function DashboardButton ({
         onClick={handleDownload}
         disabled={isLoading}
         variant="secondary"
-        className={cx("my-1 select-none print:hidden", {
+        className={cx("my-1 select-none", {
           "ml-2": !label,
         })}
         id={toCssId(`${idPrefix}${label ? `${label}-` : ""}${headers[0].name}`)}
@@ -118,7 +118,7 @@ function DashboardButton ({
           )}
         </span>
       </Button >
-    </>
+    </div>
   );
 }
 
