@@ -168,6 +168,9 @@ func (d *Dev) throttleFileEvent(filePath string, handler func()) {
 
 func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 	if !strings.HasSuffix(p, DASHBOARD_SUFFIX) {
+		if strings.HasSuffix(p, ".sql") {
+			fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+		}
 		return
 	}
 
@@ -478,6 +481,9 @@ func ensureShaperIDsForDir(dir string) (int, error) {
 			return nil
 		}
 		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+			if strings.HasSuffix(d.Name(), ".sql") {
+				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+			}
 			return nil
 		}
 
