@@ -90,11 +90,11 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function DashboardErrorComponent ({ error }: ErrorComponentProps) {
+function DashboardErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 
-function Index () {
+function Index() {
   const data = Route.useLoaderData();
   const { sort, order, path = "/" } = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
@@ -569,7 +569,7 @@ function Index () {
 
       <div className="pb-3 h-dvh flex flex-col">
         <div className="flex pl-1 pr-1 md:px-2">
-          <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
+          <MenuTrigger className="pr-1.5 py-3 ml-1" />
           <div className="flex-grow flex pb-3 pt-2.5 gap-2 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (
@@ -1072,7 +1072,7 @@ function Index () {
   );
 }
 
-function RuntimeTooltip ({
+function RuntimeTooltip({
   lastRunAt,
   nextRunAt,
   children,
