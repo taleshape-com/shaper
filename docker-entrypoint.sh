@@ -13,15 +13,10 @@ if [ "$1" = '/usr/local/bin/shaper' ] && [ "$(id -u)" = '0' ]; then
     # Ensure directories exist (in case they are not mounted)
     mkdir -p /data /var/lib/shaper
 
-    # Fix permissions on data directories if they are owned by root.
-    # We use a conditional check to avoid slow chown on every startup if already correct.
-    # But since /data might have many files, we'll just do it if the root of the volume is root-owned.
-    if [ "$(stat -c %u /data)" = '0' ]; then
-        chown -R shaper:shaper /data
-    fi
-    if [ "$(stat -c %u /var/lib/shaper)" = '0' ]; then
-        chown -R shaper:shaper /var/lib/shaper
-    fi
+    # Fix permissions on data directories and files if they are owned by root.
+    # We do this even if the directory itself isn't root-owned, to catch bind-mounted files.
+    # Using find to only chown root-owned items to keep it relatively fast.
+    find /data /var/lib/shaper -maxdepth 2 -user root -exec chown -R shaper:shaper {} +
 
     exec gosu shaper "$@"
 fi
