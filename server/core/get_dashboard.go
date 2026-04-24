@@ -802,14 +802,16 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		// Alias for BARCHART_STACKED_PERCENT
 		barchartStacked, barchartStackedIndex = findColumnByTag(columns, "BARCHART_PERCENT_STACKED")
 	}
-	if barchartStacked != nil && xaxis != nil && barCat != nil {
+	if barchartStacked != nil && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "barchartHorizontalStacked",
-			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
 			MarkLines:      markLines,
+		}
+		if barCat != nil {
+			r.CategoryIndex = &barCatIndex
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -834,14 +836,16 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		return r
 	}
-	if barchartStacked != nil && yaxis != nil && barCat != nil {
+	if barchartStacked != nil && yaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "barchartVerticalStacked",
-			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
 			MarkLines:      markLines,
+		}
+		if barCat != nil {
+			r.CategoryIndex = &barCatIndex
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
