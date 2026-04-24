@@ -311,6 +311,9 @@ func scanLocalDashboardIDs(dir string) (map[string]string, error) {
 			return nil
 		}
 		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+			if strings.HasSuffix(d.Name(), ".sql") {
+				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+			}
 			return nil
 		}
 
