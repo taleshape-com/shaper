@@ -254,6 +254,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	subcommands = append(subcommands,
 		addDevSubcommand(rootCmd),
 		addPullSubcommand(rootCmd),
+		addIdsSubcommand(rootCmd),
 		addDeploySubcommand(rootCmd),
 	)
 
@@ -461,6 +462,29 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
 	return pullCmd
+}
+
+func addIdsSubcommand(rootCmd *ff.Command) *ff.Command {
+	idsFlags := ff.NewFlagSet("ids")
+	help := idsFlags.Bool('h', "help", "show help")
+	idsConfigPath := idsFlags.StringLong("config", "./shaper.json", "Path to config file")
+
+	usage := "add missing IDs to all dashboards in the configured directory"
+	idsCmd := &ff.Command{
+		Name:      "ids",
+		Usage:     "shaper ids [--config path]",
+		ShortHelp: usage,
+		Flags:     idsFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(idsFlags, usage))
+				return nil
+			}
+			return dev.RunIdsCommand(ctx, *idsConfigPath)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, idsCmd)
+	return idsCmd
 }
 
 func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
