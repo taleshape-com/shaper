@@ -9,7 +9,7 @@ interface ErrorComponentProps {
   error: any;
 }
 
-export function ErrorComponent({ error }: ErrorComponentProps) {
+export function ErrorComponent ({ error }: ErrorComponentProps) {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = async () => {
