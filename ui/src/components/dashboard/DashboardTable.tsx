@@ -24,7 +24,7 @@ function DashboardTable ({ headers, data }: TableProps) {
   return (
     <TableRoot className="h-full overflow-auto">
       <Table>
-        <TableHead>
+        <TableHead className="z-10">
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell

@@ -97,9 +97,9 @@ function DashboardDateRangePicker ({
   ];
 
   return (
-    <>
-      {label && <Label htmlFor={label} className="ml-3 pr-1 print:hidden">{label}:</Label>}
-      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
+    <div className="flex items-center print:hidden">
+      {label && <Label htmlFor={label} className="ml-3 pr-1 shrink-0">{label}:</Label>}
+      <div className={cx("select-none", { ["ml-2"]: !label })}>
         <DateRangePicker
           id={toCssId(`${idPrefix}${fromVarName}`)}
           presets={presets}
@@ -142,7 +142,7 @@ function DashboardDateRangePicker ({
           className={"min-w-40 my-1"}
         />
       </div>
-    </>
+    </div>
   );
 }
 

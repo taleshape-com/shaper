@@ -3,11 +3,11 @@
 import z from "zod";
 import { isRedirect, useRouter } from "@tanstack/react-router";
 import {
-  ErrorComponent,
   createFileRoute,
   Link,
   useNavigate,
 } from "@tanstack/react-router";
+import { ErrorComponent } from "../components/ErrorComponent";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { IApp } from "../lib/types";
@@ -569,7 +569,7 @@ function Index () {
 
       <div className="pb-3 h-dvh flex flex-col">
         <div className="flex pl-1 pr-1 md:px-2">
-          <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
+          <MenuTrigger className="pr-1.5 py-3 ml-1" />
           <div className="flex-grow flex pb-3 pt-2.5 gap-2 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (

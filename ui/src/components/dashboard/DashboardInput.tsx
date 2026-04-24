@@ -49,13 +49,13 @@ function DashboardInput ({
   }, 500);
 
   return (
-    <>
+    <div className="flex items-center print:hidden">
       {label && (
-        <Label htmlFor={label} className="ml-3 pr-1 print:hidden">
+        <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:
         </Label>
       )}
-      <div className={cx("print:hidden", { ["ml-2"]: !label })}>
+      <div className={cx({ ["ml-2"]: !label })}>
         <Input
           id={toCssId(`${idPrefix}${varName}`)}
           value={localValue}
@@ -70,7 +70,7 @@ function DashboardInput ({
           className="mx-auto my-0 min-w-[120px]"
         />
       </div>
-    </>
+    </div>
   );
 }
 
