@@ -4,7 +4,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
 import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
-import { cx, getSearchParamString, VarsParamSchema, getRenderMode } from "../../lib/utils";
+import { cx, getSearchParamString, VarsParamSchema, getRenderMode, copyToClipboard } from "../../lib/utils";
 import { fetchWithRetry } from "../../lib/fetchWithRetry";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
@@ -20,7 +20,7 @@ import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
+import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
@@ -146,13 +146,34 @@ export function Dashboard ({
 
   const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+      const success = await copyToClipboard(error.message);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    };
+
     return (
       <div className="antialiased text-ctext dark:text-dtext">
         {menuButton}
         <div>
           <div className="p-4 z-50 flex justify-center items-center">
-            <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded">
-              {error.message}
+            <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded flex items-start gap-4">
+              <span>{error.message}</span>
+              <button
+                onClick={handleCopy}
+                className="shrink-0 text-red-500 hover:text-red-700 transition-colors"
+                title="Copy error message"
+              >
+                {copied ? (
+                  <RiCheckLine className="size-5" />
+                ) : (
+                  <RiFileCopyLine className="size-5" />
+                )}
+              </button>
             </div>
           </div>
         </div>

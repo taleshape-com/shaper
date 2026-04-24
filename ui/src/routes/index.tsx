@@ -3,11 +3,11 @@
 import z from "zod";
 import { isRedirect, useRouter } from "@tanstack/react-router";
 import {
-  ErrorComponent,
   createFileRoute,
   Link,
   useNavigate,
 } from "@tanstack/react-router";
+import { ErrorComponent } from "../components/ErrorComponent";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { IApp } from "../lib/types";

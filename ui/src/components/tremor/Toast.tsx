@@ -4,13 +4,15 @@ import React from "react";
 import * as ToastPrimitives from "@radix-ui/react-toast";
 import {
   RiCheckboxCircleFill,
+  RiCheckLine,
   RiCloseCircleFill,
   RiErrorWarningFill,
+  RiFileCopyLine,
   RiInformationFill,
   RiLoader2Fill,
 } from "@remixicon/react";
 
-import { cx } from "../../lib/utils";
+import { cx, copyToClipboard } from "../../lib/utils";
 
 const ToastProvider = ToastPrimitives.Provider;
 ToastProvider.displayName = "ToastProvider";
@@ -62,6 +64,19 @@ const Toast = React.forwardRef<
     }: ToastProps,
     forwardedRef,
   ) => {
+    const [copied, setCopied] = React.useState(false);
+
+    const handleCopy = async () => {
+      const textToCopy = description || title || "";
+      if (textToCopy) {
+        const success = await copyToClipboard(textToCopy);
+        if (success) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      }
+    };
+
     let Icon: React.ReactNode;
 
     switch (variant) {
@@ -145,9 +160,28 @@ const Toast = React.forwardRef<
               </ToastPrimitives.Title>
             )}
             {description && (
-              <ToastPrimitives.Description className="text-sm text-gray-600 dark:text-gray-400">
-                {description}
-              </ToastPrimitives.Description>
+              <div className="flex items-start gap-2">
+                <ToastPrimitives.Description className="text-sm text-gray-600 dark:text-gray-400">
+                  {description}
+                </ToastPrimitives.Description>
+                {variant === "error" && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleCopy();
+                    }}
+                    className="mt-0.5 shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                    title="Copy error message"
+                    type="button"
+                  >
+                    {copied ? (
+                      <RiCheckLine className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <RiFileCopyLine className="size-3.5" />
+                    )}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createFileRoute, isRedirect, Link } from "@tanstack/react-router";
+import { ErrorComponent } from "../components/ErrorComponent";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { RiPencilLine, RiFileCopyLine } from "@remixicon/react";
 import { Dashboard } from "../components/dashboard";
@@ -45,11 +46,7 @@ export const Route = createFileRoute("/dashboards/$id")({
 });
 
 function DashboardErrorComponent ({ error }: ErrorComponentProps) {
-  return (
-    <div className="p-4 m-4 bg-red-200 rounded-md">
-      <p>{error.message}</p>
-    </div>
-  );
+  return <ErrorComponent error={error} />;
 }
 function DashboardViewComponent () {
   const { vars, dev } = Route.useSearch();
