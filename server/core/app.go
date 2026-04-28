@@ -139,9 +139,12 @@ func New(
 			}
 			defer conn.Close()
 
-			if err := duckdb.RegisterScalarUDF(conn, "getenv", &util.GetEnvFunc{}); err != nil {
+			getenv := &util.GetEnvFunc{}
+			getenv.Enable()
+			if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
 				return nil, fmt.Errorf("failed to register getenv UDF: %w", err)
 			}
+			defer getenv.Disable()
 
 			if _, err := conn.ExecContext(context.Background(), varPrefix+initSQL); err != nil {
 				return nil, fmt.Errorf("failed to execute init-sql: %w", err)
@@ -266,10 +269,13 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		}
 		defer conn.Close()
 
-		if err := duckdb.RegisterScalarUDF(conn, "getenv", &util.GetEnvFunc{}); err != nil {
+		getenv := &util.GetEnvFunc{}
+		getenv.Enable()
+		if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("failed to register getenv UDF: %w", err)
 		}
+		defer getenv.Disable()
 
 		if _, err := conn.ExecContext(ctx, varPrefix+app.InitSQL); err != nil {
 			cleanup()

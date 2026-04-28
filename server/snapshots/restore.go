@@ -171,11 +171,13 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 			}
 			defer conn.Close()
 
-			if err := duckdb.RegisterScalarUDF(conn, "getenv", &util.GetEnvFunc{}); err != nil {
+			getenv := &util.GetEnvFunc{}
+			getenv.Enable()
+			if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
 				return fmt.Errorf("failed to register getenv UDF: %w", err)
 			}
-
 			_, err = conn.ExecContext(ctx, sql)
+			getenv.Disable()
 			if err != nil {
 				return fmt.Errorf("failed to execute init-sql: %w", err)
 			}
@@ -199,12 +201,13 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 				}
 				defer conn.Close()
 
-				if err := duckdb.RegisterScalarUDF(conn, "getenv", &util.GetEnvFunc{}); err != nil {
+				getenv := &util.GetEnvFunc{}
+				getenv.Enable()
+				if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
 					return fmt.Errorf("failed to register getenv UDF: %w", err)
 				}
-
-				// Substitute environment variables in the SQL file content
 				_, err = conn.ExecContext(ctx, sql)
+				getenv.Disable()
 				if err != nil {
 					return fmt.Errorf("failed to execute init-sql-file: %w", err)
 				}
