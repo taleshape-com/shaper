@@ -274,7 +274,6 @@ const DataView = ({
   return (<ChartHoverProvider>
     <div className={cx("relative w-full h-full shaper-scope min-h-0", { "overflow-hidden max-h-screen": !!fullscreenId })}>
       <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
-
         {data.headerImage && (
           <img
             src={data.headerImage}
