@@ -75,38 +75,57 @@ func StreamQueryCSV(
 	variables map[string]any,
 	writer io.Writer,
 ) error {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeDownload,
+		&dashboardId,
+		nil,
+		&queryID,
+		"",
+	)
+
 	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
 	if queryID == -1 {
 		queryID, err = resolveDownloadQueryID(app, sqls, "csv")
 		if err != nil {
+			tracker.Complete(exec, 0, err)
 			return err
 		}
 	}
 
 	if len(sqls) <= queryID || queryID < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+		err = fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 	query := sqls[queryID]
 	if !IsAllowedStatement(app, query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+		err = fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting DB: %v", err)
 	}
 	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
@@ -114,6 +133,7 @@ func StreamQueryCSV(
 	// Execute the query and get rows
 	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
 	defer func() {
@@ -124,7 +144,9 @@ func StreamQueryCSV(
 		}
 	}()
 
-	return StreamSQLToCSVWithConn(conn, ctx, varPrefix+query+";", writer)
+	rowCount, err := StreamSQLToCSVWithConnAndCount(conn, ctx, varPrefix+query+";", writer)
+	CompleteQueryExecution(exec, rowCount, err)
+	return err
 }
 
 // StreamSQLToCSV executes a single SQL query and streams the result as CSV.
@@ -134,22 +156,38 @@ func StreamSQLToCSV(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeSQLAPI,
+		nil,
+		nil,
+		nil,
+		sqlQuery,
+	)
+
 	if !IsAllowedStatement(app, sqlQuery) {
-		return fmt.Errorf("disallowed SQL statement")
+		err := fmt.Errorf("disallowed SQL statement")
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting DB: %v", err)
 	}
 	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
 
 	varPrefix, _ := buildVarPrefix(app, nil, nil)
-	return StreamSQLToCSVWithConn(conn, ctx, varPrefix+sqlQuery, writer)
+	rowCount, err := StreamSQLToCSVWithConnAndCount(conn, ctx, varPrefix+sqlQuery, writer)
+	CompleteQueryExecution(exec, rowCount, err)
+	return err
 }
 
 // Stream the result of a dashboard query as JSON file to client.
@@ -163,38 +201,57 @@ func StreamQueryJSON(
 	variables map[string]any,
 	writer io.Writer,
 ) error {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeDownload,
+		&dashboardId,
+		nil,
+		&queryID,
+		"",
+	)
+
 	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
 	if queryID == -1 {
 		queryID, err = resolveDownloadQueryID(app, sqls, "json")
 		if err != nil {
+			tracker.Complete(exec, 0, err)
 			return err
 		}
 	}
 
 	if len(sqls) <= queryID || queryID < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+		err = fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 	query := sqls[queryID]
 	if !IsAllowedStatement(app, query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+		err = fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting DB: %v", err)
 	}
 	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
@@ -202,6 +259,7 @@ func StreamQueryJSON(
 	// Execute the query and get rows
 	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
 	defer func() {
@@ -212,7 +270,9 @@ func StreamQueryJSON(
 		}
 	}()
 
-	return StreamSQLToJSONWithConn(conn, ctx, varPrefix+query+";", writer)
+	rowCount, err := StreamSQLToJSONWithConnAndCount(conn, ctx, varPrefix+query+";", writer)
+	CompleteQueryExecution(exec, rowCount, err)
+	return err
 }
 
 // StreamSQLToJSON executes a single SQL query and streams the result as JSON.
@@ -222,22 +282,38 @@ func StreamSQLToJSON(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeSQLAPI,
+		nil,
+		nil,
+		nil,
+		sqlQuery,
+	)
+
 	if !IsAllowedStatement(app, sqlQuery) {
-		return fmt.Errorf("disallowed SQL statement")
+		err := fmt.Errorf("disallowed SQL statement")
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting DB: %v", err)
 	}
 	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
 
 	varPrefix, _ := buildVarPrefix(app, nil, nil)
-	return StreamSQLToJSONWithConn(conn, ctx, varPrefix+sqlQuery, writer)
+	rowCount, err := StreamSQLToJSONWithConnAndCount(conn, ctx, varPrefix+sqlQuery, writer)
+	CompleteQueryExecution(exec, rowCount, err)
+	return err
 }
 
 // StreamSQLToJSONWithConn executes a single SQL query using an existing connection and streams the result as JSON.
@@ -247,20 +323,31 @@ func StreamSQLToJSONWithConn(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
+	_, err := StreamSQLToJSONWithConnAndCount(conn, ctx, sqlQuery, writer)
+	return err
+}
+
+// StreamSQLToJSONWithConnAndCount executes a single SQL query and returns the row count.
+func StreamSQLToJSONWithConnAndCount(
+	conn *sqlx.Conn,
+	ctx context.Context,
+	sqlQuery string,
+	writer io.Writer,
+) (int64, error) {
 	rows, err := conn.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return fmt.Errorf("error executing query: %w", err)
+		return 0, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
 	// Get column names
 	columns, err := rows.Columns()
 	if err != nil {
-		return fmt.Errorf("error getting columns: %w", err)
+		return 0, fmt.Errorf("error getting columns: %w", err)
 	}
 
 	if _, err := writer.Write([]byte("[")); err != nil {
-		return fmt.Errorf("error writing JSON start: %w", err)
+		return 0, fmt.Errorf("error writing JSON start: %w", err)
 	}
 
 	// Prepare containers for row data
@@ -270,19 +357,21 @@ func StreamSQLToJSONWithConn(
 		valuePtrs[i] = &values[i]
 	}
 
+	var rowCount int64 = 0
 	first := true
 	// Stream rows
 	for rows.Next() {
 		if !first {
 			if _, err := writer.Write([]byte(",")); err != nil {
-				return fmt.Errorf("error writing JSON separator: %w", err)
+				return rowCount, fmt.Errorf("error writing JSON separator: %w", err)
 			}
 		}
 		first = false
+		rowCount++
 
 		// Scan the row into our value containers
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return fmt.Errorf("error scanning row: %w", err)
+			return rowCount, fmt.Errorf("error scanning row: %w", err)
 		}
 
 		// Convert values to map
@@ -294,15 +383,15 @@ func StreamSQLToJSONWithConn(
 		// Write the record
 		encoder := json.NewEncoder(writer)
 		if err := encoder.Encode(rowMap); err != nil {
-			return fmt.Errorf("error encoding JSON record: %w", err)
+			return rowCount, fmt.Errorf("error encoding JSON record: %w", err)
 		}
 	}
 
 	if _, err := writer.Write([]byte("]")); err != nil {
-		return fmt.Errorf("error writing JSON end: %w", err)
+		return rowCount, fmt.Errorf("error writing JSON end: %w", err)
 	}
 
-	return rows.Err()
+	return rowCount, rows.Err()
 }
 
 func jsonValue(value any) any {
@@ -338,25 +427,36 @@ func StreamSQLToCSVWithConn(
 	sqlQuery string,
 	writer io.Writer,
 ) error {
+	_, err := StreamSQLToCSVWithConnAndCount(conn, ctx, sqlQuery, writer)
+	return err
+}
+
+// StreamSQLToCSVWithConnAndCount executes a single SQL query and returns the row count.
+func StreamSQLToCSVWithConnAndCount(
+	conn *sqlx.Conn,
+	ctx context.Context,
+	sqlQuery string,
+	writer io.Writer,
+) (int64, error) {
 	// Create a CSV writer
 	csvWriter := csv.NewWriter(writer)
 	defer csvWriter.Flush()
 
 	rows, err := conn.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return fmt.Errorf("error executing query: %w", err)
+		return 0, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
 	// Get column names
 	columns, err := rows.Columns()
 	if err != nil {
-		return fmt.Errorf("error getting columns: %w", err)
+		return 0, fmt.Errorf("error getting columns: %w", err)
 	}
 
 	// Write header
 	if err := csvWriter.Write(columns); err != nil {
-		return fmt.Errorf("error writing headers: %w", err)
+		return 0, fmt.Errorf("error writing headers: %w", err)
 	}
 
 	// Prepare containers for row data
@@ -366,12 +466,15 @@ func StreamSQLToCSVWithConn(
 		valuePtrs[i] = &values[i]
 	}
 
+	var rowCount int64 = 0
 	// Stream rows
 	for rows.Next() {
 		// Scan the row into our value containers
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return fmt.Errorf("error scanning row: %w", err)
+			return rowCount, fmt.Errorf("error scanning row: %w", err)
 		}
+
+		rowCount++
 
 		// Convert values to strings
 		record := make([]string, len(columns))
@@ -381,17 +484,17 @@ func StreamSQLToCSVWithConn(
 
 		// Write the record
 		if err := csvWriter.Write(record); err != nil {
-			return fmt.Errorf("error writing record: %w", err)
+			return rowCount, fmt.Errorf("error writing record: %w", err)
 		}
 
 		// Flush periodically to ensure streaming
 		csvWriter.Flush()
 		if err := csvWriter.Error(); err != nil {
-			return fmt.Errorf("error flushing CSV writer: %w", err)
+			return rowCount, fmt.Errorf("error flushing CSV writer: %w", err)
 		}
 	}
 
-	return rows.Err()
+	return rowCount, rows.Err()
 }
 
 // Stream the result of a dashboard query as CSV file to client.

@@ -45,6 +45,16 @@ func getScheduleColumn(columns []*sql.ColumnType, rows Rows) (string, bool) {
 }
 
 func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeTask,
+		nil,
+		nil,
+		nil,
+		content,
+	)
+
 	result := TaskResult{
 		StartedAt: time.Now().UnixMilli(),
 		Queries:   []TaskQueryResult{},
@@ -53,27 +63,32 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	cleanContent := util.StripSQLComments(content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return result, err
 	}
 	result.TotalQueries = len(sqls)
 
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return result, fmt.Errorf("Error getting DB: %v", err)
 	}
 	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}
 	defer conn.Close()
 
 	tx, err := conn.BeginTxx(ctx, nil)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return result, fmt.Errorf("Error starting transaction: %v", err)
 	}
 
 	success := true
+	var totalRows int64 = 0
 	for sqlIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
@@ -145,6 +160,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			}
 
 			queryResult.ResultRows = append(queryResult.ResultRows, row)
+			totalRows++
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {
@@ -187,15 +203,22 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 
 	if success {
 		if err := tx.Commit(); err != nil {
+			tracker.Complete(exec, totalRows, err)
 			return result, fmt.Errorf("Error committing transaction: %v", err)
 		}
 		result.Success = true
 	} else {
 		if err := tx.Rollback(); err != nil {
+			tracker.Complete(exec, totalRows, err)
 			return result, fmt.Errorf("Error rolling back transaction: %v", err)
 		}
 		result.Success = false
 	}
 
+	var finalErr error = nil
+	if !success {
+		finalErr = fmt.Errorf("task execution failed")
+	}
+	CompleteQueryExecution(exec, totalRows, finalErr)
 	return result, nil
 }

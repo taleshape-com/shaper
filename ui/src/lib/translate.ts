@@ -176,6 +176,42 @@ const translations = {
     de: "Aufschlüsselung",
     pt: "Detalhamento",
   },
+  "Query running...": {
+    de: "Abfrage läuft...",
+    pt: "Consulta em execução...",
+  },
+  "Query completed": {
+    de: "Abfrage abgeschlossen",
+    pt: "Consulta concluída",
+  },
+  "Query failed": {
+    de: "Abfrage fehlgeschlagen",
+    pt: "Consulta falhou",
+  },
+  "Query cancelled": {
+    de: "Abfrage abgebrochen",
+    pt: "Consulta cancelada",
+  },
+  "Query timed out": {
+    de: "Abfrage Zeitüberschreitung",
+    pt: "Tempo limite excedido",
+  },
+  "Slow query": {
+    de: "Langsame Abfrage",
+    pt: "Consulta lenta",
+  },
+  "Query took %% ms": {
+    de: "Abfrage dauerte %% ms",
+    pt: "Consulta levou %% ms",
+  },
+  "Query took %% seconds": {
+    de: "Abfrage dauerte %% Sekunden",
+    pt: "Consulta levou %% segundos",
+  },
+  "%% rows returned": {
+    de: "%% Zeilen zurückgegeben",
+    pt: "%% linhas retornadas",
+  },
 };
 
 export function translate (s: keyof typeof translations) {

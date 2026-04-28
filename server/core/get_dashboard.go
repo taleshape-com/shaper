@@ -385,16 +385,37 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 }
 
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeDashboard,
+		&dashboardId,
+		nil,
+		nil,
+		"",
+	)
+
 	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return GetResult{}, err
 	}
 
-	return QueryDashboard(app, ctx, DashboardQuery{
+	result, err := QueryDashboard(app, ctx, DashboardQuery{
 		Content:    dashboard.Content,
 		ID:         dashboardId,
 		Visibility: dashboard.Visibility,
 	}, queryParams, variables)
+
+	var totalRows int64 = 0
+	for _, section := range result.Sections {
+		for _, query := range section.Queries {
+			totalRows += int64(len(query.Rows))
+		}
+	}
+
+	CompleteQueryExecution(exec, totalRows, err)
+	return result, err
 }
 
 func mapTag(index int, rInfo renderInfo) string {

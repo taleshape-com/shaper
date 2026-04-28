@@ -1,5 +1,28 @@
 // SPDX-License-Identifier: MPL-2.0
 
+export type QueryExecutionStatus = "pending" | "running" | "success" | "failed" | "cancelled" | "timed_out";
+export type QueryExecutionType = "dashboard" | "task" | "sql_api" | "download";
+
+export interface QueryExecution {
+  id: string;
+  type: QueryExecutionType;
+  dashboardId?: string;
+  taskId?: string;
+  userId?: string;
+  apiKeyId?: string;
+  queryIndex?: number;
+  query?: string;
+  status: QueryExecutionStatus;
+  startedAt: string;
+  endedAt?: string;
+  durationMs?: number;
+  rowCount?: number;
+  error?: string;
+  isSlowQuery: boolean;
+}
+
+export const SLOW_QUERY_THRESHOLD_MS = 1000;
+
 export interface IApp {
   id: string;
   name: string;

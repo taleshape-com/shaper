@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { ErrorBoundary } from "react-error-boundary";
-import { Result } from "../../lib/types";
+import { Result, SLOW_QUERY_THRESHOLD_MS } from "../../lib/types";
 import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema, getRenderMode, copyToClipboard } from "../../lib/utils";
@@ -19,8 +19,8 @@ import DashboardBarChart from "./DashboardBarChart";
 import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
-import { useEffect, useState, useRef, useCallback } from "react";
-import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill, RiTimeLine, RiAlertLine } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
@@ -42,13 +42,36 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
+interface QueryStats {
+  durationMs: number;
+  rowCount: number;
+  isSlowQuery: boolean;
+}
+
+function formatDuration(durationMs: number): string {
+  if (durationMs < 1000) {
+    return translate("Query took %% ms").replace("%%", durationMs.toString());
+  }
+  const seconds = (durationMs / 1000).toFixed(1);
+  return translate("Query took %% seconds").replace("%%", seconds);
+}
+
+function countTotalRows(data: Result): number {
+  let count = 0;
+  for (const section of data.sections) {
+    for (const query of section.queries) {
+      count += query.rows.length;
+    }
+  }
+  return count;
+}
+
 export function Dashboard ({
   id,
   vars,
   getJwt,
   baseUrl = window.shaper.defaultBaseUrl,
   onVarsChanged,
-  // We update this string when JWT variables change to trigger a re-fetch
   hash = "",
   menuButton,
   onError,
@@ -58,25 +81,21 @@ export function Dashboard ({
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+  const [queryStats, setQueryStats] = useState<QueryStats | null>(null);
   const errResetFn = useRef<(() => void) | undefined>(undefined);
 
-  // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
-  // Track the current AbortController so we can cancel in-flight requests
   const fetchAbortRef = useRef<AbortController | null>(null);
 
-  // Function to fetch dashboard data
   const fetchData = useCallback(async () => {
     if (!id) return;
 
-    // Abort any in-flight request before starting a new one
     if (fetchAbortRef.current) {
       fetchAbortRef.current.abort();
     }
     const abortController = new AbortController();
     fetchAbortRef.current = abortController;
 
-    // Clear previous reload timer when starting a new fetch
     if (reloadTimeoutRef.current) {
       clearTimeout(reloadTimeoutRef.current);
       reloadTimeoutRef.current = undefined;
@@ -84,6 +103,7 @@ export function Dashboard ({
 
     setError(null);
     setIsFetching(true);
+    setQueryStats(null);
     const startTime = Date.now();
 
     try {
@@ -95,42 +115,38 @@ export function Dashboard ({
         }, Math.max(0, MIN_SHOW_LOADING - duration));
       });
 
-      // Only apply the results if this request is still the latest
       if (fetchAbortRef.current === abortController) {
+        const rowCount = countTotalRows(d);
+        const isSlowQuery = duration >= SLOW_QUERY_THRESHOLD_MS;
+        setQueryStats({ durationMs: duration, rowCount, isSlowQuery });
         setFetchedData(d);
         if (onDataChange) {
           onDataChange(d);
         }
-        // Set up reload timeout if reloadAt is in the future
         if (d.reloadAt > Date.now()) {
           const timeout = Math.max(1000, d.reloadAt - Date.now());
           reloadTimeoutRef.current = setTimeout(fetchData, timeout);
         }
       }
     } catch (err: unknown) {
-      // Swallow abort errors (they are expected when a new request starts)
       if ((err as any)?.name === "AbortError") {
         return;
       }
       setError(err as Error);
       onError?.(err as Error);
     } finally {
-      // Only clear fetching state if this is still the latest request
       if (fetchAbortRef.current === abortController) {
         setIsFetching(false);
       }
     }
   }, [id, vars, baseUrl, getJwt, onDataChange, onError]);
 
-  // Initial fetch and cleanup
   useEffect(() => {
     fetchData();
     return () => {
-      // Clear timeouts on cleanup
       if (reloadTimeoutRef.current) {
         clearTimeout(reloadTimeoutRef.current);
       }
-      // Abort any in-flight request on unmount
       if (fetchAbortRef.current) {
         fetchAbortRef.current.abort();
       }
@@ -195,6 +211,7 @@ export function Dashboard ({
         baseUrl={baseUrl}
         getJwt={getJwt}
         loading={loading || isFetching}
+        queryStats={queryStats}
       />
     </ErrorBoundary>
   ) : (
@@ -214,7 +231,8 @@ const DataView = ({
   baseUrl,
   getJwt,
   loading,
-}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean }) => {
+  queryStats,
+}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean; queryStats: QueryStats | null }) => {
   const [fullscreenId, setFullscreenId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -567,15 +585,54 @@ const DataView = ({
           >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
         )}
       </div>
-      {loading && (
-        <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
-          <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
-            <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
-          </div>
-        </div>
-      )}
+      <QueryStatusIndicator loading={loading} queryStats={queryStats} />
     </div>
   </ChartHoverProvider >);
+};
+
+const QueryStatusIndicator = ({ loading, queryStats }: { loading: boolean; queryStats: QueryStats | null }) => {
+  if (loading) {
+    return (
+      <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
+        <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
+          <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!queryStats) {
+    return null;
+  }
+
+  const durationText = formatDuration(queryStats.durationMs);
+  const rowCountText = translate("%% rows returned").replace("%%", queryStats.rowCount.toString());
+
+  return (
+    <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
+      <div
+        className={cx(
+          "px-3 py-2 rounded-md shadow-md absolute right-2 bottom-2 flex items-center gap-2 text-xs",
+          queryStats.isSlowQuery
+            ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
+            : "bg-cbgs dark:bg-dbgs text-ctext dark:text-dtext"
+        )}
+      >
+        {queryStats.isSlowQuery && (
+          <RiAlertLine className="size-4" aria-hidden={true} />
+        )}
+        {!queryStats.isSlowQuery && (
+          <RiTimeLine className="size-4" aria-hidden={true} />
+        )}
+        <span>{durationText}</span>
+        <span className="text-ctext2 dark:text-dtext2">·</span>
+        <span>{rowCountText}</span>
+        {queryStats.isSlowQuery && (
+          <span className="font-medium">{translate("Slow query")}</span>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const renderContent = (
