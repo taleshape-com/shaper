@@ -25,14 +25,15 @@ type Dashboard struct {
 }
 
 type GetResult struct {
-	Name         string    `json:"name"`
-	Visibility   *string   `json:"visibility,omitempty"`
-	Sections     []Section `json:"sections"`
-	MinTimeValue int64     `json:"minTimeValue"`
-	MaxTimeValue int64     `json:"maxTimeValue"`
-	ReloadAt     int64     `json:"reloadAt"`
-	HeaderImage  *string   `json:"headerImage,omitempty"`
-	FooterLink   *string   `json:"footerLink,omitempty"`
+	Name         string        `json:"name"`
+	Visibility   *string       `json:"visibility,omitempty"`
+	Sections     []Section     `json:"sections"`
+	MinTimeValue int64         `json:"minTimeValue"`
+	MaxTimeValue int64         `json:"maxTimeValue"`
+	ReloadAt     int64         `json:"reloadAt"`
+	HeaderImage  *string       `json:"headerImage,omitempty"`
+	FooterLink   *string       `json:"footerLink,omitempty"`
+	QuerySummary *QuerySummary `json:"querySummary,omitempty"`
 }
 
 type Section struct {

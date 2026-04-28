@@ -23,6 +23,13 @@ export interface QueryExecution {
 
 export const SLOW_QUERY_THRESHOLD_MS = 1000;
 
+export interface QuerySummary {
+  durationMs: number;
+  rowCount: number;
+  status: QueryExecutionStatus;
+  isSlowQuery: boolean;
+}
+
 export interface IApp {
   id: string;
   name: string;
@@ -127,6 +134,7 @@ export type Result = {
   reloadAt: number;
   headerImage?: string;
   footerLink?: string;
+  querySummary?: QuerySummary;
   sections: (
     | {
       type: "header";

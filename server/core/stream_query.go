@@ -513,30 +513,47 @@ func StreamQueryXLSX(
 	variables map[string]any,
 	writer io.Writer,
 ) error {
+	tracker := GetQueryTracker()
+	exec := tracker.Start(
+		ctx,
+		QueryTypeDownload,
+		&dashboardId,
+		nil,
+		&queryID,
+		"",
+	)
+
 	// Get dashboard content
 	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("failed to split SQL queries: %w", err)
 	}
 
 	if queryID == -1 {
 		queryID, err = resolveDownloadQueryID(app, sqls, "xlsx")
 		if err != nil {
+			tracker.Complete(exec, 0, err)
 			return err
 		}
 	}
 
 	if len(sqls) <= queryID || queryID < 0 {
-		return fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+		err = fmt.Errorf("dashboard '%s' has no query for query index: %d", dashboardId, queryID)
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 	query := sqls[queryID]
 	if !IsAllowedStatement(app, query) {
-		return fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+		err = fmt.Errorf("disallowed SQL statement in query %d", queryID+1)
+		tracker.Complete(exec, 0, err)
+		return err
 	}
 
 	// Create a new XLSX file
@@ -555,6 +572,7 @@ func StreamQueryXLSX(
 		},
 	})
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("error creating header style: %w", err)
 	}
 
@@ -586,26 +604,32 @@ func StreamQueryXLSX(
 
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting DB: %v", err)
 	}
 	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("Error getting conn: %v", err)
 	}
+	defer conn.Close()
 
 	// Execute the query and get rows
 	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
 	rows, err := conn.QueryContext(ctx, varPrefix+query+";")
 	if varCleanup != "" {
 		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+			tracker.Complete(exec, 0, cleanupErr)
 			return fmt.Errorf("Error cleaning up vars in query %d: %v", queryID, cleanupErr)
 		}
 	}
 	if err != nil {
+		tracker.Complete(exec, 0, err)
 		return fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
@@ -642,9 +666,9 @@ func StreamQueryXLSX(
 	for rows.Next() {
 		// Scan the row into our value containers
 		if err := rows.Scan(valuePtrs...); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				return fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
-			}
+			rows.Close()
+			rowCount := int64(rowIdx - 2)
+			CompleteQueryExecution(exec, rowCount, err)
 			return fmt.Errorf("error scanning row: %w", err)
 		}
 
@@ -652,9 +676,9 @@ func StreamQueryXLSX(
 		for colIdx, value := range values {
 			cell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
 			if err != nil {
-				if closeErr := rows.Close(); closeErr != nil {
-					return fmt.Errorf("Error closing rows after excel error. Excel Err: %w. Close Err: %v", err, closeErr)
-				}
+				rows.Close()
+				rowCount := int64(rowIdx - 2)
+				CompleteQueryExecution(exec, rowCount, err)
 				return fmt.Errorf("error converting coordinates: %w", err)
 			}
 			// Apply appropriate formatting based on data type
@@ -668,11 +692,10 @@ func StreamQueryXLSX(
 		rowIdx++
 	}
 
-	if err := conn.Close(); err != nil {
-		return fmt.Errorf("Error closing conn: %v", err)
-	}
+	rowCount := int64(rowIdx - 2)
 
 	if err := rows.Err(); err != nil {
+		CompleteQueryExecution(exec, rowCount, err)
 		return err
 	}
 
@@ -680,6 +703,7 @@ func StreamQueryXLSX(
 	for colIdx := range columns {
 		colName, err := excelize.ColumnNumberToName(colIdx + 1)
 		if err != nil {
+			CompleteQueryExecution(exec, rowCount, err)
 			return fmt.Errorf("error converting column number: %w", err)
 		}
 		// Clamp width between minimum of 6 and maximum of 100
@@ -703,7 +727,9 @@ func StreamQueryXLSX(
 	})
 
 	// Write the XLSX file to the writer
-	return xlsx.Write(writer)
+	writeErr := xlsx.Write(writer)
+	CompleteQueryExecution(exec, rowCount, writeErr)
+	return writeErr
 }
 
 // getDisplayWidth returns the approximate display width of a value.

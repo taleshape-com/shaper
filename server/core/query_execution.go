@@ -4,6 +4,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -14,21 +16,21 @@ import (
 type QueryExecutionStatus string
 
 const (
-	QueryStatusPending    QueryExecutionStatus = "pending"
-	QueryStatusRunning    QueryExecutionStatus = "running"
-	QueryStatusSuccess    QueryExecutionStatus = "success"
-	QueryStatusFailed     QueryExecutionStatus = "failed"
-	QueryStatusCancelled  QueryExecutionStatus = "cancelled"
-	QueryStatusTimedOut   QueryExecutionStatus = "timed_out"
+	QueryStatusPending   QueryExecutionStatus = "pending"
+	QueryStatusRunning   QueryExecutionStatus = "running"
+	QueryStatusSuccess   QueryExecutionStatus = "success"
+	QueryStatusFailed    QueryExecutionStatus = "failed"
+	QueryStatusCancelled QueryExecutionStatus = "cancelled"
+	QueryStatusTimedOut  QueryExecutionStatus = "timed_out"
 )
 
 type QueryExecutionType string
 
 const (
-	QueryTypeDashboard    QueryExecutionType = "dashboard"
-	QueryTypeTask         QueryExecutionType = "task"
-	QueryTypeSQLAPI       QueryExecutionType = "sql_api"
-	QueryTypeDownload     QueryExecutionType = "download"
+	QueryTypeDashboard QueryExecutionType = "dashboard"
+	QueryTypeTask      QueryExecutionType = "task"
+	QueryTypeSQLAPI    QueryExecutionType = "sql_api"
+	QueryTypeDownload  QueryExecutionType = "download"
 )
 
 type QueryExecution struct {
@@ -51,11 +53,39 @@ type QueryExecution struct {
 
 const SLOW_QUERY_THRESHOLD_MS = 1000
 
+const DEFAULT_QUERY_TIMEOUT_MS = 30000
+
+var globalQueryTimeoutMs int = DEFAULT_QUERY_TIMEOUT_MS
+
+func SetQueryTimeoutMs(timeoutMs int) {
+	if timeoutMs > 0 {
+		globalQueryTimeoutMs = timeoutMs
+	}
+}
+
+func GetQueryTimeoutMs() int {
+	return globalQueryTimeoutMs
+}
+
+func WithQueryTimeout(parent context.Context) (context.Context, context.CancelFunc) {
+	if globalQueryTimeoutMs <= 0 {
+		return context.WithCancel(parent)
+	}
+	return context.WithTimeout(parent, time.Duration(globalQueryTimeoutMs)*time.Millisecond)
+}
+
 type QueryExecutionTracker struct {
 	mu          sync.RWMutex
 	executions  map[string]*QueryExecution
 	maxCapacity int
 	onUpdate    func(*QueryExecution)
+}
+
+type QueryFilter struct {
+	Types   []QueryExecutionType
+	Status  []QueryExecutionStatus
+	Limit   int
+	OnlySlow bool
 }
 
 var globalQueryTracker *QueryExecutionTracker
@@ -68,7 +98,15 @@ func GetQueryTracker() *QueryExecutionTracker {
 	return globalQueryTracker
 }
 
+func ResetQueryTracker() {
+	globalQueryTrackerOnce = sync.Once{}
+	globalQueryTracker = nil
+}
+
 func NewQueryExecutionTracker(maxCapacity int) *QueryExecutionTracker {
+	if maxCapacity <= 0 {
+		maxCapacity = 1000
+	}
 	return &QueryExecutionTracker{
 		executions:  make(map[string]*QueryExecution),
 		maxCapacity: maxCapacity,
@@ -112,7 +150,7 @@ func (t *QueryExecutionTracker) Start(
 	defer t.mu.Unlock()
 
 	if len(t.executions) >= t.maxCapacity {
-		t.cleanupOldest()
+		t.cleanupOldestLocked()
 	}
 
 	t.executions[exec.ID] = exec
@@ -137,6 +175,10 @@ func (t *QueryExecutionTracker) Complete(exec *QueryExecution, rowCount int64, e
 		return
 	}
 
+	if existing.IsTerminal() {
+		return
+	}
+
 	now := time.Now()
 	existing.EndedAt = &now
 	duration := now.Sub(existing.StartedAt).Milliseconds()
@@ -144,7 +186,7 @@ func (t *QueryExecutionTracker) Complete(exec *QueryExecution, rowCount int64, e
 
 	if err != nil {
 		existing.Status = QueryStatusFailed
-		errMsg := err.Error()
+		errMsg := sanitizeError(err.Error())
 		existing.Error = &errMsg
 	} else {
 		existing.Status = QueryStatusSuccess
@@ -168,6 +210,10 @@ func (t *QueryExecutionTracker) Cancel(exec *QueryExecution) {
 
 	existing, ok := t.executions[exec.ID]
 	if !ok {
+		return
+	}
+
+	if existing.IsTerminal() {
 		return
 	}
 
@@ -196,6 +242,10 @@ func (t *QueryExecutionTracker) Timeout(exec *QueryExecution) {
 		return
 	}
 
+	if existing.IsTerminal() {
+		return
+	}
+
 	now := time.Now()
 	existing.EndedAt = &now
 	duration := now.Sub(existing.StartedAt).Milliseconds()
@@ -208,30 +258,31 @@ func (t *QueryExecutionTracker) Timeout(exec *QueryExecution) {
 	}
 }
 
-func (t *QueryExecutionTracker) GetRecentExecutions(limit int) []*QueryExecution {
+func (t *QueryExecutionTracker) GetRecentExecutions(filter QueryFilter) []*QueryExecution {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	execs := make([]*QueryExecution, 0, len(t.executions))
 	for _, exec := range t.executions {
-		execs = append(execs, exec)
+		if matchesFilter(exec, filter) {
+			execs = append(execs, exec)
+		}
+	}
+
+	sort.Slice(execs, func(i, j int) bool {
+		return execs[i].StartedAt.After(execs[j].StartedAt)
+	})
+
+	if filter.Limit > 0 && len(execs) > filter.Limit {
+		execs = execs[:filter.Limit]
 	}
 
 	return execs
 }
 
-func (t *QueryExecutionTracker) GetSlowQueries(limit int) []*QueryExecution {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	var slowExecs []*QueryExecution
-	for _, exec := range t.executions {
-		if exec.IsSlowQuery {
-			slowExecs = append(slowExecs, exec)
-		}
-	}
-
-	return slowExecs
+func (t *QueryExecutionTracker) GetSlowQueries(filter QueryFilter) []*QueryExecution {
+	filter.OnlySlow = true
+	return t.GetRecentExecutions(filter)
 }
 
 func (t *QueryExecutionTracker) GetByID(id string) (*QueryExecution, bool) {
@@ -242,7 +293,13 @@ func (t *QueryExecutionTracker) GetByID(id string) (*QueryExecution, bool) {
 	return exec, ok
 }
 
-func (t *QueryExecutionTracker) cleanupOldest() {
+func (t *QueryExecutionTracker) Len() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return len(t.executions)
+}
+
+func (t *QueryExecutionTracker) cleanupOldestLocked() {
 	var oldestID string
 	var oldestTime time.Time
 
@@ -258,11 +315,53 @@ func (t *QueryExecutionTracker) cleanupOldest() {
 	}
 }
 
+func matchesFilter(exec *QueryExecution, filter QueryFilter) bool {
+	if filter.OnlySlow && !exec.IsSlowQuery {
+		return false
+	}
+
+	if len(filter.Types) > 0 {
+		match := false
+		for _, t := range filter.Types {
+			if exec.Type == t {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return false
+		}
+	}
+
+	if len(filter.Status) > 0 {
+		match := false
+		for _, s := range filter.Status {
+			if exec.Status == s {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return false
+		}
+	}
+
+	return true
+}
+
 func truncateQuery(query string, maxLen int) string {
 	if len(query) <= maxLen {
 		return query
 	}
 	return query[:maxLen] + "..."
+}
+
+func sanitizeError(errMsg string) string {
+	lines := strings.Split(errMsg, "\n")
+	if len(lines) > 0 {
+		return lines[0]
+	}
+	return errMsg
 }
 
 func (exec *QueryExecution) GetDuration() time.Duration {
@@ -277,6 +376,43 @@ func (exec *QueryExecution) IsTerminal() bool {
 		exec.Status == QueryStatusFailed ||
 		exec.Status == QueryStatusCancelled ||
 		exec.Status == QueryStatusTimedOut
+}
+
+func (exec *QueryExecution) SanitizeForResponse() *QueryExecution {
+	return &QueryExecution{
+		ID:          exec.ID,
+		Type:        exec.Type,
+		DashboardID: exec.DashboardID,
+		TaskID:      exec.TaskID,
+		QueryIndex:  exec.QueryIndex,
+		Status:      exec.Status,
+		StartedAt:   exec.StartedAt,
+		EndedAt:     exec.EndedAt,
+		DurationMs:  exec.DurationMs,
+		RowCount:    exec.RowCount,
+		Error:       exec.Error,
+		IsSlowQuery: exec.IsSlowQuery,
+	}
+}
+
+type QuerySummary struct {
+	DurationMs  int64  `json:"durationMs"`
+	RowCount    int64  `json:"rowCount"`
+	Status      string `json:"status"`
+	IsSlowQuery bool   `json:"isSlowQuery"`
+}
+
+func (exec *QueryExecution) ToSummary() *QuerySummary {
+	rowCount := int64(0)
+	if exec.RowCount != nil {
+		rowCount = *exec.RowCount
+	}
+	return &QuerySummary{
+		DurationMs:  exec.GetDuration().Milliseconds(),
+		RowCount:    rowCount,
+		Status:      string(exec.Status),
+		IsSlowQuery: exec.IsSlowQuery,
+	}
 }
 
 type QueryExecutionOptions struct {
@@ -321,6 +457,9 @@ func IsContextCancelledError(err error) bool {
 	if err == nil {
 		return false
 	}
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
 	errMsg := err.Error()
 	return strings.Contains(errMsg, "context canceled") ||
 		strings.Contains(errMsg, "context was canceled")
@@ -329,6 +468,9 @@ func IsContextCancelledError(err error) bool {
 func IsContextTimeoutError(err error) bool {
 	if err == nil {
 		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
 	}
 	errMsg := err.Error()
 	return strings.Contains(errMsg, "context deadline exceeded") ||

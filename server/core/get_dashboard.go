@@ -66,6 +66,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}
+	defer conn.Close()
 
 	for queryIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
@@ -82,290 +83,318 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
 			continue
 		}
+
+		queryCtx, cancelQuery := WithQueryTimeout(ctx)
+		defer cancelQuery()
+
 		varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
 		query := Query{Columns: []Column{}, Rows: Rows{}}
-		// run query
-		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
-		if varCleanup != "" {
-			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
-				return result, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
-			}
-		}
-		if err != nil {
-			return result, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
-		}
 
-		colTypes, err := rows.ColumnTypes()
-		if err != nil {
-			return result, err
-		}
-		for rows.Next() {
-			row, err := rows.SliceScan()
+		qIndex := queryIndex
+		exec := GetQueryTracker().Start(
+			queryCtx,
+			QueryTypeDashboard,
+			&dashboardQuery.ID,
+			nil,
+			&qIndex,
+			sqlString,
+		)
+
+		var rowCount int64 = 0
+		var execErr error = nil
+
+		func() {
+			rows, err := conn.QueryxContext(queryCtx, varPrefix+sqlString+";")
+			if varCleanup != "" {
+				if _, cleanupErr := conn.ExecContext(queryCtx, varCleanup); cleanupErr != nil {
+					execErr = fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+					return
+				}
+			}
 			if err != nil {
-				if closeErr := rows.Close(); closeErr != nil {
-					return result, fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
-				}
-				return result, err
+				execErr = fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
+				return
 			}
-			query.Rows = append(query.Rows, row)
-			if len(query.Rows) > QUERY_MAX_ROWS {
-				// TODO: add a warning to the result and show to user
-				app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardQuery.ID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
-				if err := rows.Close(); err != nil {
-					return result, fmt.Errorf("Error closing rows while truncating (dashboard '%v'): %v", dashboardQuery.ID, err)
-				}
-				break
-			}
-		}
+			defer rows.Close()
 
-		if isSideEffect(app, sqlString) {
-			continue
-		}
-
-		if isLabel(colTypes, query.Rows) {
-			u, ok := query.Rows[0][0].(duckdb.Union)
-			if !ok {
-				nextLabel = ""
-				continue
-			}
-			l, ok := u.Value.(string)
-			if !ok {
-				l = ""
-			}
-			nextLabel = l
-			continue
-		}
-
-		if isSectionTitle(colTypes, query.Rows) {
-			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil {
-				result.Sections = append(result.Sections, Section{
-					Type:    "header",
-					Queries: []Query{},
-				})
-			}
-			hideNextContentSection = false
-			lastSection := &result.Sections[len(result.Sections)-1]
-			if len(query.Rows) == 0 {
-				hideNextContentSection = true
-				continue
-			}
-			u, ok := query.Rows[0][0].(duckdb.Union)
-			if !ok {
-				lastSection.Title = nil
-				continue
-			}
-			sectionTitle, ok := u.Value.(string)
-			if !ok || sectionTitle == "" {
-				lastSection.Title = nil
-			} else {
-				lastSection.Title = &sectionTitle
-			}
-			continue
-		}
-
-		if isReload(colTypes, query.Rows) {
-			if result.ReloadAt != 0 {
-				return result, fmt.Errorf("Multiple RELOAD queries in dashboard %s", dashboardQuery.ID)
-			}
-			result.ReloadAt = getReloadValue(query.Rows)
-			continue
-		}
-
-		if isHeaderImage(colTypes, query.Rows) {
-			headerImage = getSingleValue(query.Rows)
-			continue
-		}
-		if isFooterLink(colTypes, query.Rows) {
-			footerLink = getSingleValue(query.Rows)
-			continue
-		}
-
-		if lines, ok := getMarkLines(colTypes, query.Rows); ok {
-			nextMarkLines = append(nextMarkLines, lines...)
-			continue
-		}
-
-		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextMarkLines)
-		query.Render = Render{
-			Type:            rInfo.Type,
-			Label:           rInfo.Label,
-			GaugeCategories: rInfo.GaugeCategories,
-			MarkLines:       rInfo.MarkLines,
-		}
-
-		if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
-			nextIsDownload = true
-		}
-
-		timeColumnIndices := map[int]bool{}
-
-		for colIndex, c := range colTypes {
-			nullable, ok := c.Nullable()
-			tag := mapTag(colIndex, rInfo)
-			colType, err := mapDBType(c.DatabaseTypeName(), colIndex, query.Rows)
+			colTypes, err := rows.ColumnTypes()
 			if err != nil {
-				return result, err
+				execErr = err
+				return
 			}
-			if isTimeType(colType) {
-				timeColumnIndices[colIndex] = true
-			}
-			col := Column{
-				Name:     c.Name(),
-				Type:     colType,
-				Nullable: ok && nullable,
-				Tag:      tag,
-			}
-			query.Columns = append(query.Columns, col)
-			if tag == "download" && len(query.Rows) > 0 {
-				v := query.Rows[0][colIndex]
-				filename := ""
-				if v != nil {
-					filename = v.(duckdb.Union).Value.(string)
+			for rows.Next() {
+				row, err := rows.SliceScan()
+				if err != nil {
+					execErr = err
+					return
 				}
-				queryString := ""
-				linkParams := url.Values{}
-				// Using query params directly for pdf, but using downloadLinkParams for other downloads since there we don't collect vars again.
-				// This matters especially for vars that are not explicitly set and need to be populated with their default value.
-				// Hope we can simplify this in the future.
-				if rInfo.Download == "pdf" {
-					if len(queryParams) > 0 {
-						vars, err := json.Marshal(queryParams)
+				query.Rows = append(query.Rows, row)
+				if len(query.Rows) > QUERY_MAX_ROWS {
+					app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardQuery.ID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
+					break
+				}
+			}
+
+			if rowsErr := rows.Err(); rowsErr != nil {
+				execErr = rowsErr
+				return
+			}
+
+			rowCount = int64(len(query.Rows))
+
+			if isSideEffect(app, sqlString) {
+				return
+			}
+
+			if isLabel(colTypes, query.Rows) {
+				u, ok := query.Rows[0][0].(duckdb.Union)
+				if !ok {
+					nextLabel = ""
+					return
+				}
+				l, ok := u.Value.(string)
+				if !ok {
+					l = ""
+				}
+				nextLabel = l
+				return
+			}
+
+			if isSectionTitle(colTypes, query.Rows) {
+				if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil {
+					result.Sections = append(result.Sections, Section{
+						Type:    "header",
+						Queries: []Query{},
+					})
+				}
+				hideNextContentSection = false
+				lastSection := &result.Sections[len(result.Sections)-1]
+				if len(query.Rows) == 0 {
+					hideNextContentSection = true
+					return
+				}
+				u, ok := query.Rows[0][0].(duckdb.Union)
+				if !ok {
+					lastSection.Title = nil
+					return
+				}
+				sectionTitle, ok := u.Value.(string)
+				if !ok || sectionTitle == "" {
+					lastSection.Title = nil
+				} else {
+					lastSection.Title = &sectionTitle
+				}
+				return
+			}
+
+			if isReload(colTypes, query.Rows) {
+				if result.ReloadAt != 0 {
+					execErr = fmt.Errorf("Multiple RELOAD queries in dashboard %s", dashboardQuery.ID)
+					return
+				}
+				result.ReloadAt = getReloadValue(query.Rows)
+				return
+			}
+
+			if isHeaderImage(colTypes, query.Rows) {
+				headerImage = getSingleValue(query.Rows)
+				return
+			}
+			if isFooterLink(colTypes, query.Rows) {
+				footerLink = getSingleValue(query.Rows)
+				return
+			}
+
+			if lines, ok := getMarkLines(colTypes, query.Rows); ok {
+				nextMarkLines = append(nextMarkLines, lines...)
+				return
+			}
+
+			rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextMarkLines)
+			query.Render = Render{
+				Type:            rInfo.Type,
+				Label:           rInfo.Label,
+				GaugeCategories: rInfo.GaugeCategories,
+				MarkLines:       rInfo.MarkLines,
+			}
+
+			if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
+				nextIsDownload = true
+			}
+
+			timeColumnIndices := map[int]bool{}
+
+			for colIndex, c := range colTypes {
+				nullable, ok := c.Nullable()
+				tag := mapTag(colIndex, rInfo)
+				colType, err := mapDBType(c.DatabaseTypeName(), colIndex, query.Rows)
+				if err != nil {
+					execErr = err
+					return
+				}
+				if isTimeType(colType) {
+					timeColumnIndices[colIndex] = true
+				}
+				col := Column{
+					Name:     c.Name(),
+					Type:     colType,
+					Nullable: ok && nullable,
+					Tag:      tag,
+				}
+				query.Columns = append(query.Columns, col)
+				if tag == "download" && len(query.Rows) > 0 {
+					v := query.Rows[0][colIndex]
+					filename := ""
+					if v != nil {
+						filename = v.(duckdb.Union).Value.(string)
+					}
+					queryString := ""
+					linkParams := url.Values{}
+					if rInfo.Download == "pdf" {
+						if len(queryParams) > 0 {
+							vars, err := json.Marshal(queryParams)
+							if err != nil {
+								execErr = fmt.Errorf("failed to json marshal params for download link: %w", err)
+								return
+							}
+							linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+						}
+					} else {
+						vars, err := json.Marshal(downloadLinkParams)
 						if err != nil {
-							return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+							execErr = fmt.Errorf("failed to json marshal params for download link: %w", err)
+							return
 						}
 						linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+						linkParams.Add("query_id", strconv.Itoa(queryIndex+1))
 					}
-				} else {
-					vars, err := json.Marshal(downloadLinkParams)
-					if err != nil {
-						return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+					if len(linkParams) > 0 {
+						queryString = "?" + linkParams.Encode()
 					}
-					linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
-					linkParams.Add("query_id", strconv.Itoa(queryIndex+1))
-				}
-				if len(linkParams) > 0 {
-					queryString = "?" + linkParams.Encode()
-				}
-				if rInfo.Download == "pdf" {
-					id := dashboardQuery.ID
-					if rInfo.DownloadIdIndex != nil {
-						v := query.Rows[0][*rInfo.DownloadIdIndex]
-						if v == nil {
-							id = ""
-						} else {
-							id = v.(duckdb.Union).Value.(string)
+					if rInfo.Download == "pdf" {
+						id := dashboardQuery.ID
+						if rInfo.DownloadIdIndex != nil {
+							v := query.Rows[0][*rInfo.DownloadIdIndex]
+							if v == nil {
+								id = ""
+							} else {
+								id = v.(duckdb.Union).Value.(string)
+							}
 						}
-					}
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
-				} else {
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
-				}
-			}
-		}
-
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
-		if err != nil {
-			return result, err
-		}
-		err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
-		if err != nil {
-			return result, err
-		}
-
-		for _, row := range query.Rows {
-			for i, cell := range row {
-				colType := query.Columns[i].Type
-				if u, ok := cell.(duckdb.Union); ok {
-					cell = u.Value
-					row[i] = u.Value
-				}
-				if t, ok := cell.(time.Time); ok {
-					if colType == "time" {
-						row[i] = formatTime(t)
-						continue
-					}
-					ms := t.UnixMilli()
-					// Find min/max time for index axis
-					if query.Columns[i].Tag == "index" {
-						if ms > maxTimeValue {
-							maxTimeValue = ms
-						} else if ms < minTimeValue {
-							minTimeValue = ms
-						}
-					}
-					if colType == "string" {
-						row[i] = strconv.FormatInt(ms, 10)
+						query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
 					} else {
-						row[i] = ms
+						query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
 					}
-					continue
 				}
-				if n, ok := cell.(float64); ok {
-					if math.IsNaN(n) {
-						row[i] = nil
-					} else if colType == "string" {
-						row[i] = strconv.FormatFloat(n, 'f', -1, 64)
+			}
+
+			err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+			if err != nil {
+				execErr = err
+				return
+			}
+			err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
+			if err != nil {
+				execErr = err
+				return
+			}
+
+			for _, row := range query.Rows {
+				for i, cell := range row {
+					colType := query.Columns[i].Type
+					if u, ok := cell.(duckdb.Union); ok {
+						cell = u.Value
+						row[i] = u.Value
 					}
-					continue
-				}
-				if colTypes[i].DatabaseTypeName() == "UUID" {
-					if byteSlice, ok := cell.([]uint8); ok {
-						row[i] = formatUUID(byteSlice)
-					}
-					continue
-				}
-				if colType == "duration" {
-					v := row[i]
-					if v != nil {
-						row[i] = formatInterval(v)
-					}
-					continue
-				}
-				if colType == "stringArray" {
-					if arr, ok := cell.([]any); ok {
-						s := make([]string, len(arr))
-						for i, v := range arr {
-							s[i] = fmt.Sprintf("%v", v)
+					if t, ok := cell.(time.Time); ok {
+						if colType == "time" {
+							row[i] = formatTime(t)
+							continue
 						}
-						row[i] = strings.Join(s, ", ")
+						ms := t.UnixMilli()
+						if query.Columns[i].Tag == "index" {
+							if ms > maxTimeValue {
+								maxTimeValue = ms
+							} else if ms < minTimeValue {
+								minTimeValue = ms
+							}
+						}
+						if colType == "string" {
+							row[i] = strconv.FormatInt(ms, 10)
+						} else {
+							row[i] = ms
+						}
 						continue
 					}
-				}
-				if colType == "number" {
-					if d, ok := cell.(duckdb.Decimal); ok {
-						row[i] = d.Float64()
+					if n, ok := cell.(float64); ok {
+						if math.IsNaN(n) {
+							row[i] = nil
+						} else if colType == "string" {
+							row[i] = strconv.FormatFloat(n, 'f', -1, 64)
+						}
+						continue
+					}
+					if colTypes[i].DatabaseTypeName() == "UUID" {
+						if byteSlice, ok := cell.([]uint8); ok {
+							row[i] = formatUUID(byteSlice)
+						}
+						continue
+					}
+					if colType == "duration" {
+						v := row[i]
+						if v != nil {
+							row[i] = formatInterval(v)
+						}
+						continue
+					}
+					if colType == "stringArray" {
+						if arr, ok := cell.([]any); ok {
+							s := make([]string, len(arr))
+							for i, v := range arr {
+								s[i] = fmt.Sprintf("%v", v)
+							}
+							row[i] = strings.Join(s, ", ")
+							continue
+						}
+					}
+					if colType == "number" {
+						if d, ok := cell.(duckdb.Decimal); ok {
+							row[i] = d.Float64()
+						}
+					}
+					if colType == "object" {
+						row[i] = duckMapToMap(cell)
 					}
 				}
-				if colType == "object" {
-					row[i] = duckMapToMap(cell)
+			}
+
+			wantedSectionType := "content"
+			if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" || query.Render.Type == "input" {
+				wantedSectionType = "header"
+			}
+			if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
+				lastSection := &result.Sections[len(result.Sections)-1]
+				lastSection.Queries = append(lastSection.Queries, query)
+			} else {
+				if !hideNextContentSection || wantedSectionType != "content" {
+					result.Sections = append(result.Sections, Section{
+						Type:    wantedSectionType,
+						Queries: []Query{query},
+					})
+				}
+				if wantedSectionType == "header" {
+					hideNextContentSection = false
 				}
 			}
-		}
 
-		wantedSectionType := "content"
-		if query.Render.Type == "dropdown" || query.Render.Type == "dropdownMulti" || query.Render.Type == "button" || query.Render.Type == "datepicker" || query.Render.Type == "daterangePicker" || query.Render.Type == "input" {
-			wantedSectionType = "header"
-		}
-		if len(result.Sections) != 0 && result.Sections[len(result.Sections)-1].Type == wantedSectionType {
-			lastSection := &result.Sections[len(result.Sections)-1]
-			lastSection.Queries = append(lastSection.Queries, query)
-		} else {
-			if !hideNextContentSection || wantedSectionType != "content" {
-				result.Sections = append(result.Sections, Section{
-					Type:    wantedSectionType,
-					Queries: []Query{query},
-				})
-			}
-			if wantedSectionType == "header" {
-				hideNextContentSection = false
-			}
-		}
+			nextLabel = ""
+			nextMarkLines = []MarkLine{}
+		}()
 
-		nextLabel = ""
-		nextMarkLines = []MarkLine{}
-	}
-	if err := conn.Close(); err != nil {
-		return result, fmt.Errorf("Error closing conn: %v", err)
+		CompleteQueryExecution(exec, rowCount, execErr)
+		if execErr != nil {
+			return result, execErr
+		}
 	}
 	if len(result.Sections) > 0 {
 		firstSection := result.Sections[0]
@@ -415,6 +444,8 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 	}
 
 	CompleteQueryExecution(exec, totalRows, err)
+	result.QuerySummary = exec.ToSummary()
+
 	return result, err
 }
 

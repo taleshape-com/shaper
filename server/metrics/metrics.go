@@ -5,7 +5,6 @@ package metrics
 import (
 	"shaper/server/core"
 	"sync"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -19,11 +18,12 @@ var (
 	activeQueriesGauge     *prometheus.GaugeVec
 	slowQueriesCounter     *prometheus.CounterVec
 
-	metricsOnce sync.Once
+	metricsInitOnce sync.Once
+	metricsRegistry sync.Once
 )
 
 func Init() {
-	metricsOnce.Do(func() {
+	metricsInitOnce.Do(func() {
 		initQueryMetrics()
 		initSystemMetrics()
 	})
@@ -38,7 +38,7 @@ func initQueryMetrics() {
 		},
 		[]string{"query_type", "status"},
 	)
-	prometheus.MustRegister(queryDurationHistogram)
+	safeRegister(queryDurationHistogram)
 
 	queryStatusCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -47,7 +47,7 @@ func initQueryMetrics() {
 		},
 		[]string{"query_type", "status"},
 	)
-	prometheus.MustRegister(queryStatusCounter)
+	safeRegister(queryStatusCounter)
 
 	activeQueriesGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -56,7 +56,7 @@ func initQueryMetrics() {
 		},
 		[]string{"query_type"},
 	)
-	prometheus.MustRegister(activeQueriesGauge)
+	safeRegister(activeQueriesGauge)
 
 	slowQueriesCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -65,7 +65,7 @@ func initQueryMetrics() {
 		},
 		[]string{"query_type"},
 	)
-	prometheus.MustRegister(slowQueriesCounter)
+	safeRegister(slowQueriesCounter)
 
 	tracker := core.GetQueryTracker()
 	tracker.SetOnUpdate(func(exec *core.QueryExecution) {
@@ -73,17 +73,36 @@ func initQueryMetrics() {
 	})
 }
 
+func safeRegister(collector prometheus.Collector) {
+	metricsRegistry.Do(func() {})
+	err := prometheus.Register(collector)
+	if err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			return
+		}
+		panic(err)
+	}
+}
+
 func updateMetrics(exec *core.QueryExecution) {
+	if exec == nil {
+		return
+	}
+
 	queryType := string(exec.Type)
+	status := string(exec.Status)
 
 	if exec.Status == core.QueryStatusRunning {
 		activeQueriesGauge.WithLabelValues(queryType).Inc()
 		return
 	}
 
+	if !exec.IsTerminal() {
+		return
+	}
+
 	activeQueriesGauge.WithLabelValues(queryType).Dec()
 
-	status := string(exec.Status)
 	queryStatusCounter.WithLabelValues(queryType, status).Inc()
 
 	if exec.DurationMs != nil {
@@ -93,23 +112,6 @@ func updateMetrics(exec *core.QueryExecution) {
 
 	if exec.IsSlowQuery {
 		slowQueriesCounter.WithLabelValues(queryType).Inc()
-	}
-}
-
-func RecordQueryStart(queryType core.QueryExecutionType) {
-	activeQueriesGauge.WithLabelValues(string(queryType)).Inc()
-}
-
-func RecordQueryComplete(queryType core.QueryExecutionType, status core.QueryExecutionStatus, duration time.Duration, isSlow bool) {
-	queryTypeStr := string(queryType)
-	statusStr := string(status)
-
-	activeQueriesGauge.WithLabelValues(queryTypeStr).Dec()
-	queryStatusCounter.WithLabelValues(queryTypeStr, statusStr).Inc()
-	queryDurationHistogram.WithLabelValues(queryTypeStr, statusStr).Observe(duration.Seconds())
-
-	if isSlow {
-		slowQueriesCounter.WithLabelValues(queryTypeStr).Inc()
 	}
 }
 
@@ -192,5 +194,5 @@ func initSystemMetrics() {
 			nil,
 		),
 	}
-	prometheus.MustRegister(collector)
+	safeRegister(collector)
 }

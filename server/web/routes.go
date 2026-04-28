@@ -146,6 +146,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		return c.NoContent(http.StatusOK)
 	})
 	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionReadMetrics))
+	e.GET("/api/system/queries", handler.GetQueryExecutions(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionReadMetrics))
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))

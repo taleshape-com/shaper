@@ -20,7 +20,7 @@ import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill, RiTimeLine, RiAlertLine } from "@remixicon/react";
+import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill, RiTimeLine, RiAlertLine, RiCloseCircleLine, RiStopLine } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
@@ -46,6 +46,7 @@ interface QueryStats {
   durationMs: number;
   rowCount: number;
   isSlowQuery: boolean;
+  status: "success" | "failed" | "cancelled" | "timed_out";
 }
 
 function formatDuration(durationMs: number): string {
@@ -108,17 +109,32 @@ export function Dashboard ({
 
     try {
       const d = await fetchDashboard(id, vars, baseUrl, getJwt, abortController.signal);
-      const duration = Date.now() - startTime;
+      const totalDuration = Date.now() - startTime;
       await new Promise<void>(resolve => {
         setTimeout(() => {
           resolve();
-        }, Math.max(0, MIN_SHOW_LOADING - duration));
+        }, Math.max(0, MIN_SHOW_LOADING - totalDuration));
       });
 
       if (fetchAbortRef.current === abortController) {
-        const rowCount = countTotalRows(d);
-        const isSlowQuery = duration >= SLOW_QUERY_THRESHOLD_MS;
-        setQueryStats({ durationMs: duration, rowCount, isSlowQuery });
+        let stats: QueryStats;
+        if (d.querySummary) {
+          stats = {
+            durationMs: d.querySummary.durationMs,
+            rowCount: d.querySummary.rowCount,
+            isSlowQuery: d.querySummary.isSlowQuery,
+            status: d.querySummary.status as QueryStats["status"],
+          };
+        } else {
+          const rowCount = countTotalRows(d);
+          stats = {
+            durationMs: totalDuration,
+            rowCount: rowCount,
+            isSlowQuery: totalDuration >= SLOW_QUERY_THRESHOLD_MS,
+            status: "success",
+          };
+        }
+        setQueryStats(stats);
         setFetchedData(d);
         if (onDataChange) {
           onDataChange(d);
@@ -608,27 +624,59 @@ const QueryStatusIndicator = ({ loading, queryStats }: { loading: boolean; query
   const durationText = formatDuration(queryStats.durationMs);
   const rowCountText = translate("%% rows returned").replace("%%", queryStats.rowCount.toString());
 
+  const getStatusStyles = () => {
+    switch (queryStats.status) {
+      case "failed":
+        return {
+          icon: <RiCloseCircleLine className="size-4" aria-hidden={true} />,
+          className: "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700",
+          label: translate("Query failed"),
+        };
+      case "cancelled":
+        return {
+          icon: <RiStopLine className="size-4" aria-hidden={true} />,
+          className: "bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700",
+          label: translate("Query cancelled"),
+        };
+      case "timed_out":
+        return {
+          icon: <RiTimeLine className="size-4" aria-hidden={true} />,
+          className: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
+          label: translate("Query timed out"),
+        };
+      case "success":
+      default:
+        if (queryStats.isSlowQuery) {
+          return {
+            icon: <RiAlertLine className="size-4" aria-hidden={true} />,
+            className: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
+            label: translate("Slow query"),
+          };
+        }
+        return {
+          icon: <RiCheckLine className="size-4" aria-hidden={true} />,
+          className: "bg-cbgs dark:bg-dbgs text-ctext dark:text-dtext",
+          label: null,
+        };
+    }
+  };
+
+  const statusConfig = getStatusStyles();
+
   return (
     <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
       <div
         className={cx(
           "px-3 py-2 rounded-md shadow-md absolute right-2 bottom-2 flex items-center gap-2 text-xs",
-          queryStats.isSlowQuery
-            ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
-            : "bg-cbgs dark:bg-dbgs text-ctext dark:text-dtext"
+          statusConfig.className
         )}
       >
-        {queryStats.isSlowQuery && (
-          <RiAlertLine className="size-4" aria-hidden={true} />
-        )}
-        {!queryStats.isSlowQuery && (
-          <RiTimeLine className="size-4" aria-hidden={true} />
-        )}
+        {statusConfig.icon}
         <span>{durationText}</span>
         <span className="text-ctext2 dark:text-dtext2">·</span>
         <span>{rowCountText}</span>
-        {queryStats.isSlowQuery && (
-          <span className="font-medium">{translate("Slow query")}</span>
+        {statusConfig.label && (
+          <span className="font-medium">{statusConfig.label}</span>
         )}
       </div>
     </div>

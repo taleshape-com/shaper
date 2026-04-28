@@ -109,92 +109,114 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			break
 		}
 
-		start := time.Now()
+		queryCtx, cancelQuery := WithQueryTimeout(ctx)
+		defer cancelQuery()
 
-		varPrefix, _ := buildVarPrefix(app, nil, nil)
-		rows, err := tx.QueryxContext(ctx, varPrefix+sqlString)
-		duration := time.Since(start).Milliseconds()
-		queryResult.Duration = duration
+		qIndex := sqlIndex
+		queryExec := tracker.Start(
+			queryCtx,
+			QueryTypeTask,
+			nil,
+			nil,
+			&qIndex,
+			sqlString,
+		)
 
-		if err != nil {
-			errorMessage := err.Error()
-			queryResult.Error = &errorMessage
-			success = false
-			result.Queries = append(result.Queries, queryResult)
-			break // Stop executing remaining queries on error
-		}
+		var queryRowCount int64 = 0
+		var queryErr error = nil
+		queryResultAdded := false
 
-		colTypes, err := rows.ColumnTypes()
-		if err != nil {
-			errorMessage := err.Error()
-			queryResult.Error = &errorMessage
-			success = false
-			result.Queries = append(result.Queries, queryResult)
-			rows.Close()
-			break
-		}
+		func() {
+			start := time.Now()
 
-		for _, col := range colTypes {
-			queryResult.ResultColumns = append(queryResult.ResultColumns, col.Name())
-		}
+			varPrefix, _ := buildVarPrefix(app, nil, nil)
+			rows, err := tx.QueryxContext(queryCtx, varPrefix+sqlString)
+			duration := time.Since(start).Milliseconds()
+			queryResult.Duration = duration
 
-		for rows.Next() {
-			row, err := rows.SliceScan()
 			if err != nil {
-				errorMessage := err.Error()
-				queryResult.Error = &errorMessage
-				success = false
-				break
+				queryErr = err
+				return
 			}
-			// Convert DuckDB maps to Go maps so they can be JSON serialized
-			for i, val := range row {
-				if duckMap, ok := val.(duckdb.Map); ok {
-					goMap := make(map[string]any, len(duckMap))
-					for k, v := range duckMap {
-						if kStr, ok := k.(string); ok {
-							goMap[kStr] = v
+			defer rows.Close()
+
+			colTypes, err := rows.ColumnTypes()
+			if err != nil {
+				queryErr = err
+				return
+			}
+
+			for _, col := range colTypes {
+				queryResult.ResultColumns = append(queryResult.ResultColumns, col.Name())
+			}
+
+			for rows.Next() {
+				row, err := rows.SliceScan()
+				if err != nil {
+					queryErr = err
+					return
+				}
+				for i, val := range row {
+					if duckMap, ok := val.(duckdb.Map); ok {
+						goMap := make(map[string]any, len(duckMap))
+						for k, v := range duckMap {
+							if kStr, ok := k.(string); ok {
+								goMap[kStr] = v
+							}
 						}
+						row[i] = goMap
 					}
-					row[i] = goMap
+				}
+
+				queryResult.ResultRows = append(queryResult.ResultRows, row)
+				queryRowCount++
+				totalRows++
+			}
+
+			if rowsErr := rows.Err(); rowsErr != nil {
+				queryErr = rowsErr
+				return
+			}
+
+			if len(queryResult.ResultRows) == 1 && len(queryResult.ResultRows[0]) == 1 {
+				if boolVal, ok := queryResult.ResultRows[0][0].(bool); ok && !boolVal {
+					queryResult.StopExecution = true
 				}
 			}
 
-			queryResult.ResultRows = append(queryResult.ResultRows, row)
-			totalRows++
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			errorMessage := err.Error()
+			if scheduleType, isSchedule := getScheduleColumn(colTypes, queryResult.ResultRows); isSchedule {
+				if result.NextRunAt != 0 {
+					errMsg := "Multiple SCHEDULE queries in task"
+					queryResult.Error = &errMsg
+					success = false
+					result.Queries = append(result.Queries, queryResult)
+					queryResultAdded = true
+				} else {
+					result.NextRunAt = getReloadValue(queryResult.ResultRows)
+					result.ScheduleType = scheduleType
+					result.TotalQueries = len(sqls) - 1
+				}
+			} else {
+				if sqlIndex == 0 {
+					errMsg := "First query in task must define the schedule, for example:\nSELECT NULL::SCHEDULE;"
+					queryResult.Error = &errMsg
+					success = false
+				}
+				result.Queries = append(result.Queries, queryResult)
+				queryResultAdded = true
+			}
+		}()
+
+		if queryErr != nil {
+			errorMessage := queryErr.Error()
 			queryResult.Error = &errorMessage
 			success = false
-		}
-
-		// Check for early termination: single row, single column, boolean false
-		if len(queryResult.ResultRows) == 1 && len(queryResult.ResultRows[0]) == 1 {
-			if boolVal, ok := queryResult.ResultRows[0][0].(bool); ok && !boolVal {
-				queryResult.StopExecution = true
-			}
-		}
-
-		if scheduleType, isSchedule := getScheduleColumn(colTypes, queryResult.ResultRows); isSchedule {
-			if result.NextRunAt != 0 {
-				errMsg := "Multiple SCHEDULE queries in task"
-				queryResult.Error = &errMsg
-				success = false
+			if !queryResultAdded {
 				result.Queries = append(result.Queries, queryResult)
-			} else {
-				result.NextRunAt = getReloadValue(queryResult.ResultRows)
-				result.ScheduleType = scheduleType
-				result.TotalQueries = len(sqls) - 1
 			}
-		} else {
-			if sqlIndex == 0 {
-				errMsg := "First query in task must define the schedule, for example:\nSELECT NULL::SCHEDULE;"
-				queryResult.Error = &errMsg
-				success = false
-			}
-			result.Queries = append(result.Queries, queryResult)
 		}
+
+		CompleteQueryExecution(queryExec, queryRowCount, queryErr)
 
 		if !success || queryResult.StopExecution {
 			break
@@ -203,13 +225,13 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 
 	if success {
 		if err := tx.Commit(); err != nil {
-			tracker.Complete(exec, totalRows, err)
+			CompleteQueryExecution(exec, totalRows, err)
 			return result, fmt.Errorf("Error committing transaction: %v", err)
 		}
 		result.Success = true
 	} else {
 		if err := tx.Rollback(); err != nil {
-			tracker.Complete(exec, totalRows, err)
+			CompleteQueryExecution(exec, totalRows, err)
 			return result, fmt.Errorf("Error rolling back transaction: %v", err)
 		}
 		result.Success = false
