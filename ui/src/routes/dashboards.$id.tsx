@@ -45,10 +45,10 @@ export const Route = createFileRoute("/dashboards/$id")({
   component: DashboardViewComponent,
 });
 
-function DashboardErrorComponent({ error }: ErrorComponentProps) {
+function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
-function DashboardViewComponent() {
+function DashboardViewComponent () {
   const { vars, dev } = Route.useSearch();
   const params = Route.useParams();
   const auth = useAuth();

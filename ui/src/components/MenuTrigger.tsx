@@ -5,7 +5,7 @@ import { RiMenuLine } from "@remixicon/react";
 import { MenuContext } from "../contexts/MenuContext";
 import { cx } from "../lib/utils";
 
-export function MenuTrigger({
+export function MenuTrigger ({
   children,
   className,
   title,
