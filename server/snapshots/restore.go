@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/minio/minio-go/v7"
 	"github.com/nrednav/cuid2"
@@ -160,12 +160,24 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 
 	if config.InitSQL != "" {
 		// Substitute environment variables in the SQL
-		sql, err := prepSQL(config.InitSQL)
+		sql, err := prepSQL(config.InitSQL, config.Logger)
 		if err != nil {
 			return fmt.Errorf("failed to prepare init-sql: %w", err)
 		}
 		if sql != "" {
-			_, err := tempDB.Exec(sql)
+			conn, err := tempDB.Conn(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to get connection for init-sql: %w", err)
+			}
+			defer conn.Close()
+
+			getenv := &util.GetEnvFunc{}
+			getenv.Enable()
+			if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
+				return fmt.Errorf("failed to register getenv UDF: %w", err)
+			}
+			_, err = conn.ExecContext(ctx, sql)
+			getenv.Disable()
 			if err != nil {
 				return fmt.Errorf("failed to execute init-sql: %w", err)
 			}
@@ -178,13 +190,24 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 				return fmt.Errorf("failed to read init-sql-file: %w", err)
 			}
 		} else {
-			sql, err := prepSQL(string(data))
+			sql, err := prepSQL(string(data), config.Logger)
 			if err != nil {
 				return fmt.Errorf("failed to prepare init-sql-file: %w", err)
 			}
 			if len(sql) != 0 {
-				// Substitute environment variables in the SQL file content
-				_, err = tempDB.Exec(sql)
+				conn, err := tempDB.Conn(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to get connection for init-sql-file: %w", err)
+				}
+				defer conn.Close()
+
+				getenv := &util.GetEnvFunc{}
+				getenv.Enable()
+				if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
+					return fmt.Errorf("failed to register getenv UDF: %w", err)
+				}
+				_, err = conn.ExecContext(ctx, sql)
+				getenv.Disable()
 				if err != nil {
 					return fmt.Errorf("failed to execute init-sql-file: %w", err)
 				}
@@ -288,7 +311,7 @@ func checkDuckdbSnapshotHasData(ctx context.Context, client *minio.Client, bucke
 	return false, nil
 }
 
-func prepSQL(sql string) (string, error) {
+func prepSQL(sql string, logger *slog.Logger) (string, error) {
 	sql = util.StripSQLComments(sql)
 	parts, err := util.SplitSQLQueries(sql)
 	if err != nil {
@@ -304,8 +327,10 @@ func prepSQL(sql string) (string, error) {
 			}
 		}
 	}
-	sql = filteredSql
-	sql = strings.TrimSpace(sql)
-	sql = os.ExpandEnv(sql)
-	return sql, nil
+	sql = strings.TrimSpace(filteredSql)
+	expanded := os.ExpandEnv(sql)
+	if expanded != sql && logger != nil {
+		logger.Warn("Using environment variables in init-sql via $VAR or ${VAR} is deprecated. Use the getenv() SQL function instead.")
+	}
+	return expanded, nil
 }

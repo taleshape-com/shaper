@@ -132,7 +132,21 @@ func New(
 		if initSQL != "" {
 			logger.Info("Executing init-sql")
 			varPrefix, _ := buildVarPrefixWithDBName(internalDBName, nil, nil)
-			if _, err := duckDbx.Exec(varPrefix + initSQL); err != nil {
+
+			conn, err := duckDbx.Conn(context.Background())
+			if err != nil {
+				return nil, fmt.Errorf("failed to get connection for init-sql: %w", err)
+			}
+			defer conn.Close()
+
+			getenv := &util.GetEnvFunc{}
+			getenv.Enable()
+			if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
+				return nil, fmt.Errorf("failed to register getenv UDF: %w", err)
+			}
+			defer getenv.Disable()
+
+			if _, err := conn.ExecContext(context.Background(), varPrefix+initSQL); err != nil {
 				return nil, fmt.Errorf("failed to execute init-sql: %w", err)
 			}
 		}
@@ -247,8 +261,23 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 
 	if app.InitSQL != "" {
 		varPrefix, _ := buildVarPrefix(app, nil, nil)
-		_, err := dbx.Exec(varPrefix + app.InitSQL)
+
+		conn, err := dbx.Conn(ctx)
 		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to get connection for init-sql: %w", err)
+		}
+		defer conn.Close()
+
+		getenv := &util.GetEnvFunc{}
+		getenv.Enable()
+		if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to register getenv UDF: %w", err)
+		}
+		defer getenv.Disable()
+
+		if _, err := conn.ExecContext(ctx, varPrefix+app.InitSQL); err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("failed to execute init-sql: %w", err)
 		}
