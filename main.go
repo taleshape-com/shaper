@@ -632,9 +632,13 @@ func Run(cfg Config) func(context.Context) {
 
 	initSQL := ""
 	if cfg.InitSQL != "" {
-		sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
-		if sql != "" {
-			initSQL += sql + ";\n"
+		trimmed := strings.TrimSpace(util.StripSQLComments(cfg.InitSQL))
+		expanded := os.ExpandEnv(trimmed)
+		if expanded != trimmed {
+			logger.Warn("Using environment variables in init-sql via $VAR or ${VAR} is deprecated. Use the getenv() SQL function instead.")
+		}
+		if expanded != "" {
+			initSQL += expanded + ";\n"
 		}
 	}
 	if cfg.InitSQLFile != "" {
@@ -648,11 +652,15 @@ func Run(cfg Config) func(context.Context) {
 				os.Exit(1)
 			}
 		} else {
-			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
-			if len(sql) == 0 {
+			trimmed := strings.TrimSpace(util.StripSQLComments(string(data)))
+			expanded := os.ExpandEnv(trimmed)
+			if expanded != trimmed {
+				logger.Warn("Using environment variables in init-sql-file via $VAR or ${VAR} is deprecated. Use the getenv() SQL function instead.")
+			}
+			if len(expanded) == 0 {
 				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
-				initSQL += sql + ";\n"
+				initSQL += expanded + ";\n"
 			}
 		}
 	}
