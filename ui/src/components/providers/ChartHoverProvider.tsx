@@ -34,6 +34,7 @@ export const ChartHoverProvider = ({
     >
       <div
         className="@container flex flex-col min-h-[432px] h-full antialiased text-ctext dark:text-dtext"
+        style={{ containerType: "inline-size" }}
         onTouchEnd={() => {
           setHoverState(null, null, null);
         }}

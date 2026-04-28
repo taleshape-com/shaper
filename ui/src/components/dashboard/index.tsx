@@ -42,7 +42,7 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -144,7 +144,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     const [copied, setCopied] = useState(false);
 
@@ -274,8 +274,9 @@ const DataView = ({
   });
 
   return (<ChartHoverProvider>
-    <div className={cx("relative w-full h-full shaper-scope", { "overflow-hidden max-h-screen": !!fullscreenId })}>
+    <div className={cx("relative w-full h-full shaper-scope min-h-0", { "overflow-hidden max-h-screen": !!fullscreenId })}>
       <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
+
         {data.headerImage && (
           <img
             src={data.headerImage}
@@ -467,7 +468,7 @@ const DataView = ({
                           // fill screen height if only 2 sections
                           "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
                           // single chart and not table
-                          "@sm:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                          "@sm:h-[calc(70cqh-5.2rem)] @md:h-[calc(85cqh-5.2rem)] @lg:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
                           // max heights:
                           // 1 or 2 cols
                           "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
