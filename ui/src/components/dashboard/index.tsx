@@ -253,14 +253,12 @@ const DataView = ({
     );
 
     if (section.type === "header") {
-      if (section.queries.length > 0 || section.title) {
-        if (!lastGroup || lastGroupHasSubstantialContent) {
-          groupedSections.push({
-            sections: [{ section, index }],
-          });
-        } else {
-          lastGroup.sections.push({ section, index });
-        }
+      if (!lastGroup || lastGroupHasSubstantialContent) {
+        groupedSections.push({
+          sections: [{ section, index }],
+        });
+      } else {
+        lastGroup.sections.push({ section, index });
       }
     } else {
       if (lastGroup) {
