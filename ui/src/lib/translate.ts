@@ -176,6 +176,10 @@ const translations = {
     de: "Aufschlüsselung",
     pt: "Detalhamento",
   },
+  "Showing first %% rows": {
+    de: "Zeige die ersten %% Zeilen",
+    pt: "Mostrando as primeiras %% linhas",
+  },
 };
 
 export function translate (s: keyof typeof translations) {

@@ -121,6 +121,8 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+        truncated?: boolean;
+        maxRows?: number;
       }[];
     }
     | {
@@ -149,6 +151,8 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+        truncated?: boolean;
+        maxRows?: number;
       }[];
     }
     | {
@@ -171,6 +175,8 @@ export type Result = {
             info?: Record<string, string> | null;
           }[];
         })[][];
+        truncated?: boolean;
+        maxRows?: number;
       }[];
     }
   )[];

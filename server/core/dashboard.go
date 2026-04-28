@@ -44,9 +44,11 @@ type Section struct {
 type Rows [][]any
 
 type Query struct {
-	Render  Render   `json:"render"`
-	Columns []Column `json:"columns"`
-	Rows    Rows     `json:"rows"`
+	Render    Render   `json:"render"`
+	Columns   []Column `json:"columns"`
+	Rows      Rows     `json:"rows"`
+	Truncated bool     `json:"truncated,omitempty"`
+	MaxRows   int      `json:"maxRows,omitempty"`
 }
 
 type Render struct {

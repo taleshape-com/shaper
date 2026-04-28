@@ -675,7 +675,12 @@ const renderContent = (
   if (query.render.type === "value") {
     return <DashboardValue headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
   }
-  return <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
+  return <DashboardTable 
+    headers={query.columns} 
+    data={query.rows as (string | number | boolean)[][]} 
+    truncated={query.truncated}
+    maxRows={query.maxRows}
+  />;
 };
 
 const fetchDashboard = async (
