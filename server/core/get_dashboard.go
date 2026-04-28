@@ -109,7 +109,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 			query.Rows = append(query.Rows, row)
 			if len(query.Rows) > QUERY_MAX_ROWS {
-				// TODO: add a warning to the result and show to user
+				query.Rows = query.Rows[:QUERY_MAX_ROWS]
+				query.IsTruncated = true
 				app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardQuery.ID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
 				if err := rows.Close(); err != nil {
 					return result, fmt.Errorf("Error closing rows while truncating (dashboard '%v'): %v", dashboardQuery.ID, err)

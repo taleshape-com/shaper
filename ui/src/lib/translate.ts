@@ -176,6 +176,14 @@ const translations = {
     de: "Aufschlüsselung",
     pt: "Detalhamento",
   },
+  "Result truncated": {
+    de: "Ergebnis gekürzt",
+    pt: "Resultado truncado",
+  },
+  "Showing first 3000 rows. Download for full results.": {
+    de: "Zeige die ersten 3000 Zeilen. Herunterladen für vollständige Ergebnisse.",
+    pt: "Mostrando as primeiras 3000 linhas. Baixe para resultados completos.",
+  },
 };
 
 export function translate (s: keyof typeof translations) {

@@ -121,6 +121,7 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+        isTruncated?: boolean;
       }[];
     }
     | {
@@ -149,6 +150,7 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+        isTruncated?: boolean;
       }[];
     }
     | {
@@ -171,6 +173,7 @@ export type Result = {
             info?: Record<string, string> | null;
           }[];
         })[][];
+        isTruncated?: boolean;
       }[];
     }
   )[];

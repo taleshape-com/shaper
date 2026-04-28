@@ -13,6 +13,7 @@ import DashboardDatePicker from "./DashboardDatePicker";
 import DashboardDateRangePicker from "./DashboardDateRangePicker";
 import DashboardInput from "./DashboardInput";
 import { Card } from "../tremor/Card";
+import { Callout } from "../tremor/Callout";
 import { translate } from "../../lib/translate";
 import DashboardLineChart from "./DashboardLineChart";
 import DashboardBarChart from "./DashboardBarChart";
@@ -20,7 +21,7 @@ import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
+import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill, RiAlertLine } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
@@ -532,6 +533,16 @@ const DataView = ({
                           data.maxTimeValue,
                         )
                       }
+                      {query.isTruncated && (
+                        <Callout
+                          title={translate("Result truncated")}
+                          icon={RiAlertLine}
+                          variant="warning"
+                          className="mt-2 mx-2 mb-2 text-xs"
+                        >
+                          {translate("Showing first 3000 rows. Download for full results.")}
+                        </Callout>
+                      )}
                     </Card>
                   );
                 })}
