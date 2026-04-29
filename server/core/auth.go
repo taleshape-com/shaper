@@ -33,6 +33,7 @@ const (
 	ActorAPIKey ActorType = "api_key"
 	ActorNoAuth ActorType = "no_auth"
 	ActorTask   ActorType = "task"
+	ActorPublic ActorType = "public"
 )
 
 type Actor struct {

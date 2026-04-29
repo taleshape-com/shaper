@@ -204,9 +204,10 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 
 		// Add user or API key info to claims
 		claims := jwt.MapClaims{
-			"exp": time.Now().Add(app.JWTExp).Unix(),
+			"exp":         time.Now().Add(app.JWTExp).Unix(),
+			"dashboardId": loginRequest.DashboardID,
+			"public":      *dashboard.Visibility,
 		}
-		claims["dashboardId"] = loginRequest.DashboardID
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)

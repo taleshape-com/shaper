@@ -103,10 +103,6 @@
   position: relative
 }
 
-.shaper-scope .\@container {
-  container-type: size;
-}
-
 @page {
   size: A4;
   margin-left: 7.048mm;
