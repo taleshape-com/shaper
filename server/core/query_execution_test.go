@@ -173,7 +173,7 @@ func TestQueryExecutionTracker_GetSlowQueries(t *testing.T) {
 	exec1 := tracker.Start(ctx, QueryTypeDashboard, nil, nil, nil, "SELECT 1")
 	exec2 := tracker.Start(ctx, QueryTypeTask, nil, nil, nil, "SELECT 2")
 
-	time.Sleep(SLOW_QUERY_THRESHOLD_MS + 10*time.Millisecond)
+	time.Sleep(time.Duration(SLOW_QUERY_THRESHOLD_MS)*time.Millisecond + 10*time.Millisecond)
 
 	tracker.Complete(exec1, 1, nil)
 	tracker.Complete(exec2, 2, nil)
@@ -351,6 +351,8 @@ func TestQueryExecutionTracker_ToSummary(t *testing.T) {
 
 	ctx := context.Background()
 	exec := tracker.Start(ctx, QueryTypeDashboard, nil, nil, nil, "SELECT 1")
+
+	time.Sleep(2 * time.Millisecond)
 	tracker.Complete(exec, 42, nil)
 
 	summary := exec.ToSummary()

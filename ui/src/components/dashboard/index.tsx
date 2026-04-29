@@ -19,7 +19,7 @@ import DashboardBarChart from "./DashboardBarChart";
 import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill, RiTimeLine, RiAlertLine, RiCloseCircleLine, RiStopLine } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
@@ -49,7 +49,7 @@ interface QueryStats {
   status: "success" | "failed" | "cancelled" | "timed_out";
 }
 
-function formatDuration(durationMs: number): string {
+function formatDuration (durationMs: number): string {
   if (durationMs < 1000) {
     return translate("Query took %% ms").replace("%%", durationMs.toString());
   }
@@ -57,7 +57,7 @@ function formatDuration(durationMs: number): string {
   return translate("Query took %% seconds").replace("%%", seconds);
 }
 
-function countTotalRows(data: Result): number {
+function countTotalRows (data: Result): number {
   let count = 0;
   for (const section of data.sections) {
     for (const query of section.queries) {
@@ -626,38 +626,38 @@ const QueryStatusIndicator = ({ loading, queryStats }: { loading: boolean; query
 
   const getStatusStyles = () => {
     switch (queryStats.status) {
-      case "failed":
+    case "failed":
+      return {
+        icon: <RiCloseCircleLine className="size-4" aria-hidden={true} />,
+        className: "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700",
+        label: translate("Query failed"),
+      };
+    case "cancelled":
+      return {
+        icon: <RiStopLine className="size-4" aria-hidden={true} />,
+        className: "bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700",
+        label: translate("Query cancelled"),
+      };
+    case "timed_out":
+      return {
+        icon: <RiTimeLine className="size-4" aria-hidden={true} />,
+        className: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
+        label: translate("Query timed out"),
+      };
+    case "success":
+    default:
+      if (queryStats.isSlowQuery) {
         return {
-          icon: <RiCloseCircleLine className="size-4" aria-hidden={true} />,
-          className: "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700",
-          label: translate("Query failed"),
-        };
-      case "cancelled":
-        return {
-          icon: <RiStopLine className="size-4" aria-hidden={true} />,
-          className: "bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700",
-          label: translate("Query cancelled"),
-        };
-      case "timed_out":
-        return {
-          icon: <RiTimeLine className="size-4" aria-hidden={true} />,
+          icon: <RiAlertLine className="size-4" aria-hidden={true} />,
           className: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
-          label: translate("Query timed out"),
+          label: translate("Slow query"),
         };
-      case "success":
-      default:
-        if (queryStats.isSlowQuery) {
-          return {
-            icon: <RiAlertLine className="size-4" aria-hidden={true} />,
-            className: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
-            label: translate("Slow query"),
-          };
-        }
-        return {
-          icon: <RiCheckLine className="size-4" aria-hidden={true} />,
-          className: "bg-cbgs dark:bg-dbgs text-ctext dark:text-dtext",
-          label: null,
-        };
+      }
+      return {
+        icon: <RiCheckLine className="size-4" aria-hidden={true} />,
+        className: "bg-cbgs dark:bg-dbgs text-ctext dark:text-dtext",
+        label: null,
+      };
     }
   };
 
@@ -668,7 +668,7 @@ const QueryStatusIndicator = ({ loading, queryStats }: { loading: boolean; query
       <div
         className={cx(
           "px-3 py-2 rounded-md shadow-md absolute right-2 bottom-2 flex items-center gap-2 text-xs",
-          statusConfig.className
+          statusConfig.className,
         )}
       >
         {statusConfig.icon}
