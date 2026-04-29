@@ -36,6 +36,10 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 					Type: core.ActorAPIKey,
 					ID:   apiKeyID,
 				}
+			} else if _, ok := claims["public"].(string); ok {
+				actor = &core.Actor{
+					Type: core.ActorPublic,
+				}
 			} else if !app.LoginRequired {
 				actor = &core.Actor{
 					Type: core.ActorNoAuth,

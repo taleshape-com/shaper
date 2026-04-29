@@ -60,6 +60,7 @@ export default {
       // Custom container query sizes that match the Tailwind breakpoints
       containers: {
         'sm': '640px',
+        'md': '768px',
         'lg': '1024px',
         'xl': '1280px',
         '2xl': '1536px',
