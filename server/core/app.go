@@ -517,6 +517,21 @@ func buildVarPrefixWithDBName(dbName string, singleVars map[string]string, multi
 		varPrefix.WriteString(fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';\n", util.EscapeSQLIdentifier(dbName)))
 	}
 
+	vPrefix, vCleanup := buildVariablesPrefix(singleVars, multiVars)
+	varPrefix.WriteString(vPrefix)
+	varCleanup.WriteString(vCleanup)
+
+	return varPrefix.String(), varCleanup.String()
+}
+
+func buildVarPrefixNoSearchPath(app *App, singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	return buildVariablesPrefix(singleVars, multiVars)
+}
+
+func buildVariablesPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	varPrefix := strings.Builder{}
+	varCleanup := strings.Builder{}
+
 	for k, v := range singleVars {
 		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
 		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))

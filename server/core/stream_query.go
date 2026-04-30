@@ -739,6 +739,13 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 		return "", "", err
 	}
 
+	if app.InternalDBName != "" {
+		searchPath := fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';", util.EscapeSQLIdentifier(app.InternalDBName))
+		if _, err := conn.ExecContext(ctx, searchPath); err != nil {
+			return "", "", fmt.Errorf("Error setting search path: %v", err)
+		}
+	}
+
 	for queryIndex, sqlString := range sqlQueries {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
@@ -751,7 +758,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 			nextIsDownload = false
 			continue
 		}
-		varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
+		varPrefix, varCleanup := buildVarPrefixNoSearchPath(app, singleVars, multiVars)
 		// run query
 		data := Rows{}
 		rows, err := conn.QueryxContext(ctx, varPrefix+string(sqlString)+";")
