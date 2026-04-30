@@ -67,6 +67,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		return result, fmt.Errorf("Error getting conn: %v", err)
 	}
 
+	if app.InternalDBName != "" {
+		searchPath := fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';", util.EscapeSQLIdentifier(app.InternalDBName))
+		if _, err := conn.ExecContext(ctx, searchPath); err != nil {
+			return result, fmt.Errorf("Error setting search path: %v", err)
+		}
+	}
+
 	for queryIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
@@ -82,7 +89,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
 			continue
 		}
-		varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
+		varPrefix, varCleanup := buildVarPrefixNoSearchPath(app, singleVars, multiVars)
 		query := Query{Columns: []Column{}, Rows: Rows{}}
 		// run query
 		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")

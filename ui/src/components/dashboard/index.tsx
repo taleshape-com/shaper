@@ -241,6 +241,13 @@ const DataView = ({
     (section) => section.type === "content",
   ).length;
 
+  const totalContentQueries = sections.reduce(
+    (acc, section) => section.type === "content"
+      ? acc + section.queries.filter(q => q.render.type !== "placeholder").length
+      : acc,
+    0,
+  );
+
   type HeaderSection = Extract<Result["sections"][number], { type: "header" }>;
   const groupedSections: {
     sections: { section: Result["sections"][number]; index: number }[];
@@ -489,7 +496,7 @@ const DataView = ({
                         },
                       )}
                     >
-                      {(isChartQuery || query.render.type === "table") && (
+                      {(isChartQuery || query.render.type === "table") && totalContentQueries > 1 && (
                         <FullscreenButton
                           isFullscreen={isFullscreen}
                           onToggle={() => setFullscreenId(isFullscreen ? null : currentId)}
@@ -500,7 +507,7 @@ const DataView = ({
                         <ChartDownloadButton
                           chartId={`${sectionIndex}-${queryIndex}`}
                           label={query.render.label}
-                          className={cx("absolute top-2 right-10 z-40", isFullscreen && "top-8 right-16")}
+                          className={cx("absolute top-2 right-2 z-40", { "top-8 right-16": isFullscreen, "right-10": totalContentQueries > 1 && !isFullscreen })}
                           id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
                         />
                       ) : (

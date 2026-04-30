@@ -45,7 +45,7 @@ ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
 ENV SHAPER_NO_CHROME_SANDBOX=true
 
 EXPOSE 5454
-HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
+HEALTHCHECK --interval=5s --timeout=3s --retries=1 --start-period=60s CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
 
 # Create a non-root user and setup directories
 RUN groupadd -r shaper && useradd -r -g shaper shaper \
