@@ -13,16 +13,16 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo-contrib v0.50.1
 	github.com/labstack/echo-jwt/v4 v4.4.0
-	github.com/labstack/echo/v4 v4.15.1
+	github.com/labstack/echo/v4 v4.15.2
 	github.com/labstack/gommon v0.5.0
 	github.com/minio/minio-go/v7 v7.1.0
-	github.com/nats-io/nats-server/v2 v2.12.8
+	github.com/nats-io/nats-server/v2 v2.14.0
 	github.com/nats-io/nats.go v1.51.0
 	github.com/nrednav/cuid2 v1.1.0
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/prometheus/client_golang v1.23.2
-	github.com/samber/slog-echo v1.21.0
-	github.com/shirou/gopsutil/v4 v4.26.3
+	github.com/samber/slog-echo v1.23.0
+	github.com/shirou/gopsutil/v4 v4.26.4
 	github.com/stretchr/testify v1.11.1
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/xuri/excelize/v2 v2.10.1
@@ -31,7 +31,7 @@ require (
 )
 
 require (
-	github.com/antithesishq/antithesis-sdk-go v0.6.0-default-no-op // indirect
+	github.com/antithesishq/antithesis-sdk-go v0.7.0-default-no-op // indirect
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -59,10 +59,10 @@ require (
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.21 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
-	github.com/minio/highwayhash v1.0.4-0.20251030100505-070ab1a87a76 // indirect
+	github.com/minio/highwayhash v1.0.4 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nats-io/jwt/v2 v2.8.1 // indirect
@@ -98,7 +98,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/mod v0.34.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260311193753-579e4da9a98c // indirect
