@@ -24,9 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 requires-python = ">=3.8"
-dependencies = [
-    "requests>=2.31.0",
-]
+dependencies = []
 
 [project.urls]
 Homepage = "https://taleshape.com/shaper"

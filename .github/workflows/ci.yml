@@ -374,7 +374,35 @@ jobs:
       - name: Build Python package
         run: |
           cd pip-package
-          python -m build
+          pip install wheel
+          # Build sdist (source distribution)
+          python -m build --sdist
+
+          # Build platform-specific wheels
+          # We use specific platform tags to ensure PyPI serves the right binary
+          platforms=(
+            "linux-amd64:manylinux2014_x86_64"
+            "linux-arm64:manylinux2014_aarch64"
+            "darwin-amd64:macosx_10_9_x86_64"
+            "darwin-arm64:macosx_11_0_arm64"
+          )
+
+          for p in "${platforms[@]}"; do
+            binary_suffix="${p%%:*}"
+            plat_name="${p#*:}"
+
+            echo "Building wheel for $plat_name..."
+            # Copy the binary to the package directory
+            cp "../bin/shaper-$binary_suffix" shaper_pkg/bin/shaper
+            chmod +x shaper_pkg/bin/shaper
+            
+            # Create the wheel with the platform tag
+            python setup.py bdist_wheel --plat-name "$plat_name"
+            
+            # Clean up for the next platform
+            rm -rf build/
+            rm shaper_pkg/bin/shaper
+          done
 
       - name: Publish to PyPI
         run: |

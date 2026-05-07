@@ -10,40 +10,23 @@ from pathlib import Path
 # Get package directory
 PACKAGE_DIR = Path(__file__).parent
 BINARY_PATH = PACKAGE_DIR / "bin" / "shaper"
-VERSION_PATH = PACKAGE_DIR / "bin" / "VERSION"
-
-
-def _read_binary_version():
-    """Return the version recorded for the installed binary, if any."""
-    try:
-        return VERSION_PATH.read_text(encoding="utf-8").strip()
-    except OSError:
-        return None
-
-
-def _ensure_binary():
-    """Download the binary if missing or out-of-date."""
-    # Deferred import so we don't pay the cost when just exec'ing
-    from shaper_pkg import install as install_module
-
-    desired_version = install_module.get_version()
-    current_version = _read_binary_version()
-
-    needs_download = (not BINARY_PATH.exists()) or (current_version != desired_version)
-
-    if needs_download:
-        print("Fetching Shaper binary...", file=sys.stderr)
-        install_module.main()
 
 
 def main():
     """Main entry point for the shaper command."""
-    try:
-        _ensure_binary()
-    except Exception as e:
-        print(f"Failed to download binary: {e}", file=sys.stderr)
-        print("Please run the install script manually or reinstall the package.", file=sys.stderr)
+    if not BINARY_PATH.exists():
+        print(f"Error: Shaper binary not found at {BINARY_PATH}", file=sys.stderr)
+        print("This can happen if you installed from a source distribution on an unsupported platform.", file=sys.stderr)
+        print("Please download the binary for your platform from:", file=sys.stderr)
+        print("https://github.com/taleshape-com/shaper/releases", file=sys.stderr)
         sys.exit(1)
+
+    # Ensure the binary is executable
+    if not os.access(BINARY_PATH, os.X_OK):
+        try:
+            os.chmod(BINARY_PATH, 0o755)
+        except Exception as e:
+            print(f"Warning: Failed to set executable permissions on {BINARY_PATH}: {e}", file=sys.stderr)
     
     # Replace current process with the Shaper binary to keep interactive
     # behavior identical to invoking the binary directly (no extra buffering).
