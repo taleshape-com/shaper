@@ -8,7 +8,7 @@ https://taleshape.com/shaper/docs/
 
 Install Shaper via PyPI when using Shaper locally if you already have Python installed.
 
-Python's package manager `pip` manages the version for you and handles downloading the correct binary for your system.
+Python's package manager `pip` will install the correct pre-compiled binary for your architecture.
 
 If you have `pipx` installed, you can run Shaper via `pipx` without explicitly installing it:
 ```bash
