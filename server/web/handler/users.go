@@ -267,7 +267,7 @@ func ClaimInvite(app *core.App) echo.HandlerFunc {
 			}{Error: "Invite code is required"}, "  ")
 		}
 
-		err := core.ClaimInvite(app, c.Request().Context(), code, req.Name, req.Password)
+		userId, err := core.ClaimInvite(app, c.Request().Context(), code, req.Name, req.Password)
 		if err != nil {
 			c.Logger().Error("error claiming invite:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
@@ -275,9 +275,20 @@ func ClaimInvite(app *core.App) echo.HandlerFunc {
 			}{Error: err.Error()}, "  ")
 		}
 
+		token, err := core.CreateSessionForUser(app, c.Request().Context(), userId)
+		if err != nil {
+			c.Logger().Error("Failed to create session during invite claim", slog.Any("error", err))
+			// We claimed the invite, but failed to create a session.
+			// Return claimed: true anyway, user can login manually.
+			return c.JSONPretty(http.StatusOK, struct {
+				Claimed bool `json:"claimed"`
+			}{Claimed: true}, "  ")
+		}
+
 		return c.JSONPretty(http.StatusOK, struct {
-			Claimed bool `json:"claimed"`
-		}{Claimed: true}, "  ")
+			Claimed bool   `json:"claimed"`
+			Token   string `json:"token"`
+		}{Claimed: true, Token: token}, "  ")
 	}
 }
 

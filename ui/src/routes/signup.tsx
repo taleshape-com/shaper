@@ -8,6 +8,7 @@ import { Button } from "../components/tremor/Button";
 import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
+import { localStorageTokenKey } from "../lib/auth";
 
 interface Invite {
   code: string;
@@ -81,12 +82,16 @@ function SignupComponent () {
         throw new Error(data.error);
       }
 
+      if (data.token) {
+        localStorage.setItem(localStorageTokenKey, data.token);
+      }
+
       toast({
         title: "Success",
         description: "Account created successfully",
       });
 
-      navigate({ to: "/login", replace: true });
+      navigate({ to: "/", replace: true });
     } catch (error) {
       toast({
         title: "Error",

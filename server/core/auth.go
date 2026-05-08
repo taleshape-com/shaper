@@ -233,6 +233,10 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 		return "", fmt.Errorf("invalid password")
 	}
 
+	return CreateSessionForUser(app, ctx, user.ID)
+}
+
+func CreateSessionForUser(app *App, ctx context.Context, userID string) (string, error) {
 	// Generate session token
 	id := cuid2.Generate()
 	suffix := util.GenerateRandomString(32)
@@ -245,7 +249,7 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 
 	payload := CreateSessionPayload{
 		ID:        id,
-		UserID:    user.ID,
+		UserID:    userID,
 		Hash:      hash,
 		Salt:      salt,
 		Timestamp: time.Now(),
