@@ -178,7 +178,7 @@ func IsAllowedStatement(app *App, sql string) bool {
 	return false
 }
 
-func IsAllowedTaskStatement(sql string) bool {
+func IsAllowedTaskStatement(sql string, isInit bool) bool {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
@@ -192,11 +192,11 @@ func IsAllowedTaskStatement(sql string) bool {
 			return false
 		}
 		for _, cte := range ctes {
-			if !IsAllowedTaskStatement(cte) {
+			if !IsAllowedTaskStatement(cte, isInit) {
 				return false
 			}
 		}
-		return IsAllowedTaskStatement(remaining)
+		return IsAllowedTaskStatement(remaining, isInit)
 	}
 
 	// Handle parenthesized queries like (SELECT 1)
@@ -205,7 +205,7 @@ func IsAllowedTaskStatement(sql string) bool {
 		if err != nil {
 			return false
 		}
-		if !IsAllowedTaskStatement(inner) {
+		if !IsAllowedTaskStatement(inner, isInit) {
 			return false
 		}
 		remaining = strings.TrimSpace(remaining)
@@ -224,7 +224,7 @@ func IsAllowedTaskStatement(sql string) bool {
 				} else if strings.HasPrefix(restUpper, "DISTINCT") {
 					rest = strings.TrimSpace(rest[len("DISTINCT"):])
 				}
-				return IsAllowedTaskStatement(rest)
+				return IsAllowedTaskStatement(rest, isInit)
 			}
 		}
 		// Also handle ORDER BY, LIMIT etc which can follow a parenthesized query
@@ -241,19 +241,31 @@ func IsAllowedTaskStatement(sql string) bool {
 		}
 	}
 
+	// Handle ATTACH/DETACH: only allowed for init tasks
+	if strings.HasPrefix(upper, "ATTACH") || strings.HasPrefix(upper, "DETACH") {
+		return isInit
+	}
+
+	// Handle CREATE SECRET: only allowed for init tasks
+	if strings.HasPrefix(upper, "CREATE") && matchesPrefix(upper, []string{"CREATE", "SECRET"}) {
+		return isInit
+	}
+
 	// Handle SET config: if it's SET but not SET VARIABLE
 	if strings.HasPrefix(upper, "SET") {
 		if matchesPrefix(upper, []string{"SET", "VARIABLE"}) {
 			return true
 		}
-		return false
+		// Other SET statements (config) are only allowed for init tasks
+		return isInit
 	}
 	// Handle RESET config: if it's RESET but not RESET VARIABLE
 	if strings.HasPrefix(upper, "RESET") {
 		if matchesPrefix(upper, []string{"RESET", "VARIABLE"}) {
 			return true
 		}
-		return false
+		// Other RESET statements (config) are only allowed for init tasks
+		return isInit
 	}
 
 	return true

@@ -6,11 +6,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"shaper/server/util"
 	"strings"
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
+	"github.com/jmoiron/sqlx"
 )
 
 type TaskQueryResult struct {
@@ -68,9 +70,49 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 	defer conn.Close()
 
-	tx, err := conn.BeginTxx(ctx, nil)
-	if err != nil {
-		return result, fmt.Errorf("Error starting transaction: %v", err)
+	// Detect if it's an init task to decide on transaction
+	isInit := false
+	if len(sqls) > 0 {
+		sqlString := strings.TrimSpace(sqls[0])
+		// We use a separate temporary query to check the schedule
+		// to not interfere with the actual task execution state
+		rows, err := conn.QueryxContext(ctx, sqlString)
+		if err == nil {
+			func() {
+				defer rows.Close()
+				colTypes, err := rows.ColumnTypes()
+				if err != nil {
+					app.Logger.Debug("Failed to get column types", slog.Any("error", err))
+					return
+				}
+				resRows := [][]any{}
+				if rows.Next() {
+					row, err := rows.SliceScan()
+					if err == nil {
+						resRows = append(resRows, row)
+					}
+				}
+				_, isSchedule := getScheduleColumn(colTypes, resRows)
+				if isSchedule {
+					timeVal := getScheduleTime(resRows)
+					if timeVal == -1 {
+						isInit = true
+						app.Logger.Info("Detected init task", slog.String("first_query", sqlString))
+					}
+				}
+			}()
+		} else {
+			app.Logger.Info("Failed to execute first query for init detection", slog.Any("error", err), slog.String("sql", sqlString))
+		}
+	}
+	app.Logger.Info("RunTask", slog.Bool("isInit", isInit), slog.Int("queries", len(sqls)))
+
+	var tx *sqlx.Tx
+	if !isInit {
+		tx, err = conn.BeginTxx(ctx, nil)
+		if err != nil {
+			return result, fmt.Errorf("Error starting transaction: %v", err)
+		}
 	}
 
 	success := true
@@ -86,8 +128,11 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			ResultRows:    [][]any{},
 		}
 
-		if !IsAllowedTaskStatement(sqlString) {
-			errMsg := "Statement not allowed in tasks (e.g., INSTALL, LOAD, SET configuration)"
+		if !IsAllowedTaskStatement(sqlString, isInit) {
+			errMsg := "Statement not allowed in tasks (e.g., INSTALL, LOAD, PRAGMA)"
+			if !isInit {
+				errMsg = "Statement not allowed in tasks (e.g., INSTALL, LOAD, PRAGMA, ATTACH, CREATE SECRET, SET configuration)"
+			}
 			queryResult.Error = &errMsg
 			success = false
 			result.Queries = append(result.Queries, queryResult)
@@ -97,7 +142,14 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 		start := time.Now()
 
 		varPrefix, _ := buildVarPrefix(app, nil, nil)
-		rows, err := tx.QueryxContext(ctx, varPrefix+sqlString)
+		fullSQL := varPrefix + sqlString
+
+		var rows *sqlx.Rows
+		if isInit {
+			rows, err = conn.QueryxContext(ctx, fullSQL)
+		} else {
+			rows, err = tx.QueryxContext(ctx, fullSQL)
+		}
 		duration := time.Since(start).Milliseconds()
 		queryResult.Duration = duration
 
@@ -167,7 +219,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 				success = false
 				result.Queries = append(result.Queries, queryResult)
 			} else {
-				result.NextRunAt = getReloadValue(queryResult.ResultRows)
+				result.NextRunAt = getScheduleTime(queryResult.ResultRows)
 				result.ScheduleType = scheduleType
 				result.TotalQueries = len(sqls) - 1
 			}
@@ -186,13 +238,17 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 
 	if success {
-		if err := tx.Commit(); err != nil {
-			return result, fmt.Errorf("Error committing transaction: %v", err)
+		if !isInit {
+			if err := tx.Commit(); err != nil {
+				return result, fmt.Errorf("Error committing transaction: %v", err)
+			}
 		}
 		result.Success = true
 	} else {
-		if err := tx.Rollback(); err != nil {
-			return result, fmt.Errorf("Error rolling back transaction: %v", err)
+		if !isInit {
+			if err := tx.Rollback(); err != nil {
+				return result, fmt.Errorf("Error rolling back transaction: %v", err)
+			}
 		}
 		result.Success = false
 	}

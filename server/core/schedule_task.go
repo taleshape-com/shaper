@@ -77,7 +77,7 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 	if !isSchedule {
 		return nil, "", fmt.Errorf("first SQL query is not a SCHEDULE query")
 	}
-	reloadValue := getReloadValue(result)
+	reloadValue := getScheduleTime(result)
 	if reloadValue <= 0 {
 		return nil, scheduleType, nil
 	}
@@ -91,6 +91,30 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 	if err != nil {
 		app.Logger.WithGroup("tasks").Error("Error getting next task run", slog.Any("error", err), slog.String("task", taskID))
 	}
+
+	if scheduleType == "init" {
+		app.Logger.WithGroup("tasks").Debug("Running init task immediately", slog.String("task", taskID))
+		go func() {
+			runResult, err := RunTask(app, ctx, content)
+			if err != nil {
+				app.Logger.WithGroup("tasks").Error("Error running init task", slog.String("task", taskID), slog.Any("error", err))
+			}
+			var totalDuration time.Duration
+			for _, queryResult := range runResult.Queries {
+				totalDuration += time.Duration(queryResult.Duration) * time.Millisecond
+			}
+			trackTaskRun(app, ctx, TaskResultPayload{
+				TaskID:        taskID,
+				StartedAt:     time.UnixMilli(runResult.StartedAt),
+				Success:       runResult.Success,
+				TotalDuration: totalDuration,
+				NextRunAt:     nil,
+				NextRunType:   "init",
+			})
+		}()
+		return
+	}
+
 	if nextRunAt == nil {
 		return
 	}
@@ -282,29 +306,71 @@ func trackTaskRun(app *App, ctx context.Context, payload TaskResultPayload) {
 
 func scheduleExistingTasks(app *App, ctx context.Context) error {
 	// Load scheduled task runs from database
-	rows, err := app.Sqlite.QueryxContext(
-		ctx,
-		`SELECT t.task_id, t.next_run_at, t.next_run_type
-			FROM task_runs t
-			JOIN apps a ON a.id = t.task_id
-			WHERE a.type = 'task' AND t.next_run_at IS NOT NULL`,
-	)
+	// We use a CTE to calculate the depth and full path of each task to ensure correct execution order for init tasks.
+	query := `WITH RECURSIVE folder_paths AS (
+			SELECT id, name, CAST(name AS TEXT) as full_path, 0 as depth
+			FROM folders
+			WHERE parent_folder_id IS NULL
+			UNION ALL
+			SELECT f.id, f.name, fp.full_path || '/' || f.name, fp.depth + 1
+			FROM folders f
+			JOIN folder_paths fp ON f.parent_folder_id = fp.id
+		)
+		SELECT
+			t.task_id,
+			t.next_run_at,
+			t.next_run_type,
+			a.content,
+			a.name as task_name,
+			COALESCE(fp.full_path, '') as folder_path,
+			COALESCE(fp.depth, -1) as depth
+		FROM task_runs t
+		JOIN apps a ON a.id = t.task_id
+		LEFT JOIN folder_paths fp ON fp.id = a.folder_id
+		WHERE a.type = 'task' AND (t.next_run_at IS NOT NULL OR t.next_run_type = 'init')
+		ORDER BY
+			CASE WHEN t.next_run_type = 'init' THEN 0 ELSE 1 END,
+			depth ASC,
+			folder_path ASC,
+			task_name ASC`
+
+	type taskRow struct {
+		TaskID      string     `db:"task_id"`
+		NextRunAt   *time.Time `db:"next_run_at"`
+		NextRunType string     `db:"next_run_type"`
+		Content     string     `db:"content"`
+		TaskName    string     `db:"task_name"`
+		FolderPath  string     `db:"folder_path"`
+		Depth       int        `db:"depth"`
+	}
+	var tasks []taskRow
+	err := app.Sqlite.SelectContext(ctx, &tasks, query)
 	if err != nil {
-		rows.Close()
 		return fmt.Errorf("failed to query scheduled tasks: %w", err)
 	}
-	for rows.Next() {
-		var taskID string
-		var nextRunAt time.Time
-		var nextRunType string
-		if err := rows.Scan(&taskID, &nextRunAt, &nextRunType); err != nil {
-			rows.Close()
-			return fmt.Errorf("failed to scan scheduled task: %w", err)
+
+	for _, r := range tasks {
+		if r.NextRunType == "init" {
+			app.Logger.WithGroup("tasks").Info("Running init task", slog.String("task", r.TaskID), slog.String("path", r.FolderPath+"/"+r.TaskName))
+			runResult, err := RunTask(app, ctx, r.Content)
+			if err != nil {
+				app.Logger.WithGroup("tasks").Error("Error running init task", slog.String("task", r.TaskID), slog.Any("error", err))
+			}
+			var totalDuration time.Duration
+			for _, queryResult := range runResult.Queries {
+				totalDuration += time.Duration(queryResult.Duration) * time.Millisecond
+			}
+			trackTaskRun(app, ctx, TaskResultPayload{
+				TaskID:        r.TaskID,
+				StartedAt:     time.UnixMilli(runResult.StartedAt),
+				Success:       runResult.Success,
+				TotalDuration: totalDuration,
+				NextRunAt:     nil,
+				NextRunType:   "init",
+			})
+		} else if r.NextRunAt != nil {
+			scheduleTask(app, ctx, r.TaskID, *r.NextRunAt, r.NextRunType)
 		}
-		scheduleTask(app, ctx, taskID, nextRunAt, nextRunType)
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("error iterating over scheduled tasks: %w", err)
 	}
 	return nil
 }
@@ -331,7 +397,7 @@ func (app *App) HandleTaskResult(msg jetstream.Msg) {
 	if err != nil {
 		app.Logger.WithGroup("tasks").Warn("Task not found. Skipping.", slog.String("task", payload.TaskID), slog.Any("error", err))
 	} else {
-		if payload.NextRunAt != nil {
+		if payload.NextRunAt != nil && payload.NextRunType != "init" {
 			scheduleTask(app, ctx, payload.TaskID, *payload.NextRunAt, payload.NextRunType)
 		}
 		trackTaskRun(app, ctx, payload)

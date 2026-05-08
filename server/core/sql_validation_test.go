@@ -101,8 +101,8 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 		{"Load", "LOAD httpfs", false},
 		{"Set Config", "SET threads = 4", false},
 		{"Reset Config", "RESET threads", false},
-		{"Attach", "ATTACH 'file.db' AS other", true},
-		{"Detach", "DETACH other", true},
+		{"Attach", "ATTACH 'file.db' AS other", false},
+		{"Detach", "DETACH other", false},
 		{"Pragma", "PRAGMA threads=4", false},
 
 		// Allowed Side Effects
@@ -124,7 +124,26 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql, false), "Regular SQL: %s", tt.sql)
+		})
+	}
+
+	initTests := []struct {
+		name     string
+		sql      string
+		expected bool
+	}{
+		{"Attach", "ATTACH 'file.db' AS other", true},
+		{"Detach", "DETACH other", true},
+		{"Create Secret", "CREATE SECRET (TYPE S3)", true},
+		{"Set Config", "SET threads = 4", true},
+		{"Reset Config", "RESET threads", true},
+		{"Install", "INSTALL httpfs", false}, // Still disallowed
+	}
+
+	for _, tt := range initTests {
+		t.Run("Init/"+tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql, true), "Init SQL: %s", tt.sql)
 		})
 	}
 }
