@@ -124,7 +124,7 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql, false), "Regular SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "Regular SQL: %s", tt.sql)
 		})
 	}
 
@@ -143,7 +143,7 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 
 	for _, tt := range initTests {
 		t.Run("Init/"+tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql, true), "Init SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "Init SQL: %s", tt.sql)
 		})
 	}
 }

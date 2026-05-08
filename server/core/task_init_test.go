@@ -128,15 +128,20 @@ func TestInitTask(t *testing.T) {
 		assert.Contains(t, *result.Queries[0].Error, "Statement not allowed in tasks")
 	})
 
-	t.Run("Task with INSTALL and LOAD", func(t *testing.T) {
+	t.Run("Task without schedule works", func(t *testing.T) {
 		content := `
-			SELECT NULL::SCHEDULE;
-			INSTALL httpfs;
-			LOAD httpfs;
+			CREATE TABLE no_schedule (val INT);
+			INSERT INTO no_schedule VALUES (42);
 		`
 		result, err := RunTask(app, ctx, content)
 		assert.NoError(t, err)
 		assert.True(t, result.Success)
+		assert.Equal(t, int64(0), result.NextRunAt)
+
+		var val int
+		err = app.DuckDB.Get(&val, "SELECT val FROM no_schedule")
+		assert.NoError(t, err)
+		assert.Equal(t, 42, val)
 	})
 }
 

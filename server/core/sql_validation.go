@@ -176,7 +176,7 @@ func IsAllowedStatement(app *App, sql string) bool {
 	return false
 }
 
-func IsAllowedTaskStatement(sql string, isInit bool) bool {
+func IsAllowedTaskStatement(sql string) bool {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
@@ -190,11 +190,11 @@ func IsAllowedTaskStatement(sql string, isInit bool) bool {
 			return false
 		}
 		for _, cte := range ctes {
-			if !IsAllowedTaskStatement(cte, isInit) {
+			if !IsAllowedTaskStatement(cte) {
 				return false
 			}
 		}
-		return IsAllowedTaskStatement(remaining, isInit)
+		return IsAllowedTaskStatement(remaining)
 	}
 
 	// Handle parenthesized queries like (SELECT 1)
@@ -203,7 +203,7 @@ func IsAllowedTaskStatement(sql string, isInit bool) bool {
 		if err != nil {
 			return false
 		}
-		if !IsAllowedTaskStatement(inner, isInit) {
+		if !IsAllowedTaskStatement(inner) {
 			return false
 		}
 		remaining = strings.TrimSpace(remaining)
@@ -222,7 +222,7 @@ func IsAllowedTaskStatement(sql string, isInit bool) bool {
 				} else if strings.HasPrefix(restUpper, "DISTINCT") {
 					rest = strings.TrimSpace(rest[len("DISTINCT"):])
 				}
-				return IsAllowedTaskStatement(rest, isInit)
+				return IsAllowedTaskStatement(rest)
 			}
 		}
 		// Also handle ORDER BY, LIMIT etc which can follow a parenthesized query

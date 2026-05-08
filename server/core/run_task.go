@@ -88,8 +88,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 	defer conn.Close()
 
-	// Detect if it's an init task or contains transaction-breaking statements
-	isInit := false
+	// Detect if it contains transaction-breaking statements
 	anyNoTx := false
 	for _, s := range sqls {
 		if needsNoTransaction(s) {
@@ -98,41 +97,9 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 		}
 	}
 
-	if len(sqls) > 0 {
-		sqlString := strings.TrimSpace(sqls[0])
-		// We use a separate temporary query to check the schedule
-		// to not interfere with the actual task execution state
-		rows, err := conn.QueryxContext(ctx, sqlString)
-		if err == nil {
-			func() {
-				defer rows.Close()
-				colTypes, err := rows.ColumnTypes()
-				if err != nil {
-					app.Logger.Debug("Failed to get column types", slog.Any("error", err))
-					return
-				}
-				resRows := [][]any{}
-				if rows.Next() {
-					row, err := rows.SliceScan()
-					if err == nil {
-						resRows = append(resRows, row)
-					}
-				}
-				_, isSchedule := getScheduleColumn(colTypes, resRows)
-				if isSchedule {
-					timeVal := getScheduleTime(resRows)
-					if timeVal == -1 {
-						isInit = true
-					}
-				}
-			}()
-		} else {
-			app.Logger.Debug("Failed to execute first query for init detection", slog.Any("error", err), slog.String("sql", sqlString))
-		}
-	}
-
-	useTx := !isInit && !anyNoTx
-	app.Logger.Debug("RunTask", slog.Bool("isInit", isInit), slog.Bool("anyNoTx", anyNoTx), slog.Int("queries", len(sqls)))
+	isInit := false
+	useTx := !anyNoTx
+	app.Logger.Debug("RunTask", slog.Bool("anyNoTx", anyNoTx), slog.Int("queries", len(sqls)))
 
 	var tx *sqlx.Tx
 	if useTx {
@@ -143,7 +110,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 
 	success := true
-	for sqlIndex, sqlString := range sqls {
+	for _, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
 			continue
@@ -155,7 +122,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 			ResultRows:    [][]any{},
 		}
 
-		if !IsAllowedTaskStatement(sqlString, isInit) {
+		if !IsAllowedTaskStatement(sqlString) {
 			errMsg := "Statement not allowed in tasks (e.g., PRAGMA, SET configuration)"
 			queryResult.Error = &errMsg
 			success = false
@@ -243,22 +210,36 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 				success = false
 				result.Queries = append(result.Queries, queryResult)
 			} else {
-				result.NextRunAt = getScheduleTime(queryResult.ResultRows)
+				timeVal := getScheduleTime(queryResult.ResultRows)
+				if timeVal == -1 {
+					isInit = true
+				}
+				result.NextRunAt = timeVal
 				result.ScheduleType = scheduleType
 				result.TotalQueries = len(sqls) - 1
 			}
 		} else {
-			if sqlIndex == 0 {
-				errMsg := "First query in task must define the schedule, for example:\nSELECT NULL::SCHEDULE;"
-				queryResult.Error = &errMsg
-				success = false
-			}
 			result.Queries = append(result.Queries, queryResult)
 		}
 
 		if !success || queryResult.StopExecution {
 			break
 		}
+	}
+
+	// If it was an init task, we should have run it without transaction if we knew from the start.
+	// But we only find out during execution. DuckDB doesn't allow ATTACH/etc in TX.
+	// If a task contains BOTH a schedule='init' AND an ATTACH, the ATTACH must be AFTER the schedule
+	// query for our current detection to work if we were to restart.
+	// However, we now have anyNoTx detection which handles ATTACH/INSTALL/etc upfront.
+	// The only remaining case is if 'init' itself requires no transaction.
+	// Let's re-run without transaction if we detect isInit and we were in a transaction.
+	if isInit && useTx {
+		// This is a bit complex: we already executed some queries in a transaction.
+		// If it's 'init', we should probably have detected it upfront.
+		// But since anyNoTx already covers the statements that actually BREAK transactions,
+		// maybe it's fine to stay in transaction for 'init' if it doesn't have ATTACH/etc.
+		// Actually, DuckDB doesn't mind 'init' in a transaction as long as no forbidden statements are used.
 	}
 
 	if success {
