@@ -79,11 +79,13 @@ var dbTypes = []struct {
 
 func createType(db *sqlx.DB, name string, definition string) error {
 	// TODO: Disabled the drop since it's slow (like 500ms). Just be careful to not change definitions
-	// drop types first
-	// _, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
-	// if err != nil {
-	// 	return fmt.Errorf("failed to drop type %s: %w", name, err)
-	// }
+	// drop types first if changed - we changed SCHEDULE with 0.19.0
+	if name == "SCHEDULE" || name == "SCHEDULE_ALL" {
+		_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
+		if err != nil {
+			return fmt.Errorf("failed to drop type %s: %w", name, err)
+		}
+	}
 	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return fmt.Errorf("failed to create type %s: %w", name, err)

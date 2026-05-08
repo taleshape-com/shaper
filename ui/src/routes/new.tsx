@@ -2,11 +2,11 @@
 
 import { z } from "zod";
 import {
-	createFileRoute,
-	isRedirect,
-	useNavigate,
-	Link,
-	redirect,
+  createFileRoute,
+  isRedirect,
+  useNavigate,
+  Link,
+  redirect,
 } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
@@ -21,12 +21,12 @@ import { MenuTrigger } from "../components/MenuTrigger";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "../components/tremor/Dialog";
 import { RiCodeSSlashFill, RiBarChart2Line, RiArrowRightSLine } from "@remixicon/react";
 import { Input } from "../components/tremor/Input";
@@ -35,11 +35,11 @@ import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import { TaskResults, TaskResult } from "../components/TaskResults";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "../components/tremor/Select";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
@@ -81,543 +81,543 @@ const APP_TYPE_STORAGE_KEY = "shaper-new-app-type";
 
 // Utility functions for localStorage
 const getStoredAppType = (): "dashboard" | "task" => {
-	try {
-		const stored = localStorage.getItem(APP_TYPE_STORAGE_KEY);
-		return stored === "task" ? "task" : "dashboard";
-	} catch {
-		return "dashboard";
-	}
+  try {
+    const stored = localStorage.getItem(APP_TYPE_STORAGE_KEY);
+    return stored === "task" ? "task" : "dashboard";
+  } catch {
+    return "dashboard";
+  }
 };
 
 const setStoredAppType = (type: "dashboard" | "task") => {
-	try {
-		localStorage.setItem(APP_TYPE_STORAGE_KEY, type);
-	} catch {
-		// Ignore localStorage errors
-	}
+  try {
+    localStorage.setItem(APP_TYPE_STORAGE_KEY, type);
+  } catch {
+    // Ignore localStorage errors
+  }
 };
 
 const clearStoredAppType = () => {
-	try {
-		localStorage.removeItem(APP_TYPE_STORAGE_KEY);
-	} catch {
-		// Ignore localStorage errors
-	}
+  try {
+    localStorage.removeItem(APP_TYPE_STORAGE_KEY);
+  } catch {
+    // Ignore localStorage errors
+  }
 };
 
 export const Route = createFileRoute("/new")({
-	validateSearch: z.object({
-		vars: varsParamSchema,
-		path: z.string().optional(),
-	}),
-	beforeLoad: () => {
-		const systemConfig = getSystemConfig();
-		if (!systemConfig.editEnabled && !systemConfig.tasksEnabled) {
-			throw redirect({ to: "/" });
-		}
-	},
-	component: NewDashboard,
+  validateSearch: z.object({
+    vars: varsParamSchema,
+    path: z.string().optional(),
+  }),
+  beforeLoad: () => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.editEnabled && !systemConfig.tasksEnabled) {
+      throw redirect({ to: "/" });
+    }
+  },
+  component: NewDashboard,
 });
 
-function NewDashboard() {
-	const { vars, path } = Route.useSearch();
-	const auth = useAuth();
-	const queryApi = useQueryApi();
-	const navigate = useNavigate({ from: "/new" });
-	const systemConfig = getSystemConfig();
-	const [appType, setAppType] = useState<"dashboard" | "task">(() =>
-		systemConfig.editEnabled ? getStoredAppType() : "task",
-	);
-	const [editorQuery, setEditorQuery] = useState("");
-	const [runningQuery, setRunningQuery] = useState("");
-	const [creating, setCreating] = useState(false);
-	const [previewId, setPreviewId] = useState<string | undefined>(undefined);
-	const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
-	const [previewError, setPreviewError] = useState<string | null>(null);
-	const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-	const [showCreateDialog, setShowCreateDialog] = useState(false);
-	const [showDiscardDialog, setShowDiscardDialog] = useState(false);
-	const [dashboardName, setDashboardName] = useState("");
-	const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
-	const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
-	const { toast } = useToast();
+function NewDashboard () {
+  const { vars, path } = Route.useSearch();
+  const auth = useAuth();
+  const queryApi = useQueryApi();
+  const navigate = useNavigate({ from: "/new" });
+  const systemConfig = getSystemConfig();
+  const [appType, setAppType] = useState<"dashboard" | "task">(() =>
+    systemConfig.editEnabled ? getStoredAppType() : "task",
+  );
+  const [editorQuery, setEditorQuery] = useState("");
+  const [runningQuery, setRunningQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [previewId, setPreviewId] = useState<string | undefined>(undefined);
+  const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [dashboardName, setDashboardName] = useState("");
+  const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
+  const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
+  const { toast } = useToast();
 
-	// Check for unsaved changes when component mounts or type changes
-	useEffect(() => {
-		const unsavedContent = editorStorage.getChanges("new");
-		if (unsavedContent) {
-			setEditorQuery(unsavedContent);
-			setRunningQuery(unsavedContent);
-		} else {
-			// Set default content based on app type
-			const defaultContent =
+  // Check for unsaved changes when component mounts or type changes
+  useEffect(() => {
+    const unsavedContent = editorStorage.getChanges("new");
+    if (unsavedContent) {
+      setEditorQuery(unsavedContent);
+      setRunningQuery(unsavedContent);
+    } else {
+      // Set default content based on app type
+      const defaultContent =
 				appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
-			setEditorQuery(defaultContent);
-			setRunningQuery(defaultContent);
-		}
-	}, [appType]);
+      setEditorQuery(defaultContent);
+      setRunningQuery(defaultContent);
+    }
+  }, [appType]);
 
-	const previewDashboard = useCallback(async () => {
-		if (!runningQuery.trim()) {
-			return;
-		}
-		setPreviewError(null);
-		setIsPreviewLoading(true);
-		setLoadStartTime(Date.now());
-		setLoadEndTime(null);
-		try {
-			const { id } = await queryApi("dashboards", {
-				method: "POST",
-				body: {
-					path,
-					content: runningQuery,
-					temporary: true,
-				},
-			});
-			setPreviewId(id);
-		} catch (err) {
-			setIsPreviewLoading(false);
-			if (isRedirect(err)) {
-				return navigate(err.options);
-			}
-			setPreviewError(err instanceof Error ? err.message : "Unknown error");
-		}
-	}, [queryApi, runningQuery, navigate, path]);
+  const previewDashboard = useCallback(async () => {
+    if (!runningQuery.trim()) {
+      return;
+    }
+    setPreviewError(null);
+    setIsPreviewLoading(true);
+    setLoadStartTime(Date.now());
+    setLoadEndTime(null);
+    try {
+      const { id } = await queryApi("dashboards", {
+        method: "POST",
+        body: {
+          path,
+          content: runningQuery,
+          temporary: true,
+        },
+      });
+      setPreviewId(id);
+    } catch (err) {
+      setIsPreviewLoading(false);
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+      setPreviewError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }, [queryApi, runningQuery, navigate, path]);
 
-	const runTask = useCallback(async () => {
-		setPreviewError(null);
-		setIsPreviewLoading(true);
-		try {
-			const data = await queryApi("run/task", {
-				method: "POST",
-				body: {
-					content: editorQuery,
-				},
-			});
-			setTaskData(data);
-		} catch (err) {
-			if (isRedirect(err)) {
-				return navigate(err.options);
-			}
-			setPreviewError(err instanceof Error ? err.message : "Unknown error");
-		} finally {
-			setIsPreviewLoading(false);
-		}
-	}, [queryApi, editorQuery, navigate]);
+  const runTask = useCallback(async () => {
+    setPreviewError(null);
+    setIsPreviewLoading(true);
+    try {
+      const data = await queryApi("run/task", {
+        method: "POST",
+        body: {
+          content: editorQuery,
+        },
+      });
+      setTaskData(data);
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+      setPreviewError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  }, [queryApi, editorQuery, navigate]);
 
-	useEffect(() => {
-		if (appType === "dashboard") {
-			previewDashboard();
-		}
-	}, [previewDashboard, appType]);
+  useEffect(() => {
+    if (appType === "dashboard") {
+      previewDashboard();
+    }
+  }, [previewDashboard, appType]);
 
-	const handleRun = useCallback(() => {
-		if (appType === "task") {
-			runTask();
-		} else {
-			if (isPreviewLoading) {
-				return;
-			}
-			if (editorQuery !== runningQuery) {
-				setRunningQuery(editorQuery);
-			} else {
-				previewDashboard();
-			}
-		}
-	}, [
-		editorQuery,
-		runningQuery,
-		previewDashboard,
-		runTask,
-		isPreviewLoading,
-		appType,
-	]);
+  const handleRun = useCallback(() => {
+    if (appType === "task") {
+      runTask();
+    } else {
+      if (isPreviewLoading) {
+        return;
+      }
+      if (editorQuery !== runningQuery) {
+        setRunningQuery(editorQuery);
+      } else {
+        previewDashboard();
+      }
+    }
+  }, [
+    editorQuery,
+    runningQuery,
+    previewDashboard,
+    runTask,
+    isPreviewLoading,
+    appType,
+  ]);
 
-	const handleTypeChange = useCallback(
-		(newType: string) => {
-			const type = newType as "dashboard" | "task";
-			setAppType(type);
-			setStoredAppType(type);
+  const handleTypeChange = useCallback(
+    (newType: string) => {
+      const type = newType as "dashboard" | "task";
+      setAppType(type);
+      setStoredAppType(type);
 
-			// Clear results when switching types
-			setPreviewId(undefined);
-			setTaskData(undefined);
-			setPreviewError(null);
+      // Clear results when switching types
+      setPreviewId(undefined);
+      setTaskData(undefined);
+      setPreviewError(null);
 
-			// Auto-run dashboard when switching to it
-			if (type === "dashboard") {
-				setTimeout(() => previewDashboard(), 0);
-			}
-		},
-		[previewDashboard],
-	);
+      // Auto-run dashboard when switching to it
+      if (type === "dashboard") {
+        setTimeout(() => previewDashboard(), 0);
+      }
+    },
+    [previewDashboard],
+  );
 
-	const handleQueryChange = (value: string | undefined) => {
-		const newQuery = value || "";
-		const currentDefaultQuery =
+  const handleQueryChange = (value: string | undefined) => {
+    const newQuery = value || "";
+    const currentDefaultQuery =
 			appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
 
-		// Save to localStorage
-		if (newQuery !== currentDefaultQuery && newQuery.trim() !== "") {
-			editorStorage.saveChanges("new", newQuery);
-		} else {
-			editorStorage.clearChanges("new");
-		}
-		setEditorQuery(newQuery);
-	};
+    // Save to localStorage
+    if (newQuery !== currentDefaultQuery && newQuery.trim() !== "") {
+      editorStorage.saveChanges("new", newQuery);
+    } else {
+      editorStorage.clearChanges("new");
+    }
+    setEditorQuery(newQuery);
+  };
 
-	const handleCreate = useCallback(async () => {
-		if (!dashboardName.trim()) {
-			return;
-		}
+  const handleCreate = useCallback(async () => {
+    if (!dashboardName.trim()) {
+      return;
+    }
 
-		setCreating(true);
-		try {
-			if (appType === "task") {
-				const { id } = await queryApi("tasks", {
-					method: "POST",
-					body: {
-						name: dashboardName,
-						content: editorQuery,
-						path: path || "/",
-					},
-				});
-				// Clear localStorage after successful save
-				editorStorage.clearChanges("new");
-				clearStoredAppType(); // Reset the app type preference
+    setCreating(true);
+    try {
+      if (appType === "task") {
+        const { id } = await queryApi("tasks", {
+          method: "POST",
+          body: {
+            name: dashboardName,
+            content: editorQuery,
+            path: path || "/",
+          },
+        });
+        // Clear localStorage after successful save
+        editorStorage.clearChanges("new");
+        clearStoredAppType(); // Reset the app type preference
 
-				// Navigate to the task edit page
-				navigate({
-					replace: true,
-					to: "/tasks/$id",
-					params: { id },
-				});
-			} else {
-				const { id } = await queryApi("dashboards", {
-					method: "POST",
-					body: {
-						name: dashboardName,
-						content: editorQuery,
-						path: path || "/",
-					},
-				});
-				// Clear localStorage after successful save
-				editorStorage.clearChanges("new");
-				clearStoredAppType(); // Reset the app type preference
+        // Navigate to the task edit page
+        navigate({
+          replace: true,
+          to: "/tasks/$id",
+          params: { id },
+        });
+      } else {
+        const { id } = await queryApi("dashboards", {
+          method: "POST",
+          body: {
+            name: dashboardName,
+            content: editorQuery,
+            path: path || "/",
+          },
+        });
+        // Clear localStorage after successful save
+        editorStorage.clearChanges("new");
+        clearStoredAppType(); // Reset the app type preference
 
-				// Navigate to the dashboard edit page
-				navigate({
-					replace: true,
-					to: "/dashboards/$id/edit",
-					params: { id },
-					search: () => ({ vars }),
-				});
-			}
-		} catch (err) {
-			if (isRedirect(err)) {
-				return navigate(err.options);
-			}
-			toast({
-				title: "Error",
-				description: err instanceof Error ? err.message : "An error occurred",
-				variant: "error",
-			});
-			setCreating(false);
-			setShowCreateDialog(false);
-		}
-	}, [queryApi, editorQuery, navigate, vars, toast, dashboardName, appType, path]);
+        // Navigate to the dashboard edit page
+        navigate({
+          replace: true,
+          to: "/dashboards/$id/edit",
+          params: { id },
+          search: () => ({ vars }),
+        });
+      }
+    } catch (err) {
+      if (isRedirect(err)) {
+        return navigate(err.options);
+      }
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred",
+        variant: "error",
+      });
+      setCreating(false);
+      setShowCreateDialog(false);
+    }
+  }, [queryApi, editorQuery, navigate, vars, toast, dashboardName, appType, path]);
 
-	const handleVarsChanged = useCallback(
-		(newVars: any) => {
-			navigate({
-				search: (old: any) => ({
-					...old,
-					vars: newVars,
-				}),
-			});
-		},
-		[navigate],
-	);
+  const handleVarsChanged = useCallback(
+    (newVars: any) => {
+      navigate({
+        search: (old: any) => ({
+          ...old,
+          vars: newVars,
+        }),
+      });
+    },
+    [navigate],
+  );
 
-	const handleDiscardChanges = useCallback(() => {
-		const defaultContent =
+  const handleDiscardChanges = useCallback(() => {
+    const defaultContent =
 			appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
-		editorStorage.clearChanges("new");
-		setEditorQuery(defaultContent);
-		setRunningQuery(defaultContent);
-		setShowDiscardDialog(false);
-		// Clear results when discarding
-		setPreviewId(undefined);
-		setTaskData(undefined);
-		setPreviewError(null);
-	}, [appType]);
+    editorStorage.clearChanges("new");
+    setEditorQuery(defaultContent);
+    setRunningQuery(defaultContent);
+    setShowDiscardDialog(false);
+    // Clear results when discarding
+    setPreviewId(undefined);
+    setTaskData(undefined);
+    setPreviewError(null);
+  }, [appType]);
 
-	// Helper to check if content has been modified
-	const hasUnsavedChanges = () => {
-		const defaultContent =
+  // Helper to check if content has been modified
+  const hasUnsavedChanges = () => {
+    const defaultContent =
 			appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
-		return editorQuery !== defaultContent;
-	};
+    return editorQuery !== defaultContent;
+  };
 
-	const handleError = useCallback((err: Error) => {
-		setIsPreviewLoading(false);
-		setLoadEndTime(Date.now());
-		if (isRedirect(err)) {
-			navigate(err.options);
-		}
-	}, [navigate, setIsPreviewLoading, setLoadEndTime]);
+  const handleError = useCallback((err: Error) => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+    if (isRedirect(err)) {
+      navigate(err.options);
+    }
+  }, [navigate, setIsPreviewLoading, setLoadEndTime]);
 
-	const handleDataChange = useCallback(() => {
-		setIsPreviewLoading(false);
-		setLoadEndTime(Date.now());
-	}, [setIsPreviewLoading, setLoadEndTime]);
+  const handleDataChange = useCallback(() => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+  }, [setIsPreviewLoading, setLoadEndTime]);
 
-	const loadDuration = useMemo(() => {
-		if (!loadStartTime || !loadEndTime) {
-			return null;
-		}
-		return loadEndTime - loadStartTime;
-	}, [loadStartTime, loadEndTime]);
+  const loadDuration = useMemo(() => {
+    if (!loadStartTime || !loadEndTime) {
+      return null;
+    }
+    return loadEndTime - loadStartTime;
+  }, [loadStartTime, loadEndTime]);
 
-	const generateBreadcrumbs = () => {
-		const pathParts = (path || "/").split("/").filter((part) => part !== "");
-		const breadcrumbs = [];
-		breadcrumbs.push({
-			name: "Home",
-			path: "/",
-			isRoot: true,
-		});
-		let currentPath = "";
-		for (let i = 0; i < pathParts.length; i++) {
-			currentPath += `/${pathParts[i]}`;
-			breadcrumbs.push({
-				name: pathParts[i],
-				path: currentPath + "/",
-				isRoot: false,
-			});
-		}
-		return breadcrumbs;
-	};
+  const generateBreadcrumbs = () => {
+    const pathParts = (path || "/").split("/").filter((part) => part !== "");
+    const breadcrumbs = [];
+    breadcrumbs.push({
+      name: "Home",
+      path: "/",
+      isRoot: true,
+    });
+    let currentPath = "";
+    for (let i = 0; i < pathParts.length; i++) {
+      currentPath += `/${pathParts[i]}`;
+      breadcrumbs.push({
+        name: pathParts[i],
+        path: currentPath + "/",
+        isRoot: false,
+      });
+    }
+    return breadcrumbs;
+  };
 
-	return (
-		<MenuProvider isNewPage currentPath={path || "/"} appType={appType}>
-			<Helmet>
-				<title>{appType === "task" ? "New Task" : "New Dashboard"}</title>
-			</Helmet>
+  return (
+    <MenuProvider isNewPage currentPath={path || "/"} appType={appType}>
+      <Helmet>
+        <title>{appType === "task" ? "New Task" : "New Dashboard"}</title>
+      </Helmet>
 
-			<div className="h-dvh flex flex-col">
-				<div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
-					<div className="flex items-center px-2 border-b border-cb dark:border-none">
-						<MenuTrigger className="pr-2">
-							{appType === "dashboard" && (
-								<VariablesMenu onVariablesChange={previewDashboard} />
-							)}
-							{appType === "dashboard" && (
-								<div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
-									{loadDuration ? (
-										<span>
+      <div className="h-dvh flex flex-col">
+        <div className="h-[42dvh] flex flex-col overflow-y-hidden max-h-[90dvh] min-h-[12dvh] resize-y shrink-0 shadow-sm dark:shadow-none">
+          <div className="flex items-center px-2 border-b border-cb dark:border-none">
+            <MenuTrigger className="pr-2">
+              {appType === "dashboard" && (
+                <VariablesMenu onVariablesChange={previewDashboard} />
+              )}
+              {appType === "dashboard" && (
+                <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
+                  {loadDuration ? (
+                    <span>
 											Load time:{" "}
-											{loadDuration >= 1000
-												? `${(loadDuration / 1000).toFixed(2)}s`
-												: `${loadDuration}ms`}
-										</span>
-									) : (
-										<span>Loading...</span>
-									)}
-								</div>
-							)}
-						</MenuTrigger>
+                      {loadDuration >= 1000
+                        ? `${(loadDuration / 1000).toFixed(2)}s`
+                        : `${loadDuration}ms`}
+                    </span>
+                  ) : (
+                    <span>Loading...</span>
+                  )}
+                </div>
+              )}
+            </MenuTrigger>
 
-						<div className="flex-grow flex pb-2 pt-2 gap-2 overflow-x-auto">
-							<nav className="flex items-center gap-1 font-semibold font-display">
-								{generateBreadcrumbs().map((breadcrumb, index) => (
-									<div key={breadcrumb.path} className="flex items-center gap-1">
-										{index > 0 && (
-											<RiArrowRightSLine
-												className="size-4 text-ctext2 dark:text-dtext2"
-												aria-hidden={true}
-											/>
-										)}
-										<Link
-											to={"/"}
-											search={
-												breadcrumb.path === "/"
-													? undefined
-													: { path: breadcrumb.path }
-											}
-											className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -mx-1 rounded whitespace-nowrap"
-										>
-											{breadcrumb.name}
-										</Link>
-									</div>
-								))}
-							</nav>
-							<h1 className="flex items-center gap-2 font-display">
-								<RiArrowRightSLine
-									className="size-4 text-ctext2 dark:text-dtext2 mr-0.5"
-									aria-hidden={true}
-								/>
+            <div className="flex-grow flex pb-2 pt-2 gap-2 overflow-x-auto">
+              <nav className="flex items-center gap-1 font-semibold font-display">
+                {generateBreadcrumbs().map((breadcrumb, index) => (
+                  <div key={breadcrumb.path} className="flex items-center gap-1">
+                    {index > 0 && (
+                      <RiArrowRightSLine
+                        className="size-4 text-ctext2 dark:text-dtext2"
+                        aria-hidden={true}
+                      />
+                    )}
+                    <Link
+                      to={"/"}
+                      search={
+                        breadcrumb.path === "/"
+                          ? undefined
+                          : { path: breadcrumb.path }
+                      }
+                      className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -mx-1 rounded whitespace-nowrap"
+                    >
+                      {breadcrumb.name}
+                    </Link>
+                  </div>
+                ))}
+              </nav>
+              <h1 className="flex items-center gap-2 font-display">
+                <RiArrowRightSLine
+                  className="size-4 text-ctext2 dark:text-dtext2 mr-0.5"
+                  aria-hidden={true}
+                />
 								New
-								{systemConfig.tasksEnabled && systemConfig.editEnabled ? (
-									<Select value={appType} onValueChange={handleTypeChange}>
-										<SelectTrigger className="w-36">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="dashboard">
-												<RiBarChart2Line
-													className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
-													aria-hidden={true}
-												/>
+                {systemConfig.tasksEnabled && systemConfig.editEnabled ? (
+                  <Select value={appType} onValueChange={handleTypeChange}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dashboard">
+                        <RiBarChart2Line
+                          className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
+                          aria-hidden={true}
+                        />
 												Dashboard
-											</SelectItem>
-											<SelectItem value="task">
-												<RiCodeSSlashFill
-													className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
-													aria-hidden={true}
-												/>
+                      </SelectItem>
+                      <SelectItem value="task">
+                        <RiCodeSSlashFill
+                          className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
+                          aria-hidden={true}
+                        />
 												Task
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								) : systemConfig.tasksEnabled ? (
-									" Task"
-								) : (
-									" Dashboard"
-								)}
-							</h1>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : systemConfig.tasksEnabled ? (
+                  " Task"
+                ) : (
+                  " Dashboard"
+                )}
+              </h1>
 
-						</div>
+            </div>
 
-						<Tooltip showArrow={false} asChild content="Discard Changes">
-							<Button
-								onClick={() => setShowDiscardDialog(true)}
-								className={cx("ml-4", { hidden: !hasUnsavedChanges() })}
-								disabled={!hasUnsavedChanges()}
-								variant="destructive"
-							>
+            <Tooltip showArrow={false} asChild content="Discard Changes">
+              <Button
+                onClick={() => setShowDiscardDialog(true)}
+                className={cx("ml-4", { hidden: !hasUnsavedChanges() })}
+                disabled={!hasUnsavedChanges()}
+                variant="destructive"
+              >
 								Discard
-							</Button>
-						</Tooltip>
-						<Tooltip
-							showArrow={false}
-							asChild
-							content={`Create ${appType === "task" ? "Task" : "Dashboard"}`}
-						>
-							<Button
-								onClick={() => setShowCreateDialog(true)}
-								disabled={creating}
-								variant="secondary"
-								className={cx("my-2", { "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
-							>
+              </Button>
+            </Tooltip>
+            <Tooltip
+              showArrow={false}
+              asChild
+              content={`Create ${appType === "task" ? "Task" : "Dashboard"}`}
+            >
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                disabled={creating}
+                variant="secondary"
+                className={cx("my-2", { "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
+              >
 								Create
-							</Button>
-						</Tooltip>
-						<Tooltip
-							showArrow={false}
-							asChild
-							content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
-						>
-							<Button
-								onClick={handleRun}
-								disabled={isPreviewLoading}
-								isLoading={isPreviewLoading}
-								className="ml-2"
-							>
+              </Button>
+            </Tooltip>
+            <Tooltip
+              showArrow={false}
+              asChild
+              content={`Press ${isMac() ? "⌘" : "Ctrl"} + Enter to run`}
+            >
+              <Button
+                onClick={handleRun}
+                disabled={isPreviewLoading}
+                isLoading={isPreviewLoading}
+                className="ml-2"
+              >
 								Run
-							</Button>
-						</Tooltip>
-					</div>
+              </Button>
+            </Tooltip>
+          </div>
 
-					<div className="flex-grow">
-						<SqlEditor
-							onChange={handleQueryChange}
-							onRun={handleRun}
-							content={editorQuery}
-						/>
-					</div>
-				</div>
+          <div className="flex-grow">
+            <SqlEditor
+              onChange={handleQueryChange}
+              onRun={handleRun}
+              content={editorQuery}
+            />
+          </div>
+        </div>
 
-				<DashboardWrapper className="flex-grow overflow-y-auto relative">
-					{previewError && <PreviewError>{previewError}</PreviewError>}
-					{appType === "dashboard" ? (
-						<Dashboard
-							id={previewId}
-							vars={vars}
-							hash={auth.hash}
-							getJwt={getJwt}
-							onVarsChanged={handleVarsChanged}
-							onError={handleError}
-							onDataChange={handleDataChange}
-							loading={isPreviewLoading}
-						/>
-					) : (
-						<TaskResults data={taskData} loading={isPreviewLoading} />
-					)}
-				</DashboardWrapper>
-			</div>
+        <DashboardWrapper className="flex-grow overflow-y-auto relative">
+          {previewError && <PreviewError>{previewError}</PreviewError>}
+          {appType === "dashboard" ? (
+            <Dashboard
+              id={previewId}
+              vars={vars}
+              hash={auth.hash}
+              getJwt={getJwt}
+              onVarsChanged={handleVarsChanged}
+              onError={handleError}
+              onDataChange={handleDataChange}
+              loading={isPreviewLoading}
+            />
+          ) : (
+            <TaskResults data={taskData} loading={isPreviewLoading} />
+          )}
+        </DashboardWrapper>
+      </div>
 
-			<Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{`Create ${appType === "task" ? "Task" : "Dashboard"}`}
-						</DialogTitle>
-					</DialogHeader>
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							handleCreate();
-						}}
-						className="space-y-4 mt-4"
-					>
-						<div>
-							<Input
-								id="dashboardName"
-								value={dashboardName}
-								onChange={(e) => setDashboardName(e.target.value)}
-								placeholder={`Enter a name for the ${appType === "task" ? "task" : "dashboard"}`}
-								autoFocus
-								required
-							/>
-						</div>
-						<DialogFooter>
-							<Button
-								type="button"
-								onClick={() => setShowCreateDialog(false)}
-								variant="secondary"
-							>
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {`Create ${appType === "task" ? "Task" : "Dashboard"}`}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreate();
+            }}
+            className="space-y-4 mt-4"
+          >
+            <div>
+              <Input
+                id="dashboardName"
+                value={dashboardName}
+                onChange={(e) => setDashboardName(e.target.value)}
+                placeholder={`Enter a name for the ${appType === "task" ? "task" : "dashboard"}`}
+                autoFocus
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                onClick={() => setShowCreateDialog(false)}
+                variant="secondary"
+              >
 								Cancel
-							</Button>
-							<Button
-								type="submit"
-								disabled={creating || !dashboardName.trim()}
-								isLoading={creating}
-							>
+              </Button>
+              <Button
+                type="submit"
+                disabled={creating || !dashboardName.trim()}
+                isLoading={creating}
+              >
 								Create
-							</Button>
-						</DialogFooter>
-					</form>
-				</DialogContent>
-			</Dialog>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-			<Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Discard Changes</DialogTitle>
-						<DialogDescription>
+      <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard Changes</DialogTitle>
+            <DialogDescription>
 							Are you sure you want to discard your changes and reset to the
 							default content? This action cannot be undone.
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button onClick={() => setShowDiscardDialog(false)}>Cancel</Button>
-						<Button variant="destructive" onClick={handleDiscardChanges}>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowDiscardDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDiscardChanges}>
 							Discard
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</MenuProvider>
-	);
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </MenuProvider>
+  );
 }
