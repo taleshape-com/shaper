@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultServerURL   = "http://localhost:5454"
-	defaultWatchFolder = "./shaper"
+	defaultWatchFolder = "."
 	defaultConfigPath  = "./shaper.json"
 	defaultAuthFile    = ".shaper-auth"
 )
