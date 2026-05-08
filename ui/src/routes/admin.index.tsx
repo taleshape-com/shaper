@@ -36,6 +36,7 @@ import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { Tooltip } from "../components/tremor/Tooltip";
 import { getSystemConfig, fetchSystemConfig } from "../lib/system";
+import { useAuth } from "../lib/auth";
 
 interface IUser {
   id: string;
@@ -114,6 +115,7 @@ const getInviteLink = (code: string) => {
 };
 
 function UsersManagement () {
+  const auth = useAuth();
   const router = useRouter();
   const data = Route.useLoaderData();
   const { sort, order } = Route.useSearch();
@@ -264,7 +266,7 @@ function UsersManagement () {
                     }
 
                     try {
-                      await queryApi("auth/setup", {
+                      const res = await queryApi("auth/setup", {
                         method: "POST",
                         body: {
                           email: data.email,
@@ -272,6 +274,9 @@ function UsersManagement () {
                           password: data.password,
                         },
                       });
+                      if (res.token) {
+                        await auth.loginWithToken(res.token);
+                      }
                       toast({
                         title: "Success",
                         description: "User created successfully",
@@ -280,7 +285,7 @@ function UsersManagement () {
                       router.invalidate();
                       setTimeout(() => {
                         navigate({
-                          to: "/login",
+                          to: "/",
                           replace: true,
                         });
                       }, 0);

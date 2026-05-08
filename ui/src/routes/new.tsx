@@ -60,7 +60,7 @@ FROM (
   (3, 30),
 );`;
 
-const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that defines when the task runs.
+const defaultTaskQuery = `-- To schedule task, start with a SCHEDULE statement that defines when the task runs.
 -- Examples:
 
 -- Every hour:
@@ -72,8 +72,8 @@ const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that def
 -- Every Monday at 1am:
 -- SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;
 
--- Never run automatically:
-SELECT NULL::SCHEDULE;
+-- Run once on startup:
+-- SELECT 'init'::SCHEDULE;
 `;
 
 // LocalStorage key for storing the app type preference
@@ -151,7 +151,7 @@ function NewDashboard () {
     } else {
       // Set default content based on app type
       const defaultContent =
-        appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
+				appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
       setEditorQuery(defaultContent);
       setRunningQuery(defaultContent);
     }
@@ -255,7 +255,7 @@ function NewDashboard () {
   const handleQueryChange = (value: string | undefined) => {
     const newQuery = value || "";
     const currentDefaultQuery =
-      appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
+			appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
 
     // Save to localStorage
     if (newQuery !== currentDefaultQuery && newQuery.trim() !== "") {
@@ -341,7 +341,7 @@ function NewDashboard () {
 
   const handleDiscardChanges = useCallback(() => {
     const defaultContent =
-      appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
+			appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
     editorStorage.clearChanges("new");
     setEditorQuery(defaultContent);
     setRunningQuery(defaultContent);
@@ -355,7 +355,7 @@ function NewDashboard () {
   // Helper to check if content has been modified
   const hasUnsavedChanges = () => {
     const defaultContent =
-      appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
+			appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
     return editorQuery !== defaultContent;
   };
 
@@ -416,7 +416,7 @@ function NewDashboard () {
                 <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
                   {loadDuration ? (
                     <span>
-                      Load time:{" "}
+											Load time:{" "}
                       {loadDuration >= 1000
                         ? `${(loadDuration / 1000).toFixed(2)}s`
                         : `${loadDuration}ms`}
@@ -457,7 +457,7 @@ function NewDashboard () {
                   className="size-4 text-ctext2 dark:text-dtext2 mr-0.5"
                   aria-hidden={true}
                 />
-                New
+								New
                 {systemConfig.tasksEnabled && systemConfig.editEnabled ? (
                   <Select value={appType} onValueChange={handleTypeChange}>
                     <SelectTrigger className="w-36">
@@ -469,14 +469,14 @@ function NewDashboard () {
                           className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-1.5"
                           aria-hidden={true}
                         />
-                        Dashboard
+												Dashboard
                       </SelectItem>
                       <SelectItem value="task">
                         <RiCodeSSlashFill
                           className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 mr-2"
                           aria-hidden={true}
                         />
-                        Task
+												Task
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -496,7 +496,7 @@ function NewDashboard () {
                 disabled={!hasUnsavedChanges()}
                 variant="destructive"
               >
-                Discard
+								Discard
               </Button>
             </Tooltip>
             <Tooltip
@@ -510,7 +510,7 @@ function NewDashboard () {
                 variant="secondary"
                 className={cx("my-2", { "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
               >
-                Create
+								Create
               </Button>
             </Tooltip>
             <Tooltip
@@ -524,7 +524,7 @@ function NewDashboard () {
                 isLoading={isPreviewLoading}
                 className="ml-2"
               >
-                Run
+								Run
               </Button>
             </Tooltip>
           </div>
@@ -587,14 +587,14 @@ function NewDashboard () {
                 onClick={() => setShowCreateDialog(false)}
                 variant="secondary"
               >
-                Cancel
+								Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={creating || !dashboardName.trim()}
                 isLoading={creating}
               >
-                Create
+								Create
               </Button>
             </DialogFooter>
           </form>
@@ -606,14 +606,14 @@ function NewDashboard () {
           <DialogHeader>
             <DialogTitle>Discard Changes</DialogTitle>
             <DialogDescription>
-              Are you sure you want to discard your changes and reset to the
-              default content? This action cannot be undone.
+							Are you sure you want to discard your changes and reset to the
+							default content? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDiscardDialog(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDiscardChanges}>
-              Discard
+							Discard
             </Button>
           </DialogFooter>
         </DialogContent>

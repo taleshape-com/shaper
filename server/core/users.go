@@ -591,17 +591,17 @@ type ClaimInvitePayload struct {
 	Timestamp    time.Time `json:"timestamp"`
 }
 
-func ClaimInvite(app *App, ctx context.Context, code string, name string, password string) error {
+func ClaimInvite(app *App, ctx context.Context, code string, name string, password string) (string, error) {
 	// Get invite details
 	var invite Invite
 	err := app.Sqlite.GetContext(ctx, &invite,
 		`SELECT * FROM invites WHERE code = $1`,
 		code)
 	if err != nil {
-		return fmt.Errorf("invalid invite code")
+		return "", fmt.Errorf("invalid invite code")
 	}
 	if isInviteExpired(invite.CreatedAt, app.InviteExp) {
-		return fmt.Errorf("invite has expired")
+		return "", fmt.Errorf("invite has expired")
 	}
 
 	// Check if email is already registered
@@ -610,16 +610,16 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 		`SELECT EXISTS(SELECT 1 FROM users WHERE email = $1 AND deleted_at IS NULL)`,
 		invite.Email)
 	if err != nil {
-		return fmt.Errorf("failed to check existing user: %w", err)
+		return "", fmt.Errorf("failed to check existing user: %w", err)
 	}
 	if existingUser {
-		return fmt.Errorf("email is already registered")
+		return "", fmt.Errorf("email is already registered")
 	}
 
 	// Generate password hash
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	userId := cuid2.Generate()
@@ -634,9 +634,9 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 
 	err = app.SubmitState(ctx, "claim_invite", payload)
 	if err != nil {
-		return fmt.Errorf("failed to submit claim invite state: %w", err)
+		return "", fmt.Errorf("failed to submit claim invite state: %w", err)
 	}
-	return nil
+	return userId, nil
 }
 
 func HandleClaimInvite(app *App, data []byte) bool {

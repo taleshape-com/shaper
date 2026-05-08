@@ -8,6 +8,7 @@ import { Button } from "../components/tremor/Button";
 import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
+import { useAuth } from "../lib/auth";
 
 interface Invite {
   code: string;
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupComponent () {
+  const auth = useAuth();
   const navigate = useNavigate({ from: "/signup" });
   const { toast } = useToast();
   const data = Route.useLoaderData();
@@ -81,12 +83,16 @@ function SignupComponent () {
         throw new Error(data.error);
       }
 
+      if (data.token) {
+        await auth.loginWithToken(data.token);
+      }
+
       toast({
         title: "Success",
         description: "Account created successfully",
       });
 
-      navigate({ to: "/login", replace: true });
+      navigate({ to: "/", replace: true });
     } catch (error) {
       toast({
         title: "Error",

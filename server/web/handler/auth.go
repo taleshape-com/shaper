@@ -246,7 +246,15 @@ func Setup(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 		}
 
-		return c.JSON(http.StatusOK, map[string]string{"id": id})
+		token, err := core.CreateSessionForUser(app, c.Request().Context(), id)
+		if err != nil {
+			c.Logger().Error("Failed to create session during setup", slog.Any("error", err))
+			// We created the user, but failed to create a session.
+			// Return the ID anyway, user can login manually.
+			return c.JSON(http.StatusOK, map[string]string{"id": id})
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"id": id, "token": token})
 	}
 }
 

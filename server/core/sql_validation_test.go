@@ -96,13 +96,13 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 		{"Create Table", "CREATE TABLE users (id INT)", true},
 		{"Drop Table", "DROP TABLE users", true},
 
-		// Disallowed
-		{"Install", "INSTALL httpfs", false},
-		{"Load", "LOAD httpfs", false},
+		{"Install", "INSTALL httpfs", true},
+		{"Load", "LOAD httpfs", true},
 		{"Set Config", "SET threads = 4", false},
 		{"Reset Config", "RESET threads", false},
 		{"Attach", "ATTACH 'file.db' AS other", true},
 		{"Detach", "DETACH other", true},
+		{"Create Secret", "CREATE SECRET (TYPE S3)", true},
 		{"Pragma", "PRAGMA threads=4", false},
 
 		// Allowed Side Effects
@@ -113,18 +113,37 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 
 		// WITH Statements
 		{"With Select", "WITH t AS (SELECT 1) SELECT * FROM t", true},
-		{"With Install", "WITH t AS (SELECT 1) INSTALL httpfs", false},
-		{"With Disallowed in CTE", "WITH t AS (INSTALL httpfs) SELECT 1", false},
+		{"With Install", "WITH t AS (SELECT 1) INSTALL httpfs", true},
+		{"With Disallowed in CTE", "WITH t AS (INSTALL httpfs) SELECT 1", true},
 
 		// Nested Queries
 		{"Parenthesized Select", "(SELECT 1)", true},
 		{"Union", "(SELECT 1) UNION SELECT 2", true},
-		{"Union with Disallowed", "(SELECT 1) UNION (INSTALL httpfs)", false},
+		{"Union with Disallowed", "(SELECT 1) UNION (INSTALL httpfs)", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "Regular SQL: %s", tt.sql)
+		})
+	}
+
+	initTests := []struct {
+		name     string
+		sql      string
+		expected bool
+	}{
+		{"Attach", "ATTACH 'file.db' AS other", true},
+		{"Detach", "DETACH other", true},
+		{"Create Secret", "CREATE SECRET (TYPE S3)", true},
+		{"Set Config", "SET threads = 4", false},   // Now false everywhere
+		{"Reset Config", "RESET threads", false}, // Now false everywhere
+		{"Install", "INSTALL httpfs", true},      // Now true everywhere
+	}
+
+	for _, tt := range initTests {
+		t.Run("Init/"+tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "Init SQL: %s", tt.sql)
 		})
 	}
 }

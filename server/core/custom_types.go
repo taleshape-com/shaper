@@ -52,8 +52,8 @@ var dbTypes = []struct {
 	{"INPUT", "UNION(\"input_varchar\" VARCHAR)", "string"},
 	{"PERCENT", "UNION(\"percent_double\" DOUBLE)", "percent"},
 	{"RELOAD", "UNION(\"reload_timestamp\" TIMESTAMP, \"reload_timestamptz\" TIMESTAMPTZ, \"reload_interval\" INTERVAL)", "timestamp"},
-	{"SCHEDULE", "UNION(\"schedule_timestamp\" TIMESTAMP, \"schedule_timestamptz\" TIMESTAMPTZ, \"schedule_interval\" INTERVAL)", "timestamp"},
-	{"SCHEDULE_ALL", "UNION(\"schedule_all_timestamp\" TIMESTAMP, \"schedule_all_timestamptz\" TIMESTAMPTZ, \"schedule_all_interval\" INTERVAL)", "timestamp"},
+	{"SCHEDULE", "UNION(\"schedule_timestamp\" TIMESTAMP, \"schedule_timestamptz\" TIMESTAMPTZ, \"schedule_interval\" INTERVAL, \"schedule_varchar\" VARCHAR)", "timestamp"},
+	{"SCHEDULE_ALL", "UNION(\"schedule_all_timestamp\" TIMESTAMP, \"schedule_all_timestamptz\" TIMESTAMPTZ, \"schedule_all_interval\" INTERVAL, \"schedule_all_varchar\" VARCHAR)", "timestamp"},
 	{"GAUGE", "UNION(\"gauge_interval\" INTERVAL, \"gauge_double\" DOUBLE)", "chart"},
 	{"GAUGE_PERCENT", "UNION(\"gauge_percent\" DOUBLE)", "percent"},
 	{"PIECHART", "UNION(\"piechart_double\" DOUBLE)", "chart"},
@@ -79,11 +79,13 @@ var dbTypes = []struct {
 
 func createType(db *sqlx.DB, name string, definition string) error {
 	// TODO: Disabled the drop since it's slow (like 500ms). Just be careful to not change definitions
-	// drop types first
-	// _, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
-	// if err != nil {
-	// 	return fmt.Errorf("failed to drop type %s: %w", name, err)
-	// }
+	// drop types first if changed - we changed SCHEDULE with 0.19.0
+	if name == "SCHEDULE" || name == "SCHEDULE_ALL" {
+		_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
+		if err != nil {
+			return fmt.Errorf("failed to drop type %s: %w", name, err)
+		}
+	}
 	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return fmt.Errorf("failed to create type %s: %w", name, err)

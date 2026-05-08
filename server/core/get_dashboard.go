@@ -135,7 +135,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			if result.ReloadAt != 0 {
 				return result, fmt.Errorf("Multiple RELOAD queries in dashboard %s", dashboardQuery.ID)
 			}
-			result.ReloadAt = getReloadValue(query.Rows)
+			result.ReloadAt = getScheduleTime(query.Rows)
 			continue
 		}
 
@@ -2007,7 +2007,7 @@ func isReload(columns []*sql.ColumnType, rows Rows) bool {
 	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
-func getReloadValue(rows Rows) int64 {
+func getScheduleTime(rows Rows) int64 {
 	if len(rows) == 0 {
 		return 0
 	}
@@ -2026,6 +2026,11 @@ func getReloadValue(rows Rows) int64 {
 		if t, ok := union.Value.(time.Time); ok {
 			// Convert to milliseconds since epoch
 			return t.UnixMilli()
+		}
+		if s, ok := union.Value.(string); ok {
+			if strings.ToLower(s) == "init" {
+				return -1
+			}
 		}
 		return 0
 	}
@@ -2113,7 +2118,7 @@ func (app *App) runDashboardQuery(ctx context.Context, conn *sqlx.Conn, sqlStrin
 		return nil, nil, err
 	}
 
-	var queryRows Rows
+	queryRows := [][]any{}
 	for rows.Next() {
 		row, err := rows.SliceScan()
 		if err != nil {
