@@ -428,11 +428,6 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 				}{Error: "Invalid vars query parameter"}, "  ")
 			}
 		}
-		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
-			return c.JSONPretty(http.StatusUnauthorized, struct {
-				Error string `json:"error"`
-			}{Error: "Unauthorized"}, "  ")
-		}
 
 		// type is extension of filename
 		fileType := ""
@@ -445,6 +440,33 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 				Error string `json:"error"`
 			}{Error: "Invalid file type"}, "  ")
 		}
+
+		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
+			sourceDashboardId := idClaim.(string)
+			if strings.ToLower(fileType) == "pdf" && !strings.HasPrefix(sourceDashboardId, core.TMP_DASHBOARD_PREFIX) {
+				variables := map[string]any{}
+				if vars, hasVariables := claims["variables"]; hasVariables {
+					variables = vars.(map[string]any)
+				}
+				allowed, err := core.ValidateDashboardDownload(app, c.Request().Context(), sourceDashboardId, idParam, varsAsQueryParams, variables)
+				if err != nil {
+					c.Logger().Error("error validating dashboard download:", slog.Any("error", err))
+					return c.JSONPretty(http.StatusUnauthorized, struct {
+						Error string `json:"error"`
+					}{Error: "Unauthorized"}, "  ")
+				}
+				if !allowed {
+					return c.JSONPretty(http.StatusUnauthorized, struct {
+						Error string `json:"error"`
+					}{Error: "Unauthorized"}, "  ")
+				}
+			} else {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+		}
+
 		queryIdInt := -1
 		if queryId != "" {
 			var err error
@@ -757,7 +779,6 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			pdfDateFormat,
 			intent.DashboardID,
 			intent.QueryParams,
-			variables,
 			token,
 			app.NoChromeSandbox,
 		)
@@ -769,7 +790,6 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			internalUrl,
 			intent.DashboardID,
 			intent.QueryParams,
-			variables,
 			token,
 			app.NoChromeSandbox,
 		)

@@ -326,7 +326,7 @@ jobs:
 
   pypi-publish:
     name: Publish to PyPI
-    needs: [release]
+    needs: [build-linux, build-darwin]
     runs-on: ubuntu-latest
     permissions:
       contents: read

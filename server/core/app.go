@@ -112,12 +112,14 @@ func New(
 	taskResultsStreamMaxAge time.Duration,
 	taskBroadcastSubject string,
 ) (*App, error) {
+	logger.Info("Setting up SQLite")
 	if err := initSQLite(sqliteDbx); err != nil {
 		return nil, err
 	}
 
 	internalDBName := ""
 	if duckDBDSN != ":memory:" {
+		logger.Info("Setting up DuckDB")
 		var err error
 		internalDBName, err = initDuckDB(duckDbx)
 		if err != nil {
@@ -125,6 +127,7 @@ func New(
 		}
 
 		// TODO: Remove this once data is migrated for all active users
+		logger.Info("Migrating data")
 		if err := migrateSystemData(sqliteDbx, duckDbx, deprecatedSchema, logger); err != nil {
 			return nil, err
 		}
@@ -483,6 +486,7 @@ func isLoginRequired(sdb *sqlx.DB) (bool, error) {
 	return count > 0, err
 }
 
+// TODO: This init costs us 27ms on startup. No need to recreate types and func ever time
 func initDuckDB(duckDbx *sqlx.DB) (string, error) {
 	var name string
 	if err := duckDbx.Get(&name, "SELECT current_database()"); err != nil {

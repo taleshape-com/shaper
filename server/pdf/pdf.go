@@ -38,7 +38,6 @@ func StreamDashboardPdf(
 	pdfDateFormat string,
 	dashboardId string,
 	params url.Values,
-	variables map[string]any,
 	jwtToken *jwt.Token,
 	noChromeSandbox bool,
 ) error {
@@ -139,7 +138,6 @@ func StreamDashboardPng(
 	baseUrl string,
 	dashboardId string,
 	params url.Values,
-	variables map[string]any,
 	jwtToken *jwt.Token,
 	noChromeSandbox bool,
 ) error {
