@@ -91,6 +91,14 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
     [updateJwtWithVars],
   );
 
+  const loginWithToken = useCallback(
+    async (token: string, vars?: Variables) => {
+      const v = vars ?? getVariables(getVariablesString());
+      return updateJwtWithVars(token, v);
+    },
+    [updateJwtWithVars],
+  );
+
   const updateVariables = useCallback(async (text: string) => {
     try {
       const vars = getVariables(text);
@@ -109,6 +117,7 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         login,
+        loginWithToken,
         hash,
         variables,
         updateVariables,

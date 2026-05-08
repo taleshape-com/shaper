@@ -15,6 +15,7 @@ export interface IAuthContext {
     password: string,
     variables?: Variables,
   ) => Promise<boolean>;
+  loginWithToken: (token: string, variables?: Variables) => Promise<boolean>;
   hash: string;
   variables: Variables;
   updateVariables: (text: string) => Promise<boolean>;

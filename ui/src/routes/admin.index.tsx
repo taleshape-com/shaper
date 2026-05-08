@@ -36,7 +36,7 @@ import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { Tooltip } from "../components/tremor/Tooltip";
 import { getSystemConfig, fetchSystemConfig } from "../lib/system";
-import { localStorageTokenKey } from "../lib/auth";
+import { useAuth } from "../lib/auth";
 
 interface IUser {
   id: string;
@@ -115,6 +115,7 @@ const getInviteLink = (code: string) => {
 };
 
 function UsersManagement () {
+  const auth = useAuth();
   const router = useRouter();
   const data = Route.useLoaderData();
   const { sort, order } = Route.useSearch();
@@ -274,7 +275,7 @@ function UsersManagement () {
                         },
                       });
                       if (res.token) {
-                        localStorage.setItem(localStorageTokenKey, res.token);
+                        await auth.loginWithToken(res.token);
                       }
                       toast({
                         title: "Success",

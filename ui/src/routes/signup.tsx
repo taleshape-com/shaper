@@ -8,7 +8,7 @@ import { Button } from "../components/tremor/Button";
 import { Input } from "../components/tremor/Input";
 import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
-import { localStorageTokenKey } from "../lib/auth";
+import { useAuth } from "../lib/auth";
 
 interface Invite {
   code: string;
@@ -45,6 +45,7 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupComponent () {
+  const auth = useAuth();
   const navigate = useNavigate({ from: "/signup" });
   const { toast } = useToast();
   const data = Route.useLoaderData();
@@ -83,7 +84,7 @@ function SignupComponent () {
       }
 
       if (data.token) {
-        localStorage.setItem(localStorageTokenKey, data.token);
+        await auth.loginWithToken(data.token);
       }
 
       toast({
