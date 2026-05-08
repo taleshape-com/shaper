@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
+	"github.com/jmoiron/sqlx"
 )
 
 const QUERY_MAX_ROWS = 3000
@@ -56,23 +57,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	headerImage := ""
 	footerLink := ""
 
-	db, cleanup, err := app.GetDuckDB(ctx)
+	conn, cleanup, err := app.getDashboardConn(ctx)
 	if err != nil {
-		return result, fmt.Errorf("Error getting DB: %v", err)
+		return result, err
 	}
 	defer cleanup()
-
-	conn, err := db.Connx(ctx)
-	if err != nil {
-		return result, fmt.Errorf("Error getting conn: %v", err)
-	}
-
-	if app.InternalDBName != "" {
-		searchPath := fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';", util.EscapeSQLIdentifier(app.InternalDBName))
-		if _, err := conn.ExecContext(ctx, searchPath); err != nil {
-			return result, fmt.Errorf("Error setting search path: %v", err)
-		}
-	}
 
 	for queryIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
@@ -89,41 +78,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
 			continue
 		}
-		varPrefix, varCleanup := buildVarPrefixNoSearchPath(app, singleVars, multiVars)
-		query := Query{Columns: []Column{}, Rows: Rows{}}
-		// run query
-		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
-		if varCleanup != "" {
-			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
-				return result, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
-			}
-		}
-		if err != nil {
-			return result, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
-		}
 
-		colTypes, err := rows.ColumnTypes()
+		queryRows, colTypes, err := app.runDashboardQuery(ctx, conn, sqlString, queryIndex, dashboardQuery.ID, singleVars, multiVars)
 		if err != nil {
 			return result, err
 		}
-		for rows.Next() {
-			row, err := rows.SliceScan()
-			if err != nil {
-				if closeErr := rows.Close(); closeErr != nil {
-					return result, fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
-				}
-				return result, err
-			}
-			query.Rows = append(query.Rows, row)
-			if len(query.Rows) > QUERY_MAX_ROWS {
-				// TODO: add a warning to the result and show to user
-				app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardQuery.ID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
-				if err := rows.Close(); err != nil {
-					return result, fmt.Errorf("Error closing rows while truncating (dashboard '%v'): %v", dashboardQuery.ID, err)
-				}
-				break
-			}
-		}
+
+		query := Query{Columns: []Column{}, Rows: queryRows}
 
 		if isSideEffect(app, sqlString) {
 			continue
@@ -389,6 +350,124 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		result.FooterLink = &footerLink
 	}
 	return result, err
+}
+
+func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId string, targetDashboardId string, queryParams url.Values, variables map[string]any) (bool, error) {
+	dashboard, err := GetDashboardInfo(app, ctx, sourceDashboardId)
+	if err != nil {
+		return false, err
+	}
+
+	cleanContent := util.StripSQLComments(dashboard.Content)
+	sqls, err := util.SplitSQLQueries(cleanContent)
+	if err != nil {
+		return false, err
+	}
+
+	singleVars, multiVars, err := getTokenVars(variables)
+	if err != nil {
+		return false, err
+	}
+
+	nextLabel := ""
+	nextMarkLines := []MarkLine{}
+	nextIsDownload := false
+	hideNextContentSection := false
+
+	conn, cleanup, err := app.getDashboardConn(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer cleanup()
+
+	for queryIndex, sqlString := range sqls {
+		sqlString = strings.TrimSpace(sqlString)
+		if sqlString == "" {
+			continue
+		}
+		if !IsAllowedStatement(app, sqlString) {
+			return false, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
+		}
+		if nextIsDownload {
+			nextIsDownload = false
+			continue
+		}
+		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
+			continue
+		}
+
+		queryRows, colTypes, err := app.runDashboardQuery(ctx, conn, sqlString, queryIndex, sourceDashboardId, singleVars, multiVars)
+		if err != nil {
+			return false, err
+		}
+
+		if isSideEffect(app, sqlString) {
+			continue
+		}
+
+		if isLabel(colTypes, queryRows) {
+			nextLabel = getSingleValue(queryRows)
+			continue
+		}
+
+		if isSectionTitle(colTypes, queryRows) {
+			hideNextContentSection = false
+			if len(queryRows) == 0 {
+				hideNextContentSection = true
+			}
+			continue
+		}
+
+		if isReload(colTypes, queryRows) || isHeaderImage(colTypes, queryRows) || isFooterLink(colTypes, queryRows) {
+			continue
+		}
+
+		if lines, ok := getMarkLines(colTypes, queryRows); ok {
+			nextMarkLines = append(nextMarkLines, lines...)
+			continue
+		}
+
+		rInfo := getRenderInfo(colTypes, queryRows, nextLabel, nextMarkLines)
+
+		if rInfo.Download == "pdf" {
+			id := sourceDashboardId
+			if rInfo.DownloadIdIndex != nil && len(queryRows) > 0 {
+				v := queryRows[0][*rInfo.DownloadIdIndex]
+				if v != nil {
+					id = v.(duckdb.Union).Value.(string)
+				} else {
+					id = ""
+				}
+			}
+			if id == targetDashboardId {
+				return true, nil
+			}
+		}
+
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
+			nextIsDownload = true
+		}
+
+		// Map columns for collectVars
+		var columns []Column
+		for colIndex, c := range colTypes {
+			tag := mapTag(colIndex, rInfo)
+			columns = append(columns, Column{
+				Name: c.Name(),
+				Tag:  tag,
+			})
+		}
+
+		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, queryRows)
+		if err != nil {
+			return false, err
+		}
+
+		nextLabel = ""
+		nextMarkLines = []MarkLine{}
+	}
+
+	return false, nil
 }
 
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
@@ -1987,6 +2066,66 @@ func getSingleValue(rows Rows) string {
 		return ""
 	}
 	return ""
+}
+
+func (app *App) getDashboardConn(ctx context.Context) (*sqlx.Conn, func(), error) {
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error getting DB: %v", err)
+	}
+
+	conn, err := db.Connx(ctx)
+	if err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("Error getting conn: %v", err)
+	}
+
+	if app.InternalDBName != "" {
+		searchPath := fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';", util.EscapeSQLIdentifier(app.InternalDBName))
+		if _, err := conn.ExecContext(ctx, searchPath); err != nil {
+			conn.Close()
+			cleanup()
+			return nil, nil, fmt.Errorf("Error setting search path: %v", err)
+		}
+	}
+
+	return conn, func() {
+		conn.Close()
+		cleanup()
+	}, nil
+}
+
+func (app *App) runDashboardQuery(ctx context.Context, conn *sqlx.Conn, sqlString string, queryIndex int, dashboardID string, singleVars map[string]string, multiVars map[string][]string) (Rows, []*sql.ColumnType, error) {
+	varPrefix, varCleanup := buildVarPrefixNoSearchPath(app, singleVars, multiVars)
+	rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
+	if varCleanup != "" {
+		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+			return nil, nil, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+		}
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
+	}
+	defer rows.Close()
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var queryRows Rows
+	for rows.Next() {
+		row, err := rows.SliceScan()
+		if err != nil {
+			return nil, nil, err
+		}
+		queryRows = append(queryRows, row)
+		if len(queryRows) > QUERY_MAX_ROWS {
+			app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
+			break
+		}
+	}
+	return queryRows, colTypes, nil
 }
 
 func lessThanTwoUniqueRangeValues(r []any) bool {
