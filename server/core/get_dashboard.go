@@ -2118,7 +2118,7 @@ func (app *App) runDashboardQuery(ctx context.Context, conn *sqlx.Conn, sqlStrin
 		return nil, nil, err
 	}
 
-	var queryRows Rows
+	queryRows := [][]any{}
 	for rows.Next() {
 		row, err := rows.SliceScan()
 		if err != nil {
