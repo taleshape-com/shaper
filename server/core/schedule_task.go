@@ -75,9 +75,12 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 	}
 	scheduleType, isSchedule := getScheduleColumn(colTypes, result)
 	if !isSchedule {
-		return nil, "", fmt.Errorf("first SQL query is not a SCHEDULE query")
+		return nil, "single", nil
 	}
 	reloadValue := getScheduleTime(result)
+	if reloadValue == -1 {
+		return nil, "init", nil
+	}
 	if reloadValue <= 0 {
 		return nil, scheduleType, nil
 	}
@@ -94,6 +97,20 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 
 	if scheduleType == "init" {
 		app.Logger.WithGroup("tasks").Debug("Running init task immediately", slog.String("task", taskID))
+		// set next_run_type = 'init' in DB so it runs on startup
+		_, err = app.Sqlite.ExecContext(
+			ctx,
+			`INSERT INTO task_runs
+			(task_id, next_run_type)
+			VALUES ($1, $2)
+			ON CONFLICT(task_id) DO UPDATE SET next_run_at = NULL, next_run_type = $2`,
+			taskID,
+			"init",
+		)
+		if err != nil {
+			app.Logger.WithGroup("tasks").Error("Error inserting init task into DB", slog.Any("error", err), slog.String("task", taskID))
+		}
+
 		go func() {
 			runResult, err := RunTask(app, ctx, content)
 			if err != nil {
@@ -144,7 +161,7 @@ func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, c
 // All nodes do the scheduling so nodes can come and go.
 func scheduleTask(app *App, ctx context.Context, taskID string, runAt time.Time, runType string) {
 	t := time.AfterFunc(time.Until(runAt), func() {
-		if runType == "all" {
+		if runType == "all" || runType == "init" {
 			runAll(app, taskID, runAt)
 			return
 		}
