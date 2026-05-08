@@ -46,6 +46,24 @@ func getScheduleColumn(columns []*sql.ColumnType, rows Rows) (string, bool) {
 	return scheduleType, (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
+func needsNoTransaction(sql string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(sql))
+	if strings.HasPrefix(upper, "ATTACH") || strings.HasPrefix(upper, "DETACH") {
+		return true
+	}
+	if strings.HasPrefix(upper, "CREATE") && (strings.Contains(upper, "SECRET")) {
+		// More precise check for CREATE SECRET
+		parts := strings.Fields(upper)
+		if len(parts) >= 2 && parts[0] == "CREATE" && parts[1] == "SECRET" {
+			return true
+		}
+	}
+	if strings.HasPrefix(upper, "INSTALL") || strings.HasPrefix(upper, "LOAD") {
+		return true
+	}
+	return false
+}
+
 func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
 	result := TaskResult{
 		StartedAt: time.Now().UnixMilli(),
@@ -70,8 +88,16 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 	defer conn.Close()
 
-	// Detect if it's an init task to decide on transaction
+	// Detect if it's an init task or contains transaction-breaking statements
 	isInit := false
+	anyNoTx := false
+	for _, s := range sqls {
+		if needsNoTransaction(s) {
+			anyNoTx = true
+			break
+		}
+	}
+
 	if len(sqls) > 0 {
 		sqlString := strings.TrimSpace(sqls[0])
 		// We use a separate temporary query to check the schedule
@@ -97,18 +123,19 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 					timeVal := getScheduleTime(resRows)
 					if timeVal == -1 {
 						isInit = true
-						app.Logger.Info("Detected init task", slog.String("first_query", sqlString))
 					}
 				}
 			}()
 		} else {
-			app.Logger.Info("Failed to execute first query for init detection", slog.Any("error", err), slog.String("sql", sqlString))
+			app.Logger.Debug("Failed to execute first query for init detection", slog.Any("error", err), slog.String("sql", sqlString))
 		}
 	}
-	app.Logger.Info("RunTask", slog.Bool("isInit", isInit), slog.Int("queries", len(sqls)))
+
+	useTx := !isInit && !anyNoTx
+	app.Logger.Debug("RunTask", slog.Bool("isInit", isInit), slog.Bool("anyNoTx", anyNoTx), slog.Int("queries", len(sqls)))
 
 	var tx *sqlx.Tx
-	if !isInit {
+	if useTx {
 		tx, err = conn.BeginTxx(ctx, nil)
 		if err != nil {
 			return result, fmt.Errorf("Error starting transaction: %v", err)
@@ -129,10 +156,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 		}
 
 		if !IsAllowedTaskStatement(sqlString, isInit) {
-			errMsg := "Statement not allowed in tasks (e.g., INSTALL, LOAD, PRAGMA)"
-			if !isInit {
-				errMsg = "Statement not allowed in tasks (e.g., INSTALL, LOAD, PRAGMA, ATTACH, CREATE SECRET, SET configuration)"
-			}
+			errMsg := "Statement not allowed in tasks (e.g., PRAGMA, SET configuration)"
 			queryResult.Error = &errMsg
 			success = false
 			result.Queries = append(result.Queries, queryResult)
@@ -145,7 +169,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 		fullSQL := varPrefix + sqlString
 
 		var rows *sqlx.Rows
-		if isInit {
+		if !useTx {
 			rows, err = conn.QueryxContext(ctx, fullSQL)
 		} else {
 			rows, err = tx.QueryxContext(ctx, fullSQL)
@@ -238,14 +262,14 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 
 	if success {
-		if !isInit {
+		if useTx {
 			if err := tx.Commit(); err != nil {
 				return result, fmt.Errorf("Error committing transaction: %v", err)
 			}
 		}
 		result.Success = true
 	} else {
-		if !isInit {
+		if useTx {
 			if err := tx.Rollback(); err != nil {
 				return result, fmt.Errorf("Error rolling back transaction: %v", err)
 			}

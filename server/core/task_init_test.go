@@ -100,10 +100,27 @@ func TestInitTask(t *testing.T) {
 		assert.Equal(t, "hello", val)
 	})
 
-	t.Run("Non-init task cannot ATTACH", func(t *testing.T) {
+	t.Run("Non-init task can ATTACH", func(t *testing.T) {
 		content := `
 			SELECT (now() + interval '1 day')::SCHEDULE;
-			ATTACH ':memory:' AS should_fail;
+			ATTACH ':memory:' AS non_init_db;
+			CREATE TABLE non_init_db.test (val TEXT);
+			INSERT INTO non_init_db.test VALUES ('global');
+		`
+		result, err := RunTask(app, ctx, content)
+		assert.NoError(t, err)
+		assert.True(t, result.Success)
+
+		var val string
+		err = app.DuckDB.Get(&val, "SELECT val FROM non_init_db.test")
+		assert.NoError(t, err)
+		assert.Equal(t, "global", val)
+	})
+
+	t.Run("Task with SET fails", func(t *testing.T) {
+		content := `
+			SELECT 'init'::SCHEDULE;
+			SET memory_limit='2GB';
 		`
 		result, err := RunTask(app, ctx, content)
 		assert.NoError(t, err)
@@ -111,10 +128,11 @@ func TestInitTask(t *testing.T) {
 		assert.Contains(t, *result.Queries[0].Error, "Statement not allowed in tasks")
 	})
 
-	t.Run("Init task with SET", func(t *testing.T) {
+	t.Run("Task with INSTALL and LOAD", func(t *testing.T) {
 		content := `
-			SELECT 'init'::SCHEDULE;
-			SET memory_limit='2GB';
+			SELECT NULL::SCHEDULE;
+			INSTALL httpfs;
+			LOAD httpfs;
 		`
 		result, err := RunTask(app, ctx, content)
 		assert.NoError(t, err)

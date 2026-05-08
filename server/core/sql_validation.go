@@ -56,8 +56,6 @@ var allowedDataReadingStatements = [][]string{
 }
 
 var disallowedTaskStatements = [][]string{
-	{"INSTALL"},
-	{"LOAD"},
 	{"PRAGMA"},
 }
 
@@ -241,14 +239,19 @@ func IsAllowedTaskStatement(sql string, isInit bool) bool {
 		}
 	}
 
-	// Handle ATTACH/DETACH: only allowed for init tasks
-	if strings.HasPrefix(upper, "ATTACH") || strings.HasPrefix(upper, "DETACH") {
-		return isInit
+	// Handle INSTALL/LOAD: always allowed in tasks
+	if strings.HasPrefix(upper, "INSTALL") || strings.HasPrefix(upper, "LOAD") {
+		return true
 	}
 
-	// Handle CREATE SECRET: only allowed for init tasks
+	// Handle ATTACH/DETACH: always allowed in tasks
+	if strings.HasPrefix(upper, "ATTACH") || strings.HasPrefix(upper, "DETACH") {
+		return true
+	}
+
+	// Handle CREATE SECRET: always allowed in tasks
 	if strings.HasPrefix(upper, "CREATE") && matchesPrefix(upper, []string{"CREATE", "SECRET"}) {
-		return isInit
+		return true
 	}
 
 	// Handle SET config: if it's SET but not SET VARIABLE
@@ -256,16 +259,16 @@ func IsAllowedTaskStatement(sql string, isInit bool) bool {
 		if matchesPrefix(upper, []string{"SET", "VARIABLE"}) {
 			return true
 		}
-		// Other SET statements (config) are only allowed for init tasks
-		return isInit
+		// Other SET statements (config) are never allowed in tasks
+		return false
 	}
 	// Handle RESET config: if it's RESET but not RESET VARIABLE
 	if strings.HasPrefix(upper, "RESET") {
 		if matchesPrefix(upper, []string{"RESET", "VARIABLE"}) {
 			return true
 		}
-		// Other RESET statements (config) are only allowed for init tasks
-		return isInit
+		// Other RESET statements (config) are never allowed in tasks
+		return false
 	}
 
 	return true
