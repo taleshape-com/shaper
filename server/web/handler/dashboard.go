@@ -779,7 +779,6 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			pdfDateFormat,
 			intent.DashboardID,
 			intent.QueryParams,
-			variables,
 			token,
 			app.NoChromeSandbox,
 		)
@@ -791,7 +790,6 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 			internalUrl,
 			intent.DashboardID,
 			intent.QueryParams,
-			variables,
 			token,
 			app.NoChromeSandbox,
 		)
