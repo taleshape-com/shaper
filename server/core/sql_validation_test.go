@@ -73,6 +73,14 @@ func TestIsAllowedStatement(t *testing.T) {
 		{"False match for keyword prefix", "SETTINGS", false},
 		{"Empty string", "", true},
 		{"Space string", "   ", true},
+
+		// Query function cases
+		{"Query function", "SELECT * FROM query('DROP TABLE users')", false},
+		{"Quoted query function", "SELECT * FROM \"query\"('DROP TABLE users')", false},
+		{"Query function with spaces", "SELECT * FROM query   ('DROP TABLE users')", false},
+		{"Query table function (allowed)", "SELECT * FROM query_table('users')", true},
+		{"Query in string literal", "SELECT 'this is a query() function'", true},
+		{"Similar function name", "SELECT some_query()", true},
 	}
 
 	for _, tt := range tests {

@@ -91,6 +91,9 @@ func matchesPrefix(upperSql string, prefix []string) bool {
 }
 
 func IsAllowedStatement(app *App, sql string) bool {
+	if containsQueryFunction(sql) {
+		return false
+	}
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
@@ -177,6 +180,9 @@ func IsAllowedStatement(app *App, sql string) bool {
 }
 
 func IsAllowedTaskStatement(sql string) bool {
+	if containsQueryFunction(sql) {
+		return false
+	}
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
@@ -273,6 +279,74 @@ func IsAllowedTaskStatement(sql string) bool {
 
 	return true
 }
+
+func containsQueryFunction(sql string) bool {
+	var inSingleQuote bool
+	var inDoubleQuote bool
+	upperSql := strings.ToUpper(sql)
+
+	for i := 0; i < len(sql); i++ {
+		c := sql[i]
+		if c == '\'' && !inDoubleQuote {
+			if i+1 < len(sql) && sql[i+1] == '\'' {
+				i++ // Escaped quote
+				continue
+			}
+			inSingleQuote = !inSingleQuote
+			continue
+		}
+		if c == '"' && !inSingleQuote {
+			if i+1 < len(sql) && sql[i+1] == '"' {
+				i++ // Escaped quote
+				continue
+			}
+			inDoubleQuote = !inDoubleQuote
+			continue
+		}
+
+		if inSingleQuote {
+			continue
+		}
+
+		// Look for "QUERY" as a word, but not inside single quotes.
+		// It can be inside double quotes (identifiers), like "query"(...)
+		if i+5 <= len(sql) && upperSql[i:i+5] == "QUERY" {
+			// Ensure it's bounded on the left
+			leftBounded := false
+			if i == 0 {
+				leftBounded = true
+			} else {
+				prev := sql[i-1]
+				if !isAlphaNumOrUnderscore(prev) {
+					leftBounded = true
+				}
+			}
+
+			if leftBounded {
+				j := i + 5
+				// Ensure it's bounded on the right
+				// It shouldn't be part of a longer word like QUERY_TABLE
+				if j < len(sql) && isAlphaNumOrUnderscore(sql[j]) {
+					continue // e.g. QUERY_TABLE
+				}
+
+				// Now look ahead for '(' skipping spaces and double quotes
+				for j < len(sql) && (isSpace(sql[j]) || sql[j] == '"') {
+					j++
+				}
+				if j < len(sql) && sql[j] == '(' {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isAlphaNumOrUnderscore(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+}
+
 
 func splitWithStatement(sql string) (string, []string, error) {
 	upper := strings.ToUpper(sql)
