@@ -2156,60 +2156,52 @@ func lessThanTwoUniqueRangeValues(r []any) bool {
 }
 
 func duckMapToMap(value any) any {
-	if d, ok := value.(map[string]any); ok {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case map[string]any:
 		m := make(map[string]any)
-		for k, v := range d {
-			if vStr, ok := v.(string); ok {
-				m[k] = vStr
-				continue
-			}
-			if vArr, ok := v.([]any); ok {
-				arr := make([]any, len(vArr))
-				for i, x := range vArr {
-					arr[i] = duckMapToMap(x)
-				}
-				m[k] = arr
-				continue
-			}
-			if vMap, ok := v.(map[string]any); ok {
-				m[k] = duckMapToMap(vMap)
-				continue
-			}
-			if vMap, ok := v.(duckdb.Map); ok {
-				m[k] = duckMapToMap(vMap)
-				continue
-			}
-			m[k] = v
+		for k, val := range v {
+			m[k] = duckMapToMap(val)
 		}
 		return m
-	}
-	if d, ok := value.(duckdb.Map); ok {
+	case duckdb.Map:
 		m := make(map[string]any)
-		for k, v := range d {
-			kStr := fmt.Sprint(k)
-			if vStr, ok := v.(string); ok {
-				m[kStr] = vStr
-				continue
-			}
-			if vArr, ok := v.([]any); ok {
-				arr := make([]any, len(vArr))
-				for i, x := range vArr {
-					arr[i] = duckMapToMap(x)
-				}
-				m[kStr] = arr
-				continue
-			}
-			if vMap, ok := v.(map[string]any); ok {
-				m[kStr] = duckMapToMap(vMap)
-				continue
-			}
-			if vMap, ok := v.(duckdb.Map); ok {
-				m[kStr] = duckMapToMap(vMap)
-				continue
-			}
-			m[kStr] = v
+		for k, val := range v {
+			m[fmt.Sprint(k)] = duckMapToMap(val)
 		}
 		return m
+	case duckdb.OrderedMap:
+		m := make(map[string]any)
+		keys := v.Keys()
+		values := v.Values()
+		for i := 0; i < len(keys); i++ {
+			m[fmt.Sprint(keys[i])] = duckMapToMap(values[i])
+		}
+		return m
+	case *duckdb.OrderedMap:
+		m := make(map[string]any)
+		keys := v.Keys()
+		values := v.Values()
+		for i := 0; i < len(keys); i++ {
+			m[fmt.Sprint(keys[i])] = duckMapToMap(values[i])
+		}
+		return m
+	case []any:
+		arr := make([]any, len(v))
+		for i, val := range v {
+			arr[i] = duckMapToMap(val)
+		}
+		return arr
+	case duckdb.Union:
+		return duckMapToMap(v.Value)
+	case duckdb.Decimal:
+		return v.Float64()
+	case duckdb.Interval:
+		return formatInterval(v)
 	}
+
 	return value
 }
