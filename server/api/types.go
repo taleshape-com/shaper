@@ -30,6 +30,7 @@ type TaskInfo struct {
 	LastRunSuccess  *bool      `json:"lastRunSuccess,omitempty"`
 	LastRunDuration *int64     `json:"lastRunDuration,omitempty"`
 	NextRunAt       *time.Time `json:"nextRunAt,omitempty"`
+	NextRunType     string     `json:"nextRunType,omitempty"`
 }
 
 // App represents an app (dashboard or task) from the API.

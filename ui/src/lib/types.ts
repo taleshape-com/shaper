@@ -19,6 +19,7 @@ interface ITaskInfo {
   lastRunSuccess?: boolean;
   lastRunDuration?: number; // in milliseconds
   nextRunAt?: string;
+  nextRunType?: string;
 }
 
 export type IDashboard = Omit<IApp, "type"> & {
