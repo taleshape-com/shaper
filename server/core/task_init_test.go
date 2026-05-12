@@ -74,7 +74,7 @@ func TestInitTask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, result.Success)
 		assert.Equal(t, int64(-1), result.NextRunAt)
-		assert.Equal(t, "single", result.ScheduleType)
+		assert.Equal(t, "all", result.ScheduleType)
 
 		// Verify table was created and data inserted (since no transaction for init)
 		var val int32

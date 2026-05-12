@@ -208,6 +208,7 @@ func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string)
 				timeVal := getScheduleTime(queryResult.ResultRows)
 				if timeVal == -1 {
 					isInit = true
+					scheduleType = "all"
 				}
 				result.NextRunAt = timeVal
 				result.ScheduleType = scheduleType
