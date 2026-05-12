@@ -50,7 +50,8 @@ func setupListAppsTestApp(t *testing.T) *App {
 			last_run_at TIMESTAMP,
 			last_run_success BOOLEAN,
 			last_run_duration INTEGER,
-			next_run_at TIMESTAMP
+			next_run_at TIMESTAMP,
+			next_run_type TEXT NOT NULL DEFAULT 'single'
 		);`,
 	}
 

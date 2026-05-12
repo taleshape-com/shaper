@@ -802,13 +802,23 @@ function Index () {
                                 <RuntimeTooltip
                                   lastRunAt={app.taskInfo.lastRunAt}
                                   nextRunAt={app.taskInfo.nextRunAt}
+                                  nextRunType={app.taskInfo.nextRunType}
                                 >
                                   <span className="bg-cerr dark:bg-derr text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                     Task Error
                                   </span>
                                 </RuntimeTooltip>
                               ) : (
-                                app.taskInfo.nextRunAt != null && (
+                                app.taskInfo.nextRunType === "init" ? (
+                                  <RuntimeTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                    nextRunType={app.taskInfo.nextRunType}
+                                  >
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                      Init Task
+                                    </span>
+                                  </RuntimeTooltip>
+                                ) : app.taskInfo.nextRunAt != null && (
                                   <RuntimeTooltip
                                     lastRunAt={app.taskInfo.lastRunAt}
                                   >
@@ -1075,21 +1085,34 @@ function Index () {
 function RuntimeTooltip ({
   lastRunAt,
   nextRunAt,
+  nextRunType,
   children,
 }: {
   lastRunAt?: number | string;
   nextRunAt?: number | string;
+  nextRunType?: string;
   children?: React.ReactNode;
 }) {
-  if (lastRunAt == null) return children;
+  if (lastRunAt == null && nextRunAt == null && nextRunType !== "init") {return children;}
   const tooltipContent = (
     <>
-      Last Run: <RelativeDate refresh date={new Date(lastRunAt)} />
-      {nextRunAt != null && (
+      {lastRunAt != null && (
         <>
-          <br />
-          Next Run: <RelativeDate refresh date={new Date(nextRunAt)} />
+          Last Run: <RelativeDate refresh date={new Date(lastRunAt)} />
         </>
+      )}
+      {nextRunType === "init" ? (
+        <>
+          {lastRunAt != null && <br />}
+          Next Run: Run on startup
+        </>
+      ) : (
+        nextRunAt != null && (
+          <>
+            {lastRunAt != null && <br />}
+            Next Run: <RelativeDate refresh date={new Date(nextRunAt)} />
+          </>
+        )
       )}
     </>
   );

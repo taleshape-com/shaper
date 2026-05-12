@@ -36,6 +36,7 @@ interface TaskData {
   path: string
   content: string
   nextRunAt?: string
+  nextRunType?: string
   lastRunAt?: string
   lastRunSuccess?: boolean
   lastRunDuration?: number
@@ -213,11 +214,23 @@ function TaskEdit () {
           <div className="flex items-center p-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
               <div className="px-4">
-                {task.nextRunAt && (
+                {task.nextRunType === "init" ? (
                   <div className="mt-4 mb-4 text-sm text-ctext2 dark:text-dtext2">
                     <div className="font-medium">Task Scheduled</div>
-                    <div><RelativeDate refresh date={new Date(task.nextRunAt)} /></div>
+                    <div>Run on startup</div>
                   </div>
+                ) : (
+                  task.nextRunAt && (
+                    <div className="mt-4 mb-4 text-sm text-ctext2 dark:text-dtext2">
+                      <div className="font-medium">Task Scheduled</div>
+                      <div>
+                        <RelativeDate
+                          refresh
+                          date={new Date(task.nextRunAt)}
+                        />
+                      </div>
+                    </div>
+                  )
                 )}
                 {task.lastRunAt && (
                   <div className="mt-4 mb-4 text-sm text-ctext2 dark:text-dtext2">

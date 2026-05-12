@@ -26,6 +26,7 @@ type AppDbRecord struct {
 	LastRunSuccess  *bool      `db:"last_run_success"`
 	LastRunDuration *int64     `db:"last_run_duration"`
 	NextRunAt       *time.Time `db:"next_run_at"`
+	NextRunType     *string    `db:"next_run_type"`
 }
 
 
@@ -170,7 +171,8 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 			t.last_run_at,
 			t.last_run_success,
 			t.last_run_duration,
-			t.next_run_at
+			t.next_run_at,
+			t.next_run_type
 		FROM apps a
 		LEFT JOIN folder_path fp ON a.folder_id = fp.id
 		LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
@@ -193,7 +195,8 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 			NULL as last_run_at,
 			NULL as last_run_success,
 			NULL as last_run_duration,
-			NULL as next_run_at
+			NULL as next_run_at,
+			NULL as next_run_type
 		FROM folders f
 		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
 		WHERE f.parent_folder_id %s
@@ -246,7 +249,8 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 			t.last_run_at,
 			t.last_run_success,
 			t.last_run_duration,
-			t.next_run_at
+			t.next_run_at,
+			t.next_run_type
 		FROM apps a
 		LEFT JOIN folder_path fp ON a.folder_id = fp.id
 		LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
@@ -269,7 +273,8 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 			NULL as last_run_at,
 			NULL as last_run_success,
 			NULL as last_run_duration,
-			NULL as next_run_at
+			NULL as next_run_at,
+			NULL as next_run_type
 		FROM folders f
 		LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
 		WHERE %s
@@ -336,6 +341,9 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 			LastRunSuccess:  a.LastRunSuccess,
 			LastRunDuration: a.LastRunDuration,
 			NextRunAt:       a.NextRunAt,
+		}
+		if a.NextRunType != nil {
+			apps[i].TaskInfo.NextRunType = *a.NextRunType
 		}
 		if app.NoPublicSharing && apps[i].Visibility != nil && *apps[i].Visibility == "public" {
 			apps[i].Visibility = nil
