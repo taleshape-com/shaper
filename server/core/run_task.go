@@ -64,7 +64,7 @@ func needsNoTransaction(sql string) bool {
 	return false
 }
 
-func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
+func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string) (TaskResult, error) {
 	result := TaskResult{
 		StartedAt: time.Now().UnixMilli(),
 		Queries:   []TaskQueryResult{},
@@ -77,11 +77,6 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 	result.TotalQueries = len(sqls)
 
-	db, cleanup, err := app.GetDuckDB(ctx)
-	if err != nil {
-		return result, fmt.Errorf("Error getting DB: %v", err)
-	}
-	defer cleanup()
 	conn, err := db.Connx(ctx)
 	if err != nil {
 		return result, fmt.Errorf("Error getting conn: %v", err)
@@ -99,7 +94,7 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 
 	isInit := false
 	useTx := !anyNoTx
-	app.Logger.Debug("RunTask", slog.Bool("anyNoTx", anyNoTx), slog.Int("queries", len(sqls)))
+	app.Logger.Debug("executeTaskOnDB", slog.Bool("anyNoTx", anyNoTx), slog.Int("queries", len(sqls)))
 
 	var tx *sqlx.Tx
 	if useTx {
@@ -259,4 +254,17 @@ func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) 
 	}
 
 	return result, nil
+}
+
+const skipInitTasksKey contextKey = "skipInitTasks"
+
+func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
+	ctx = context.WithValue(ctx, skipInitTasksKey, true)
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("Error getting DB: %v", err)
+	}
+	defer cleanup()
+
+	return executeTaskOnDB(app, ctx, db, content)
 }
