@@ -82,6 +82,8 @@ const LineChart = (props: LineChartProps) => {
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
     const isTimestampData = isDatableType(indexType) || indexType === "number";
+    // show dots when there are not too many data points per category
+    const showDots = data.length / chartWidth / categories.length > 0.02;
 
     // Set up chart options
     const series: LineSeriesOption[] = categories.map((category) => ({
@@ -109,8 +111,7 @@ const LineChart = (props: LineChartProps) => {
       itemStyle: {
         color: categoryColors.get(category),
         borderWidth: 0,
-        // always show dots when there are not too many data points and we only have a single line
-        opacity: categories.length > 1 || (data.length / (chartWidth) > 0.02) ? 0 : 1,
+        opacity: showDots ? 0 : 1,
       },
     }));
 
