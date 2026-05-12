@@ -29,6 +29,33 @@ type BroadCastPayload struct {
 	Content string `json:"content"`
 }
 
+func GetInitTasks(app *App, ctx context.Context) ([]string, error) {
+	query := `WITH RECURSIVE folder_paths AS (
+			SELECT id, name, CAST(name AS TEXT) as full_path, 0 as depth
+			FROM folders
+			WHERE parent_folder_id IS NULL
+			UNION ALL
+			SELECT f.id, f.name, fp.full_path || '/' || f.name, fp.depth + 1
+			FROM folders f
+			JOIN folder_paths fp ON f.parent_folder_id = fp.id
+		)
+		SELECT
+			a.content
+		FROM task_runs t
+		JOIN apps a ON a.id = t.task_id
+		LEFT JOIN folder_paths fp ON fp.id = a.folder_id
+		WHERE a.type = 'task' AND t.next_run_type = 'init'
+		ORDER BY
+			CASE WHEN t.next_run_type = 'init' THEN 0 ELSE 1 END,
+			depth ASC,
+			fp.full_path ASC,
+			a.name ASC`
+
+	var contents []string
+	err := app.Sqlite.SelectContext(ctx, &contents, query)
+	return contents, err
+}
+
 func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, string, error) {
 	// Run first query
 	cleanContent := util.StripSQLComments(content)

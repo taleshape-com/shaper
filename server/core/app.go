@@ -286,6 +286,22 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		}
 	}
 
+	if !app.NoTasks && ctx.Value(skipInitTasksKey) == nil {
+		initTasks, err := GetInitTasks(app, ctx)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to get init tasks: %w", err)
+		}
+		for _, content := range initTasks {
+			res, err := executeTaskOnDB(app, ctx, dbx, content)
+			if err != nil {
+				app.Logger.WithGroup("tasks").Error("Error running init task on memory db", slog.Any("error", err))
+			} else if !res.Success {
+				app.Logger.WithGroup("tasks").Error("Init task failed on memory db", slog.Any("errors", res.Queries))
+			}
+		}
+	}
+
 	if _, err := dbx.Exec("SET lock_configuration = true"); err != nil {
 		cleanup()
 		return nil, nil, fmt.Errorf("failed to lock configuration: %w", err)
