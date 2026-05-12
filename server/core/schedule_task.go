@@ -458,7 +458,7 @@ func ManualTaskRun(app *App, ctx context.Context, content string) (TaskResult, e
 	if err != nil {
 		return TaskResult{}, fmt.Errorf("failed to get next task run: %w", err)
 	}
-	if scheduleType == "all" {
+	if scheduleType == "all" || scheduleType == "init" {
 		broadcastManualTask(app, content)
 	}
 	return RunTask(app, ctx, content)
