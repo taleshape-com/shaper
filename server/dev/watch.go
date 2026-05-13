@@ -24,6 +24,7 @@ import (
 
 const (
 	DASHBOARD_SUFFIX = ".dashboard.sql"
+	TASK_SUFFIX      = ".task.sql"
 	shaperIDPrefix   = "-- shaperid:"
 )
 
@@ -168,7 +169,7 @@ func (d *Dev) throttleFileEvent(filePath string, handler func()) {
 
 func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 	if !strings.HasSuffix(p, DASHBOARD_SUFFIX) {
-		if strings.HasSuffix(p, ".sql") {
+		if strings.HasSuffix(p, ".sql") && !strings.HasSuffix(p, TASK_SUFFIX) {
 			fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
 		}
 		return
@@ -481,7 +482,7 @@ func ensureShaperIDsForDir(dir string) (int, error) {
 			return nil
 		}
 		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
-			if strings.HasSuffix(d.Name(), ".sql") {
+			if strings.HasSuffix(d.Name(), ".sql") && !strings.HasSuffix(d.Name(), TASK_SUFFIX) {
 				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
 			}
 			return nil

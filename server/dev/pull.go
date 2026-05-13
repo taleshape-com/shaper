@@ -37,7 +37,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}
 
-	fmt.Printf("Pulling dashboard changes...\n\n")
+	fmt.Printf("Pulling app changes...\n\n")
 
 	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
 	if err != nil {
@@ -54,13 +54,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return fmt.Errorf("failed to initialize API client: %w", err)
 	}
 
-	// Fetch all dashboards and folders from remote
-	fmt.Println("Fetching dashboards and folders from", cfg.URL)
-	remoteDashboards, folders, err := fetchAllDashboardsAndFolders(ctx, client)
+	// Fetch all apps and folders from remote
+	fmt.Println("Fetching apps and folders from", cfg.URL)
+	remoteApps, folders, err := fetchAllAppsAndFolders(ctx, client)
 	if err != nil {
-		return fmt.Errorf("failed to fetch dashboards: %w", err)
+		return fmt.Errorf("failed to fetch apps: %w", err)
 	}
-	fmt.Printf("Found %d remote dashboards\n", len(remoteDashboards))
+	fmt.Printf("Found %d remote apps\n", len(remoteApps))
 	fmt.Printf("Found %d remote folders\n", len(folders))
 
 	// Build a map of folder paths to their updatedAt timestamps
@@ -69,13 +69,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		folderUpdatedAt[folder.Path+folder.Name+"/"] = folder.UpdatedAt
 	}
 
-	// Scan local files for existing dashboard IDs
-	fmt.Println("Loading dashboards from folder", watchDir)
-	localIDs, err := scanLocalDashboardIDs(watchDir)
+	// Scan local files for existing app IDs
+	fmt.Println("Loading apps from folder", watchDir)
+	localIDs, err := scanLocalAppIDs(watchDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan local dashboards: %w", err)
+		return fmt.Errorf("failed to scan local apps: %w", err)
 	}
-	fmt.Printf("Found %d local dashboards.\n", len(localIDs))
+	fmt.Printf("Found %d local apps.\n", len(localIDs))
 
 	// Compare and categorize
 	var toCreate, toUpdate []api.App
@@ -89,38 +89,42 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	}
 
 	// Track file paths to detect duplicates
-	seenPaths := make(map[string]string) // path -> dashboard name (for error reporting)
+	seenPaths := make(map[string]string) // path -> app name (for error reporting)
 
-	for _, dashboard := range remoteDashboards {
-		if dashboard.UpdatedAt.After(maxUpdatedAt) {
-			maxUpdatedAt = dashboard.UpdatedAt
+	for _, app := range remoteApps {
+		if app.UpdatedAt.After(maxUpdatedAt) {
+			maxUpdatedAt = app.UpdatedAt
 		}
 
 		// Check for duplicate file paths
-		filePath := filepath.Join(strings.TrimPrefix(dashboard.Path, "/"), sanitizeFileName(dashboard.Name)+DASHBOARD_SUFFIX)
-		if existingName, exists := seenPaths[filePath]; exists {
-			return fmt.Errorf("duplicate dashboard name %q in folder %q (conflicts with %q) - please rename one of them before pulling", dashboard.Name, dashboard.Path, existingName)
+		suffix := DASHBOARD_SUFFIX
+		if app.Type == "task" {
+			suffix = TASK_SUFFIX
 		}
-		seenPaths[filePath] = dashboard.Name
+		filePath := filepath.Join(strings.TrimPrefix(app.Path, "/"), sanitizeFileName(app.Name)+suffix)
+		if existingName, exists := seenPaths[filePath]; exists {
+			return fmt.Errorf("duplicate app name %q in folder %q (conflicts with %q) - please rename one of them before pulling", app.Name, app.Path, existingName)
+		}
+		seenPaths[filePath] = app.Name
 
-		// Check if dashboard itself was updated
-		dashboardUpdated := cfg.LastPull == nil || dashboard.UpdatedAt.After(*cfg.LastPull)
+		// Check if app itself was updated
+		appUpdated := cfg.LastPull == nil || app.UpdatedAt.After(*cfg.LastPull)
 
-		// Check if any folder in the dashboard's path was updated
+		// Check if any folder in the app's path was updated
 		folderUpdated := false
 		if cfg.LastPull != nil {
-			folderUpdated = isAnyParentFolderUpdated(dashboard.Path, folderUpdatedAt, *cfg.LastPull)
+			folderUpdated = isAnyParentFolderUpdated(app.Path, folderUpdatedAt, *cfg.LastPull)
 		}
 
-		// Include dashboard if it was updated OR if any parent folder was updated
-		if !dashboardUpdated && !folderUpdated {
+		// Include app if it was updated OR if any parent folder was updated
+		if !appUpdated && !folderUpdated {
 			continue
 		}
 
-		if _, exists := localIDs[dashboard.ID]; exists {
-			toUpdate = append(toUpdate, dashboard)
+		if _, exists := localIDs[app.ID]; exists {
+			toUpdate = append(toUpdate, app)
 		} else {
-			toCreate = append(toCreate, dashboard)
+			toCreate = append(toCreate, app)
 		}
 	}
 
@@ -132,15 +136,23 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	// Show summary
 	fmt.Println()
 	if len(toCreate) > 0 {
-		fmt.Printf("Dashboards to create (%d):\n", len(toCreate))
+		fmt.Printf("Apps to create (%d):\n", len(toCreate))
 		for _, d := range toCreate {
-			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), DASHBOARD_SUFFIX)
+			suffix := DASHBOARD_SUFFIX
+			if d.Type == "task" {
+				suffix = TASK_SUFFIX
+			}
+			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), suffix)
 		}
 	}
 	if len(toUpdate) > 0 {
-		fmt.Printf("Dashboards to update (%d):\n", len(toUpdate))
+		fmt.Printf("Apps to update (%d):\n", len(toUpdate))
 		for _, d := range toUpdate {
-			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), DASHBOARD_SUFFIX)
+			suffix := DASHBOARD_SUFFIX
+			if d.Type == "task" {
+				suffix = TASK_SUFFIX
+			}
+			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), suffix)
 		}
 	}
 	fmt.Println()
@@ -188,24 +200,28 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		}
 	}
 
-	// Write dashboards to files
+	// Write apps to files
 	var writeErrors []error
-	expectedPaths := make(map[string]string) // dashboard ID -> expected file path
-	for _, dashboard := range append(toCreate, toUpdate...) {
-		expectedPath, err := getExpectedFilePath(watchDir, dashboard)
+	expectedPaths := make(map[string]string) // app ID -> expected file path
+	for _, app := range append(toCreate, toUpdate...) {
+		expectedPath, err := getExpectedFilePath(watchDir, app)
 		if err != nil {
-			fmt.Printf("ERROR: Failed to determine file path for dashboard '%s': %s\n", dashboard.Name, err)
+			fmt.Printf("ERROR: Failed to determine file path for app '%s': %s\n", app.Name, err)
 			writeErrors = append(writeErrors, err)
 			continue
 		}
-		expectedPaths[dashboard.ID] = expectedPath
+		expectedPaths[app.ID] = expectedPath
 
-		if err := writeDashboardFile(watchDir, dashboard); err != nil {
-			fmt.Printf("ERROR: Failed to write dashboard '%s': %s\n", dashboard.Name, err)
+		if err := writeAppFile(watchDir, app); err != nil {
+			fmt.Printf("ERROR: Failed to write app '%s': %s\n", app.Name, err)
 			writeErrors = append(writeErrors, err)
 			continue
 		}
-		fmt.Println("Wrote dashboard:", dashboard.Path+dashboard.Name+DASHBOARD_SUFFIX)
+		suffix := DASHBOARD_SUFFIX
+		if app.Type == "task" {
+			suffix = TASK_SUFFIX
+		}
+		fmt.Println("Wrote app:", app.Path+app.Name+suffix)
 	}
 
 	if len(writeErrors) > 0 {
@@ -214,19 +230,19 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 
 	// Delete old files that have been moved or renamed
 	var deleteErrors []error
-	for dashboardID, actualPath := range localIDs {
-		expectedPath, exists := expectedPaths[dashboardID]
+	for appID, actualPath := range localIDs {
+		expectedPath, exists := expectedPaths[appID]
 		if !exists {
-			// Dashboard was deleted remotely, skip deletion (user might want to keep it)
+			// App was deleted remotely, skip deletion (user might want to keep it)
 			continue
 		}
 		if actualPath != expectedPath {
-			// Dashboard was moved/renamed, delete old file
+			// App was moved/renamed, delete old file
 			if err := os.Remove(actualPath); err != nil {
-				fmt.Printf("ERROR: Failed to delete old dashboard file '%s': %s\n", actualPath, err)
+				fmt.Printf("ERROR: Failed to delete old app file '%s': %s\n", actualPath, err)
 				deleteErrors = append(deleteErrors, err)
 			} else {
-				fmt.Printf("Deleted old dashboard file: %s\n", actualPath)
+				fmt.Printf("Deleted old app file: %s\n", actualPath)
 			}
 		}
 	}
@@ -245,13 +261,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	return nil
 }
 
-func fetchAllDashboards(ctx context.Context, requester appsRequester) ([]api.App, error) {
-	dashboards, _, err := fetchAllDashboardsAndFolders(ctx, requester)
-	return dashboards, err
+func fetchAllApps(ctx context.Context, requester appsRequester) ([]api.App, error) {
+	apps, _, err := fetchAllAppsAndFolders(ctx, requester)
+	return apps, err
 }
 
-func fetchAllDashboardsAndFolders(ctx context.Context, requester appsRequester) ([]api.App, []api.App, error) {
-	var allDashboards []api.App
+func fetchAllAppsAndFolders(ctx context.Context, requester appsRequester) ([]api.App, []api.App, error) {
+	var allApps []api.App
 	var allFolders []api.App
 	limit := 100
 	offset := 0
@@ -263,8 +279,8 @@ func fetchAllDashboardsAndFolders(ctx context.Context, requester appsRequester) 
 		}
 
 		for _, app := range apps {
-			if app.Type == "dashboard" {
-				allDashboards = append(allDashboards, app)
+			if app.Type == "dashboard" || app.Type == "task" {
+				allApps = append(allApps, app)
 			} else if app.Type == "_folder" {
 				allFolders = append(allFolders, app)
 			}
@@ -274,10 +290,10 @@ func fetchAllDashboardsAndFolders(ctx context.Context, requester appsRequester) 
 		if len(apps) < limit {
 			break
 		}
-		offset += len(apps)
+		offset += limit
 	}
 
-	return allDashboards, allFolders, nil
+	return allApps, allFolders, nil
 }
 
 func fetchAppsPage(ctx context.Context, requester appsRequester, limit, offset int) ([]api.App, error) {
@@ -300,7 +316,7 @@ func fetchAppsPage(ctx context.Context, requester appsRequester, limit, offset i
 	return result.Apps, nil
 }
 
-func scanLocalDashboardIDs(dir string) (map[string]string, error) {
+func scanLocalAppIDs(dir string) (map[string]string, error) {
 	ids := make(map[string]string) // shaperID -> filePath
 
 	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, walkErr error) error {
@@ -310,9 +326,12 @@ func scanLocalDashboardIDs(dir string) (map[string]string, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+		isDashboard := strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX)
+		isTask := strings.HasSuffix(d.Name(), TASK_SUFFIX)
+		
+		if !isDashboard && !isTask {
 			if strings.HasSuffix(d.Name(), ".sql") {
-				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+				fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
 			}
 			return nil
 		}
@@ -405,9 +424,9 @@ func isAnyParentFolderUpdated(path string, folderUpdatedAt map[string]time.Time,
 	return false
 }
 
-func getExpectedFilePath(baseDir string, dashboard api.App) (string, error) {
-	// Construct path (same logic as writeDashboardFile)
-	dashPath := dashboard.Path
+func getExpectedFilePath(baseDir string, app api.App) (string, error) {
+	// Construct path (same logic as writeAppFile)
+	dashPath := app.Path
 	if dashPath == "" {
 		dashPath = "/"
 	}
@@ -415,7 +434,11 @@ func getExpectedFilePath(baseDir string, dashboard api.App) (string, error) {
 	dashPath = strings.TrimPrefix(dashPath, "/")
 
 	dirPath := filepath.Join(baseDir, dashPath)
-	fileName := sanitizeFileName(dashboard.Name) + DASHBOARD_SUFFIX
+	suffix := DASHBOARD_SUFFIX
+	if app.Type == "task" {
+		suffix = TASK_SUFFIX
+	}
+	fileName := sanitizeFileName(app.Name) + suffix
 	filePath := filepath.Join(dirPath, fileName)
 
 	// Convert to absolute path for comparison
@@ -426,9 +449,9 @@ func getExpectedFilePath(baseDir string, dashboard api.App) (string, error) {
 	return absPath, nil
 }
 
-func writeDashboardFile(baseDir string, dashboard api.App) error {
+func writeAppFile(baseDir string, app api.App) error {
 	// Construct path
-	dashPath := dashboard.Path
+	dashPath := app.Path
 	if dashPath == "" {
 		dashPath = "/"
 	}
@@ -440,13 +463,17 @@ func writeDashboardFile(baseDir string, dashboard api.App) error {
 		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
 	}
 
-	fileName := sanitizeFileName(dashboard.Name) + DASHBOARD_SUFFIX
+	suffix := DASHBOARD_SUFFIX
+	if app.Type == "task" {
+		suffix = TASK_SUFFIX
+	}
+	fileName := sanitizeFileName(app.Name) + suffix
 	filePath := filepath.Join(dirPath, fileName)
 
 	// Ensure content has shaper ID
-	content := dashboard.Content
+	content := app.Content
 	if !hasLeadingShaperIDComment(content) {
-		content = prependShaperIDComment(dashboard.ID, content)
+		content = prependShaperIDComment(app.ID, content)
 	}
 
 	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
