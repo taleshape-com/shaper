@@ -79,23 +79,11 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 
 	// Compare and categorize
 	var toCreate, toUpdate []api.App
-	var maxUpdatedAt time.Time
-
-	// Track max updatedAt from folders as well
-	for _, folder := range folders {
-		if folder.UpdatedAt.After(maxUpdatedAt) {
-			maxUpdatedAt = folder.UpdatedAt
-		}
-	}
-
+	
 	// Track file paths to detect duplicates
 	seenPaths := make(map[string]string) // path -> app name (for error reporting)
 
 	for _, app := range remoteApps {
-		if app.UpdatedAt.After(maxUpdatedAt) {
-			maxUpdatedAt = app.UpdatedAt
-		}
-
 		// Check for duplicate file paths
 		suffix := DASHBOARD_SUFFIX
 		if app.Type == "task" {
@@ -107,25 +95,49 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		}
 		seenPaths[filePath] = app.Name
 
-		// Check if app itself was updated
-		appUpdated := cfg.LastPull == nil || app.UpdatedAt.After(*cfg.LastPull)
+		localPath, existsLocally := localIDs[app.ID]
 
-		// Check if any folder in the app's path was updated
-		folderUpdated := false
-		if cfg.LastPull != nil {
-			folderUpdated = isAnyParentFolderUpdated(app.Path, folderUpdatedAt, *cfg.LastPull)
-		}
-
-		// Include app if it was updated OR if any parent folder was updated
-		if !appUpdated && !folderUpdated {
+		if !existsLocally {
+			toCreate = append(toCreate, app)
 			continue
 		}
 
-		if _, exists := localIDs[app.ID]; exists {
-			toUpdate = append(toUpdate, app)
-		} else {
-			toCreate = append(toCreate, app)
+		// Read local file to check SyncTimestamp and content
+		contentBytes, err := os.ReadFile(localPath)
+		if err != nil {
+			return fmt.Errorf("failed to read local file %s: %w", localPath, err)
 		}
+		
+		content := string(contentBytes)
+		meta := extractAppMetadata(content)
+		
+		// Reconstruct what the local app looks like to check if it differs
+		relDir, err := filepath.Rel(watchDir, filepath.Dir(localPath))
+		if err != nil {
+			return fmt.Errorf("failed to determine relative path for %s: %w", localPath, err)
+		}
+		
+		name := strings.TrimSuffix(filepath.Base(localPath), DASHBOARD_SUFFIX)
+		if app.Type == "task" {
+			name = strings.TrimSuffix(filepath.Base(localPath), TASK_SUFFIX)
+		}
+
+		localApp := LocalApp{
+			ID:            meta.ID,
+			Name:          name,
+			Path:          normalizeDashboardPath(relDir),
+			Content:       content,
+			SyncTimestamp: meta.SyncTimestamp,
+		}
+
+		// We MUST update the local file if it lacks a SyncTimestamp, OR if it's stale, OR if it differs.
+		// Without a SyncTimestamp, `deploy` cannot safely protect against overwriting manual Prod changes.
+		isStale := meta.SyncTimestamp == nil || app.UpdatedAt.Truncate(time.Second).After(*meta.SyncTimestamp)
+		if isStale || appsDiffer(localApp, app) {
+			toUpdate = append(toUpdate, app)
+		}
+
+		delete(localIDs, app.ID)
 	}
 
 	if len(toCreate) == 0 && len(toUpdate) == 0 {
@@ -251,13 +263,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return fmt.Errorf("pull completed with %d deletion error(s), lastPull not updated", len(deleteErrors))
 	}
 
-	// Update lastPull timestamp
-	cfg.LastPull = &maxUpdatedAt
-	if err := SaveConfig(configPath, cfg); err != nil {
-		return fmt.Errorf("failed to save config with lastPull: %w", err)
-	}
-
-	fmt.Printf("\nPull complete. Last pull timestamp: %s\n", maxUpdatedAt.Format(time.RFC3339))
+	fmt.Printf("\nPull complete.\n")
 	return nil
 }
 
@@ -470,11 +476,15 @@ func writeAppFile(baseDir string, app api.App) error {
 	fileName := sanitizeFileName(app.Name) + suffix
 	filePath := filepath.Join(dirPath, fileName)
 
-	// Ensure content has shaper ID
-	content := app.Content
-	if !hasLeadingShaperIDComment(content) {
-		content = prependShaperIDComment(app.ID, content)
+	meta := extractAppMetadata(app.Content)
+	if meta.ID == "" {
+		meta.ID = app.ID
 	}
+	
+	// We want to format the time without nanoseconds so that when we read it back and compare, 
+	// it isn't automatically considered "stale" due to nanosecond precision loss during formatting.
+	truncatedTime := app.UpdatedAt.Truncate(time.Second)
+	content := prependAppMetadata(meta.ID, &truncatedTime, stripAppMetadata(app.Content))
 
 	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", filePath, err)
