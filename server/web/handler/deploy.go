@@ -62,25 +62,26 @@ func Deploy(app *core.App) echo.HandlerFunc {
 }
 
 func processDeployOperation(ctx context.Context, app *core.App, idx int, req api.AppRequest) (deployResult, error) {
-	switch strings.ToLower(strings.TrimSpace(req.Type)) {
-	case "dashboard":
+	appType := strings.ToLower(strings.TrimSpace(req.Type))
+	switch appType {
+	case "dashboard", "task":
 	default:
 		return deployResult{}, fmt.Errorf("apps[%d]: unsupported type %q", idx, req.Type)
 	}
 
 	switch strings.ToLower(strings.TrimSpace(req.Operation)) {
 	case "create":
-		return handleDeployCreate(ctx, app, idx, req.Data)
+		return handleDeployCreate(ctx, app, idx, req.Data, appType)
 	case "update":
-		return handleDeployUpdate(ctx, app, idx, req.Data)
+		return handleDeployUpdate(ctx, app, idx, req.Data, appType)
 	case "delete":
-		return handleDeployDelete(ctx, app, idx, req.Data)
+		return handleDeployDelete(ctx, app, idx, req.Data, appType)
 	default:
 		return deployResult{}, fmt.Errorf("apps[%d]: unsupported operation %q", idx, req.Operation)
 	}
 }
 
-func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.DashboardData) (deployResult, error) {
+func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (deployResult, error) {
 	if data.Name == nil || strings.TrimSpace(*data.Name) == "" {
 		return deployResult{}, fmt.Errorf("apps[%d]: name is required for create operations", idx)
 	}
@@ -106,20 +107,25 @@ func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.Da
 		}
 	}
 
-	id, err := core.CreateDashboard(app, ctx, name, content, path, false, requestedID)
+	var id string
+	if appType == "task" {
+		id, err = core.CreateTask(app, ctx, name, content, path, requestedID)
+	} else {
+		id, err = core.CreateDashboard(app, ctx, name, content, path, false, requestedID)
+	}
 	if err != nil {
 		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 	}
 
 	return deployResult{
 		Operation: "create",
-		Type:      "dashboard",
+		Type:      appType,
 		ID:        id,
 		Status:    "created",
 	}, nil
 }
 
-func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.DashboardData) (deployResult, error) {
+func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (deployResult, error) {
 	if data.ID == nil || strings.TrimSpace(*data.ID) == "" {
 		return deployResult{}, fmt.Errorf("apps[%d]: id is required for update operations", idx)
 	}
@@ -132,32 +138,50 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 		if name == "" {
 			return deployResult{}, fmt.Errorf("apps[%d]: name cannot be empty when provided", idx)
 		}
-		if err := core.SaveDashboardName(app, ctx, id, name); err != nil {
+		var err error
+		if appType == "task" {
+			err = core.SaveTaskName(app, ctx, id, name)
+		} else {
+			err = core.SaveDashboardName(app, ctx, id, name)
+		}
+		if err != nil {
 			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		changed = true
 	}
 
 	if data.Content != nil {
-		if err := core.SaveDashboardQuery(app, ctx, id, *data.Content); err != nil {
+		var err error
+		if appType == "task" {
+			err = core.SaveTaskContent(app, ctx, id, *data.Content)
+		} else {
+			err = core.SaveDashboardQuery(app, ctx, id, *data.Content)
+		}
+		if err != nil {
 			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		changed = true
 	}
 
-	var dashboardInfo core.Dashboard
-	var haveDashboardInfo bool
-	getDashboard := func() (core.Dashboard, error) {
-		if haveDashboardInfo {
-			return dashboardInfo, nil
+	var appInfo core.Dashboard // using Dashboard struct to reuse existing path handling logic
+	var haveAppInfo bool
+	getAppInfo := func() (core.Dashboard, error) {
+		if haveAppInfo {
+			return appInfo, nil
 		}
-		info, err := core.GetDashboardInfo(app, ctx, id)
+		var err error
+		if appType == "task" {
+			var task core.Task
+			task, err = core.GetTask(app, ctx, id)
+			appInfo.Path = task.Path
+		} else {
+			appInfo, err = core.GetDashboardInfo(app, ctx, id)
+		}
 		if err != nil {
 			return core.Dashboard{}, err
 		}
-		dashboardInfo = info
-		haveDashboardInfo = true
-		return dashboardInfo, nil
+		haveAppInfo = true
+		return appInfo, nil
 	}
 
 	if data.Path != nil {
@@ -165,17 +189,19 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 		if err != nil {
 			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
-		info, err := getDashboard()
+		info, err := getAppInfo()
 		if err != nil {
 			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		currentPath := normalizeFolderPath(info.Path)
 		if desiredPath != currentPath {
+			var err error
 			moveReq := core.MoveItemsRequest{
 				Apps: []string{id},
 				Path: desiredPath,
 			}
-			if err := core.MoveItems(app, ctx, moveReq); err != nil {
+			err = core.MoveItems(app, ctx, moveReq)
+			if err != nil {
 				return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 			}
 			changed = true
@@ -188,25 +214,31 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 
 	return deployResult{
 		Operation: "update",
-		Type:      "dashboard",
+		Type:      appType,
 		ID:        id,
 		Status:    "updated",
 	}, nil
 }
 
-func handleDeployDelete(ctx context.Context, app *core.App, idx int, data api.DashboardData) (deployResult, error) {
+func handleDeployDelete(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (deployResult, error) {
 	if data.ID == nil || strings.TrimSpace(*data.ID) == "" {
 		return deployResult{}, fmt.Errorf("apps[%d]: id is required for delete operations", idx)
 	}
 
 	id := strings.TrimSpace(*data.ID)
-	if err := core.DeleteDashboard(app, ctx, id); err != nil {
+	var err error
+	if appType == "task" {
+		err = core.DeleteTask(app, ctx, id)
+	} else {
+		err = core.DeleteDashboard(app, ctx, id)
+	}
+	if err != nil {
 		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 	}
 
 	return deployResult{
 		Operation: "delete",
-		Type:      "dashboard",
+		Type:      appType,
 		ID:        id,
 		Status:    "deleted",
 	}, nil

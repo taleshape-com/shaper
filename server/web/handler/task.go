@@ -98,7 +98,7 @@ func CreateTask(app *core.App) echo.HandlerFunc {
 				}{Error: err.Error()}, "  ")
 		}
 
-		id, err := core.CreateTask(app, c.Request().Context(), request.Name, request.Content, request.Path)
+		id, err := core.CreateTask(app, c.Request().Context(), request.Name, request.Content, request.Path, "")
 		if err != nil {
 			c.Logger().Error("error creating task:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,

@@ -115,7 +115,7 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 
 	// Only check freshness if we have a lastPull timestamp
 	if cfg.LastPull != nil {
-		if err := ensureRemoteFreshness(remoteApps, *cfg.LastPull, client.Actor()); err != nil {
+		if err := ensureRemoteFreshness(remoteApps, localApps, *cfg.LastPull, client.Actor()); err != nil {
 			return err
 		}
 	}
@@ -253,16 +253,28 @@ func stripShaperIDPrefix(content string) string {
 	return remaining
 }
 
-func ensureRemoteFreshness(remote []api.App, lastPull time.Time, actor string) error {
+func ensureRemoteFreshness(remote []api.App, local map[string]LocalApp, lastPull time.Time, actor string) error {
 	for _, app := range remote {
 		if app.Type != "dashboard" && app.Type != "task" {
 			continue
 		}
+
+		localApp, exists := local[app.ID]
+		willBeModified := !exists || appsDiffer(localApp, app)
+		if !willBeModified {
+			continue
+		}
+
 		updatedBy := ""
 		if app.UpdatedBy != nil {
 			updatedBy = *app.UpdatedBy
 		}
-		if app.UpdatedAt.After(lastPull) && updatedBy != actor {
+
+		// If the app was updated after our last pull, we normally want to force a pull first.
+		// However, we allow overwriting if the update was made by the current actor AND the app exists locally.
+		// The "exists locally" check prevents us from accidentally deleting apps that were created
+		// by the user in the UI (since they won't exist locally yet).
+		if app.UpdatedAt.After(lastPull) && (updatedBy != actor || !exists) {
 			return fmt.Errorf("remote app %s (%s) was updated after last pull by %s; run `shaper pull` first", app.Name, app.ID, updatedBy)
 		}
 	}

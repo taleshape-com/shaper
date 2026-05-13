@@ -88,7 +88,7 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	return task, nil
 }
 
-func CreateTask(app *App, ctx context.Context, name string, content string, path string) (string, error) {
+func CreateTask(app *App, ctx context.Context, name string, content string, path string, requestedID string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -98,7 +98,12 @@ func CreateTask(app *App, ctx context.Context, name string, content string, path
 	if name == "" {
 		return "", fmt.Errorf("task name cannot be empty")
 	}
+
 	id := cuid2.Generate()
+	if requestedID != "" {
+		id = requestedID
+	}
+
 	err := app.SubmitState(ctx, "create_task", CreateTaskPayload{
 		ID:        id,
 		Timestamp: time.Now(),
