@@ -181,7 +181,7 @@ func loadLocalApps(baseDir string) (map[string]LocalApp, error) {
 		content := string(contentBytes)
 		id := extractShaperID(content)
 		if id == "" {
-			return fmt.Errorf("%s is missing a shaper id comment (-- shaperid:<id>)", p)
+			return fmt.Errorf("%s is missing a shaper id comment (run `shaper ids` to generate)", p)
 		}
 
 		if _, exists := apps[id]; exists {
@@ -277,7 +277,9 @@ func buildDeployOperations(local map[string]LocalApp, remote []api.App) []api.Ap
 		}
 	}
 
-	var ops []api.AppRequest
+	var createOps []api.AppRequest
+	var updateOps []api.AppRequest
+	var deleteOps []api.AppRequest
 
 	localList := make([]LocalApp, 0, len(local))
 	for _, l := range local {
@@ -297,7 +299,7 @@ func buildDeployOperations(local map[string]LocalApp, remote []api.App) []api.Ap
 				path := localApp.Path
 				content := stripShaperIDPrefix(localApp.Content)
 				id := localApp.ID
-				ops = append(ops, api.AppRequest{
+				updateOps = append(updateOps, api.AppRequest{
 					Operation: "update",
 					Type:      localApp.Type,
 					Data: api.DashboardData{
@@ -315,7 +317,7 @@ func buildDeployOperations(local map[string]LocalApp, remote []api.App) []api.Ap
 		path := localApp.Path
 		content := stripShaperIDPrefix(localApp.Content)
 		id := localApp.ID
-		ops = append(ops, api.AppRequest{
+		createOps = append(createOps, api.AppRequest{
 			Operation: "create",
 			Type:      localApp.Type,
 			Data: api.DashboardData{
@@ -343,7 +345,7 @@ func buildDeployOperations(local map[string]LocalApp, remote []api.App) []api.Ap
 			continue
 		}
 		id := remoteApp.ID
-		ops = append(ops, api.AppRequest{
+		deleteOps = append(deleteOps, api.AppRequest{
 			Operation: "delete",
 			Type:      remoteApp.Type,
 			Data: api.DashboardData{
@@ -351,6 +353,11 @@ func buildDeployOperations(local map[string]LocalApp, remote []api.App) []api.Ap
 			},
 		})
 	}
+
+	var ops []api.AppRequest
+	ops = append(ops, deleteOps...)
+	ops = append(ops, updateOps...)
+	ops = append(ops, createOps...)
 
 	return ops
 }

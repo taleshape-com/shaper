@@ -21,7 +21,7 @@ func RunIdsCommand(ctx context.Context, configPath string) error {
 		return err
 	}
 
-	fmt.Printf("Adding missing IDs to dashboards in %s...\n", watchDir)
+	fmt.Printf("Adding missing IDs to apps in %s...\n", watchDir)
 
 	fileCount, err := ensureShaperIDsForDir(watchDir)
 	if err != nil {
@@ -32,7 +32,7 @@ func RunIdsCommand(ctx context.Context, configPath string) error {
 	if fileCount != 1 {
 		pluralSuffix = "s"
 	}
-	fmt.Printf("\nDone. Processed %d dashboard%s.\n", fileCount, pluralSuffix)
+	fmt.Printf("\nDone. Processed %d app%s.\n", fileCount, pluralSuffix)
 
 	return nil
 }

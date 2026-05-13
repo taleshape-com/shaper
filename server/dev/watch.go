@@ -129,7 +129,7 @@ Create sub-directories to organize dashboards into folders.`)
 		for ei := range c {
 			p := ei.Path()
 			dev.throttleFileEvent(p, func() {
-				dev.handleDashboardFile(absWatchDir, p)
+				dev.handleAppFile(absWatchDir, p)
 			})
 		}
 	}()
@@ -167,10 +167,13 @@ func (d *Dev) throttleFileEvent(filePath string, handler func()) {
 	handler()
 }
 
-func (d *Dev) handleDashboardFile(absWatchDir, p string) {
-	if !strings.HasSuffix(p, DASHBOARD_SUFFIX) {
-		if strings.HasSuffix(p, ".sql") && !strings.HasSuffix(p, TASK_SUFFIX) {
-			fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+func (d *Dev) handleAppFile(absWatchDir, p string) {
+	isDashboard := strings.HasSuffix(p, DASHBOARD_SUFFIX)
+	isTask := strings.HasSuffix(p, TASK_SUFFIX)
+
+	if !isDashboard && !isTask {
+		if strings.HasSuffix(p, ".sql") {
+			fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
 		}
 		return
 	}
@@ -181,9 +184,14 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 		fmt.Printf("ERROR: Failed removing prefix '%s' from dir %s\n", absWatchDir, path.Dir(p))
 		return
 	}
-	name, found := strings.CutSuffix(path.Base(p), DASHBOARD_SUFFIX)
+
+	suffix := DASHBOARD_SUFFIX
+	if isTask {
+		suffix = TASK_SUFFIX
+	}
+	name, found := strings.CutSuffix(path.Base(p), suffix)
 	if !found {
-		fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", DASHBOARD_SUFFIX, path.Base(p))
+		fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", suffix, path.Base(p))
 		return
 	}
 
@@ -196,6 +204,11 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 
 	if updated {
 		fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
+	}
+
+	if isTask {
+		// For tasks, we just ensure the ID is generated but do not preview.
+		return
 	}
 
 	content := string(contentBytes)
@@ -481,9 +494,12 @@ func ensureShaperIDsForDir(dir string) (int, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
-			if strings.HasSuffix(d.Name(), ".sql") && !strings.HasSuffix(d.Name(), TASK_SUFFIX) {
-				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+		isDashboard := strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX)
+		isTask := strings.HasSuffix(d.Name(), TASK_SUFFIX)
+
+		if !isDashboard && !isTask {
+			if strings.HasSuffix(d.Name(), ".sql") {
+				fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
 			}
 			return nil
 		}
