@@ -31,10 +31,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "lts/*"
           cache: "npm"
       - name: Install dependencies
-        run: npm ci
+        # Ignore Scripts for security
+        run: npm ci --ignore-scripts
+      - name: Audit (level=high)
+        run: npm audit --audit-level=high
       - name: Build frontend
         run: |
           NODE_ENV=production npm run all
@@ -395,10 +398,10 @@ jobs:
             # Copy the binary to the package directory
             cp "../bin/shaper-$binary_suffix" shaper_pkg/bin/shaper
             chmod +x shaper_pkg/bin/shaper
-            
+
             # Create the wheel with the platform tag
             python setup.py bdist_wheel --plat-name "$plat_name"
-            
+
             # Clean up for the next platform
             rm -rf build/
             rm shaper_pkg/bin/shaper
