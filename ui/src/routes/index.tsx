@@ -596,10 +596,10 @@ function Index () {
                         "bg-cbga dark:bg-dbga": draggedItem != null && draggedItem.path !== breadcrumb.path,
                       },
                     )}
-                    onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
+                    onDragOver={(e) => getSystemConfig().editEnabled && handleDragOver(e, breadcrumb.path)}
                     onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, breadcrumb.path)}
-                    onTouchMove={(e) => handleTouchMove(e, breadcrumb.path)}
+                    onDrop={(e) => getSystemConfig().editEnabled && handleDrop(e, breadcrumb.path)}
+                    onTouchMove={(e) => getSystemConfig().editEnabled && handleTouchMove(e, breadcrumb.path)}
                     data-drop-target
                     data-target-path={breadcrumb.path}
                   >
@@ -609,20 +609,22 @@ function Index () {
               ))}
             </nav>
           </div>
-          <div className="flex">
-            <Tooltip showArrow={false} content="New Folder">
-              <Button
-                variant="secondary"
-                className="py-2 px-2.5"
-                onClick={() => setFolderDialog(true)}
-              >
-                <RiFolderAddLine
-                  className="size-4 shrink-0"
-                  aria-hidden={true}
-                />
-              </Button>
-            </Tooltip>
-          </div>
+          {getSystemConfig().editEnabled && (
+            <div className="flex">
+              <Tooltip showArrow={false} content="New Folder">
+                <Button
+                  variant="secondary"
+                  className="py-2 px-2.5"
+                  onClick={() => setFolderDialog(true)}
+                >
+                  <RiFolderAddLine
+                    className="size-4 shrink-0"
+                    aria-hidden={true}
+                  />
+                </Button>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
         <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:mt-2 md:mx-3 md:p-3 h-[calc(100%-4rem)]">
@@ -691,20 +693,20 @@ function Index () {
                           "bg-cbga dark:bg-dbga [tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga": draggedItem != null && app.type === "_folder" && draggedItem.id !== app.id,
                         },
                       )}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, app)}
+                      draggable={getSystemConfig().editEnabled}
+                      onDragStart={(e) => getSystemConfig().editEnabled && handleDragStart(e, app)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleTouchStart(e, app)}
+                      onTouchStart={(e) => getSystemConfig().editEnabled && handleTouchStart(e, app)}
                       onTouchEnd={handleTouchEnd}
                       {...(app.type === "_folder"
                         ? {
                           onDragOver: (e: React.DragEvent) =>
-                            handleDragOver(e, app.path + app.name + "/", app),
+                            getSystemConfig().editEnabled && handleDragOver(e, app.path + app.name + "/", app),
                           onDragLeave: handleDragLeave,
                           onDrop: (e: React.DragEvent) =>
-                            handleDrop(e, app.path + app.name + "/", app),
+                            getSystemConfig().editEnabled && handleDrop(e, app.path + app.name + "/", app),
                           onTouchMove: (e: React.TouchEvent) =>
-                            handleTouchMove(e, app.path + app.name + "/"),
+                            getSystemConfig().editEnabled && handleTouchMove(e, app.path + app.name + "/"),
                           "data-drop-target": true,
                           "data-target-path": app.path + app.name + "/",
                         }
@@ -934,48 +936,50 @@ function Index () {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-4 justify-end">
-                          {app.type === "_folder" ? (
-                            <button
-                              onClick={() => {
-                                setRenameDialog(app);
-                                setRenameName(app.name);
-                              }}
-                            >
-                              <Tooltip showArrow={false} content="Rename">
-                                <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
-                              </Tooltip>
-                            </button>
-                          ) : (getSystemConfig().editEnabled && (
-                            <Link
-                              to={
-                                app.type === "dashboard"
-                                  ? "/dashboards/$id/edit"
-                                  : "/tasks/$id"
-                              }
-                              params={{ id: app.id }}
-                              className={cx(
-                                "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
-                                "hover:underline transition-colors duration-200",
-                              )}
-                            >
-                              <Tooltip showArrow={false} content="Edit">
-                                <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
-                              </Tooltip>
-                            </Link>
-                          ))}
                           {getSystemConfig().editEnabled && (
-                            <button
-                              onClick={() => {
-                                setDeleteDialog(app);
-                              }}
-                            >
-                              <Tooltip showArrow={false} content="Delete">
-                                <RiDeleteBinLine
-                                  className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
-                                  aria-hidden={true}
-                                />
-                              </Tooltip>
-                            </button>
+                            <>
+                              {app.type === "_folder" ? (
+                                <button
+                                  onClick={() => {
+                                    setRenameDialog(app);
+                                    setRenameName(app.name);
+                                  }}
+                                >
+                                  <Tooltip showArrow={false} content="Rename">
+                                    <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
+                                  </Tooltip>
+                                </button>
+                              ) : (
+                                <Link
+                                  to={
+                                    app.type === "dashboard"
+                                      ? "/dashboards/$id/edit"
+                                      : "/tasks/$id"
+                                  }
+                                  params={{ id: app.id }}
+                                  className={cx(
+                                    "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
+                                    "hover:underline transition-colors duration-200",
+                                  )}
+                                >
+                                  <Tooltip showArrow={false} content="Edit">
+                                    <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
+                                  </Tooltip>
+                                </Link>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setDeleteDialog(app);
+                                }}
+                              >
+                                <Tooltip showArrow={false} content="Delete">
+                                  <RiDeleteBinLine
+                                    className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
+                                    aria-hidden={true}
+                                  />
+                                </Tooltip>
+                              </button>
+                            </>
                           )}
                         </div>
                       </TableCell>

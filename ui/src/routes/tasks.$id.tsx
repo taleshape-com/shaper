@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { createFileRoute, isRedirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { RiPencilLine, RiCloseLine } from "@remixicon/react";
@@ -44,6 +44,12 @@ interface TaskData {
 }
 
 export const Route = createFileRoute("/tasks/$id")({
+  beforeLoad: () => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.tasksEnabled) {
+      throw redirect({ to: "/" });
+    }
+  },
   loader: async ({ context: { queryApi }, params: { id } }) => {
     return queryApi(`tasks/${id}`) as Promise<TaskData>;
   },
