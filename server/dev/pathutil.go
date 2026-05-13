@@ -55,3 +55,26 @@ func resolveAbsolutePath(p string) (string, error) {
 	}
 	return absPath, nil
 }
+
+// resolveConfigDirectory resolves a directory path relative to the given config file path.
+func resolveConfigDirectory(dir string, configPath string) (string, error) {
+	expanded, err := expandUserPath(dir)
+	if err != nil {
+		return "", err
+	}
+	if expanded == "" {
+		return "", nil
+	}
+
+	if filepath.IsAbs(expanded) {
+		return filepath.Clean(expanded), nil
+	}
+
+	absConfigPath, err := resolveAbsolutePath(configPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve config path: %w", err)
+	}
+
+	configDir := filepath.Dir(absConfigPath)
+	return filepath.Join(configDir, expanded), nil
+}

@@ -43,7 +43,7 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 		return err
 	}
 
-	watchDir, err := resolveAbsolutePath(cfg.Directory)
+	watchDir, err := resolveConfigDirectory(cfg.Directory, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}

@@ -24,7 +24,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return err
 	}
 
-	watchDir, err := resolveAbsolutePath(cfg.Directory)
+	watchDir, err := resolveConfigDirectory(cfg.Directory, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}
