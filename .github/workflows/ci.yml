@@ -19,27 +19,34 @@ concurrency:
   group: ${{ github.ref_name }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   frontend-build:
     name: Frontend Lint, Typecheck, Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: "22"
+          node-version: "lts/*"
           cache: "npm"
       - name: Install dependencies
-        run: npm ci
+        # Ignore Scripts for security
+        run: npm ci --ignore-scripts
+      - name: Audit (level=high)
+        run: npm audit --audit-level=high
       - name: Build frontend
         run: |
           NODE_ENV=production npm run all
       - name: Upload frontend build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: frontend-dist
           path: dist/
@@ -48,13 +55,14 @@ jobs:
   go-verify:
     name: Go Vet and Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.3.0
         with:
           go-version-file: "go.mod"
           cache: true
@@ -73,13 +81,14 @@ jobs:
     name: Build Linux Binaries
     needs: [go-verify, frontend-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: write
-      packages: write
-    container: debian:13-slim
+      contents: read
+    # Keep in sync with Dockerfile
+    container: debian:13.4-slim@sha256:109e2c65005bf160609e4ba6acf7783752f8502ad218e298253428690b9eaa4b
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -91,13 +100,13 @@ jobs:
           apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.3.0
         with:
           go-version-file: "go.mod"
           cache: true
 
       - name: Download frontend build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: frontend-dist
           path: dist/
@@ -117,7 +126,7 @@ jobs:
           sha256sum shaper-linux-* > checksums-linux.txt
 
       - name: Upload Linux binaries and checksums
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-binaries
           path: |
@@ -129,12 +138,12 @@ jobs:
     name: Build macOS Binaries
     needs: [go-verify, frontend-build]
     runs-on: macos-latest
+    timeout-minutes: 30
     permissions:
-      contents: write
-      packages: write
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -147,13 +156,13 @@ jobs:
           done
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.3.0
         with:
           go-version-file: "go.mod"
           cache: true
 
       - name: Download frontend build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: frontend-dist
           path: dist/
@@ -173,7 +182,7 @@ jobs:
           shasum -a 256 shaper-darwin-* > checksums-darwin.txt
 
       - name: Upload macOS binaries and checksums
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: darwin-binaries
           path: |
@@ -185,23 +194,24 @@ jobs:
     name: Create Release
     needs: [build-linux, build-darwin]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Download Linux binaries and checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: linux-binaries
           path: bin
 
       - name: Download macOS binaries and checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: darwin-binaries
           path: bin
@@ -213,7 +223,7 @@ jobs:
           rm checksums-*.txt
 
       - name: Create Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           files: |
             bin/shaper-linux-*
@@ -225,16 +235,17 @@ jobs:
   docker:
     name: Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build-linux]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Download Linux binaries
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: linux-binaries
           path: bin/
@@ -243,10 +254,10 @@ jobs:
         run: chmod +x bin/shaper-*
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.1.0
 
       - name: Login to DockerHub
-        uses: docker/login-action@v4
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -262,7 +273,7 @@ jobs:
           echo "MINOR=$MAJOR.$MINOR" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker images
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: .
           push: true
@@ -282,21 +293,23 @@ jobs:
     name: Publish to npm
     needs: [release]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Download Linux binaries and checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: linux-binaries
           path: bin
 
       - name: Download macOS binaries and checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: darwin-binaries
           path: bin
@@ -306,7 +319,7 @@ jobs:
           cat bin/checksums-*.txt | sort | uniq > npm-package/bin/SHA256SUMS
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
@@ -320,7 +333,10 @@ jobs:
       - name: Publish to npm
         run: |
           cd npm-package
-          npm publish --access public
+          # Use --provenance for OIDC-linked builds.
+          # Note: Requires Trusted Publishing setup on npmjs.com.
+          # If still using NPM_TOKEN, it will use that for auth but still generate provenance.
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -328,21 +344,23 @@ jobs:
     name: Publish to PyPI
     needs: [build-linux, build-darwin]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Download Linux binaries and checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: linux-binaries
           path: bin
 
       - name: Download macOS binaries and checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.1.1
         with:
           name: darwin-binaries
           path: bin
@@ -353,14 +371,14 @@ jobs:
           cat bin/checksums-*.txt | sort | uniq > pip-package/shaper_pkg/bin/SHA256SUMS
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
           python-version: "3.11"
 
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build
 
       - name: Update Python package version
         run: |
@@ -395,19 +413,19 @@ jobs:
             # Copy the binary to the package directory
             cp "../bin/shaper-$binary_suffix" shaper_pkg/bin/shaper
             chmod +x shaper_pkg/bin/shaper
-            
+
             # Create the wheel with the platform tag
             python setup.py bdist_wheel --plat-name "$plat_name"
-            
+
             # Clean up for the next platform
             rm -rf build/
             rm shaper_pkg/bin/shaper
           done
 
       - name: Publish to PyPI
-        run: |
-          cd pip-package
-          python -m twine upload dist/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1.12.4
+        with:
+          packages-dir: pip-package/dist/
+          # No token needed if Trusted Publishing is set up.
+          # Fallback to token if secret is provided.
+          password: ${{ secrets.PYPI_API_TOKEN }}

@@ -5,7 +5,8 @@
 # 2. We need wget to run the healthcheck
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
-FROM debian:13.4-slim
+# Keep in sync with .github/workflows/ci.yml
+FROM debian:13.4-slim@sha256:109e2c65005bf160609e4ba6acf7783752f8502ad218e298253428690b9eaa4b
 
 # install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root
 RUN apt-get update -y \
