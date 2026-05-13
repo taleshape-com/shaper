@@ -945,7 +945,7 @@ function Index () {
                                 <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
                               </Tooltip>
                             </button>
-                          ) : (!(app.type === "dashboard" && !getSystemConfig().editEnabled) && (
+                          ) : (getSystemConfig().editEnabled && (
                             <Link
                               to={
                                 app.type === "dashboard"
@@ -963,7 +963,7 @@ function Index () {
                               </Tooltip>
                             </Link>
                           ))}
-                          {!(app.type === "dashboard" && !getSystemConfig().editEnabled) && (
+                          {getSystemConfig().editEnabled && (
                             <button
                               onClick={() => {
                                 setDeleteDialog(app);

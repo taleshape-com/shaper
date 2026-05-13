@@ -112,7 +112,7 @@ export const Route = createFileRoute("/new")({
   }),
   beforeLoad: () => {
     const systemConfig = getSystemConfig();
-    if (!systemConfig.editEnabled && !systemConfig.tasksEnabled) {
+    if (!systemConfig.editEnabled) {
       throw redirect({ to: "/" });
     }
   },
@@ -126,7 +126,7 @@ function NewDashboard () {
   const navigate = useNavigate({ from: "/new" });
   const systemConfig = getSystemConfig();
   const [appType, setAppType] = useState<"dashboard" | "task">(() =>
-    systemConfig.editEnabled ? getStoredAppType() : "task",
+    systemConfig.tasksEnabled ? getStoredAppType() : "dashboard",
   );
   const [editorQuery, setEditorQuery] = useState("");
   const [runningQuery, setRunningQuery] = useState("");

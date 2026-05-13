@@ -62,6 +62,12 @@ func GetTask(app *core.App) echo.HandlerFunc {
 
 func CreateTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
@@ -117,6 +123,12 @@ func CreateTask(app *core.App) echo.HandlerFunc {
 
 func SaveTaskContent(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -144,6 +156,12 @@ func SaveTaskContent(app *core.App) echo.HandlerFunc {
 
 func SaveTaskName(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -176,6 +194,12 @@ func SaveTaskName(app *core.App) echo.HandlerFunc {
 
 func DeleteTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,

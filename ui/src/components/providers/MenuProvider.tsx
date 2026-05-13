@@ -180,7 +180,7 @@ export function MenuProvider ({
               Browse
             </Tooltip>
           </Link>
-          {(config.editEnabled || config.tasksEnabled) && (
+          {config.editEnabled && (
             <Link
               to="/new"
               search={{ path: currentPath }}
@@ -191,11 +191,7 @@ export function MenuProvider ({
               })}
             >
               <RiFileAddLine className="size-4 inline mr-1.5 mb-1" />
-              {config.tasksEnabled
-                ? config.editEnabled
-                  ? "New"
-                  : "New Task"
-                : "New Dashboard"}
+              {config.tasksEnabled ? "New" : "New Dashboard"}
             </Link>
           )}
           {extraContent}
