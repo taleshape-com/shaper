@@ -296,6 +296,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      # this permission is mandatory for Trusted Publishing
       id-token: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -347,6 +348,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      # this permission is mandatory for Trusted Publishing
       id-token: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -424,8 +426,6 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1.12.4
+        # No token needed since we are using Trusted Publishing
         with:
           packages-dir: pip-package/dist/
-          # No token needed if Trusted Publishing is set up.
-          # Fallback to token if secret is provided.
-          password: ${{ secrets.PYPI_API_TOKEN }}

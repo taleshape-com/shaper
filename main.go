@@ -256,6 +256,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		addPullSubcommand(rootCmd),
 		addIdsSubcommand(rootCmd),
 		addDeploySubcommand(rootCmd),
+		addValidateSubcommand(rootCmd),
 	)
 
 	// Set up the root command execution
@@ -511,6 +512,35 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
 	return deployCmd
+}
+
+func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
+	validateFlags := ff.NewFlagSet("validate")
+	help := validateFlags.Bool('h', "help", "show help")
+	validateConfigPath := validateFlags.StringLong("config", "./shaper.json", "Path to config file")
+
+	usage := `Validate dashboards and tasks.
+  
+  If no files are passed, all dashboards in the configured directory are validated.
+  Otherwise, pass file paths to .dashboard.sql files or folders.
+  
+  Set SHAPER_DEPLOY_API_KEY to authenticate.`
+
+	validateCmd := &ff.Command{
+		Name:      "validate",
+		Usage:     "shaper validate [files...] [--config path]",
+		ShortHelp: "Validate dashboards",
+		Flags:     validateFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(validateFlags, usage))
+				return nil
+			}
+			return dev.RunValidateCommand(ctx, *validateConfigPath, args)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, validateCmd)
+	return validateCmd
 }
 
 func Run(cfg Config) func(context.Context) {
