@@ -253,6 +253,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	var subcommands []*ff.Command
 	subcommands = append(subcommands,
 		addDevSubcommand(rootCmd),
+		addPreviewSubcommand(rootCmd),
 		addPullSubcommand(rootCmd),
 		addIdsSubcommand(rootCmd),
 		addDeploySubcommand(rootCmd),
@@ -438,6 +439,34 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, devCmd)
 	return devCmd
+}
+
+func addPreviewSubcommand(rootCmd *ff.Command) *ff.Command {
+	previewFlags := ff.NewFlagSet("preview")
+	help := previewFlags.Bool('h', "help", "show help")
+	previewConfigPath := previewFlags.StringLong("config", "./shaper.json", "Path to config file")
+	previewAuthFile := previewFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	noOpen := previewFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
+
+	usage := "create a temporary dashboard preview"
+	previewCmd := &ff.Command{
+		Name:      "preview",
+		Usage:     "shaper preview <path/to/dashboard.dashboard.sql> [--config path] [--auth-file path] [--no-open]",
+		ShortHelp: usage,
+		Flags:     previewFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(previewFlags, usage))
+				return nil
+			}
+			if len(args) != 1 {
+				return fmt.Errorf("preview requires exactly one dashboard file path")
+			}
+			return dev.RunPreviewCommand(ctx, *previewConfigPath, *previewAuthFile, *noOpen, args[0])
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, previewCmd)
+	return previewCmd
 }
 
 func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
