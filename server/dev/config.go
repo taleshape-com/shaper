@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 )
 
 const (
@@ -26,7 +25,6 @@ const (
 type Config struct {
 	URL       string     `json:"url"`
 	Directory string     `json:"directory"`
-	LastPull  *time.Time `json:"lastPull,omitempty"`
 }
 
 var ErrConfigNotFound = errors.New("config file not found")

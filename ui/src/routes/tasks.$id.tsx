@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { createFileRoute, isRedirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useCallback, useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { RiPencilLine, RiCloseLine } from "@remixicon/react";
@@ -28,6 +28,7 @@ import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import { TaskResults, TaskResult } from "../components/TaskResults";
 import { RelativeDate } from "../components/RelativeDate";
+import { getSystemConfig } from "../lib/system";
 import "../lib/editorInit";
 
 interface TaskData {
@@ -43,6 +44,12 @@ interface TaskData {
 }
 
 export const Route = createFileRoute("/tasks/$id")({
+  beforeLoad: () => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.tasksEnabled) {
+      throw redirect({ to: "/" });
+    }
+  },
   loader: async ({ context: { queryApi }, params: { id } }) => {
     return queryApi(`tasks/${id}`) as Promise<TaskData>;
   },
@@ -50,6 +57,7 @@ export const Route = createFileRoute("/tasks/$id")({
 });
 
 function TaskEdit () {
+  const systemConfig = getSystemConfig();
   const { id } = Route.useParams();
   const task = Route.useLoaderData();
   const queryApi = useQueryApi();
@@ -242,17 +250,19 @@ function TaskEdit () {
                     </div>
                   </div>
                 )}
-                <Button
-                  onClick={() => setShowDeleteDialog(true)}
-                  variant='destructive'
-                  className='mt-4'
-                >
-                  Delete Task
-                </Button>
+                {systemConfig.editEnabled && (
+                  <Button
+                    onClick={() => setShowDeleteDialog(true)}
+                    variant='destructive'
+                    className='mt-4'
+                  >
+                    Delete Task
+                  </Button>
+                )}
               </div>
             </MenuTrigger>
 
-            {editingName ? (
+            {systemConfig.editEnabled && editingName ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -299,52 +309,62 @@ function TaskEdit () {
               </form>
             ) : (
               <div className="hidden sm:block flex-grow">
-                <Tooltip
-                  showArrow={false}
-                  asChild
-                  content="Click to edit task name"
-                >
-                  <h1
-                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
-                    onClick={() => setEditingName(true)}
+                {systemConfig.editEnabled ? (
+                  <Tooltip
+                    showArrow={false}
+                    asChild
+                    content="Click to edit task name"
                   >
+                    <h1
+                      className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
+                      onClick={() => setEditingName(true)}
+                    >
+                      {name}
+                      <RiPencilLine className="size-4 inline ml-1.5 mb-1" />
+                    </h1>
+                  </Tooltip>
+                ) : (
+                  <h1 className="text-xl font-semibold font-display px-2 py-0.5 inline-block">
                     {name}
-                    <RiPencilLine className="size-4 inline ml-1.5 mb-1" />
                   </h1>
-                </Tooltip>
+                )}
               </div>
             )}
 
             <div className="space-x-2">
-              <Tooltip
-                showArrow={false}
-                asChild
-                content='Discard Changes'
-              >
-                <Button
-                  onClick={() => setShowDiscardDialog(true)}
-                  className={cx("ml-2", { "hidden": editorQuery === task?.content })}
-                  disabled={editorQuery === task?.content}
-                  variant='destructive'
-                >
-                  Discard
-                </Button>
-              </Tooltip>
-              <Tooltip
-                showArrow={false}
-                asChild
-                content='Save Task'
-              >
-                <Button
-                  onClick={handleSave}
-                  className={cx("ml-2", { "hidden": editorQuery === task?.content })}
-                  disabled={saving || editorQuery === task?.content}
-                  isLoading={saving}
-                  variant='secondary'
-                >
-                  Save
-                </Button>
-              </Tooltip>
+              {systemConfig.editEnabled && (
+                <>
+                  <Tooltip
+                    showArrow={false}
+                    asChild
+                    content='Discard Changes'
+                  >
+                    <Button
+                      onClick={() => setShowDiscardDialog(true)}
+                      className={cx("ml-2", { "hidden": editorQuery === task?.content })}
+                      disabled={editorQuery === task?.content}
+                      variant='destructive'
+                    >
+                      Discard
+                    </Button>
+                  </Tooltip>
+                  <Tooltip
+                    showArrow={false}
+                    asChild
+                    content='Save Task'
+                  >
+                    <Button
+                      onClick={handleSave}
+                      className={cx("ml-2", { "hidden": editorQuery === task?.content })}
+                      disabled={saving || editorQuery === task?.content}
+                      isLoading={saving}
+                      variant='secondary'
+                    >
+                      Save
+                    </Button>
+                  </Tooltip>
+                </>
+              )}
               <Tooltip
                 showArrow={false}
                 asChild
@@ -366,6 +386,7 @@ function TaskEdit () {
               onChange={handleQueryChange}
               onRun={handleRun}
               content={editorQuery}
+              readOnly={!systemConfig.editEnabled}
             />
           </div>
         </div>

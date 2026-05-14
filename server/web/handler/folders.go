@@ -14,6 +14,12 @@ import (
 
 func CreateFolder(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -63,6 +69,12 @@ func CreateFolder(app *core.App) echo.HandlerFunc {
 
 func DeleteFolder(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -93,6 +105,12 @@ func DeleteFolder(app *core.App) echo.HandlerFunc {
 
 func MoveItems(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
@@ -137,6 +155,12 @@ func MoveItems(app *core.App) echo.HandlerFunc {
 
 func RenameFolder(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.NoEdit {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Editing is disabled"}, "  ")
+		}
+
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {

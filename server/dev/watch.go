@@ -24,7 +24,9 @@ import (
 
 const (
 	DASHBOARD_SUFFIX = ".dashboard.sql"
+	TASK_SUFFIX      = ".task.sql"
 	shaperIDPrefix   = "-- shaperid:"
+	shaperSyncPrefix = "-- shapersync:"
 )
 
 type DashboardClient interface {
@@ -128,7 +130,7 @@ Create sub-directories to organize dashboards into folders.`)
 		for ei := range c {
 			p := ei.Path()
 			dev.throttleFileEvent(p, func() {
-				dev.handleDashboardFile(absWatchDir, p)
+				dev.handleAppFile(absWatchDir, p)
 			})
 		}
 	}()
@@ -166,10 +168,13 @@ func (d *Dev) throttleFileEvent(filePath string, handler func()) {
 	handler()
 }
 
-func (d *Dev) handleDashboardFile(absWatchDir, p string) {
-	if !strings.HasSuffix(p, DASHBOARD_SUFFIX) {
+func (d *Dev) handleAppFile(absWatchDir, p string) {
+	isDashboard := strings.HasSuffix(p, DASHBOARD_SUFFIX)
+	isTask := strings.HasSuffix(p, TASK_SUFFIX)
+
+	if !isDashboard && !isTask {
 		if strings.HasSuffix(p, ".sql") {
-			fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+			fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
 		}
 		return
 	}
@@ -180,9 +185,14 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 		fmt.Printf("ERROR: Failed removing prefix '%s' from dir %s\n", absWatchDir, path.Dir(p))
 		return
 	}
-	name, found := strings.CutSuffix(path.Base(p), DASHBOARD_SUFFIX)
+
+	suffix := DASHBOARD_SUFFIX
+	if isTask {
+		suffix = TASK_SUFFIX
+	}
+	name, found := strings.CutSuffix(path.Base(p), suffix)
 	if !found {
-		fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", DASHBOARD_SUFFIX, path.Base(p))
+		fmt.Printf("ERROR: Failed removing suffix '%s' from file name '%s'\n", suffix, path.Base(p))
 		return
 	}
 
@@ -195,6 +205,11 @@ func (d *Dev) handleDashboardFile(absWatchDir, p string) {
 
 	if updated {
 		fmt.Printf("Set id '%s' for file '%s'\n", shaperID, p)
+	}
+
+	if isTask {
+		// For tasks, we just ensure the ID is generated but do not preview.
+		return
 	}
 
 	content := string(contentBytes)
@@ -411,36 +426,62 @@ func (d *Dev) notifyClients(dashboardID string) bool {
 	}
 	return true
 }
-
-func hasLeadingShaperIDComment(content string) bool {
-	if !strings.HasPrefix(content, shaperIDPrefix) {
-		return false
-	}
-
-	lineEnd := strings.IndexByte(content, '\n')
-	firstLine := content
-	if lineEnd != -1 {
-		firstLine = content[:lineEnd]
-	}
-
-	id := strings.TrimPrefix(firstLine, shaperIDPrefix)
-	if id == "" || strings.ContainsAny(id, " \t\r") {
-		return false
-	}
-
-	return true
+// AppMetadata represents the metadata stored in comments at the top of an app file.
+type AppMetadata struct {
+	ID            string
+	SyncTimestamp *time.Time
 }
 
-func prependShaperIDComment(id, content string) string {
-	commentLine := fmt.Sprintf("%s%s\n", shaperIDPrefix, id)
+// extractAppMetadata reads the leading comments from the file content to extract the Shaper ID and Sync Timestamp.
+func extractAppMetadata(content string) AppMetadata {
+	var meta AppMetadata
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		// Use raw line for prefix matching to catch trailing spaces correctly
+		if strings.HasPrefix(line, shaperIDPrefix) {
+			id := strings.TrimPrefix(line, shaperIDPrefix)
+			if id != "" && !strings.ContainsAny(id, " \t\r") {
+				meta.ID = id
+			}
+		} else if strings.HasPrefix(line, shaperSyncPrefix) {
+			timeStr := strings.TrimSpace(strings.TrimPrefix(line, shaperSyncPrefix))
+			if t, err := time.Parse(time.RFC3339, timeStr); err == nil {
+				meta.SyncTimestamp = &t
+			}
+		} else if strings.TrimSpace(line) != "" {
+			// Stop searching once we hit a non-empty, non-metadata line
+			break
+		}
+	}
+	return meta
+}
+
+func hasLeadingShaperIDComment(content string) bool {
+	meta := extractAppMetadata(content)
+	return meta.ID != ""
+}
+
+func prependAppMetadata(id string, syncTime *time.Time, content string) string {
+	var sb strings.Builder
+	sb.WriteString(shaperIDPrefix)
+	sb.WriteString(id)
+	sb.WriteString("\n")
+
+	if syncTime != nil {
+		sb.WriteString(shaperSyncPrefix)
+		sb.WriteString(syncTime.Format(time.RFC3339))
+		sb.WriteString("\n")
+	}
+
 	if content != "" {
 		if content[0] != '\n' && content[0] != '\r' {
-			commentLine += "\n"
+			sb.WriteString("\n")
 		}
-		commentLine += content
-		return commentLine
+		sb.WriteString(content)
+	} else {
+		sb.WriteString("\n")
 	}
-	return commentLine + "\n"
+	return sb.String()
 }
 
 func ensureShaperIDForFile(filePath string) ([]byte, bool, string, error) {
@@ -450,12 +491,14 @@ func ensureShaperIDForFile(filePath string) ([]byte, bool, string, error) {
 	}
 
 	content := string(contentBytes)
-	if hasLeadingShaperIDComment(content) || strings.TrimSpace(content) == "" {
-		return contentBytes, false, "", nil
+	meta := extractAppMetadata(content)
+	
+	if meta.ID != "" || strings.TrimSpace(content) == "" {
+		return contentBytes, false, meta.ID, nil
 	}
 
 	newID := cuid2.Generate()
-	newContent := prependShaperIDComment(newID, content)
+	newContent := prependAppMetadata(newID, meta.SyncTimestamp, content)
 
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -480,9 +523,12 @@ func ensureShaperIDsForDir(dir string) (int, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+		isDashboard := strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX)
+		isTask := strings.HasSuffix(d.Name(), TASK_SUFFIX)
+
+		if !isDashboard && !isTask {
 			if strings.HasSuffix(d.Name(), ".sql") {
-				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+				fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
 			}
 			return nil
 		}

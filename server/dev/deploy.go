@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -23,12 +22,14 @@ const (
 	noAuthActor     = "no_auth"
 )
 
-type LocalDashboard struct {
-	ID       string
-	Name     string
-	Path     string
-	Content  string
-	FilePath string
+type LocalApp struct {
+	ID            string
+	Name          string
+	Type          string
+	Path          string
+	Content       string
+	FilePath      string
+	SyncTimestamp *time.Time
 }
 
 type deployHTTPClient interface {
@@ -42,7 +43,7 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 		return err
 	}
 
-	watchDir, err := resolveAbsolutePath(cfg.Directory)
+	watchDir, err := resolveConfigDirectory(cfg.Directory, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}
@@ -50,13 +51,8 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 		return err
 	}
 
-	fmt.Printf("Deploying Shaper dashboards...\n\n")
+	fmt.Printf("Deploying dashboards and tasks...\n\n")
 	fmt.Println("Current time: ", time.Now().Format(time.RFC3339))
-	if cfg.LastPull != nil {
-		fmt.Println("Last pulled:  ", cfg.LastPull.Format(time.RFC3339))
-	} else {
-		fmt.Println("Last pulled:  (not set)")
-	}
 	fmt.Println()
 
 	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
@@ -78,48 +74,32 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 	default:
 		return fmt.Errorf("%s must be set to run shaper deploy when login is required", deployAPIKeyEnv)
 	}
-	fmt.Println("Fetching remote dashboards from", cfg.URL)
-	remoteDashboards, err := fetchAllDashboards(ctx, client)
+	fmt.Println("Fetching remote apps from", cfg.URL)
+	remoteApps, err := fetchAllApps(ctx, client)
 	if err != nil {
-		return fmt.Errorf("failed to fetch dashboards: %w", err)
+		return fmt.Errorf("failed to fetch apps: %w", err)
 	}
-	fmt.Printf("Found %d remote dashboards.\n", len(remoteDashboards))
+	fmt.Printf("Found %d remote apps.\n", len(remoteApps))
 
-	// Count dashboard-type apps
-	remoteDashboardCount := 0
-	for _, dashboard := range remoteDashboards {
-		if dashboard.Type == "dashboard" {
-			remoteDashboardCount++
-		}
-	}
-
-	// Require lastPull only if remote has dashboards
-	if remoteDashboardCount > 0 && cfg.LastPull == nil {
-		return errors.New("config missing lastPull timestamp; run `shaper pull` before deploying (remote has existing dashboards)")
-	}
-
-	fmt.Println("Loading dashboards from folder", watchDir)
-	localDashboards, err := loadLocalDashboards(watchDir)
+	fmt.Println("Loading apps from folder", watchDir)
+	localApps, err := loadLocalApps(watchDir)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Found %d local dashboards.\n", len(localDashboards))
+	fmt.Printf("Found %d local apps.\n", len(localApps))
 
-	remoteDashboardsByID := make(map[string]api.App, len(remoteDashboards))
-	for _, dashboard := range remoteDashboards {
-		if dashboard.Type == "dashboard" {
-			remoteDashboardsByID[dashboard.ID] = dashboard
+	remoteAppsByID := make(map[string]api.App, len(remoteApps))
+	for _, app := range remoteApps {
+		if app.Type == "dashboard" || app.Type == "task" {
+			remoteAppsByID[app.ID] = app
 		}
 	}
 
-	// Only check freshness if we have a lastPull timestamp
-	if cfg.LastPull != nil {
-		if err := ensureRemoteFreshness(remoteDashboards, *cfg.LastPull, client.Actor()); err != nil {
-			return err
-		}
+	if err := ensureRemoteFreshness(remoteApps, localApps, client.Actor()); err != nil {
+		return err
 	}
 
-	ops := buildDeployOperations(localDashboards, remoteDashboards)
+	ops := buildDeployOperations(localApps, remoteApps)
 	if len(ops) == 0 {
 		fmt.Printf("\nNo changes detected; nothing to deploy.\n")
 		return nil
@@ -138,7 +118,7 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 	}
 
 	fmt.Printf("\nChanges: create=%d, update=%d, delete=%d\n\n", createCount, updateCount, deleteCount)
-	logDeployChanges(ops, localDashboards, remoteDashboardsByID)
+	logDeployChanges(ops, localApps, remoteAppsByID)
 
 	if validateOnly {
 		fmt.Printf("\nValidation successful. No changes have been applied (validate-only mode).\n")
@@ -153,8 +133,8 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 	return nil
 }
 
-func loadLocalDashboards(baseDir string) (map[string]LocalDashboard, error) {
-	dashboards := make(map[string]LocalDashboard)
+func loadLocalApps(baseDir string) (map[string]LocalApp, error) {
+	apps := make(map[string]LocalApp)
 	err := filepath.WalkDir(baseDir, func(p string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -162,9 +142,13 @@ func loadLocalDashboards(baseDir string) (map[string]LocalDashboard, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if !strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX) {
+
+		isDashboard := strings.HasSuffix(d.Name(), DASHBOARD_SUFFIX)
+		isTask := strings.HasSuffix(d.Name(), TASK_SUFFIX)
+
+		if !isDashboard && !isTask {
 			if strings.HasSuffix(d.Name(), ".sql") {
-				fmt.Printf("WARNING: %s ends with .sql but not with %s; ignoring\n", p, DASHBOARD_SUFFIX)
+				fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
 			}
 			return nil
 		}
@@ -174,13 +158,13 @@ func loadLocalDashboards(baseDir string) (map[string]LocalDashboard, error) {
 			return fmt.Errorf("failed to read %s: %w", p, err)
 		}
 		content := string(contentBytes)
-		id := extractShaperID(content)
-		if id == "" {
-			return fmt.Errorf("%s is missing a shaper id comment (-- shaperid:<id>)", p)
+		meta := extractAppMetadata(content)
+		if meta.ID == "" {
+			return fmt.Errorf("%s is missing a shaper id comment (run `shaper ids` to generate)", p)
 		}
 
-		if _, exists := dashboards[id]; exists {
-			return fmt.Errorf("duplicate dashboard id %s found in %s and %s", id, dashboards[id].FilePath, p)
+		if _, exists := apps[meta.ID]; exists {
+			return fmt.Errorf("duplicate app id %s found in %s and %s", meta.ID, apps[meta.ID].FilePath, p)
 		}
 
 		relDir, err := filepath.Rel(baseDir, filepath.Dir(p))
@@ -188,17 +172,26 @@ func loadLocalDashboards(baseDir string) (map[string]LocalDashboard, error) {
 			return fmt.Errorf("failed to determine relative path for %s: %w", p, err)
 		}
 
-		dashboards[id] = LocalDashboard{
-			ID:       id,
-			Name:     strings.TrimSuffix(d.Name(), DASHBOARD_SUFFIX),
-			Path:     normalizeDashboardPath(relDir),
-			Content:  content,
-			FilePath: p,
+		appType := "dashboard"
+		name := strings.TrimSuffix(d.Name(), DASHBOARD_SUFFIX)
+		if isTask {
+			appType = "task"
+			name = strings.TrimSuffix(d.Name(), TASK_SUFFIX)
+		}
+
+		apps[meta.ID] = LocalApp{
+			ID:            meta.ID,
+			Name:          name,
+			Type:          appType,
+			Path:          normalizeDashboardPath(relDir),
+			Content:       content,
+			FilePath:      p,
+			SyncTimestamp: meta.SyncTimestamp,
 		}
 		return nil
 	})
 
-	return dashboards, err
+	return apps, err
 }
 
 func normalizeDashboardPath(relDir string) string {
@@ -215,58 +208,76 @@ func normalizeDashboardPath(relDir string) string {
 	return normalized
 }
 
-// stripShaperIDPrefix removes the ID prefix, the newline after it, and the following empty line from content.
-// The ID prefix format is "-- shaperid:<id>\n\n" at the start of the content.
-func stripShaperIDPrefix(content string) string {
-	if !strings.HasPrefix(content, shaperIDPrefix) {
-		return content
-	}
-
-	// Find the end of the first line (where the newline is)
-	lineEnd := strings.IndexByte(content, '\n')
-	if lineEnd == -1 {
-		// No newline found, return empty string (content is just the ID line)
-		return ""
-	}
-
-	// Skip the ID line's newline
-	remaining := content[lineEnd+1:]
-
-	// Check if there's an empty line after the ID line and skip it too
-	if len(remaining) > 0 && remaining[0] == '\n' {
-		remaining = remaining[1:]
-	}
-
-	return remaining
-}
-
-func ensureRemoteFreshness(remote []api.App, lastPull time.Time, actor string) error {
-	for _, dashboard := range remote {
-		if dashboard.Type != "dashboard" {
+// stripAppMetadata removes the ID and SyncTime prefixes, their newlines, and the following empty line from content.
+func stripAppMetadata(content string) string {
+	lines := strings.Split(content, "\n")
+	var newLines []string
+	inMetadata := true
+	hadMetadata := false
+	for i, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if inMetadata && (strings.HasPrefix(trimmedLine, shaperIDPrefix) || strings.HasPrefix(trimmedLine, shaperSyncPrefix)) {
+			hadMetadata = true
 			continue
 		}
-		updatedBy := ""
-		if dashboard.UpdatedBy != nil {
-			updatedBy = *dashboard.UpdatedBy
+		if inMetadata {
+			inMetadata = false
+			// Only skip the empty line if we actually stripped some metadata beforehand
+			if hadMetadata && trimmedLine == "" && len(newLines) == 0 && i < len(lines)-1 {
+				continue
+			}
 		}
-		if dashboard.UpdatedAt.After(lastPull) && updatedBy != actor {
-			return fmt.Errorf("remote dashboard %s (%s) was updated after last pull by %s; run `shaper pull` first", dashboard.Name, dashboard.ID, updatedBy)
+		newLines = append(newLines, line)
+	}
+	return strings.Join(newLines, "\n")
+}
+
+func ensureRemoteFreshness(remote []api.App, local map[string]LocalApp, actor string) error {
+	for _, app := range remote {
+		if app.Type != "dashboard" && app.Type != "task" {
+			continue
+		}
+
+		localApp, exists := local[app.ID]
+		willBeModified := !exists || appsDiffer(localApp, app)
+		if !willBeModified {
+			continue
+		}
+
+		updatedBy := ""
+		if app.UpdatedBy != nil {
+			updatedBy = *app.UpdatedBy
+		}
+
+		// If the app was updated after our local sync timestamp, we normally want to force a pull first.
+		// If no sync timestamp exists locally, we MUST assume it's stale if we want to protect against overwriting Prod.
+		isStale := false
+		if localApp.SyncTimestamp != nil {
+			isStale = app.UpdatedAt.Truncate(time.Second).After(*localApp.SyncTimestamp)
+		} else {
+			isStale = true
+		}
+
+		if isStale {
+			return fmt.Errorf("remote app %s (%s) was updated in prod by %s; run `shaper pull` first", app.Name, app.ID, updatedBy)
 		}
 	}
 	return nil
 }
 
-func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []api.AppRequest {
+func buildDeployOperations(local map[string]LocalApp, remote []api.App) []api.AppRequest {
 	remoteByID := make(map[string]api.App, len(remote))
 	for _, r := range remote {
-		if r.Type == "dashboard" {
+		if r.Type == "dashboard" || r.Type == "task" {
 			remoteByID[r.ID] = r
 		}
 	}
 
-	var ops []api.AppRequest
+	var createOps []api.AppRequest
+	var updateOps []api.AppRequest
+	var deleteOps []api.AppRequest
 
-	localList := make([]LocalDashboard, 0, len(local))
+	localList := make([]LocalApp, 0, len(local))
 	for _, l := range local {
 		localList = append(localList, l)
 	}
@@ -277,16 +288,16 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []
 		return localList[i].Path < localList[j].Path
 	})
 
-	for _, localDash := range localList {
-		if remoteDash, ok := remoteByID[localDash.ID]; ok {
-			if dashboardsDiffer(localDash, remoteDash) {
-				name := localDash.Name
-				path := localDash.Path
-				content := stripShaperIDPrefix(localDash.Content)
-				id := localDash.ID
-				ops = append(ops, api.AppRequest{
+	for _, localApp := range localList {
+		if remoteApp, ok := remoteByID[localApp.ID]; ok {
+			if appsDiffer(localApp, remoteApp) {
+				name := localApp.Name
+				path := localApp.Path
+				content := stripAppMetadata(localApp.Content)
+				id := localApp.ID
+				updateOps = append(updateOps, api.AppRequest{
 					Operation: "update",
-					Type:      "dashboard",
+					Type:      localApp.Type,
 					Data: api.DashboardData{
 						ID:      &id,
 						Name:    &name,
@@ -298,13 +309,13 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []
 			continue
 		}
 
-		name := localDash.Name
-		path := localDash.Path
-		content := stripShaperIDPrefix(localDash.Content)
-		id := localDash.ID
-		ops = append(ops, api.AppRequest{
+		name := localApp.Name
+		path := localApp.Path
+		content := stripAppMetadata(localApp.Content)
+		id := localApp.ID
+		createOps = append(createOps, api.AppRequest{
 			Operation: "create",
-			Type:      "dashboard",
+			Type:      localApp.Type,
 			Data: api.DashboardData{
 				ID:      &id,
 				Name:    &name,
@@ -325,24 +336,29 @@ func buildDeployOperations(local map[string]LocalDashboard, remote []api.App) []
 		return remoteList[i].Path < remoteList[j].Path
 	})
 
-	for _, remoteDash := range remoteList {
-		if _, ok := local[remoteDash.ID]; ok {
+	for _, remoteApp := range remoteList {
+		if _, ok := local[remoteApp.ID]; ok {
 			continue
 		}
-		id := remoteDash.ID
-		ops = append(ops, api.AppRequest{
+		id := remoteApp.ID
+		deleteOps = append(deleteOps, api.AppRequest{
 			Operation: "delete",
-			Type:      "dashboard",
+			Type:      remoteApp.Type,
 			Data: api.DashboardData{
 				ID: &id,
 			},
 		})
 	}
 
+	var ops []api.AppRequest
+	ops = append(ops, deleteOps...)
+	ops = append(ops, updateOps...)
+	ops = append(ops, createOps...)
+
 	return ops
 }
 
-func dashboardsDiffer(local LocalDashboard, remote api.App) bool {
+func appsDiffer(local LocalApp, remote api.App) bool {
 	if local.Name != remote.Name {
 		return true
 	}
@@ -350,21 +366,23 @@ func dashboardsDiffer(local LocalDashboard, remote api.App) bool {
 		return true
 	}
 	// Compare content without the ID prefix (local has it, remote doesn't)
-	localContent := stripShaperIDPrefix(local.Content)
+	localContent := stripAppMetadata(local.Content)
 	return localContent != remote.Content
 }
 
-func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, remote map[string]api.App) {
+func logDeployChanges(ops []api.AppRequest, local map[string]LocalApp, remote map[string]api.App) {
 	for _, op := range ops {
 		var (
 			currentPath string
 			currentName string
+			appType     string
 		)
 
 		if op.Data.ID != nil {
-			if localDash, ok := local[*op.Data.ID]; ok {
-				currentPath = localDash.Path
-				currentName = localDash.Name
+			if localApp, ok := local[*op.Data.ID]; ok {
+				currentPath = localApp.Path
+				currentName = localApp.Name
+				appType = localApp.Type
 			}
 		}
 		if currentPath == "" && op.Data.Path != nil {
@@ -372,6 +390,9 @@ func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, rem
 		}
 		if currentName == "" && op.Data.Name != nil {
 			currentName = *op.Data.Name
+		}
+		if appType == "" {
+			appType = op.Type
 		}
 
 		var prev api.App
@@ -384,6 +405,9 @@ func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, rem
 		}
 		if currentName == "" && hasPrev {
 			currentName = prev.Name
+		}
+		if appType == "" && hasPrev {
+			appType = prev.Type
 		}
 
 		extra := ""
@@ -402,7 +426,13 @@ func logDeployChanges(ops []api.AppRequest, local map[string]LocalDashboard, rem
 		if op.Data.ID != nil {
 			opID = *op.Data.ID
 		}
-		fmt.Printf("%s %s: %s%s%s%s\n", op.Operation, opID, currentPath, currentName, DASHBOARD_SUFFIX, extra)
+
+		suffix := DASHBOARD_SUFFIX
+		if appType == "task" {
+			suffix = TASK_SUFFIX
+		}
+
+		fmt.Printf("%s %s: %s%s%s%s\n", op.Operation, opID, currentPath, currentName, suffix, extra)
 	}
 }
 

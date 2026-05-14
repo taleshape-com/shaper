@@ -51,7 +51,7 @@ func TestHasLeadingShaperIDComment(t *testing.T) {
 	}
 }
 
-func TestPrependShaperIDComment(t *testing.T) {
+func TestPrependAppMetadata(t *testing.T) {
 	tests := []struct {
 		name     string
 		content  string
@@ -76,7 +76,7 @@ func TestPrependShaperIDComment(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := prependShaperIDComment("testid", tc.content)
+			got := prependAppMetadata("testid", nil, tc.content)
 			if got != tc.expected {
 				t.Fatalf("expected %q, got %q", tc.expected, got)
 			}
