@@ -23,6 +23,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
+import DashboardHeatmap from "./DashboardHeatmap";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 import { TableDownloadButton } from "../charts/TableDownloadButton";
 import { FullscreenButton } from "./FullscreenButton";
@@ -444,7 +445,7 @@ const DataView = ({
                   }
                   const currentId = `${sectionIndex}-${queryIndex}`;
                   const isFullscreen = fullscreenId === currentId;
-                  const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+                  const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot") || query.render.type === "calendarHeatmap";
                   const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
                   const singleTable = numQueriesInSection === 1 && query.render.type === "table";
                   const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
@@ -674,6 +675,16 @@ const renderContent = (
         headers={query.columns}
         data={query.rows}
         markLines={query.render.markLines}
+      />
+    );
+  }
+  if (query.render.type === "calendarHeatmap") {
+    return (
+      <DashboardHeatmap
+        chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
+        headers={query.columns}
+        data={query.rows as (string | number | boolean)[][]}
       />
     );
   }

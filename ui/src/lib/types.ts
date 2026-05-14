@@ -140,6 +140,7 @@ export type Result = {
           | "barchartVerticalStacked"
           | "piechart"
           | "donutchart"
+          | "calendarHeatmap"
           label?: string;
           markLines: MarkLine[];
         }
