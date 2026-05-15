@@ -258,6 +258,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		addIdsSubcommand(rootCmd),
 		addDeploySubcommand(rootCmd),
 		addValidateSubcommand(rootCmd),
+		addSchemaSubcommand(rootCmd),
 	)
 
 	// Set up the root command execution
@@ -523,9 +524,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	deployConfigPath := deployFlags.StringLong("config", "./shaper.json", "Path to config file")
 	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
 
-	usage := `Deploy dashboards from files using API key auth.
-
-  Set SHAPER_DEPLOY_API_KEY to authenticate.`
+	usage := `Deploy dashboards from files using API key auth. Set SHAPER_DEPLOY_API_KEY to authenticate.`
 	deployCmd := &ff.Command{
 		Name:      "deploy",
 		Usage:     "shaper deploy [--config path]",
@@ -549,10 +548,10 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 	validateConfigPath := validateFlags.StringLong("config", "./shaper.json", "Path to config file")
 
 	usage := `Validate dashboards and tasks.
-  
+
   If no files are passed, all dashboards in the configured directory are validated.
   Otherwise, pass file paths to .dashboard.sql files or folders.
-  
+
   Set SHAPER_DEPLOY_API_KEY to authenticate.`
 
 	validateCmd := &ff.Command{
@@ -570,6 +569,30 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, validateCmd)
 	return validateCmd
+}
+
+func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
+	schemaFlags := ff.NewFlagSet("schema")
+	help := schemaFlags.Bool('h', "help", "show help")
+	schemaConfigPath := schemaFlags.StringLong("config", "./shaper.json", "Path to config file")
+	schemaAuthFile := schemaFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+
+	usage := "Show database schema as Markdown"
+	schemaCmd := &ff.Command{
+		Name:      "schema",
+		Usage:     "shaper schema [--config path] [--auth-file path]",
+		ShortHelp: usage,
+		Flags:     schemaFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(schemaFlags, usage))
+				return nil
+			}
+			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaAuthFile)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, schemaCmd)
+	return schemaCmd
 }
 
 func Run(cfg Config) func(context.Context) {
