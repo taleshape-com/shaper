@@ -131,10 +131,23 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 	hasErrors := false
 	var errorsCount int
 
+	absConfigPath, err := resolveAbsolutePath(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve config path: %w", err)
+	}
+	configDir := filepath.Dir(absConfigPath)
+
 	for _, p := range filesToValidate {
+		displayPath := p
+		if absP, err := resolveAbsolutePath(p); err == nil {
+			if rel, err := filepath.Rel(configDir, absP); err == nil {
+				displayPath = rel
+			}
+		}
+
 		contentBytes, err := os.ReadFile(p)
 		if err != nil {
-			fmt.Printf("ERROR reading %s: %v\n", p, err)
+			fmt.Printf("ERROR reading %s: %v\n", displayPath, err)
 			errorsCount++
 			hasErrors = true
 			continue
@@ -144,7 +157,7 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 
 		meta := extractAppMetadata(content)
 		if meta.ID == "" {
-			fmt.Printf("❌ %s\n   Error: missing shaperid comment. Run `shaper ids` to generate IDs for all apps.\n", p)
+			fmt.Printf("❌ %s\n   Error: missing shaperid comment. Run `shaper ids` to generate IDs for all apps.\n", displayPath)
 			errorsCount++
 			hasErrors = true
 			continue
@@ -160,14 +173,14 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 
 		resp, err := client.DoRequest(ctx, http.MethodPost, "/api/validate", reqBody)
 		if err != nil {
-			fmt.Printf("ERROR communicating with server for %s: %v\n", p, err)
+			fmt.Printf("ERROR communicating with server for %s: %v\n", displayPath, err)
 			errorsCount++
 			hasErrors = true
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			fmt.Printf("ERROR from server for %s: status %d\n", p, resp.StatusCode)
+			fmt.Printf("ERROR from server for %s: status %d\n", displayPath, resp.StatusCode)
 			resp.Body.Close()
 			errorsCount++
 			hasErrors = true
@@ -176,7 +189,7 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 
 		var valResp ValidateResponse
 		if err := json.NewDecoder(resp.Body).Decode(&valResp); err != nil {
-			fmt.Printf("ERROR decoding response for %s: %v\n", p, err)
+			fmt.Printf("ERROR decoding response for %s: %v\n", displayPath, err)
 			resp.Body.Close()
 			errorsCount++
 			hasErrors = true
@@ -185,9 +198,9 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 		resp.Body.Close()
 
 		if valResp.Valid {
-			fmt.Printf("✅ %s (%dms)\n", p, valResp.Duration)
+			fmt.Printf("✅ %s (%dms)\n", displayPath, valResp.Duration)
 		} else {
-			fmt.Printf("❌ %s (%dms)\n   Error: %s\n", p, valResp.Duration, valResp.Error)
+			fmt.Printf("❌ %s (%dms)\n   Error: %s\n", displayPath, valResp.Duration, valResp.Error)
 			errorsCount++
 			hasErrors = true
 		}
