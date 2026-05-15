@@ -39,7 +39,7 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 			return err
 		}
 	} else if systemCfg.LoginRequired {
-		authFilePath, err := resolveAbsolutePath(defaultAuthFile)
+		authFilePath, err := resolvePathRelativeToConfig(defaultAuthFile, configPath)
 		if err != nil {
 			return err
 		}
@@ -59,7 +59,7 @@ func RunValidateCommand(ctx context.Context, configPath string, args []string) e
 	var filesToValidate []string
 	if len(args) == 0 {
 		// Scan directory
-		watchDir, err := resolveConfigDirectory(cfg.Directory, configPath)
+		watchDir, err := resolvePathRelativeToConfig(cfg.Directory, configPath)
 		if err != nil {
 			return fmt.Errorf("failed to resolve directory: %w", err)
 		}

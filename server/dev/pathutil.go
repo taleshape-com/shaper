@@ -56,9 +56,9 @@ func resolveAbsolutePath(p string) (string, error) {
 	return absPath, nil
 }
 
-// resolveConfigDirectory resolves a directory path relative to the given config file path.
-func resolveConfigDirectory(dir string, configPath string) (string, error) {
-	expanded, err := expandUserPath(dir)
+// resolvePathRelativeToConfig resolves a path relative to the given config file path.
+func resolvePathRelativeToConfig(p string, configPath string) (string, error) {
+	expanded, err := expandUserPath(p)
 	if err != nil {
 		return "", err
 	}

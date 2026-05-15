@@ -15,7 +15,7 @@ func RunDevCommand(ctx context.Context, configPath, authFile string) error {
 		return err
 	}
 
-	watchDir, err := resolveConfigDirectory(cfg.Directory, configPath)
+	watchDir, err := resolvePathRelativeToConfig(cfg.Directory, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve watch directory: %w", err)
 	}
@@ -26,7 +26,7 @@ func RunDevCommand(ctx context.Context, configPath, authFile string) error {
 	if authFile == "" {
 		authFile = ".shaper-auth"
 	}
-	authFilePath, err := resolveAbsolutePath(authFile)
+	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}

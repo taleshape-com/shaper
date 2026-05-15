@@ -22,7 +22,12 @@ func RunSchemaCommand(ctx context.Context, configPath, authFile string) error {
 		return err
 	}
 
-	auth := NewAuthManager(ctx, cfg.URL, authFile, sysCfg.LoginRequired)
+	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
+	if err != nil {
+		return err
+	}
+
+	auth := NewAuthManager(ctx, cfg.URL, authFilePath, sysCfg.LoginRequired)
 	client, err := NewAPIClient(ctx, cfg.URL, auth)
 	if err != nil {
 		return err
