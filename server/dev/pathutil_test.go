@@ -76,3 +76,45 @@ func TestResolveAbsolutePath(t *testing.T) {
 		t.Fatalf("expected %q, got %q", expected, resolved)
 	}
 }
+
+func TestResolvePathRelativeToConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "project", "shaper.json")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("failed to create config dir: %v", err)
+	}
+
+	tests := []struct {
+		name   string
+		input  string
+		want   string
+	}{
+		{
+			name:  "relative path",
+			input: ".shaper-auth",
+			want:  filepath.Join(tmpDir, "project", ".shaper-auth"),
+		},
+		{
+			name:  "parent relative path",
+			input: "../external-auth",
+			want:  filepath.Join(tmpDir, "external-auth"),
+		},
+		{
+			name:  "absolute path",
+			input: filepath.Join(tmpDir, "abs-auth"),
+			want:  filepath.Join(tmpDir, "abs-auth"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolvePathRelativeToConfig(tc.input, configPath)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("expected %q, got %q", tc.want, got)
+			}
+		})
+	}
+}

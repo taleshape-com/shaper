@@ -23,7 +23,7 @@ func RunPreviewCommand(ctx context.Context, configPath, authFile string, noOpen 
 	if authFile == "" {
 		authFile = defaultAuthFile
 	}
-	authFilePath, err := resolveAbsolutePath(authFile)
+	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}

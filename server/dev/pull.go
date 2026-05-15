@@ -24,7 +24,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return err
 	}
 
-	watchDir, err := resolveConfigDirectory(cfg.Directory, configPath)
+	watchDir, err := resolvePathRelativeToConfig(cfg.Directory, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory: %w", err)
 	}
@@ -32,7 +32,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return err
 	}
 
-	authFilePath, err := resolveAbsolutePath(authFile)
+	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}
@@ -80,20 +80,30 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 	// Compare and categorize
 	var toCreate, toUpdate []api.App
 	
+	// Track expected file paths for all remote apps to detect moves/renames
+	allRemotePaths := make(map[string]string)
+	
 	// Track file paths to detect duplicates
 	seenPaths := make(map[string]string) // path -> app name (for error reporting)
 
 	for _, app := range remoteApps {
+		// Construct expected path
+		expectedPath, err := getExpectedFilePath(watchDir, app)
+		if err != nil {
+			return fmt.Errorf("failed to determine file path for app %q: %w", app.Name, err)
+		}
+		allRemotePaths[app.ID] = expectedPath
+
 		// Check for duplicate file paths
 		suffix := DASHBOARD_SUFFIX
 		if app.Type == "task" {
 			suffix = TASK_SUFFIX
 		}
-		filePath := filepath.Join(strings.TrimPrefix(app.Path, "/"), sanitizeFileName(app.Name)+suffix)
-		if existingName, exists := seenPaths[filePath]; exists {
+		relFilePath := filepath.Join(strings.TrimPrefix(app.Path, "/"), sanitizeFileName(app.Name)+suffix)
+		if existingName, exists := seenPaths[relFilePath]; exists {
 			return fmt.Errorf("duplicate app name %q in folder %q (conflicts with %q) - please rename one of them before pulling", app.Name, app.Path, existingName)
 		}
-		seenPaths[filePath] = app.Name
+		seenPaths[relFilePath] = app.Name
 
 		localPath, existsLocally := localIDs[app.ID]
 
@@ -136,11 +146,27 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		if isStale || appsDiffer(localApp, app) {
 			toUpdate = append(toUpdate, app)
 		}
-
-		delete(localIDs, app.ID)
 	}
 
-	if len(toCreate) == 0 && len(toUpdate) == 0 {
+	// Identify apps that were deleted remotely
+	var toDelete []string
+	for id, path := range localIDs {
+		if _, existsRemotely := allRemotePaths[id]; existsRemotely {
+			continue
+		}
+		
+		contentBytes, err := os.ReadFile(path)
+		if err != nil {
+			// If we can't read it, we'll assume it's not a synced app
+			continue
+		}
+		meta := extractAppMetadata(string(contentBytes))
+		if meta.SyncTimestamp != nil {
+			toDelete = append(toDelete, path)
+		}
+	}
+
+	if len(toCreate) == 0 && len(toUpdate) == 0 && len(toDelete) == 0 {
 		fmt.Printf("\nNo updates.\n")
 		return nil
 	}
@@ -165,6 +191,13 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 				suffix = TASK_SUFFIX
 			}
 			fmt.Printf("  + %s%s\n", filepath.Join(strings.TrimPrefix(d.Path, "/"), d.Name), suffix)
+		}
+	}
+	if len(toDelete) > 0 {
+		fmt.Printf("Apps to delete (removed from prod) (%d):\n", len(toDelete))
+		for _, p := range toDelete {
+			relPath, _ := filepath.Rel(watchDir, p)
+			fmt.Printf("  - %s\n", relPath)
 		}
 	}
 	fmt.Println()
@@ -214,16 +247,7 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 
 	// Write apps to files
 	var writeErrors []error
-	expectedPaths := make(map[string]string) // app ID -> expected file path
 	for _, app := range append(toCreate, toUpdate...) {
-		expectedPath, err := getExpectedFilePath(watchDir, app)
-		if err != nil {
-			fmt.Printf("ERROR: Failed to determine file path for app '%s': %s\n", app.Name, err)
-			writeErrors = append(writeErrors, err)
-			continue
-		}
-		expectedPaths[app.ID] = expectedPath
-
 		if err := writeAppFile(watchDir, app); err != nil {
 			fmt.Printf("ERROR: Failed to write app '%s': %s\n", app.Name, err)
 			writeErrors = append(writeErrors, err)
@@ -240,21 +264,38 @@ func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfir
 		return fmt.Errorf("pull completed with %d error(s), lastPull not updated", len(writeErrors))
 	}
 
-	// Delete old files that have been moved or renamed
+	// Delete old files that have been moved or renamed, or deleted remotely
 	var deleteErrors []error
 	for appID, actualPath := range localIDs {
-		expectedPath, exists := expectedPaths[appID]
-		if !exists {
-			// App was deleted remotely, skip deletion (user might want to keep it)
+		expectedPath, existsRemotely := allRemotePaths[appID]
+		
+		if !existsRemotely {
+			// App was deleted remotely.
+			// We only delete the local file if it was previously synced (has a shapersync header).
+			contentBytes, err := os.ReadFile(actualPath)
+			if err != nil {
+				continue
+			}
+			meta := extractAppMetadata(string(contentBytes))
+			if meta.SyncTimestamp != nil {
+				if err := os.Remove(actualPath); err != nil {
+					fmt.Printf("ERROR: Failed to delete remote-deleted file '%s': %s\n", actualPath, err)
+					deleteErrors = append(deleteErrors, err)
+				} else {
+					fmt.Printf("Deleted file (removed from prod): %s\n", actualPath)
+				}
+			}
 			continue
 		}
+
 		if actualPath != expectedPath {
-			// App was moved/renamed, delete old file
+			// App was moved/renamed remotely, delete OLD local file path.
+			// The new file path has already been written by the write loop above.
 			if err := os.Remove(actualPath); err != nil {
 				fmt.Printf("ERROR: Failed to delete old app file '%s': %s\n", actualPath, err)
 				deleteErrors = append(deleteErrors, err)
 			} else {
-				fmt.Printf("Deleted old app file: %s\n", actualPath)
+				fmt.Printf("Deleted old app file (renamed/moved): %s\n", actualPath)
 			}
 		}
 	}
