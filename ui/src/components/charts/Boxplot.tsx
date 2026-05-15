@@ -13,6 +13,7 @@ import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue, echartsEncode } from "../../lib/render";
+import { safeColor } from "../../lib/safeColor";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
@@ -237,7 +238,7 @@ const Boxplot = (props: BoxplotProps) => {
             const formattedValue = valueFormatter(values[1], true);
             const color = colorByIndex.get(values[0]) || primaryColor;
             tooltipContent += `<div class="flex items-center space-x-2">
-                <span class="inline-block size-3 rounded-full" style="background-color: ${echartsEncode(color)}"></span>
+                <span class="inline-block size-3 rounded-full" style="background-color: ${safeColor(color)}"></span>
                 <span class="text-sm font-medium">${echartsEncode(formattedValue)}</span>
               </div>`;
             const extraData = Object.entries(values[2]);

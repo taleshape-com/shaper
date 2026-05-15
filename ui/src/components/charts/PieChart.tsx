@@ -13,6 +13,7 @@ import { cx } from "../../lib/utils";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column } from "../../lib/types";
 import { formatValue, echartsEncode } from "../../lib/render";
+import { safeColor } from "../../lib/safeColor";
 import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
@@ -170,7 +171,7 @@ const PieChart = (props: PieChartProps) => {
           const percentage = params.percent.toFixed(1);
           let tooltipContent = `<div class="text-sm">
             <div class="flex items-center space-x-2">
-              <span class="inline-block size-2 rounded-sm" style="background-color: ${echartsEncode(params.color)}"></span>
+              <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(params.color)}"></span>
               <span class="font-medium">${echartsEncode(params.name)}</span>
             </div>`;
 
