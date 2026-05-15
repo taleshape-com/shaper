@@ -635,19 +635,21 @@ function Index () {
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                {path === "/"
-                  ? "Create a first dashboard"
-                  : getSystemConfig().tasksEnabled ? "Create a dashboard or task" : "Create a dashboard"}
+                {getSystemConfig().editEnabled
+                  ? getSystemConfig().tasksEnabled ? "Create a dashboard or task" : "Create a dashboard"
+                  : "System is set to read-only. Create a first dashboard or task as file, deploy them and they will show up here."}
               </p>
-              <Link to="/new" search={{ path }}>
-                <Button>
-                  <RiAddFill
-                    className="-ml-1 mr-0.5 size-5 shrink-0"
-                    aria-hidden={true}
-                  />
-                  New
-                </Button>
-              </Link>
+              {getSystemConfig().editEnabled && (
+                <Link to="/new" search={{ path }}>
+                  <Button>
+                    <RiAddFill
+                      className="-ml-1 mr-0.5 size-5 shrink-0"
+                      aria-hidden={true}
+                    />
+                    New
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <TableRoot className="h-full overflow-y-auto">
@@ -1097,7 +1099,7 @@ function RuntimeTooltip ({
   nextRunType?: string;
   children?: React.ReactNode;
 }) {
-  if (lastRunAt == null && nextRunAt == null && nextRunType !== "init") {return children;}
+  if (lastRunAt == null && nextRunAt == null && nextRunType !== "init") { return children; }
   const tooltipContent = (
     <>
       {lastRunAt != null && (

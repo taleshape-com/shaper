@@ -253,9 +253,11 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	var subcommands []*ff.Command
 	subcommands = append(subcommands,
 		addDevSubcommand(rootCmd),
+		addPreviewSubcommand(rootCmd),
 		addPullSubcommand(rootCmd),
 		addIdsSubcommand(rootCmd),
 		addDeploySubcommand(rootCmd),
+		addValidateSubcommand(rootCmd),
 	)
 
 	// Set up the root command execution
@@ -439,6 +441,34 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 	return devCmd
 }
 
+func addPreviewSubcommand(rootCmd *ff.Command) *ff.Command {
+	previewFlags := ff.NewFlagSet("preview")
+	help := previewFlags.Bool('h', "help", "show help")
+	previewConfigPath := previewFlags.StringLong("config", "./shaper.json", "Path to config file")
+	previewAuthFile := previewFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	noOpen := previewFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
+
+	usage := "create a temporary dashboard preview"
+	previewCmd := &ff.Command{
+		Name:      "preview",
+		Usage:     "shaper preview <path/to/dashboard.dashboard.sql> [--config path] [--auth-file path] [--no-open]",
+		ShortHelp: usage,
+		Flags:     previewFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(previewFlags, usage))
+				return nil
+			}
+			if len(args) != 1 {
+				return fmt.Errorf("preview requires exactly one dashboard file path")
+			}
+			return dev.RunPreviewCommand(ctx, *previewConfigPath, *previewAuthFile, *noOpen, args[0])
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, previewCmd)
+	return previewCmd
+}
+
 func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 	pullFlags := ff.NewFlagSet("pull")
 	help := pullFlags.Bool('h', "help", "show help")
@@ -511,6 +541,35 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
 	return deployCmd
+}
+
+func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
+	validateFlags := ff.NewFlagSet("validate")
+	help := validateFlags.Bool('h', "help", "show help")
+	validateConfigPath := validateFlags.StringLong("config", "./shaper.json", "Path to config file")
+
+	usage := `Validate dashboards and tasks.
+  
+  If no files are passed, all dashboards in the configured directory are validated.
+  Otherwise, pass file paths to .dashboard.sql files or folders.
+  
+  Set SHAPER_DEPLOY_API_KEY to authenticate.`
+
+	validateCmd := &ff.Command{
+		Name:      "validate",
+		Usage:     "shaper validate [files...] [--config path]",
+		ShortHelp: "Validate dashboards",
+		Flags:     validateFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(validateFlags, usage))
+				return nil
+			}
+			return dev.RunValidateCommand(ctx, *validateConfigPath, args)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, validateCmd)
+	return validateCmd
 }
 
 func Run(cfg Config) func(context.Context) {
