@@ -576,11 +576,13 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 	help := schemaFlags.Bool('h', "help", "show help")
 	schemaConfigPath := schemaFlags.StringLong("config", "./shaper.json", "Path to config file")
 	schemaAuthFile := schemaFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	includeExtensions := schemaFlags.BoolLong("extensions", "Include extensions in the output")
+	includeSecrets := schemaFlags.BoolLong("secrets", "Include secrets in the output")
 
 	usage := "Show database schema as Markdown"
 	schemaCmd := &ff.Command{
 		Name:      "schema",
-		Usage:     "shaper schema [--config path] [--auth-file path]",
+		Usage:     "shaper schema [--config path] [--auth-file path] [--extensions] [--secrets]",
 		ShortHelp: usage,
 		Flags:     schemaFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -588,7 +590,7 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(schemaFlags, usage))
 				return nil
 			}
-			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaAuthFile)
+			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaAuthFile, *includeExtensions, *includeSecrets)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, schemaCmd)

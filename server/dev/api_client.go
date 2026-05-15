@@ -97,7 +97,6 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 			return fmt.Errorf("failed to parse token expiry: %w", err)
 		}
 		c.tokenExpiry = expiry
-		fmt.Println("Generated JWT.")
 		return nil
 	}
 	return fmt.Errorf("failed to refresh token after re-authentication")
