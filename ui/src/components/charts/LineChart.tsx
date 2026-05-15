@@ -14,6 +14,7 @@ import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue, echartsEncode } from "../../lib/render";
+import { safeColor } from "../../lib/safeColor";
 import { EChart } from "./EChart";
 
 interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -278,7 +279,7 @@ const LineChart = (props: LineChartProps) => {
             const formattedValue = valueFormatter(value);
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
-                <span class="inline-block size-2 rounded-sm" style="background-color: ${echartsEncode(param.color)}"></span>
+                <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(param.color)}"></span>
                 ${categories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
