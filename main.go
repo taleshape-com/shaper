@@ -258,6 +258,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		addIdsSubcommand(rootCmd),
 		addDeploySubcommand(rootCmd),
 		addValidateSubcommand(rootCmd),
+		addSchemaSubcommand(rootCmd),
 	)
 
 	// Set up the root command execution
@@ -570,6 +571,30 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, validateCmd)
 	return validateCmd
+}
+
+func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
+	schemaFlags := ff.NewFlagSet("schema")
+	help := schemaFlags.Bool('h', "help", "show help")
+	schemaConfigPath := schemaFlags.StringLong("config", "./shaper.json", "Path to config file")
+	schemaAuthFile := schemaFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+
+	usage := "Show database schema as Markdown"
+	schemaCmd := &ff.Command{
+		Name:      "schema",
+		Usage:     "shaper schema [--config path] [--auth-file path]",
+		ShortHelp: usage,
+		Flags:     schemaFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(schemaFlags, usage))
+				return nil
+			}
+			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaAuthFile)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, schemaCmd)
+	return schemaCmd
 }
 
 func Run(cfg Config) func(context.Context) {

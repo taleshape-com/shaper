@@ -163,6 +163,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionDeploy))
 	e.POST("/api/validate", handler.Validate(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy))
 	e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData))
+	e.GET("/api/schema", handler.GetSchema(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionQueryData))
 	e.POST("/api/download/:filename", handler.DownloadSQL(app, internalUrl, pdfDateFormat), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData))
 	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))

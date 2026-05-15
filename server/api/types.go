@@ -55,3 +55,81 @@ type AppsResponse struct {
 	Page     int   `json:"page"`
 	PageSize int   `json:"pageSize"`
 }
+
+// SchemaResponse represents the database schema.
+type SchemaResponse struct {
+	Databases  []Database  `json:"databases"`
+	Extensions []Extension `json:"extensions,omitempty"`
+	Secrets    []Secret    `json:"secrets,omitempty"`
+}
+
+// Database represents a database in the schema.
+type Database struct {
+	Name    string   `json:"name"`
+	Schemas []Schema `json:"schemas"`
+}
+
+// Schema represents a schema in the database.
+type Schema struct {
+	Name   string  `json:"name"`
+	Tables []Table `json:"tables"`
+	Views  []View  `json:"views"`
+	Enums  []Enum  `json:"enums"`
+}
+
+// Table represents a table in the schema.
+type Table struct {
+	Name        string       `json:"name"`
+	Comment     string       `json:"comment,omitempty"`
+	Columns     []Column     `json:"columns"`
+	Constraints []Constraint `json:"constraints,omitempty"`
+}
+
+// View represents a view in the schema.
+type View struct {
+	Name       string   `json:"name"`
+	Comment    string   `json:"comment,omitempty"`
+	Columns    []Column `json:"columns"`
+	Definition string   `json:"definition"` // The SQL DDL
+}
+
+// Column represents a column in a table or view.
+type Column struct {
+	Name     string  `json:"name"`
+	Type     string  `json:"type"`
+	Nullable bool    `json:"nullable"`
+	Default  *string `json:"default,omitempty"`
+	Comment  string  `json:"comment,omitempty"`
+}
+
+// Constraint represents a constraint on a table.
+type Constraint struct {
+	Name            string   `json:"name"`
+	Type            string   `json:"type"` // PRIMARY KEY, FOREIGN KEY, CHECK, UNIQUE
+	Columns         []string `json:"columns"`
+	ReferencedTable *string  `json:"referencedTable,omitempty"`
+	ReferencedCols  []string `json:"referencedCols,omitempty"`
+	CheckExpression *string  `json:"checkExpression,omitempty"`
+}
+
+// Enum represents an enum type.
+type Enum struct {
+	Name   string   `json:"name"`
+	Values []string `json:"values"`
+}
+
+// Extension represents a DuckDB extension.
+type Extension struct {
+	Name        string `json:"name"`
+	Loaded      bool   `json:"loaded"`
+	Installed   bool   `json:"installed"`
+	Description string `json:"description,omitempty"`
+}
+
+// Secret represents a DuckDB secret.
+type Secret struct {
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Provider string   `json:"provider"`
+	Scope    []string `json:"scope,omitempty"`
+}
