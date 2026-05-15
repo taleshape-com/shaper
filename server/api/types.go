@@ -121,8 +121,6 @@ type Enum struct {
 // Extension represents a DuckDB extension.
 type Extension struct {
 	Name        string `json:"name"`
-	Loaded      bool   `json:"loaded"`
-	Installed   bool   `json:"installed"`
 	Description string `json:"description,omitempty"`
 }
 

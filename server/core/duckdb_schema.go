@@ -20,7 +20,7 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 	err = db.SelectContext(ctx, &databases, `
 		SELECT database_name
 		FROM duckdb_databases()
-		WHERE NOT internal AND database_name NOT IN ('sqlite', 'system', 'temp')
+		WHERE NOT internal
 		ORDER BY database_name
 	`)
 	if err != nil {
@@ -36,12 +36,10 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 	// Fetch Extensions
 	var extensions []struct {
 		Name        string `db:"extension_name"`
-		Loaded      bool   `db:"loaded"`
-		Installed   bool   `db:"installed"`
 		Description string `db:"description"`
 	}
 	_ = db.SelectContext(ctx, &extensions, `
-		SELECT extension_name, loaded, installed, description
+		SELECT extension_name, description
 		FROM duckdb_extensions()
 		WHERE loaded AND installed AND extension_name NOT IN ('autocomplete', 'core_functions', 'icu', 'jemalloc', 'json', 'parquet')
 		ORDER BY extension_name
@@ -49,8 +47,6 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 	for _, e := range extensions {
 		res.Extensions = append(res.Extensions, api.Extension{
 			Name:        e.Name,
-			Loaded:      e.Loaded,
-			Installed:   e.Installed,
 			Description: e.Description,
 		})
 	}
