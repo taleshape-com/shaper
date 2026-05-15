@@ -524,9 +524,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	deployConfigPath := deployFlags.StringLong("config", "./shaper.json", "Path to config file")
 	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
 
-	usage := `Deploy dashboards from files using API key auth.
-
-  Set SHAPER_DEPLOY_API_KEY to authenticate.`
+	usage := `Deploy dashboards from files using API key auth. Set SHAPER_DEPLOY_API_KEY to authenticate.`
 	deployCmd := &ff.Command{
 		Name:      "deploy",
 		Usage:     "shaper deploy [--config path]",
@@ -550,10 +548,10 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 	validateConfigPath := validateFlags.StringLong("config", "./shaper.json", "Path to config file")
 
 	usage := `Validate dashboards and tasks.
-  
+
   If no files are passed, all dashboards in the configured directory are validated.
   Otherwise, pass file paths to .dashboard.sql files or folders.
-  
+
   Set SHAPER_DEPLOY_API_KEY to authenticate.`
 
 	validateCmd := &ff.Command{
