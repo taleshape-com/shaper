@@ -484,7 +484,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" || rInfo.Type == "piechart" || rInfo.Type == "donutchart" {
+	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" || rInfo.Type == "piechart" || rInfo.Type == "donutchart" || rInfo.Type == "calendarHeatmap" {
 		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
 			return "index"
 		}
@@ -1181,6 +1181,16 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 			r.ColorIndex = &pieColorIndex
 		}
 		return r
+	}
+
+	heatmap, heatmapIndex := findColumnByTag(columns, "HEATMAP")
+	if heatmap != nil && xaxis != nil {
+		return renderInfo{
+			Label:          labelValue,
+			Type:           "calendarHeatmap",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &heatmapIndex,
+		}
 	}
 
 	boxplotIndex := findBoxlotColumnIndex(columns)
