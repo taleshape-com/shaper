@@ -20,12 +20,13 @@ import (
 const API_KEY_PREFIX = "shaperkey."
 
 const (
-	PermissionGenerateJWT = "jwt"
-	PermissionDeploy      = "deploy"
-	PermissionQueryData   = "data:query"
-	PermissionIngestData  = "data:ingest"
-	PermissionReadMetrics = "metrics"
+	PermissionGenerateJWT   = "jwt"
+	PermissionDeploy        = "deploy"
+	PermissionQueryData     = "data:query"
+	PermissionIngestData    = "data:ingest"
+	PermissionReadMetrics   = "metrics"
 	PermissionReadDashboard = "dashboard:read"
+	PermissionReadSchema    = "schema:read"
 )
 
 var AllPermissions = []string{
@@ -35,6 +36,7 @@ var AllPermissions = []string{
 	PermissionIngestData,
 	PermissionReadMetrics,
 	PermissionReadDashboard,
+	PermissionReadSchema,
 }
 
 type APIKey struct {

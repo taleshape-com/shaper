@@ -60,6 +60,7 @@ const PERMISSIONS = [
   { label: "Ingest Data", value: "data:ingest" },
   { label: "Read Metrics", value: "metrics" },
   { label: "Read Dashboard", value: "dashboard:read" },
+  { label: "Read Database Schema", value: "schema:read" },
 ];
 
 interface NewAPIKeyResponse {
