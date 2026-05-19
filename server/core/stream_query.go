@@ -803,7 +803,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 			}
 			columns = append(columns, col)
 		}
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, data)
+		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, columns, data)
 		if err != nil {
 			return "", "", err
 		}

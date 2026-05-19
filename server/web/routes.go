@@ -247,7 +247,7 @@ func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, set
 		apiKeyChain := keyAuthMiddleware(apiKeyActorMid(next))
 		return func(c echo.Context) error {
 			token := extractAuthorizationToken(c)
-			if core.IsAPIKeyToken(token) || !app.LoginRequired {
+			if core.IsAPIKeyToken(token) || (!app.LoginRequired && token == "") {
 				return apiKeyChain(c)
 			}
 			return jwtChain(c)

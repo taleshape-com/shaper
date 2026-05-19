@@ -231,7 +231,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 		}
 
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
 		}
@@ -458,7 +458,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			})
 		}
 
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, columns, queryRows)
+		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, columns, queryRows)
 		if err != nil {
 			return false, err
 		}
@@ -1416,7 +1416,7 @@ func getAxisType(rows Rows, index int) (string, error) {
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
 // NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
-func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+func collectVars(singleVars map[string]string, multiVars map[string][]string, protectedVariables map[string]any, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
 		columnName := ""
@@ -1430,6 +1430,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdown")
+		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
 		}
 		param := queryParams.Get(columnName)
 		if param != "" {
@@ -1493,6 +1496,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdownMulti")
+		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
 		}
 		params := queryParams[columnName]
 		paramWasProvided := queryParams.Has(columnName)
@@ -1574,6 +1580,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if columnName == "" {
 			return fmt.Errorf("missing datepicker column")
 		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
+		}
 		param := queryParams.Get(columnName)
 		if param == "" {
 			// Set default value
@@ -1619,6 +1628,12 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if toColumnName == "" {
 			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		if _, protected := protectedVariables[fromColumnName]; protected {
+			return nil
+		}
+		if _, protected := protectedVariables[toColumnName]; protected {
+			return nil
 		}
 		fromParam := queryParams.Get(fromColumnName)
 		if fromParam == "" {
@@ -1671,6 +1686,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing hint column for input")
+		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
 		}
 		param := queryParams.Get(columnName)
 		if param != "" {
