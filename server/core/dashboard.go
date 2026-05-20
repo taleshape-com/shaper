@@ -2,7 +2,14 @@
 
 package core
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrDashboardNotFound = errors.New("Dashboard Not Found")
+
+const TMP_DASHBOARD_PREFIX = "shaper-tmp."
 
 type Dashboard struct {
 	ID         string    `db:"id" json:"id"`
@@ -77,7 +84,8 @@ type renderInfo struct {
 	Download        string
 	DownloadIdIndex *int
 	CompareIndex    *int
-	TrendIndex      *int
+	ValueSize       string
+	TrendIndex      []int
 	GaugeCategories []GaugeCategory
 	MarkLines       []MarkLine
 }

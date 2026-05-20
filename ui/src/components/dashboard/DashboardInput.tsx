@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/types";
-import { formatValue } from "../../lib/render";
+import { Column } from "../../lib/types";
+import { formatValue, toCssId } from "../../lib/render";
 import { Input } from "../tremor/Input";
 import { Label } from "../tremor/Label";
 import { cx } from "../../lib/utils";
@@ -11,9 +11,10 @@ import { useState, useEffect } from "react";
 type InputProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"];
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardInput ({
@@ -22,6 +23,7 @@ function DashboardInput ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: InputProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "hint");
   const varName = headers[valueIndex].name;
@@ -47,15 +49,15 @@ function DashboardInput ({
   }, 500);
 
   return (
-    <>
+    <div className="flex items-center print:hidden">
       {label && (
-        <Label htmlFor={label} className="ml-3 pr-1 print:hidden">
+        <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:
         </Label>
       )}
-      <div className={cx("print:hidden", { ["ml-2"]: !label })}>
+      <div className={cx({ ["ml-2"]: !label })}>
         <Input
-          id={label}
+          id={toCssId(`${idPrefix}${varName}`)}
           value={localValue}
           placeholder={placeholder}
           onChange={(e) => {
@@ -63,12 +65,12 @@ function DashboardInput ({
             // Update local state immediately for responsive UI
             setLocalValue(newValue);
             // Throttle the actual API call
-            throttledOnChange(newValue);
+            throttledOnChange(newValue.trim());
           }}
           className="mx-auto my-0 min-w-[120px]"
         />
       </div>
-    </>
+    </div>
   );
 }
 

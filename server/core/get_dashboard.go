@@ -5,6 +5,8 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
@@ -15,44 +17,10 @@ import (
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
+	"github.com/jmoiron/sqlx"
 )
 
 const QUERY_MAX_ROWS = 3000
-
-// These SQL statements are used only for their side effects and not to display anything.
-// They are not visible in the dashboard output.
-var sideEffectSQLStatements = [][]string{
-	{"ATTACH"},
-	{"USE"},
-	{"SET", "VARIABLE"},
-	{"SET"},
-	{"BEGIN"},
-	{"COMMIT"},
-	{"ROLLBACK"},
-	{"ABORT"},
-	{"CALL"},
-	{"RESET", "VARIABLE"},
-	{"CREATE", "TEMPORARY", "TABLE"},
-	{"CREATE", "TEMPORARY", "VIEW"},
-	{"CREATE", "TEMP", "TABLE"},
-	{"CREATE", "TEMP", "VIEW"},
-	{"CREATE", "OR", "REPLACE", "TEMPORARY", "TABLE"},
-	{"CREATE", "OR", "REPLACE", "TEMPORARY", "VIEW"},
-	{"CREATE", "OR", "REPLACE", "TEMP", "TABLE"},
-	{"CREATE", "OR", "REPLACE", "TEMP", "VIEW"},
-	{"CREATE", "TEMP", "MACRO"},
-	{"CREATE", "TEMP", "FUNCTION"},
-	{"CREATE", "TEMPORARY", "MACRO"},
-	{"CREATE", "TEMPORARY", "FUNCTION"},
-	{"CREATE", "TEMP", "MACRO", "IF", "NOT", "EXISTS"},
-	{"CREATE", "TEMP", "FUNCTION", "IF", "NOT", "EXISTS"},
-	{"CREATE", "TEMPORARY", "MACRO", "IF", "NOT", "EXISTS"},
-	{"CREATE", "TEMPORARY", "FUNCTION", "IF", "NOT", "EXISTS"},
-	{"CREATE", "OR", "REPLACE", "TEMP", "MACRO"},
-	{"CREATE", "OR", "REPLACE", "TEMP", "FUNCTION"},
-	{"CREATE", "OR", "REPLACE", "TEMPORARY", "MACRO"},
-	{"CREATE", "OR", "REPLACE", "TEMPORARY", "FUNCTION"},
-}
 
 type DashboardQuery struct {
 	Content    string
@@ -89,57 +57,36 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	headerImage := ""
 	footerLink := ""
 
-	conn, err := app.DuckDB.Connx(ctx)
+	conn, cleanup, err := app.getDashboardConn(ctx)
 	if err != nil {
-		return result, fmt.Errorf("Error getting conn: %v", err)
+		return result, err
 	}
+	defer cleanup()
 
 	for queryIndex, sqlString := range sqls {
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
 			continue
 		}
+		if !IsAllowedStatement(app, sqlString) {
+			return result, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
+		}
 		if nextIsDownload {
 			nextIsDownload = false
 			continue
 		}
-		varPrefix, varCleanup := buildVarPrefix(singleVars, multiVars)
-		query := Query{Columns: []Column{}, Rows: Rows{}}
-		// run query
-		rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
-		if varCleanup != "" {
-			if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
-				return result, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
-			}
-		}
-		if err != nil {
-			return result, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
+		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
+			continue
 		}
 
-		colTypes, err := rows.ColumnTypes()
+		queryRows, colTypes, err := app.runDashboardQuery(ctx, conn, sqlString, queryIndex, dashboardQuery.ID, singleVars, multiVars)
 		if err != nil {
 			return result, err
 		}
-		for rows.Next() {
-			row, err := rows.SliceScan()
-			if err != nil {
-				if closeErr := rows.Close(); closeErr != nil {
-					return result, fmt.Errorf("Error closing rows after scan error. Scan Err: %v. Close Err: %v", err, closeErr)
-				}
-				return result, err
-			}
-			query.Rows = append(query.Rows, row)
-			if len(query.Rows) > QUERY_MAX_ROWS {
-				// TODO: add a warning to the result and show to user
-				app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardQuery.ID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
-				if err := rows.Close(); err != nil {
-					return result, fmt.Errorf("Error closing rows while truncating (dashboard '%v'): %v", dashboardQuery.ID, err)
-				}
-				break
-			}
-		}
 
-		if isSideEffect(sqlString) {
+		query := Query{Columns: []Column{}, Rows: queryRows}
+
+		if isSideEffect(app, sqlString) {
 			continue
 		}
 
@@ -188,7 +135,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			if result.ReloadAt != 0 {
 				return result, fmt.Errorf("Multiple RELOAD queries in dashboard %s", dashboardQuery.ID)
 			}
-			result.ReloadAt = getReloadValue(query.Rows)
+			result.ReloadAt = getScheduleTime(query.Rows)
 			continue
 		}
 
@@ -214,7 +161,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			MarkLines:       rInfo.MarkLines,
 		}
 
-		if rInfo.Download == "csv" || rInfo.Download == "xlsx" {
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
 			nextIsDownload = true
 		}
 
@@ -244,8 +191,28 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					filename = v.(duckdb.Union).Value.(string)
 				}
 				queryString := ""
-				if len(downloadLinkParams) > 0 {
-					queryString = "?" + downloadLinkParams.Encode()
+				linkParams := url.Values{}
+				// Using query params directly for pdf, but using downloadLinkParams for other downloads since there we don't collect vars again.
+				// This matters especially for vars that are not explicitly set and need to be populated with their default value.
+				// Hope we can simplify this in the future.
+				if rInfo.Download == "pdf" {
+					if len(queryParams) > 0 {
+						vars, err := json.Marshal(queryParams)
+						if err != nil {
+							return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+						}
+						linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					}
+				} else {
+					vars, err := json.Marshal(downloadLinkParams)
+					if err != nil {
+						return result, fmt.Errorf("failed to json marshal params for download link: %w", err)
+					}
+					linkParams.Add("vars", base64.StdEncoding.EncodeToString(vars))
+					linkParams.Add("query_id", strconv.Itoa(queryIndex+1))
+				}
+				if len(linkParams) > 0 {
+					queryString = "?" + linkParams.Encode()
 				}
 				if rInfo.Download == "pdf" {
 					id := dashboardQuery.ID
@@ -257,14 +224,14 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 							id = v.(duckdb.Union).Value.(string)
 						}
 					}
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/pdf/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", id, url.QueryEscape(filename), rInfo.Download, queryString)
 				} else {
-					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/query/%d/%s.%s%s", dashboardQuery.ID, queryIndex+1, url.QueryEscape(filename), rInfo.Download, queryString)
+					query.Rows[0][colIndex] = fmt.Sprintf("api/dashboards/%s/download/%s.%s%s", dashboardQuery.ID, url.QueryEscape(filename), rInfo.Download, queryString)
 				}
 			}
 		}
 
-		err = collectVars(singleVars, multiVars, rInfo.Type, queryParams, query.Columns, query.Rows)
+		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
 		}
@@ -338,26 +305,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 				}
 				if colType == "object" {
-					if d, ok := cell.(duckdb.Map); ok {
-						allGood := true
-						m := make(map[string]string)
-						for k, v := range d {
-							kStr, ok := k.(string)
-							if !ok {
-								allGood = false
-								break
-							}
-							vStr, ok := v.(string)
-							if !ok {
-								allGood = false
-								break
-							}
-							m[kStr] = vStr
-						}
-						if allGood {
-							row[i] = m
-						}
-					}
+					row[i] = duckMapToMap(cell)
 				}
 			}
 		}
@@ -404,6 +352,124 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	return result, err
 }
 
+func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId string, targetDashboardId string, queryParams url.Values, variables map[string]any) (bool, error) {
+	dashboard, err := GetDashboardInfo(app, ctx, sourceDashboardId)
+	if err != nil {
+		return false, err
+	}
+
+	cleanContent := util.StripSQLComments(dashboard.Content)
+	sqls, err := util.SplitSQLQueries(cleanContent)
+	if err != nil {
+		return false, err
+	}
+
+	singleVars, multiVars, err := getTokenVars(variables)
+	if err != nil {
+		return false, err
+	}
+
+	nextLabel := ""
+	nextMarkLines := []MarkLine{}
+	nextIsDownload := false
+	hideNextContentSection := false
+
+	conn, cleanup, err := app.getDashboardConn(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer cleanup()
+
+	for queryIndex, sqlString := range sqls {
+		sqlString = strings.TrimSpace(sqlString)
+		if sqlString == "" {
+			continue
+		}
+		if !IsAllowedStatement(app, sqlString) {
+			return false, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
+		}
+		if nextIsDownload {
+			nextIsDownload = false
+			continue
+		}
+		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
+			continue
+		}
+
+		queryRows, colTypes, err := app.runDashboardQuery(ctx, conn, sqlString, queryIndex, sourceDashboardId, singleVars, multiVars)
+		if err != nil {
+			return false, err
+		}
+
+		if isSideEffect(app, sqlString) {
+			continue
+		}
+
+		if isLabel(colTypes, queryRows) {
+			nextLabel = getSingleValue(queryRows)
+			continue
+		}
+
+		if isSectionTitle(colTypes, queryRows) {
+			hideNextContentSection = false
+			if len(queryRows) == 0 {
+				hideNextContentSection = true
+			}
+			continue
+		}
+
+		if isReload(colTypes, queryRows) || isHeaderImage(colTypes, queryRows) || isFooterLink(colTypes, queryRows) {
+			continue
+		}
+
+		if lines, ok := getMarkLines(colTypes, queryRows); ok {
+			nextMarkLines = append(nextMarkLines, lines...)
+			continue
+		}
+
+		rInfo := getRenderInfo(colTypes, queryRows, nextLabel, nextMarkLines)
+
+		if rInfo.Download == "pdf" {
+			id := sourceDashboardId
+			if rInfo.DownloadIdIndex != nil && len(queryRows) > 0 {
+				v := queryRows[0][*rInfo.DownloadIdIndex]
+				if v != nil {
+					id = v.(duckdb.Union).Value.(string)
+				} else {
+					id = ""
+				}
+			}
+			if id == targetDashboardId {
+				return true, nil
+			}
+		}
+
+		if rInfo.Download == "csv" || rInfo.Download == "xlsx" || rInfo.Download == "json" {
+			nextIsDownload = true
+		}
+
+		// Map columns for collectVars
+		var columns []Column
+		for colIndex, c := range colTypes {
+			tag := mapTag(colIndex, rInfo)
+			columns = append(columns, Column{
+				Name: c.Name(),
+				Tag:  tag,
+			})
+		}
+
+		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, columns, queryRows)
+		if err != nil {
+			return false, err
+		}
+
+		nextLabel = ""
+		nextMarkLines = []MarkLine{}
+	}
+
+	return false, nil
+}
+
 func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams url.Values, variables map[string]any) (GetResult, error) {
 	dashboard, err := GetDashboardInfo(app, ctx, dashboardId)
 	if err != nil {
@@ -418,7 +484,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" {
+	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" || rInfo.Type == "piechart" || rInfo.Type == "donutchart" {
 		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
 			return "index"
 		}
@@ -473,10 +539,15 @@ func mapTag(index int, rInfo renderInfo) string {
 		if rInfo.CompareIndex != nil && index == *rInfo.CompareIndex {
 			return "compare"
 		}
+		if rInfo.ValueSize != "" && (rInfo.ValueIndex == nil || index == *rInfo.ValueIndex) {
+			return rInfo.ValueSize
+		}
 		return "value"
 	}
-	if rInfo.TrendIndex != nil && index == *rInfo.TrendIndex {
-		return "trend"
+	for _, trendIndex := range rInfo.TrendIndex {
+		if index == trendIndex {
+			return "trend"
+		}
 	}
 	return ""
 }
@@ -485,7 +556,7 @@ func mapTag(index int, rInfo renderInfo) string {
 var matchDecimal = regexp.MustCompile(`DECIMAL\(\d+,\d+\)`)
 
 // TODO: BIT type is not supported yet by Go duckdb lib
-// TODO: Support ARRAY, LIST, STRUCT, more MAP types and generic UNION types
+// TODO: Support ARRAY, LIST, more MAP types and generic UNION types
 func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	t := dbType
 	for _, dbType := range dbTypes {
@@ -562,6 +633,9 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	if matchDecimal.MatchString(t) {
 		return "number", nil
 	}
+	if strings.HasPrefix(t, "STRUCT(\"") {
+		return "object", nil
+	}
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
 
@@ -597,25 +671,46 @@ func findColumnByTag(columns []*sql.ColumnType, tag string) (*sql.ColumnType, in
 	return nil, -1
 }
 
-// Some SQL statements are only used for their side effects and should not be shown on the dashboard.
-// We ignore case and extra whitespace when matching the statements
-func isSideEffect(sqlString string) bool {
-	normalized := strings.ToUpper(strings.TrimSpace(sqlString))
-	for _, stmt := range sideEffectSQLStatements {
-		mismatch := false
-		sub := normalized
-		for _, s := range stmt {
-			if !strings.HasPrefix(sub, s) {
-				mismatch = true
-				break
-			}
-			sub = strings.TrimSpace(strings.TrimPrefix(sub, s))
-		}
-		if !mismatch {
-			return true
+func findAllColumnsByTag(columns []*sql.ColumnType, tag string) []int {
+	unionDefinition := ""
+	for _, dbType := range dbTypes {
+		if dbType.Name == tag {
+			unionDefinition = dbType.Definition
+			break
 		}
 	}
-	return false
+	if unionDefinition == "" {
+		return []int{}
+	}
+	var indices []int
+	for i, c := range columns {
+		if c.DatabaseTypeName() == unionDefinition {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
+func findBoxlotColumnIndex(columns []*sql.ColumnType) int {
+	for i, c := range columns {
+		if c.DatabaseTypeName() == boxplotType {
+			return i
+		}
+	}
+	return -1
+}
+
+// TODO: This uses simple string matching. There are some edge cases where hidden section won't end correctly.
+// For example, if someone manually writes the union type `UNION("section_varchar" VARCHAR)` instead of `SECTION`, it won't be recognized.
+// Also, if you construct the result by reading from a table/view/variable, this might lead to more queries being hidden than intended.
+// TODO: Currently header sections are not hidden. The first header section should be hidden though.
+func canStartSection(sqlString string) bool {
+	upper := strings.ToUpper(sqlString)
+	return strings.Contains(upper, "SECTION") ||
+		strings.Contains(upper, "DROPDOWN") ||
+		strings.Contains(upper, "DATEPICKER") ||
+		strings.Contains(upper, "DOWNLOAD_") ||
+		strings.Contains(upper, "INPUT")
 }
 
 func isLabel(columns []*sql.ColumnType, rows Rows) bool {
@@ -710,6 +805,10 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	if xlsxColumn != nil {
 		return "xlsx"
 	}
+	jsonColumn, _ := findColumnByTag(columns, "DOWNLOAD_JSON")
+	if jsonColumn != nil {
+		return "json"
+	}
 	pdfColumn, _ := findColumnByTag(columns, "DOWNLOAD_PDF")
 	if pdfColumn != nil {
 		return "pdf"
@@ -789,14 +888,16 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		// Alias for BARCHART_STACKED_PERCENT
 		barchartStacked, barchartStackedIndex = findColumnByTag(columns, "BARCHART_PERCENT_STACKED")
 	}
-	if barchartStacked != nil && xaxis != nil && barCat != nil {
+	if barchartStacked != nil && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "barchartHorizontalStacked",
-			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
 			MarkLines:      markLines,
+		}
+		if barCat != nil {
+			r.CategoryIndex = &barCatIndex
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -821,14 +922,16 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		return r
 	}
-	if barchartStacked != nil && yaxis != nil && barCat != nil {
+	if barchartStacked != nil && yaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "barchartVerticalStacked",
-			CategoryIndex:  &barCatIndex,
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
 			MarkLines:      markLines,
+		}
+		if barCat != nil {
+			r.CategoryIndex = &barCatIndex
 		}
 		if barColor != nil {
 			r.ColorIndex = &barColorIndex
@@ -1036,6 +1139,66 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		return r
 	}
 
+	// Pie chart detection
+	piechart, piechartIndex := findColumnByTag(columns, "PIECHART")
+	if piechart == nil {
+		piechart, piechartIndex = findColumnByTag(columns, "PIECHART_PERCENT")
+	}
+	isDonut := false
+	if piechart == nil {
+		piechart, piechartIndex = findColumnByTag(columns, "DONUTCHART")
+		isDonut = true
+	}
+	if piechart == nil {
+		piechart, piechartIndex = findColumnByTag(columns, "DONUTCHART_PERCENT")
+		isDonut = true
+	}
+	if piechart != nil {
+		pieCat, pieCatIndex := findColumnByTag(columns, "PIECHART_CATEGORY")
+		if pieCat == nil {
+			pieCat, pieCatIndex = findColumnByTag(columns, "DONUTCHART_CATEGORY")
+		}
+		if pieCat == nil {
+			pieCat, pieCatIndex = findColumnByTag(columns, "CATEGORY")
+		}
+		pieColor, pieColorIndex := findColumnByTag(columns, "PIECHART_COLOR")
+		if pieColor == nil {
+			pieColor, pieColorIndex = findColumnByTag(columns, "COLOR")
+		}
+		renderType := "piechart"
+		if isDonut {
+			renderType = "donutchart"
+		}
+		r := renderInfo{
+			Label:          labelValue,
+			Type:           renderType,
+			ValueAxisIndex: &piechartIndex,
+		}
+		if pieCat != nil {
+			r.CategoryIndex = &pieCatIndex
+		}
+		if pieColor != nil {
+			r.ColorIndex = &pieColorIndex
+		}
+		return r
+	}
+
+	boxplotIndex := findBoxlotColumnIndex(columns)
+	boxplotColor, boxplotColorIndex := findColumnByTag(columns, "COLOR")
+	if boxplotIndex > -1 && xaxis != nil {
+		r := renderInfo{
+			Label:          labelValue,
+			Type:           "boxplot",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &boxplotIndex,
+			MarkLines:      markLines,
+		}
+		if boxplotColor != nil {
+			r.ColorIndex = &boxplotColorIndex
+		}
+		return r
+	}
+
 	inputTag, inputTagIndex := findColumnByTag(columns, "INPUT")
 	if inputTag != nil && len(rows) == 1 {
 		return renderInfo{
@@ -1045,13 +1208,27 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 	}
 
-	// TODO: assert that COMPARE can only be used if both values are the same type
 	if len(rows) == 1 {
 		firstRow := rows[0]
+		valueSize := ""
+		var valueIndex *int
+		if _, i := findColumnByTag(columns, "TEXT_SMALL"); i != -1 {
+			valueSize = "small"
+			valueIndex = &i
+		} else if _, i := findColumnByTag(columns, "TEXT_MEDIUM"); i != -1 {
+			valueSize = "medium"
+			valueIndex = &i
+		} else if _, i := findColumnByTag(columns, "TEXT_LARGE"); i != -1 {
+			valueSize = "large"
+			valueIndex = &i
+		}
+
 		if len(firstRow) == 1 {
 			return renderInfo{
-				Label: labelValue,
-				Type:  "value",
+				Label:      labelValue,
+				Type:       "value",
+				ValueSize:  valueSize,
+				ValueIndex: valueIndex,
 			}
 		}
 		compareTag, compareTagIndex := findColumnByTag(columns, "COMPARE")
@@ -1060,17 +1237,19 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 				Label:        labelValue,
 				CompareIndex: &compareTagIndex,
 				Type:         "value",
+				ValueSize:    valueSize,
+				ValueIndex:   valueIndex,
 			}
 		}
 	}
 
-	trendTag, trendTagIndex := findColumnByTag(columns, "TREND")
+	trendTagIndices := findAllColumnsByTag(columns, "TREND")
 	r := renderInfo{
 		Label: labelValue,
 		Type:  "table",
 	}
-	if trendTag != nil {
-		r.TrendIndex = &trendTagIndex
+	if len(trendTagIndices) > 0 {
+		r.TrendIndex = trendTagIndices
 	}
 	return r
 }
@@ -1237,29 +1416,7 @@ func getAxisType(rows Rows, index int) (string, error) {
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
 // NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
-func buildVarPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
-	varPrefix := strings.Builder{}
-	varCleanup := strings.Builder{}
-	for k, v := range singleVars {
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
-	}
-	for k, v := range multiVars {
-		l := ""
-		for i, p := range v {
-			prefix := ", "
-			if i == 0 {
-				prefix = ""
-			}
-			l += fmt.Sprintf("%s'%s'", prefix, util.EscapeSQLString(p))
-		}
-		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", util.EscapeSQLIdentifier(k), l))
-		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
-	}
-	return varPrefix.String(), varCleanup.String()
-}
-
-func collectVars(singleVars map[string]string, multiVars map[string][]string, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+func collectVars(singleVars map[string]string, multiVars map[string][]string, protectedVariables map[string]any, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
 		columnName := ""
@@ -1273,6 +1430,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdown")
+		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
 		}
 		param := queryParams.Get(columnName)
 		if param != "" {
@@ -1336,6 +1496,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdownMulti")
+		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
 		}
 		params := queryParams[columnName]
 		paramWasProvided := queryParams.Has(columnName)
@@ -1417,6 +1580,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if columnName == "" {
 			return fmt.Errorf("missing datepicker column")
 		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
+		}
 		param := queryParams.Get(columnName)
 		if param == "" {
 			// Set default value
@@ -1462,6 +1628,12 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		}
 		if toColumnName == "" {
 			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		if _, protected := protectedVariables[fromColumnName]; protected {
+			return nil
+		}
+		if _, protected := protectedVariables[toColumnName]; protected {
+			return nil
 		}
 		fromParam := queryParams.Get(fromColumnName)
 		if fromParam == "" {
@@ -1515,6 +1687,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 		if columnName == "" {
 			return fmt.Errorf("missing hint column for input")
 		}
+		if _, protected := protectedVariables[columnName]; protected {
+			return nil
+		}
 		param := queryParams.Get(columnName)
 		if param != "" {
 			singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
@@ -1523,7 +1698,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, re
 	return nil
 }
 
-// TODO: This shares a lot of code with collectVars
+// TODO: This shares a lot of code with collectVars. Also, should we really collect vars upfront like this? Or should we collect them when doing the actual download?
 func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
@@ -1850,7 +2025,7 @@ func isReload(columns []*sql.ColumnType, rows Rows) bool {
 	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
 }
 
-func getReloadValue(rows Rows) int64 {
+func getScheduleTime(rows Rows) int64 {
 	if len(rows) == 0 {
 		return 0
 	}
@@ -1869,6 +2044,11 @@ func getReloadValue(rows Rows) int64 {
 		if t, ok := union.Value.(time.Time); ok {
 			// Convert to milliseconds since epoch
 			return t.UnixMilli()
+		}
+		if s, ok := union.Value.(string); ok {
+			if strings.ToLower(s) == "init" {
+				return -1
+			}
 		}
 		return 0
 	}
@@ -1911,6 +2091,66 @@ func getSingleValue(rows Rows) string {
 	return ""
 }
 
+func (app *App) getDashboardConn(ctx context.Context) (*sqlx.Conn, func(), error) {
+	db, cleanup, err := app.GetDuckDB(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error getting DB: %v", err)
+	}
+
+	conn, err := db.Connx(ctx)
+	if err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("Error getting conn: %v", err)
+	}
+
+	if app.InternalDBName != "" {
+		searchPath := fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';", util.EscapeSQLIdentifier(app.InternalDBName))
+		if _, err := conn.ExecContext(ctx, searchPath); err != nil {
+			conn.Close()
+			cleanup()
+			return nil, nil, fmt.Errorf("Error setting search path: %v", err)
+		}
+	}
+
+	return conn, func() {
+		conn.Close()
+		cleanup()
+	}, nil
+}
+
+func (app *App) runDashboardQuery(ctx context.Context, conn *sqlx.Conn, sqlString string, queryIndex int, dashboardID string, singleVars map[string]string, multiVars map[string][]string) (Rows, []*sql.ColumnType, error) {
+	varPrefix, varCleanup := buildVarPrefixNoSearchPath(app, singleVars, multiVars)
+	rows, err := conn.QueryxContext(ctx, varPrefix+sqlString+";")
+	if varCleanup != "" {
+		if _, cleanupErr := conn.ExecContext(ctx, varCleanup); cleanupErr != nil {
+			return nil, nil, fmt.Errorf("Error cleaning up vars in query %d: %v", queryIndex, cleanupErr)
+		}
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error querying DB in query %d: %v", queryIndex, err)
+	}
+	defer rows.Close()
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	queryRows := [][]any{}
+	for rows.Next() {
+		row, err := rows.SliceScan()
+		if err != nil {
+			return nil, nil, err
+		}
+		queryRows = append(queryRows, row)
+		if len(queryRows) > QUERY_MAX_ROWS {
+			app.Logger.InfoContext(ctx, "Query result too large, truncating", "dashboard", dashboardID, "queryIndex", queryIndex, "maxRows", QUERY_MAX_ROWS)
+			break
+		}
+	}
+	return queryRows, colTypes, nil
+}
+
 func lessThanTwoUniqueRangeValues(r []any) bool {
 	if len(r) < 2 {
 		return true
@@ -1931,4 +2171,55 @@ func lessThanTwoUniqueRangeValues(r []any) bool {
 		}
 	}
 	return true
+}
+
+func duckMapToMap(value any) any {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case map[string]any:
+		m := make(map[string]any)
+		for k, val := range v {
+			m[k] = duckMapToMap(val)
+		}
+		return m
+	case duckdb.Map:
+		m := make(map[string]any)
+		for k, val := range v {
+			m[fmt.Sprint(k)] = duckMapToMap(val)
+		}
+		return m
+	case duckdb.OrderedMap:
+		m := make(map[string]any)
+		keys := v.Keys()
+		values := v.Values()
+		for i := 0; i < len(keys); i++ {
+			m[fmt.Sprint(keys[i])] = duckMapToMap(values[i])
+		}
+		return m
+	case *duckdb.OrderedMap:
+		m := make(map[string]any)
+		keys := v.Keys()
+		values := v.Values()
+		for i := 0; i < len(keys); i++ {
+			m[fmt.Sprint(keys[i])] = duckMapToMap(values[i])
+		}
+		return m
+	case []any:
+		arr := make([]any, len(v))
+		for i, val := range v {
+			arr[i] = duckMapToMap(val)
+		}
+		return arr
+	case duckdb.Union:
+		return duckMapToMap(v.Value)
+	case duckdb.Decimal:
+		return v.Float64()
+	case duckdb.Interval:
+		return formatInterval(v)
+	}
+
+	return value
 }

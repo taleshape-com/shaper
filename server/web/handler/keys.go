@@ -41,7 +41,8 @@ func CreateAPIKey(app *core.App) echo.HandlerFunc {
 		}
 
 		var request struct {
-			Name string `json:"name"`
+			Name        string   `json:"name"`
+			Permissions []string `json:"permissions"`
 		}
 		if err := c.Bind(&request); err != nil {
 			return c.JSONPretty(http.StatusBadRequest,
@@ -50,17 +51,17 @@ func CreateAPIKey(app *core.App) echo.HandlerFunc {
 				}{Error: "Invalid request"}, "  ")
 		}
 
-		// Validate dashboard name
+		// Validate name
 		if request.Name == "" {
 			return c.JSONPretty(http.StatusBadRequest,
 				struct {
 					Error string `json:"error"`
-				}{Error: "Dashboard name is required"}, "  ")
+				}{Error: "API key name is required"}, "  ")
 		}
 
-		id, key, err := core.CreateAPIKey(app, c.Request().Context(), request.Name)
+		id, key, err := core.CreateAPIKey(app, c.Request().Context(), request.Name, request.Permissions)
 		if err != nil {
-			c.Logger().Error("error creating dashboard:", slog.Any("error", err))
+			c.Logger().Error("error creating api key:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest,
 				struct {
 					Error string `json:"error"`
@@ -74,6 +75,41 @@ func CreateAPIKey(app *core.App) echo.HandlerFunc {
 			ID:  id,
 			Key: key,
 		}, "  ")
+	}
+}
+
+func UpdateAPIKeyPermissions(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized,
+				struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+		}
+
+		var request struct {
+			Permissions []string `json:"permissions"`
+		}
+		if err := c.Bind(&request); err != nil {
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: "Invalid request"}, "  ")
+		}
+
+		err := core.UpdateAPIKeyPermissions(app, c.Request().Context(), c.Param("id"), request.Permissions)
+		if err != nil {
+			c.Logger().Error("error updating api key permissions:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest,
+				struct {
+					Error string `json:"error"`
+				}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, struct {
+			Updated bool `json:"updated"`
+		}{Updated: true}, "  ")
 	}
 }
 

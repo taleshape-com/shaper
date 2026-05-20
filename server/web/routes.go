@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"shaper/server/core"
 	"shaper/server/web/handler"
+	"strings"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -35,6 +36,10 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 					Type: core.ActorAPIKey,
 					ID:   apiKeyID,
 				}
+			} else if _, ok := claims["public"].(string); ok {
+				actor = &core.Actor{
+					Type: core.ActorPublic,
+				}
 			} else if !app.LoginRequired {
 				actor = &core.Actor{
 					Type: core.ActorNoAuth,
@@ -50,12 +55,69 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func SetAPIKeyActor(app *core.App, contextKey string) func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if !app.LoginRequired {
+				actor := &core.Actor{
+					Type: core.ActorNoAuth,
+				}
+				ctx := core.ContextWithActor(c.Request().Context(), actor)
+				c.SetRequest(c.Request().WithContext(ctx))
+				return next(c)
+			}
+
+			raw := c.Get(contextKey)
+			token, _ := raw.(string)
+			if token == "" {
+				return next(c)
+			}
+
+			apiKeyID := core.GetAPIKeyID(token)
+			if apiKeyID == "" {
+				return next(c)
+			}
+
+			actor := &core.Actor{
+				Type: core.ActorAPIKey,
+				ID:   apiKeyID,
+			}
+			ctx := core.ContextWithActor(c.Request().Context(), actor)
+			c.SetRequest(c.Request().WithContext(ctx))
+
+			return next(c)
+		}
+	}
+}
+
+const keyAuthContextKey = "api_key_token"
+
+func RequirePermission(app *core.App, permissions ...string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			actor := core.ActorFromContext(c.Request().Context())
+			if actor == nil {
+				return echo.ErrUnauthorized
+			}
+			for _, permission := range permissions {
+				if actor.HasPermission(c.Request().Context(), app.Sqlite, permission) {
+					return next(c)
+				}
+			}
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "Missing required permission"}, "  ")
+		}
+	}
+}
+
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
+	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
+		TokenLookup: "header:Authorization",
+		KeyFunc:     GetJWTKeyfunc(app),
+	})
 	apiWithAuth := e.Group("/api",
-		echojwt.WithConfig(echojwt.Config{
-			TokenLookup: "header:Authorization",
-			KeyFunc:     GetJWTKeyfunc(app),
-		}),
+		jwtMiddleware,
 		SetActor(app),
 	)
 
@@ -66,9 +128,17 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
-			return core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			ok, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				c.Set(keyAuthContextKey, key)
+			}
+			return ok, nil
 		},
 	}
+	apiKeyActor := SetAPIKeyActor(app, keyAuthContextKey)
 
 	e.HEAD("/", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
@@ -79,7 +149,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.HEAD("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionReadMetrics))
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))
@@ -89,15 +159,22 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app))
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app))
-	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig))
+	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionIngestData))
+	e.POST("/api/deploy", handler.Deploy(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionDeploy))
+	e.POST("/api/validate", handler.Validate(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy))
+	e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData))
+	e.GET("/api/schema", handler.GetSchema(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionReadSchema))
+	e.POST("/api/download/:filename", handler.DownloadSQL(app, internalUrl, pdfDateFormat), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData))
+	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
+	apiWithAuth.GET("/version", handler.GetVersion(app))
 	apiWithAuth.POST("/logout", handler.Logout(app))
-	apiWithAuth.GET("/apps", handler.ListApps(app))
 	apiWithAuth.POST("/folders", handler.CreateFolder(app))
 	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
 	apiWithAuth.POST("/folders/:id/name", handler.RenameFolder(app))
 	apiWithAuth.POST("/move", handler.MoveItems(app))
-	apiWithAuth.POST("/dashboards", handler.CreateDashboard(app))
+	e.POST("/api/dashboards", handler.CreateDashboard(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionQueryData))
+
 	apiWithAuth.GET("/dashboards/:id", handler.GetDashboard(app))
 	apiWithAuth.DELETE("/dashboards/:id", handler.DeleteDashboard(app))
 	apiWithAuth.GET("/dashboards/:id/info", handler.GetDashboardInfo(app))
@@ -105,9 +182,9 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/dashboards/:id/name", handler.SaveDashboardName(app))
 	apiWithAuth.POST("/dashboards/:id/visibility", handler.SaveDashboardVisibility(app))
 	apiWithAuth.POST("/dashboards/:id/password", handler.SaveDashboardPassword(app))
-	apiWithAuth.GET("/dashboards/:id/query/:query/:filename", handler.DownloadQuery(app))
-	apiWithAuth.GET("/dashboards/:id/pdf/:filename", handler.DownloadPdf(app, internalUrl, pdfDateFormat))
-	apiWithAuth.POST("/run/dashboard", handler.PreviewDashboardQuery(app))
+	// If user auth with JWT generated by a JWT, the api key permission check checks for the `jwt` permission. Makes sense that you can download a dashboard if you can generate a JWT for it.
+	e.GET("/api/dashboards/:id/download/:filename", handler.RequestDashboardDownload(app, internalUrl, pdfDateFormat), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionReadDashboard, core.PermissionGenerateJWT))
+	e.GET("/api/download/:key/:filename", handler.DownloadFileByKey(app, internalUrl, pdfDateFormat))
 	if !app.NoTasks {
 		apiWithAuth.POST("/tasks", handler.CreateTask(app))
 		apiWithAuth.GET("/tasks/:id", handler.GetTask(app))
@@ -117,11 +194,14 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		apiWithAuth.POST("/run/task", handler.RunTask(app))
 	}
 	apiWithAuth.GET("/users", handler.ListUsers(app))
+	apiWithAuth.POST("/users/:id/password", handler.UpdatePassword(app))
+	apiWithAuth.POST("/users/:id/name", handler.UpdateName(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
 	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
 	apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
 	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
+	apiWithAuth.POST("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
 	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
 	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
 
@@ -159,6 +239,32 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	// Index HTML - light caching with revalidation
 	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, app.BasePath))
+}
+
+func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, setActorMid echo.MiddlewareFunc, keyAuthMiddleware echo.MiddlewareFunc, apiKeyActorMid echo.MiddlewareFunc) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		jwtChain := jwtMiddleware(setActorMid(next))
+		apiKeyChain := keyAuthMiddleware(apiKeyActorMid(next))
+		return func(c echo.Context) error {
+			token := extractAuthorizationToken(c)
+			if core.IsAPIKeyToken(token) || (!app.LoginRequired && token == "") {
+				return apiKeyChain(c)
+			}
+			return jwtChain(c)
+		}
+	}
+}
+
+func extractAuthorizationToken(c echo.Context) string {
+	header := strings.TrimSpace(c.Request().Header.Get(echo.HeaderAuthorization))
+	if header == "" {
+		return ""
+	}
+	const bearerPrefix = "Bearer "
+	if len(header) > len(bearerPrefix) && strings.EqualFold(header[:len(bearerPrefix)], bearerPrefix) {
+		return strings.TrimSpace(header[len(bearerPrefix):])
+	}
+	return header
 }
 
 // We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time

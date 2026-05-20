@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DevLoginRouteImport } from './routes/dev-login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -26,6 +28,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -34,6 +41,11 @@ const NewRoute = NewRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevLoginRoute = DevLoginRouteImport.update({
+  id: '/dev-login',
+  path: '/dev-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -80,8 +92,10 @@ const DashboardsIdEditRoute = DashboardsIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/dev-login': typeof DevLoginRoute
   '/login': typeof LoginRoute
   '/new': typeof NewRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
@@ -92,8 +106,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dev-login': typeof DevLoginRoute
   '/login': typeof LoginRoute
   '/new': typeof NewRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
@@ -106,8 +122,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/dev-login': typeof DevLoginRoute
   '/login': typeof LoginRoute
   '/new': typeof NewRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/security': typeof AdminSecurityRoute
@@ -121,8 +139,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/dev-login'
     | '/login'
     | '/new'
+    | '/settings'
     | '/signup'
     | '/admin/keys'
     | '/admin/security'
@@ -133,8 +153,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dev-login'
     | '/login'
     | '/new'
+    | '/settings'
     | '/signup'
     | '/admin/keys'
     | '/admin/security'
@@ -146,8 +168,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/dev-login'
     | '/login'
     | '/new'
+    | '/settings'
     | '/signup'
     | '/admin/keys'
     | '/admin/security'
@@ -160,8 +184,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  DevLoginRoute: typeof DevLoginRoute
   LoginRoute: typeof LoginRoute
   NewRoute: typeof NewRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   DashboardsIdRoute: typeof DashboardsIdRoute
   TasksIdRoute: typeof TasksIdRoute
@@ -177,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/new': {
       id: '/new'
       path: '/new'
@@ -189,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-login': {
+      id: '/dev-login'
+      path: '/dev-login'
+      fullPath: '/dev-login'
+      preLoaderRoute: typeof DevLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -267,8 +307,10 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  DevLoginRoute: DevLoginRoute,
   LoginRoute: LoginRoute,
   NewRoute: NewRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   DashboardsIdRoute: DashboardsIdRoute,
   TasksIdRoute: TasksIdRoute,

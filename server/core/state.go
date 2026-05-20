@@ -63,6 +63,8 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleCreateAPIKey
 	case "delete_api_key":
 		handler = HandleDeleteAPIKey
+	case "update_api_key_permissions":
+		handler = HandleUpdateAPIKeyPermissions
 	case "create_user":
 		handler = HandleCreateUser
 	case "create_session":
@@ -71,6 +73,10 @@ func (app *App) HandleState(msg jetstream.Msg) {
 		handler = HandleDeleteSession
 	case "delete_user":
 		handler = HandleDeleteUser
+	case "update_user_password":
+		handler = HandleUpdateUserPassword
+	case "update_user_name":
+		handler = HandleUpdateUserName
 	case "create_invite":
 		handler = HandleCreateInvite
 	case "claim_invite":

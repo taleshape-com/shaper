@@ -58,6 +58,123 @@ func DeleteUser(app *core.App) echo.HandlerFunc {
 	}
 }
 
+type UpdatePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+func UpdatePassword(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		var req UpdatePasswordRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request body"}, "  ")
+		}
+
+		if req.CurrentPassword == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Current password is required"}, "  ")
+		}
+
+		if req.NewPassword == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "New password is required"}, "  ")
+		}
+
+		userID := c.Param("id")
+		if userID == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "User ID is required"}, "  ")
+		}
+
+		currentUserID, ok := claims["userId"].(string)
+		if !ok || currentUserID != userID {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "You can only update your own password"}, "  ")
+		}
+
+		sessionID, _ := claims["sessionId"].(string)
+
+		err := core.UpdateUserPassword(app, c.Request().Context(), userID, req.CurrentPassword, req.NewPassword, sessionID)
+		if err != nil {
+			c.Logger().Error("error updating password:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, struct {
+			Updated bool `json:"updated"`
+		}{Updated: true}, "  ")
+	}
+}
+
+type UpdateNameRequest struct {
+	Name string `json:"name"`
+}
+
+func UpdateName(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		if _, hasId := claims["dashboardId"]; hasId {
+			return c.JSONPretty(http.StatusUnauthorized, struct {
+				Error string `json:"error"`
+			}{Error: "Unauthorized"}, "  ")
+		}
+
+		var req UpdateNameRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Invalid request body"}, "  ")
+		}
+
+		if req.Name == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "Name is required"}, "  ")
+		}
+
+		userID := c.Param("id")
+		if userID == "" {
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: "User ID is required"}, "  ")
+		}
+
+		currentUserID, ok := claims["userId"].(string)
+		if !ok || currentUserID != userID {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "You can only update your own name"}, "  ")
+		}
+
+		err := core.UpdateUserName(app, c.Request().Context(), userID, req.Name)
+		if err != nil {
+			c.Logger().Error("error updating name:", slog.Any("error", err))
+			return c.JSONPretty(http.StatusBadRequest, struct {
+				Error string `json:"error"`
+			}{Error: err.Error()}, "  ")
+		}
+
+		return c.JSONPretty(http.StatusOK, struct {
+			Updated bool `json:"updated"`
+		}{Updated: true}, "  ")
+	}
+}
+
 type CreateInviteRequest struct {
 	Email string `json:"email"`
 }
@@ -150,7 +267,7 @@ func ClaimInvite(app *core.App) echo.HandlerFunc {
 			}{Error: "Invite code is required"}, "  ")
 		}
 
-		err := core.ClaimInvite(app, c.Request().Context(), code, req.Name, req.Password)
+		userId, err := core.ClaimInvite(app, c.Request().Context(), code, req.Name, req.Password)
 		if err != nil {
 			c.Logger().Error("error claiming invite:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {
@@ -158,9 +275,20 @@ func ClaimInvite(app *core.App) echo.HandlerFunc {
 			}{Error: err.Error()}, "  ")
 		}
 
+		token, err := core.CreateSessionForUser(app, c.Request().Context(), userId)
+		if err != nil {
+			c.Logger().Error("Failed to create session during invite claim", slog.Any("error", err))
+			// We claimed the invite, but failed to create a session.
+			// Return claimed: true anyway, user can login manually.
+			return c.JSONPretty(http.StatusOK, struct {
+				Claimed bool `json:"claimed"`
+			}{Claimed: true}, "  ")
+		}
+
 		return c.JSONPretty(http.StatusOK, struct {
-			Claimed bool `json:"claimed"`
-		}{Claimed: true}, "  ")
+			Claimed bool   `json:"claimed"`
+			Token   string `json:"token"`
+		}{Claimed: true, Token: token}, "  ")
 	}
 }
 

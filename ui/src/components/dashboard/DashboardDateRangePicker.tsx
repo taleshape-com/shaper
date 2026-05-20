@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { DateRangePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label";
 import { cx, getLocalDate } from "../../lib/utils";
 import { translate } from "../../lib/translate";
+import { toCssId } from "../../lib/render";
 
 type PickerProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"]
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDateRangePicker ({
@@ -20,6 +22,7 @@ function DashboardDateRangePicker ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: PickerProps) {
   const defaultFromValue = headers.findIndex((header) => header.tag === "defaultFrom");
   if (defaultFromValue === -1) {
@@ -94,11 +97,11 @@ function DashboardDateRangePicker ({
   ];
 
   return (
-    <>
-      {label && <Label htmlFor={label} className="ml-3 pr-1 print:hidden">{label}:</Label>}
-      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
+    <div className="flex items-center print:hidden">
+      {label && <Label htmlFor={label} className="ml-3 pr-1 shrink-0">{label}:</Label>}
+      <div className={cx("select-none", { ["ml-2"]: !label })}>
         <DateRangePicker
-          id={label}
+          id={toCssId(`${idPrefix}${fromVarName}`)}
           presets={presets}
           enableYearNavigation
           placeholder={translate("Select date range")}
@@ -128,12 +131,18 @@ function DashboardDateRangePicker ({
               const toDateString = `${value.to.getFullYear()}-${value.to.toLocaleDateString("en-US", { month: "2-digit" })}-${value.to.toLocaleDateString("en-US", { day: "2-digit" })}`;
               varsCopy[toVarName] = toDateString;
             }
+            if (value.from === undefined && value.to !== undefined) {
+              varsCopy[fromVarName] = varsCopy[toVarName];
+            }
+            if (value.to === undefined && value.from !== undefined) {
+              varsCopy[toVarName] = varsCopy[fromVarName];
+            }
             onChange(varsCopy);
           }}
           className={"min-w-40 my-1"}
         />
       </div>
-    </>
+    </div>
   );
 }
 

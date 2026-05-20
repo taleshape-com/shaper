@@ -10,7 +10,7 @@ import { App } from "./App";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
-import { ErrorComponent } from "@tanstack/react-router";
+import { ErrorComponent } from "./components/ErrorComponent";
 import { loadSystemConfig } from "./lib/system";
 import "./lib/globals";
 
@@ -26,7 +26,9 @@ if (!supportsContainerQueries) {
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  basepath: window.shaper.defaultBaseUrl || "/",
+  basepath: window.shaper.defaultBaseUrl.startsWith("http://") || window.shaper.defaultBaseUrl.startsWith("https://")
+    ? new URL(window.shaper.defaultBaseUrl).pathname
+    : window.shaper.defaultBaseUrl || "/",
   defaultPreload: false,
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
   defaultStaleTime: 5000,

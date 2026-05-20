@@ -197,8 +197,8 @@ export function EmbedComponent ({
   const handleGetJwt = useCallback(async () => {
     if (jwtRef.current != null) {
       const claims = parseJwt(jwtRef.current);
-      // Check if the JWT is still valid for at least 10 seconds
-      if ((Date.now() / 1000) + 10 < claims.exp) {
+      // Check if the JWT is still valid for at least 30 seconds to prevent race conditions
+      if ((Date.now() / 1000) + 30 < claims.exp) {
         return jwtRef.current;
       }
     }

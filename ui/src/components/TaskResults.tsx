@@ -63,7 +63,14 @@ export function TaskResults ({ data, loading }: TaskResultsProps) {
           </span>
           {data.nextRunAt && data.nextRunAt != 0 && (
             <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti px-2 py-1 rounded">
-              If task is saved, next run <RelativeDate date={new Date(data.nextRunAt)} />
+              {data.nextRunAt === -1 ? (
+                "If task is saved, it will run on system startup"
+              ) : (
+                <>
+                  If task is saved, next run{" "}
+                  <RelativeDate date={new Date(data.nextRunAt)} />
+                </>
+              )}
             </span>
           )}
         </div>

@@ -16,7 +16,6 @@ type DashboardGaugeProps = {
   label?: string;
 };
 
-const barWidth = 42;
 const chartPadding = 16;
 
 const DashboardGauge: React.FC<DashboardGaugeProps> = ({
@@ -96,9 +95,9 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       return boundaryValues[i] + d / 2;
     });
 
-    const labelTopOffset = label ? 20 + 15 * (Math.ceil(label.length / (0.125 * chartSize.width)) - 1) : 0;
+    const labelTopOffset = label ? 20 + 15 * (Math.ceil(label.length / (0.125 * chartSize.width)) - 1) : 15;
 
-    const radius = Math.min(chartSize.width, chartSize.height) * (chartSize.width > 540 ? 0.52 : 0.40);
+    const radius = Math.min(Math.min(chartSize.width, chartSize.height), 800) * 0.50;
     const centerPx = [
       chartSize.width / 2,
       chartSize.height / 2 + radius / 2,
@@ -129,13 +128,13 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       radius,
     };
 
-    // Using custom graphics to draw labels size with axisLabel we cannot control the individual alignment to ensure they don't overlap with the bar
+    // Using custom graphics to draw labels since with axisLabel we cannot control the individual alignment to ensure they don't overlap with the bar
     const graphics = (chartSize.width > 0 && chartSize.height > 0)
       ? centerValues.map((v, i) => {
         const relative = (v - min) / (max - min);
         const angle = Math.PI - (relative) * Math.PI; // 180° to 0°
-        const x = centerPx[0] + (radius + 9) * Math.cos(angle);
-        const y = centerPx[1] - (radius + 9) * Math.sin(angle) + labelTopOffset;
+        const x = centerPx[0] + (radius + 11) * Math.cos(angle);
+        const y = centerPx[1] - (radius + 11) * Math.sin(angle) + labelTopOffset;
         return {
           type: "text",
           x,
@@ -143,7 +142,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           style: {
             text: gaugeCategoriesWithColor[i].label ?? "",
             fill: theme.textColorSecondary,
-            font: `500 12px ${chartFont}`,
+            font: `400 12px ${chartFont}`,
             textAlign: relative < 0.4 ? "right" : relative > 0.6 ? "left" : "center",
             textVerticalAlign: "middle",
           },
@@ -153,23 +152,22 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
       })
       : [];
 
+    const barWidth = chartSize.width > 340 && chartSize.height > 340 ? 50 : 42;
     const pointerOffset = barWidth - radius;
 
     return {
-      animation: false,
       title: {
         text: label,
         textStyle: {
-          fontSize: 16,
-          lineHeight: 16,
+          fontSize: 15,
+          lineHeight: 15,
           fontFamily: displayFont,
           fontWeight: 600,
           color: theme.textColor,
           width: chartSize.width - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        textAlign: "center",
-        left: "50%",
+        left: "center",
         top: chartPadding,
       },
       series: [
@@ -185,7 +183,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
             },
           },
           axisLabel: {
-            distance: 28,
+            distance: chartSize.width > 340 && chartSize.height > 340 ? 38 : 28,
             color: theme.textColorSecondary,
             fontSize: 12,
             fontFamily: chartFont,
@@ -201,20 +199,22 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           pointer: {
             show: gaugeCategories.length >= 2,
             icon: "triangle",
-            length: 16,
-            width: 14,
+            length: 14,
+            width: 12,
             offsetCenter: [0, pointerOffset],
             itemStyle: {
               color: theme.textColor,
+              shadowColor: theme.backgroundColorSecondary,
+              shadowBlur: 2,
             },
           },
           detail: {
             valueAnimation: false,
-            fontSize: chartSize.width > 300 ? 36 : 24,
+            fontSize: chartSize.width > 340 && chartSize.height > 340 ? 30 : 24,
             fontFamily: chartFont,
-            offsetCenter: [0, "-26%"],
+            offsetCenter: [0, "-18%"],
             color: theme.textColor,
-            fontWeight: 600,
+            fontWeight: 500,
             formatter: function (v: number) {
               return formatValue(v, valueHeader.type, true).toString();
             },
@@ -242,7 +242,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   }, []);
 
   return (
-    <div className="w-full h-full relative select-none overflow-hidden">
+    <div className="w-full h-full min-h-[240px] relative select-none overflow-hidden">
       <EChart
         className="relative h-full w-full"
         option={chartOptions}

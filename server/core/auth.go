@@ -33,11 +33,39 @@ const (
 	ActorAPIKey ActorType = "api_key"
 	ActorNoAuth ActorType = "no_auth"
 	ActorTask   ActorType = "task"
+	ActorPublic ActorType = "public"
 )
 
 type Actor struct {
 	Type ActorType
 	ID   string
+}
+
+func (a Actor) HasPermission(ctx context.Context, db *sqlx.DB, permission string) bool {
+	if a.Type != ActorAPIKey {
+		return true // Users and others have all permissions
+	}
+
+	var permissions *string
+	err := db.GetContext(ctx, &permissions, "SELECT permissions FROM api_keys WHERE id = $1", a.ID)
+	if err != nil {
+		return false
+	}
+
+	if permissions == nil || *permissions == "" {
+		return false
+	}
+	var perms []string
+	err = json.Unmarshal([]byte(*permissions), &perms)
+	if err != nil {
+		return false
+	}
+	for _, p := range perms {
+		if p == permission {
+			return true
+		}
+	}
+	return false
 }
 
 func (a Actor) String() string {
@@ -205,6 +233,10 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 		return "", fmt.Errorf("invalid password")
 	}
 
+	return CreateSessionForUser(app, ctx, user.ID)
+}
+
+func CreateSessionForUser(app *App, ctx context.Context, userID string) (string, error) {
 	// Generate session token
 	id := cuid2.Generate()
 	suffix := util.GenerateRandomString(32)
@@ -217,7 +249,7 @@ func Login(app *App, ctx context.Context, email string, password string) (string
 
 	payload := CreateSessionPayload{
 		ID:        id,
-		UserID:    user.ID,
+		UserID:    userID,
 		Hash:      hash,
 		Salt:      salt,
 		Timestamp: time.Now(),
@@ -241,8 +273,11 @@ func ValidateAPIKey(sdb *sqlx.DB, ctx context.Context, token string) (bool, erro
 		return false, nil
 	}
 
-	var storedKey APIKey
-	err := sdb.GetContext(ctx, &storedKey,
+	var stored struct {
+		Hash string `db:"hash"`
+		Salt string `db:"salt"`
+	}
+	err := sdb.GetContext(ctx, &stored,
 		`SELECT hash, salt FROM api_keys WHERE id = $1`, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -252,11 +287,11 @@ func ValidateAPIKey(sdb *sqlx.DB, ctx context.Context, token string) (bool, erro
 	}
 
 	// Validate using HMAC with stored salt
-	mac := hmac.New(sha256.New, []byte(storedKey.Salt))
+	mac := hmac.New(sha256.New, []byte(stored.Salt))
 	mac.Write([]byte(token))
 	hash := hex.EncodeToString(mac.Sum(nil))
 
-	return subtle.ConstantTimeCompare([]byte(hash), []byte(storedKey.Hash)) == 1, nil
+	return subtle.ConstantTimeCompare([]byte(hash), []byte(stored.Hash)) == 1, nil
 }
 
 func validateSessionToken(app *App, ctx context.Context, token string) (bool, error) {
@@ -300,6 +335,10 @@ func GetAPIKeyID(token string) string {
 	return parts[0]
 }
 
+func IsAPIKeyToken(token string) bool {
+	return strings.HasPrefix(token, API_KEY_PREFIX)
+}
+
 func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 	if !app.LoginRequired && token == "" {
 		return AuthInfo{Valid: true}, nil
@@ -338,26 +377,21 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 
 	// Check API key
 	if strings.HasPrefix(token, API_KEY_PREFIX) {
-		id := GetAPIKeyID(token)
-		var key struct {
-			ID   string `db:"id"`
-			Name string `db:"name"`
+		ok, err := ValidateAPIKey(app.Sqlite, ctx, token)
+		if err != nil {
+			return AuthInfo{}, err
 		}
-		err := app.Sqlite.GetContext(ctx, &key,
-			`SELECT id, name FROM api_keys WHERE id = $1`, id)
-		if err == nil {
-			ok, err := ValidateAPIKey(app.Sqlite, ctx, token)
-			if err != nil {
-				return AuthInfo{}, err
-			}
-			if ok {
-				return AuthInfo{
-					Valid:      true,
-					IsUser:     false,
-					APIKeyID:   key.ID,
-					APIKeyName: key.Name,
-				}, nil
-			}
+		if ok {
+			id := GetAPIKeyID(token)
+			var name string
+			_ = app.Sqlite.GetContext(ctx, &name, `SELECT name FROM api_keys WHERE id = $1`, id)
+
+			return AuthInfo{
+				Valid:      true,
+				IsUser:     false,
+				APIKeyID:   id,
+				APIKeyName: name,
+			}, nil
 		}
 	}
 

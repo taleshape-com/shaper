@@ -44,7 +44,7 @@ async function downloadFile(url, dest) {
     method: 'GET',
     url: url,
     responseType: 'stream',
-    maxContentLength: 100 * 1024 * 1024, // 100MB max
+    maxContentLength: 200 * 1024 * 1024, // 200MB max
     validateStatus: status => status === 200
   });
 

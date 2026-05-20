@@ -5,14 +5,16 @@ import {
   createFileRoute,
   useRouter,
   redirect,
-  ErrorComponent,
 } from "@tanstack/react-router";
+import { ErrorComponent } from "../components/ErrorComponent";
 import { z } from "zod";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { Input } from "../components/tremor/Input";
 import { Helmet } from "react-helmet";
+import { RiCheckLine, RiFileCopyLine } from "@remixicon/react";
 import { useAuth, testLogin } from "../lib/auth";
 import { Button } from "../components/tremor/Button";
+import { copyToClipboard } from "../lib/utils";
 
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({
@@ -46,6 +48,16 @@ function LoginComponent () {
   const [password, setPassword] = React.useState("");
   const [err, setError] = React.useState("");
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
+
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    const success = await copyToClipboard(err);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,7 +118,22 @@ function LoginComponent () {
             {isLoggingIn ? "Logging in..." : "Login"}
           </Button>
         </form>
-        {err && <div className="mt-4 text-red-500 text-sm">{err}</div>}
+        {err && (
+          <div className="mt-4 text-red-500 text-sm flex items-center justify-between">
+            <span>{err}</span>
+            <button
+              onClick={handleCopy}
+              className="ml-2 text-red-400 hover:text-red-600 transition-colors"
+              title="Copy error message"
+            >
+              {copied ? (
+                <RiCheckLine className="size-4" />
+              ) : (
+                <RiFileCopyLine className="size-4" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

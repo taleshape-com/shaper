@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { formatValue, isJSONType } from "../../lib/render";
 import {
   Table,
@@ -17,18 +17,18 @@ import TextWithLinks from "../TextWithLinks";
 
 type TableProps = {
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"]
+  data: (string | number | boolean)[][];
 };
 
 function DashboardTable ({ headers, data }: TableProps) {
   return (
-    <TableRoot>
+    <TableRoot className="h-full overflow-auto">
       <Table>
-        <TableHead>
+        <TableHead className="z-10">
           <TableRow>
             {headers.map((header) => (
               <TableHeaderCell
-                className={cx("text-ctext dark:text-dtext", {
+                className={cx("text-ctext dark:text-dtext z-10 sticky top-0", {
                   "text-right": alignRight(header),
                 })}
                 key={header.name}
@@ -42,17 +42,40 @@ function DashboardTable ({ headers, data }: TableProps) {
               <TableRow key={index}>
                 {items.map((item, index) => {
                   const header = headers[index];
-                  const percent = header.tag === "trend" && typeof item === "number" ? Math.round(-100 * (1 - item)) : undefined;
+                  let percent = undefined;
+                  let percentDisplay = undefined;
+                  let percentValue = undefined;
+
+                  if (header.tag === "trend" && typeof item === "number") {
+                    // Calculate the percentage change: -100 * (1 - item) = 100 * (item - 1)
+                    percentValue = -100 * (1 - item);
+
+                    // Format based on the specified ranges
+                    if (percentValue > -0.0001 && percentValue < 0.0001) {
+                      percent = percentValue; // Keep the actual value to determine direction
+                      percentDisplay = "0";
+                    } else if (percentValue > -1 && percentValue < 1) {
+                      percent = Math.round(percentValue * 10000) / 10000; // Round to 4 decimal places
+                      percentDisplay = percent.toString();
+                    } else if (percentValue > -10 && percentValue < 10) {
+                      percent = Math.round(percentValue * 100) / 100; // Round to 2 decimal places
+                      percentDisplay = percent.toString();
+                    } else {
+                      percent = Math.round(percentValue); // Round without decimal places
+                      percentDisplay = percent.toString();
+                    }
+                  }
+
                   const formattedValue = percent !== undefined ? "" : formatValue(item, header.type, true).toString();
                   return (
                     <TableCell key={index} className={cx("text-ctext dark:text-dtext", { "text-right": alignRight(header) })}>
                       {percent !== undefined ? percent === 0 ? "-" : (
                         <div
                           className={cx(
-                            "ml-2 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi max-w-32 ml-auto",
+                            "ml-2 -my-1 rounded px-1 py-1 text-sm font-medium flex flex-nowrap items-center justify-center text-ctexti bg-cbgi dark:text-dtexti dark:bg-dbgi max-w-28 ml-auto opacity-55",
                           )}
                         >
-                          {percent > 0 && "+"}{percent}%{
+                          {percent > 0 ? "+" : ""}{percentDisplay}%{
                             percent > 0 ?
                               <RiArrowRightUpLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />
                               : <RiArrowRightDownLine className="ml-1 size-4 shrink-0 text-ctexti dark:text-dtexti" />

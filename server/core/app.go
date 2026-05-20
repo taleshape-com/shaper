@@ -4,10 +4,14 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
+	"shaper/server/util"
+	"strings"
 	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -21,8 +25,13 @@ const (
 type App struct {
 	Name                       string
 	NodeID                     string
+	Version                    string
 	Sqlite                     *sqlx.DB
 	DuckDB                     *sqlx.DB
+	DuckDBDSN                  string
+	DuckDBExtDir               string
+	DuckDBSecretDir            string
+	InitSQL                    string
 	Logger                     *slog.Logger
 	LoginRequired              bool
 	BasePath                   string
@@ -33,11 +42,15 @@ type App struct {
 	NoPublicSharing            bool
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
+	NoEdit                     bool
+	NoChromeSandbox            bool
 	StateConsumeCtx            jetstream.ConsumeContext
 	TaskConsumeCtx             jetstream.ConsumeContext
 	TaskResultConsumeCtx       jetstream.ConsumeContext
 	JetStream                  jetstream.JetStream
 	ConfigKV                   jetstream.KeyValue
+	TmpDashboardsKv            jetstream.KeyValue
+	DownloadsKv                jetstream.KeyValue
 	NATSConn                   *nats.Conn
 	StateSubjectPrefix         string
 	IngestSubjectPrefix        string
@@ -45,6 +58,10 @@ type App struct {
 	StateStreamMaxAge          time.Duration
 	StateConsumer              jetstream.Consumer
 	ConfigKVBucketName         string
+	TmpDashboardsKVBucketName  string
+	TmpDashboardsTTL           time.Duration
+	DownloadsKVBucketName      string
+	DownloadsTTL               time.Duration
 	TasksStreamName            string
 	TasksSubjectPrefix         string
 	TaskQueueConsumerName      string
@@ -54,13 +71,19 @@ type App struct {
 	TaskBroadcastSubject       string
 	TaskBroadcastSubscription  *nats.Subscription
 	TaskTimers                 map[string]*time.Timer
+	InternalDBName             string
 }
 
 func New(
 	name string,
 	nodeID string,
+	version string,
 	sqliteDbx *sqlx.DB,
 	duckDbx *sqlx.DB,
+	duckDBDSN string,
+	duckDBExtDir string,
+	duckDBSecretDir string,
+	initSQL string,
 	deprecatedSchema string,
 	logger *slog.Logger,
 	baseURL string,
@@ -70,11 +93,17 @@ func New(
 	noPublicSharing bool,
 	noPasswordProtectedSharing bool,
 	noTasks bool,
+	noEdit bool,
+	noChromeSandbox bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
 	stateStreamName string,
 	stateStreamMaxAge time.Duration,
 	configKVBucketName string,
+	tmpDashboardsKVBucketName string,
+	tmpDashboardsTTL time.Duration,
+	downloadsKVBucketName string,
+	downloadsTTL time.Duration,
 	tasksStreamName string,
 	tasksSubjectPrefix string,
 	taskQueueConsumerName string,
@@ -83,17 +112,47 @@ func New(
 	taskResultsStreamMaxAge time.Duration,
 	taskBroadcastSubject string,
 ) (*App, error) {
+	logger.Info("Setting up SQLite")
 	if err := initSQLite(sqliteDbx); err != nil {
 		return nil, err
 	}
 
-	if err := initDuckDB(duckDbx); err != nil {
-		return nil, err
-	}
+	internalDBName := ""
+	if duckDBDSN != ":memory:" {
+		logger.Info("Setting up DuckDB")
+		var err error
+		internalDBName, err = initDuckDB(duckDbx)
+		if err != nil {
+			return nil, err
+		}
 
-	// TODO: Remove this once data is migrated for all active users
-	if err := migrateSystemData(sqliteDbx, duckDbx, deprecatedSchema, logger); err != nil {
-		return nil, err
+		// TODO: Remove this once data is migrated for all active users
+		logger.Info("Migrating data")
+		if err := migrateSystemData(sqliteDbx, duckDbx, deprecatedSchema, logger); err != nil {
+			return nil, err
+		}
+
+		if initSQL != "" {
+			logger.Info("Executing init-sql")
+			varPrefix, _ := buildVarPrefixWithDBName(internalDBName, nil, nil)
+
+			conn, err := duckDbx.Conn(context.Background())
+			if err != nil {
+				return nil, fmt.Errorf("failed to get connection for init-sql: %w", err)
+			}
+			defer conn.Close()
+
+			getenv := &util.GetEnvFunc{}
+			getenv.Enable()
+			if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
+				return nil, fmt.Errorf("failed to register getenv UDF: %w", err)
+			}
+			defer getenv.Disable()
+
+			if _, err := conn.ExecContext(context.Background(), varPrefix+initSQL); err != nil {
+				return nil, fmt.Errorf("failed to execute init-sql: %w", err)
+			}
+		}
 	}
 
 	loginRequired, err := isLoginRequired(sqliteDbx)
@@ -113,12 +172,23 @@ func New(
 	if noTasks {
 		logger.Info("Tasks functionality disabled.")
 	}
+	if noEdit {
+		logger.Info("Dashboard editing via UI disabled.")
+	}
+	if noChromeSandbox {
+		logger.Info("Chrome sandbox disabled for PDF/PNG generation.")
+	}
 
 	app := &App{
 		Name:                       name,
 		NodeID:                     nodeID,
+		Version:                    version,
 		Sqlite:                     sqliteDbx,
 		DuckDB:                     duckDbx,
+		DuckDBDSN:                  duckDBDSN,
+		DuckDBExtDir:               duckDBExtDir,
+		DuckDBSecretDir:            duckDBSecretDir,
+		InitSQL:                    initSQL,
 		Logger:                     logger,
 		LoginRequired:              loginRequired,
 		BasePath:                   baseURL,
@@ -128,11 +198,17 @@ func New(
 		NoPublicSharing:            noPublicSharing,
 		NoPasswordProtectedSharing: noPasswordProtectedSharing,
 		NoTasks:                    noTasks,
+		NoEdit:                     noEdit,
+		NoChromeSandbox:            noChromeSandbox,
 		IngestSubjectPrefix:        ingestSubjectPrefix,
 		StateSubjectPrefix:         stateSubjectPrefix,
 		StateStreamName:            stateStreamName,
 		StateStreamMaxAge:          stateStreamMaxAge,
 		ConfigKVBucketName:         configKVBucketName,
+		TmpDashboardsKVBucketName:  tmpDashboardsKVBucketName,
+		TmpDashboardsTTL:           tmpDashboardsTTL,
+		DownloadsKVBucketName:      downloadsKVBucketName,
+		DownloadsTTL:               downloadsTTL,
 		TasksStreamName:            tasksStreamName,
 		TasksSubjectPrefix:         tasksSubjectPrefix,
 		TaskQueueConsumerName:      taskQueueConsumerName,
@@ -141,8 +217,97 @@ func New(
 		TaskResultsStreamMaxAge:    taskResultsStreamMaxAge,
 		TaskBroadcastSubject:       taskBroadcastSubject,
 		TaskTimers:                 make(map[string]*time.Timer),
+		InternalDBName:             internalDBName,
 	}
 	return app, nil
+}
+
+func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
+	if app.DuckDBDSN != ":memory:" {
+		return app.DuckDB, func() {}, nil
+	}
+
+	connector, err := duckdb.NewConnector(app.DuckDBDSN, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create DuckDB connector: %w", err)
+	}
+	db := sql.OpenDB(connector)
+	db.SetMaxIdleConns(0)
+	dbx := sqlx.NewDb(db, "duckdb")
+
+	cleanup := func() {
+		if err := dbx.Close(); err != nil {
+			app.Logger.Error("failed to close in-memory DuckDB", slog.Any("error", err))
+		}
+	}
+
+	// Always disable persistent secrets for in-memory mode to ensure isolation from central secret store
+	if _, err := dbx.Exec("SET allow_persistent_secrets = false"); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to disable persistent secrets: %w", err)
+	}
+
+	if app.DuckDBExtDir != "" {
+		_, err := dbx.Exec("SET extension_directory = ?", app.DuckDBExtDir)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to set DuckDB extension directory: %w", err)
+		}
+	}
+
+	dbName, err := initDuckDB(dbx)
+	if err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to initialize DuckDB: %w", err)
+	}
+	app.InternalDBName = dbName
+
+	if app.InitSQL != "" {
+		varPrefix, _ := buildVarPrefix(app, nil, nil)
+
+		conn, err := dbx.Conn(ctx)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to get connection for init-sql: %w", err)
+		}
+		defer conn.Close()
+
+		getenv := &util.GetEnvFunc{}
+		getenv.Enable()
+		if err := duckdb.RegisterScalarUDF(conn, "getenv", getenv); err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to register getenv UDF: %w", err)
+		}
+		defer getenv.Disable()
+
+		if _, err := conn.ExecContext(ctx, varPrefix+app.InitSQL); err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to execute init-sql: %w", err)
+		}
+	}
+
+	if !app.NoTasks && ctx.Value(skipInitTasksKey) == nil {
+		initTasks, err := GetInitTasks(app, ctx)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to get init tasks: %w", err)
+		}
+		for _, content := range initTasks {
+			res, err := executeTaskOnDB(app, ctx, dbx, content)
+			if err != nil {
+				app.Logger.WithGroup("tasks").Error("Error running init task on memory db", slog.Any("error", err))
+			} else if !res.Success {
+				app.Logger.WithGroup("tasks").Error("Init task failed on memory db", slog.Any("errors", res.Queries))
+			}
+		}
+	}
+
+	if _, err := dbx.Exec("SET lock_configuration = true"); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to lock configuration: %w", err)
+	}
+
+	return dbx, cleanup, nil
 }
 
 func (app *App) Init(nc *nats.Conn) error {
@@ -215,6 +380,24 @@ func (app *App) setupStreamAndConsumer() error {
 		return fmt.Errorf("failed to create or update config KV: %w", err)
 	}
 	app.ConfigKV = configKV
+
+	tmpDashboardsKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
+		Bucket: app.TmpDashboardsKVBucketName,
+		TTL:    app.TmpDashboardsTTL,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update temporary dashboards KV: %w", err)
+	}
+	app.TmpDashboardsKv = tmpDashboardsKV
+
+	downloadsKV, err := app.JetStream.CreateOrUpdateKeyValue(initCtx, jetstream.KeyValueConfig{
+		Bucket: app.DownloadsKVBucketName,
+		TTL:    app.DownloadsTTL,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update downloads KV: %w", err)
+	}
+	app.DownloadsKv = downloadsKV
 
 	if !app.NoTasks {
 		taskBroadcastSub, err := app.NATSConn.Subscribe(app.TaskBroadcastSubject, app.HandleTaskBroadcast)
@@ -319,12 +502,71 @@ func isLoginRequired(sdb *sqlx.DB) (bool, error) {
 	return count > 0, err
 }
 
-func initDuckDB(duckDbx *sqlx.DB) error {
+// TODO: This init costs us 27ms on startup. No need to recreate types and func ever time
+func initDuckDB(duckDbx *sqlx.DB) (string, error) {
+	var name string
+	if err := duckDbx.Get(&name, "SELECT current_database()"); err != nil {
+		return "", err
+	}
 	// Create custom types
 	for _, t := range dbTypes {
 		if err := createType(duckDbx, t.Name, t.Definition); err != nil {
-			return fmt.Errorf("failed to create custom type %s: %w", t.Name, err)
+			return "", fmt.Errorf("failed to create custom type %s: %w", t.Name, err)
 		}
 	}
-	return nil
+	if err := createBoxlotFunction(duckDbx); err != nil {
+		return "", fmt.Errorf("failed to create BOXPLOT function: %w", err)
+	}
+	return name, nil
+}
+
+// buildVarPrefix prepends session state like search_path and variables to SQL queries.
+func buildVarPrefix(app *App, singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	dbName := ""
+	if app != nil {
+		dbName = app.InternalDBName
+	}
+	return buildVarPrefixWithDBName(dbName, singleVars, multiVars)
+}
+
+func buildVarPrefixWithDBName(dbName string, singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	varPrefix := strings.Builder{}
+	varCleanup := strings.Builder{}
+
+	if dbName != "" {
+		varPrefix.WriteString(fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';\n", util.EscapeSQLIdentifier(dbName)))
+	}
+
+	vPrefix, vCleanup := buildVariablesPrefix(singleVars, multiVars)
+	varPrefix.WriteString(vPrefix)
+	varCleanup.WriteString(vCleanup)
+
+	return varPrefix.String(), varCleanup.String()
+}
+
+func buildVarPrefixNoSearchPath(app *App, singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	return buildVariablesPrefix(singleVars, multiVars)
+}
+
+func buildVariablesPrefix(singleVars map[string]string, multiVars map[string][]string) (string, string) {
+	varPrefix := strings.Builder{}
+	varCleanup := strings.Builder{}
+
+	for k, v := range singleVars {
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
+	}
+	for k, v := range multiVars {
+		l := ""
+		for i, p := range v {
+			prefix := ", "
+			if i == 0 {
+				prefix = ""
+			}
+			l += fmt.Sprintf("%s'%s'", prefix, util.EscapeSQLString(p))
+		}
+		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = [%s]::VARCHAR[];\n", util.EscapeSQLIdentifier(k), l))
+		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
+	}
+	return varPrefix.String(), varCleanup.String()
 }

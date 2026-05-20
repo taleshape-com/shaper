@@ -4,7 +4,7 @@ import { useMemo, useRef, useEffect } from "react";
 import { debounce } from "lodash";
 
 import * as echarts from "echarts/core";
-import { BarChart, LineChart, GaugeChart } from "echarts/charts";
+import { BarChart, LineChart, GaugeChart, BoxplotChart, ScatterChart, PieChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
@@ -21,6 +21,7 @@ import {
 } from "echarts/components";
 import { LabelLayout, UniversalTransition } from "echarts/features";
 import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
+import { getRenderMode } from "../../lib/utils";
 
 interface EChartProps {
   option: echarts.EChartsCoreOption;
@@ -34,6 +35,9 @@ echarts.use([
   BarChart,
   LineChart,
   GaugeChart,
+  BoxplotChart,
+  ScatterChart,
+  PieChart,
   TitleComponent,
   TooltipComponent,
   GridComponent,
@@ -49,7 +53,7 @@ echarts.use([
   MarkLineComponent,
   LabelLayout,
   UniversalTransition,
-  // SVG renderer as default it looks sharper
+  // SVG renderer as default because it looks sharper
   // and allows zooming in browser and PDFs
   SVGRenderer,
   // Using canvas renderer to support downloading as PNG
@@ -59,6 +63,13 @@ echarts.use([
 const optionSettings = {
   replaceMerge: "series",
   lazyUpdate: true,
+};
+
+// Detect Safari browser
+const isSafari = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const userAgent = window.navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(userAgent);
 };
 
 export const EChart = ({
@@ -88,7 +99,9 @@ export const EChart = ({
 
   useEffect(() => {
     if (!chartRef.current) return;
-    const chart = echarts.init(chartRef.current, null, { renderer: "svg" });
+    // Use canvas renderer for Safari, SVG for other browsers
+    const renderer = isSafari() ? "canvas" : "svg";
+    const chart = echarts.init(chartRef.current, null, { renderer });
     if (onChartReady) {
       onChartReady(chart);
     }
@@ -151,7 +164,11 @@ export const EChart = ({
     if (!chartRef.current) return;
     const chart = echarts.getInstanceByDom(chartRef.current);
     if (chart) {
-      chart.setOption(option, optionSettings);
+      const isPdfMode = getRenderMode() === "pdf";
+      const effectiveOption: echarts.EChartsCoreOption = isPdfMode
+        ? { ...option, animation: false }
+        : option;
+      chart.setOption(effectiveOption, optionSettings);
     }
   }, [option]);
 

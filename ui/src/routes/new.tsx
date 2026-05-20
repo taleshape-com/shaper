@@ -6,18 +6,18 @@ import {
   isRedirect,
   useNavigate,
   Link,
+  redirect,
 } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
-import { getSearchParamString, isMac, varsParamSchema, cx } from "../lib/utils";
+import { isMac, varsParamSchema, cx } from "../lib/utils";
 import { editorStorage } from "../lib/editorStorage";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
-import { Result } from "../lib/types";
 import { useToast } from "../hooks/useToast";
 import { Tooltip } from "../components/tremor/Tooltip";
 import {
@@ -43,6 +43,7 @@ import {
 } from "../components/tremor/Select";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
+import { DashboardWrapper } from "../components/DashboardWrapper";
 
 const defaultDashboardQuery = `SELECT 'Dashboard Title'::SECTION;
 
@@ -59,7 +60,7 @@ FROM (
   (3, 30),
 );`;
 
-const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that defines when the task runs.
+const defaultTaskQuery = `-- To schedule task, start with a SCHEDULE statement that defines when the task runs.
 -- Examples:
 
 -- Every hour:
@@ -71,8 +72,8 @@ const defaultTaskQuery = `-- Tasks must start with a SCHEDULE statement that def
 -- Every Monday at 1am:
 -- SELECT (date_trunc('week', now()) + INTERVAL '7days 1hour')::SCHEDULE;
 
--- Never run automatically:
-SELECT NULL::SCHEDULE;
+-- Run once on startup:
+-- SELECT 'init'::SCHEDULE;
 `;
 
 // LocalStorage key for storing the app type preference
@@ -109,6 +110,12 @@ export const Route = createFileRoute("/new")({
     vars: varsParamSchema,
     path: z.string().optional(),
   }),
+  beforeLoad: () => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.editEnabled) {
+      throw redirect({ to: "/" });
+    }
+  },
   component: NewDashboard,
 });
 
@@ -117,20 +124,22 @@ function NewDashboard () {
   const auth = useAuth();
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/new" });
+  const systemConfig = getSystemConfig();
   const [appType, setAppType] = useState<"dashboard" | "task">(() =>
-    getStoredAppType(),
+    systemConfig.tasksEnabled ? getStoredAppType() : "dashboard",
   );
   const [editorQuery, setEditorQuery] = useState("");
   const [runningQuery, setRunningQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
+  const [previewId, setPreviewId] = useState<string | undefined>(undefined);
   const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [dashboardName, setDashboardName] = useState("");
-  const [loadDuration, setLoadDuration] = useState<number | null>(null);
+  const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
+  const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Check for unsaved changes when component mounts or type changes
@@ -154,28 +163,26 @@ function NewDashboard () {
     }
     setPreviewError(null);
     setIsPreviewLoading(true);
-    setLoadDuration(null); // Reset previous duration
-    const startTime = Date.now();
+    setLoadStartTime(Date.now());
+    setLoadEndTime(null);
     try {
-      const searchParams = getSearchParamString(vars);
-      const data = await queryApi(`run/dashboard?${searchParams}`, {
+      const { id } = await queryApi("dashboards", {
         method: "POST",
         body: {
+          path,
           content: runningQuery,
+          temporary: true,
         },
       });
-      setPreviewData(data);
+      setPreviewId(id);
     } catch (err) {
+      setIsPreviewLoading(false);
       if (isRedirect(err)) {
         return navigate(err.options);
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      const duration = startTime ? Date.now() - startTime : null;
-      setLoadDuration(duration);
-      setIsPreviewLoading(false);
     }
-  }, [queryApi, vars, runningQuery, navigate]);
+  }, [queryApi, runningQuery, navigate, path]);
 
   const runTask = useCallback(async () => {
     setPreviewError(null);
@@ -233,7 +240,7 @@ function NewDashboard () {
       setStoredAppType(type);
 
       // Clear results when switching types
-      setPreviewData(undefined);
+      setPreviewId(undefined);
       setTaskData(undefined);
       setPreviewError(null);
 
@@ -340,7 +347,7 @@ function NewDashboard () {
     setRunningQuery(defaultContent);
     setShowDiscardDialog(false);
     // Clear results when discarding
-    setPreviewData(undefined);
+    setPreviewId(undefined);
     setTaskData(undefined);
     setPreviewError(null);
   }, [appType]);
@@ -351,6 +358,26 @@ function NewDashboard () {
       appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
     return editorQuery !== defaultContent;
   };
+
+  const handleError = useCallback((err: Error) => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+    if (isRedirect(err)) {
+      navigate(err.options);
+    }
+  }, [navigate, setIsPreviewLoading, setLoadEndTime]);
+
+  const handleDataChange = useCallback(() => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+  }, [setIsPreviewLoading, setLoadEndTime]);
+
+  const loadDuration = useMemo(() => {
+    if (!loadStartTime || !loadEndTime) {
+      return null;
+    }
+    return loadEndTime - loadStartTime;
+  }, [loadStartTime, loadEndTime]);
 
   const generateBreadcrumbs = () => {
     const pathParts = (path || "/").split("/").filter((part) => part !== "");
@@ -385,14 +412,18 @@ function NewDashboard () {
               {appType === "dashboard" && (
                 <VariablesMenu onVariablesChange={previewDashboard} />
               )}
-              {appType === "dashboard" && loadDuration && (
+              {appType === "dashboard" && (
                 <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
-                  <span>
-                    Load time:{" "}
-                    {loadDuration >= 1000
-                      ? `${(loadDuration / 1000).toFixed(2)}s`
-                      : `${loadDuration}ms`}
-                  </span>
+                  {loadDuration ? (
+                    <span>
+                      Load time:{" "}
+                      {loadDuration >= 1000
+                        ? `${(loadDuration / 1000).toFixed(2)}s`
+                        : `${loadDuration}ms`}
+                    </span>
+                  ) : (
+                    <span>Loading...</span>
+                  )}
                 </div>
               )}
             </MenuTrigger>
@@ -414,7 +445,7 @@ function NewDashboard () {
                           ? undefined
                           : { path: breadcrumb.path }
                       }
-                      className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -my-1 -mx-1 rounded whitespace-nowrap"
+                      className="hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -mx-1 rounded whitespace-nowrap"
                     >
                       {breadcrumb.name}
                     </Link>
@@ -427,7 +458,7 @@ function NewDashboard () {
                   aria-hidden={true}
                 />
                 New
-                {getSystemConfig().tasksEnabled ? (
+                {systemConfig.tasksEnabled && systemConfig.editEnabled ? (
                   <Select value={appType} onValueChange={handleTypeChange}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
@@ -449,6 +480,8 @@ function NewDashboard () {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                ) : systemConfig.tasksEnabled ? (
+                  " Task"
                 ) : (
                   " Dashboard"
                 )}
@@ -475,7 +508,7 @@ function NewDashboard () {
                 onClick={() => setShowCreateDialog(true)}
                 disabled={creating}
                 variant="secondary"
-                className={cx({ "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
+                className={cx("my-2", { "ml-2": hasUnsavedChanges(), "ml-4": !hasUnsavedChanges() })}
               >
                 Create
               </Button>
@@ -505,21 +538,23 @@ function NewDashboard () {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto relative">
+        <DashboardWrapper className="flex-grow overflow-y-auto relative">
           {previewError && <PreviewError>{previewError}</PreviewError>}
           {appType === "dashboard" ? (
             <Dashboard
+              id={previewId}
               vars={vars}
               hash={auth.hash}
               getJwt={getJwt}
               onVarsChanged={handleVarsChanged}
-              data={previewData}
+              onError={handleError}
+              onDataChange={handleDataChange}
               loading={isPreviewLoading}
             />
           ) : (
             <TaskResults data={taskData} loading={isPreviewLoading} />
           )}
-        </div>
+        </DashboardWrapper>
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

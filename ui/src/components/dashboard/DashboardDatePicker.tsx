@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { DatePicker } from "../tremor/DatePicker";
 import { Label } from "../tremor/Label";
 import { cx, getLocalDate } from "../../lib/utils";
 import { translate } from "../../lib/translate";
+import { toCssId } from "../../lib/render";
 
 type PickerProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"]
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDatePicker ({
@@ -20,6 +22,7 @@ function DashboardDatePicker ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: PickerProps) {
   const defaultValueIndex = headers.findIndex((header) => header.tag === "default");
   if (defaultValueIndex === -1) {
@@ -32,11 +35,11 @@ function DashboardDatePicker ({
   const selectedDate = Array.isArray(varField) ? varField[0] : varField;
 
   return (
-    <>
-      {label && <Label htmlFor={label} className="ml-3 pr-1 print:hidden">{label}:</Label>}
-      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
+    <div className="flex items-center print:hidden">
+      {label && <Label htmlFor={label} className="ml-3 pr-1 shrink-0">{label}:</Label>}
+      <div className={cx("select-none", { ["ml-2"]: !label })}>
         <DatePicker
-          id={label}
+          id={toCssId(`${idPrefix}${varName}`)}
           defaultValue={typeof defaultValue === "boolean" || !defaultValue ? undefined : getLocalDate(defaultValue)}
           enableYearNavigation
           value={selectedDate ? getLocalDate(selectedDate) : undefined}
@@ -57,7 +60,7 @@ function DashboardDatePicker ({
           className={"min-w-28 my-1"}
         />
       </div>
-    </>
+    </div>
   );
 }
 

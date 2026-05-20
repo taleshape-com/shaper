@@ -5,11 +5,12 @@
 # 2. We need wget to run the healthcheck
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
-FROM debian:13.1-slim
+# Keep in sync with .github/workflows/ci.yml
+FROM debian:13.4-slim@sha256:109e2c65005bf160609e4ba6acf7783752f8502ad218e298253428690b9eaa4b
 
-# install wget for healthchecks and dependencies for headless-shell
+# install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root
 RUN apt-get update -y \
-  && apt-get install --no-install-recommends -y wget ca-certificates libnspr4 libnss3 libexpat1 libfontconfig1 libuuid1 socat \
+  && apt-get install --no-install-recommends -y wget ca-certificates libnspr4 libnss3 libexpat1 libfontconfig1 libuuid1 socat gosu \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -41,11 +42,23 @@ ENV SHAPER_DIR=/data
 # Override default DuckDB extension directory to persist downloaded extensions together with data
 ENV SHAPER_DUCKDB_EXT_DIR=/data/duckdb_extensions
 ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
+# Disable Chrome sandbox. As non-root user we don't have the permissions to sandbox and the docker container already is our sandbox.
+ENV SHAPER_NO_CHROME_SANDBOX=true
 
 EXPOSE 5454
-HEALTHCHECK CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
+HEALTHCHECK --interval=5s --timeout=3s --retries=1 --start-period=60s CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
+
+# Create a non-root user and setup directories
+RUN groupadd -r shaper && useradd -r -g shaper shaper \
+  && mkdir -p /data /var/lib/shaper \
+  && chown -R shaper:shaper /data /var/lib/shaper
 
 # Copy the correct binary based on architecture
 COPY bin/shaper-linux-${TARGETARCH} /usr/local/bin/shaper
 
-ENTRYPOINT ["/usr/local/bin/shaper"]
+# Copy and setup entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["/usr/local/bin/shaper"]

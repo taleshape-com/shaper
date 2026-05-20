@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
-/** @type {import('tailwindcss').Config} */
 import defaultTheme from 'tailwindcss/defaultTheme';
-import formPlugin from '@tailwindcss/forms';
 import { scopedPreflightStyles, isolateInsideOfContainer } from 'tailwindcss-scoped-preflight';
 import containerQueries from '@tailwindcss/container-queries';
 
+/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "ui/index.html",
@@ -26,9 +25,6 @@ export default {
         "cfive": "var(--shaper-color-five)",
         "csix": "var(--shaper-color-six)",
         "cseven": "var(--shaper-color-seven)",
-        "ceight": "var(--shaper-color-eight)",
-        "cnine": "var(--shaper-color-nine)",
-        "cten": "var(--shaper-color-ten)",
         "ctext": "var(--shaper-text-color)",
         "ctext2": "var(--shaper-text-color-secondary)",
         "ctexti": "var(--shaper-text-color-invert)",
@@ -58,9 +54,13 @@ export default {
         sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],
         display: ['var(--shaper-display-font)', ...defaultTheme.fontFamily.sans],
       },
+      screens: {
+        '4xl': '1948px',
+      },
       // Custom container query sizes that match the Tailwind breakpoints
       containers: {
         'sm': '640px',
+        'md': '768px',
         'lg': '1024px',
         'xl': '1280px',
         '2xl': '1536px',
@@ -143,7 +143,6 @@ export default {
     },
   },
   plugins: [
-    formPlugin,
     containerQueries,
     scopedPreflightStyles({
       isolationStrategy: isolateInsideOfContainer('.shaper-scope'),

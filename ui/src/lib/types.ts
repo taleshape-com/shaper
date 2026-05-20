@@ -5,7 +5,6 @@ export interface IApp {
   name: string;
   path?: string;
   folderId?: string;
-  content: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -20,9 +19,12 @@ interface ITaskInfo {
   lastRunSuccess?: boolean;
   lastRunDuration?: number; // in milliseconds
   nextRunAt?: string;
+  nextRunType?: string;
 }
 
-export type IDashboard = Omit<IApp, "type">;
+export type IDashboard = Omit<IApp, "type"> & {
+  content: string;
+};
 
 export type Column = {
   name: string;
@@ -54,6 +56,9 @@ export type Column = {
   | "compare"
   | "trend"
   | "color"
+  | "small"
+  | "medium"
+  | "large"
   | "";
 };
 
@@ -67,6 +72,18 @@ export const isTimeType = (t: Column["type"]) => {
   );
 };
 
+export const isDatableType = (t: Column["type"]) => {
+  return (
+    t === "year" ||
+    t === "month" ||
+    t === "hour" ||
+    t === "date" ||
+    t === "timestamp" ||
+    t === "time" ||
+    t === "duration"
+  );
+};
+
 export type GaugeCategory = {
   from: number;
   to: number;
@@ -76,7 +93,7 @@ export type GaugeCategory = {
 
 export type MarkLine = {
   isYAxis: boolean;
-  value: number;
+  value: (string | number);
   label?: string;
 };
 
@@ -120,7 +137,9 @@ export type Result = {
           | "barchartHorizontal"
           | "barchartHorizontalStacked"
           | "barchartVertical"
-          | "barchartVerticalStacked";
+          | "barchartVerticalStacked"
+          | "piechart"
+          | "donutchart"
           label?: string;
           markLines: MarkLine[];
         }
@@ -131,6 +150,28 @@ export type Result = {
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
+      }[];
+    }
+    | {
+      type: "content";
+      queries: {
+        render: {
+          type: "boxplot";
+          label?: string;
+          markLines: MarkLine[];
+        }
+        columns: Column[];
+        rows: (string | number | boolean | {
+          min: number;
+          max: number;
+          q1: number;
+          q2: number;
+          q3: number;
+          outliers: {
+            value: number;
+            info?: Record<string, string> | null;
+          }[];
+        })[][];
       }[];
     }
   )[];

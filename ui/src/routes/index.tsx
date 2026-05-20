@@ -3,11 +3,11 @@
 import z from "zod";
 import { isRedirect, useRouter } from "@tanstack/react-router";
 import {
-  ErrorComponent,
   createFileRoute,
   Link,
   useNavigate,
 } from "@tanstack/react-router";
+import { ErrorComponent } from "../components/ErrorComponent";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { IApp } from "../lib/types";
@@ -567,10 +567,10 @@ function Index () {
         />
       </Helmet>
 
-      <div className="pb-4 md:px-4 h-dvh flex flex-col">
-        <div className="flex pl-4 pr-2 md:px-0">
-          <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
-          <div className="flex-grow flex pb-2 pt-2.5 gap-2 my-1 overflow-x-auto">
+      <div className="pb-3 h-dvh flex flex-col">
+        <div className="flex pl-1 pr-1 md:px-2">
+          <MenuTrigger className="pr-1.5 py-3 ml-1" />
+          <div className="flex-grow flex pb-3 pt-2.5 gap-2 overflow-x-auto">
             <nav className="flex items-center gap-1 font-semibold font-display">
               {generateBreadcrumbs().map((breadcrumb, index) => (
                 <div key={breadcrumb.path} className="flex items-center gap-1">
@@ -588,7 +588,7 @@ function Index () {
                         : { path: breadcrumb.path }
                     }
                     className={cx(
-                      "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 rounded",
+                      "hover:text-cprimary dark:hover:text-dprimary transition-colors duration-200 px-2 py-1 -mx-1 rounded",
                       "whitespace-nowrap",
                       {
                         "outline-2 outline-dashed -outline-offset-2 outline-cprimary dark:outline-dprimary":
@@ -596,10 +596,10 @@ function Index () {
                         "bg-cbga dark:bg-dbga": draggedItem != null && draggedItem.path !== breadcrumb.path,
                       },
                     )}
-                    onDragOver={(e) => handleDragOver(e, breadcrumb.path)}
+                    onDragOver={(e) => getSystemConfig().editEnabled && handleDragOver(e, breadcrumb.path)}
                     onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, breadcrumb.path)}
-                    onTouchMove={(e) => handleTouchMove(e, breadcrumb.path)}
+                    onDrop={(e) => getSystemConfig().editEnabled && handleDrop(e, breadcrumb.path)}
+                    onTouchMove={(e) => getSystemConfig().editEnabled && handleTouchMove(e, breadcrumb.path)}
                     data-drop-target
                     data-target-path={breadcrumb.path}
                   >
@@ -609,23 +609,25 @@ function Index () {
               ))}
             </nav>
           </div>
-          <div className="flex">
-            <Tooltip showArrow={false} content="New Folder">
-              <Button
-                variant="secondary"
-                className="py-2 px-2.5"
-                onClick={() => setFolderDialog(true)}
-              >
-                <RiFolderAddLine
-                  className="size-4 shrink-0"
-                  aria-hidden={true}
-                />
-              </Button>
-            </Tooltip>
-          </div>
+          {getSystemConfig().editEnabled && (
+            <div className="flex">
+              <Tooltip showArrow={false} content="New Folder">
+                <Button
+                  variant="secondary"
+                  className="py-2 px-2.5"
+                  onClick={() => setFolderDialog(true)}
+                >
+                  <RiFolderAddLine
+                    className="size-4 shrink-0"
+                    aria-hidden={true}
+                  />
+                </Button>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
-        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:p-4 h-[calc(100%-4rem)]">
+        <div className="bg-cbgs dark:bg-dbgs rounded-md shadow flex-grow md:mt-2 md:mx-3 md:p-3 h-[calc(100%-4rem)]">
           {data.apps.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <RiLayoutFill
@@ -633,19 +635,21 @@ function Index () {
                 aria-hidden={true}
               />
               <p className="mt-2 mb-3 font-medium text-ctext dark:text-dtext">
-                {path === "/"
-                  ? "Create a first dashboard"
-                  : getSystemConfig().tasksEnabled ? "Create a dashboard or task" : "Create a dashboard"}
+                {getSystemConfig().editEnabled
+                  ? getSystemConfig().tasksEnabled ? "Create a dashboard or task" : "Create a dashboard"
+                  : "System is set to read-only. Create a first dashboard or task as file, deploy them and they will show up here."}
               </p>
-              <Link to="/new" search={{ path }}>
-                <Button>
-                  <RiAddFill
-                    className="-ml-1 mr-0.5 size-5 shrink-0"
-                    aria-hidden={true}
-                  />
-                  New
-                </Button>
-              </Link>
+              {getSystemConfig().editEnabled && (
+                <Link to="/new" search={{ path }}>
+                  <Button>
+                    <RiAddFill
+                      className="-ml-1 mr-0.5 size-5 shrink-0"
+                      aria-hidden={true}
+                    />
+                    New
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <TableRoot className="h-full overflow-y-auto">
@@ -691,20 +695,20 @@ function Index () {
                           "bg-cbga dark:bg-dbga [tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga": draggedItem != null && app.type === "_folder" && draggedItem.id !== app.id,
                         },
                       )}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, app)}
+                      draggable={getSystemConfig().editEnabled}
+                      onDragStart={(e) => getSystemConfig().editEnabled && handleDragStart(e, app)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleTouchStart(e, app)}
+                      onTouchStart={(e) => getSystemConfig().editEnabled && handleTouchStart(e, app)}
                       onTouchEnd={handleTouchEnd}
                       {...(app.type === "_folder"
                         ? {
                           onDragOver: (e: React.DragEvent) =>
-                            handleDragOver(e, app.path + app.name + "/", app),
+                            getSystemConfig().editEnabled && handleDragOver(e, app.path + app.name + "/", app),
                           onDragLeave: handleDragLeave,
                           onDrop: (e: React.DragEvent) =>
-                            handleDrop(e, app.path + app.name + "/", app),
+                            getSystemConfig().editEnabled && handleDrop(e, app.path + app.name + "/", app),
                           onTouchMove: (e: React.TouchEvent) =>
-                            handleTouchMove(e, app.path + app.name + "/"),
+                            getSystemConfig().editEnabled && handleTouchMove(e, app.path + app.name + "/"),
                           "data-drop-target": true,
                           "data-target-path": app.path + app.name + "/",
                         }
@@ -802,17 +806,27 @@ function Index () {
                                 <RuntimeTooltip
                                   lastRunAt={app.taskInfo.lastRunAt}
                                   nextRunAt={app.taskInfo.nextRunAt}
+                                  nextRunType={app.taskInfo.nextRunType}
                                 >
-                                  <span className="bg-cerr dark:bg-derr text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                  <span className="bg-cerr dark:bg-derr text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                     Task Error
                                   </span>
                                 </RuntimeTooltip>
                               ) : (
-                                app.taskInfo.nextRunAt != null && (
+                                app.taskInfo.nextRunType === "init" ? (
+                                  <RuntimeTooltip
+                                    lastRunAt={app.taskInfo.lastRunAt}
+                                    nextRunType={app.taskInfo.nextRunType}
+                                  >
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                      Init Task
+                                    </span>
+                                  </RuntimeTooltip>
+                                ) : app.taskInfo.nextRunAt != null && (
                                   <RuntimeTooltip
                                     lastRunAt={app.taskInfo.lastRunAt}
                                   >
-                                    <span className="bg-cprimary dark:bg-dprimary text-ctexti dark:text-dtexti text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                    <span className="bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb text-xs rounded p-1 ml-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                                       Next Run:{" "}
                                       <RelativeDate
                                         refresh
@@ -924,47 +938,51 @@ function Index () {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-4 justify-end">
-                          {app.type === "_folder" ? (
-                            <button
-                              onClick={() => {
-                                setRenameDialog(app);
-                                setRenameName(app.name);
-                              }}
-                            >
-                              <Tooltip showArrow={false} content="Rename">
-                                <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
-                              </Tooltip>
-                            </button>
-                          ) : (
-                            <Link
-                              to={
-                                app.type === "dashboard"
-                                  ? "/dashboards/$id/edit"
-                                  : "/tasks/$id"
-                              }
-                              params={{ id: app.id }}
-                              className={cx(
-                                "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
-                                "hover:underline transition-colors duration-200",
+                          {getSystemConfig().editEnabled && (
+                            <>
+                              {app.type === "_folder" ? (
+                                <button
+                                  onClick={() => {
+                                    setRenameDialog(app);
+                                    setRenameName(app.name);
+                                  }}
+                                >
+                                  <Tooltip showArrow={false} content="Rename">
+                                    <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
+                                  </Tooltip>
+                                </button>
+                              ) : (
+                                <Link
+                                  to={
+                                    app.type === "dashboard"
+                                      ? "/dashboards/$id/edit"
+                                      : "/tasks/$id"
+                                  }
+                                  params={{ id: app.id }}
+                                  className={cx(
+                                    "text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext",
+                                    "hover:underline transition-colors duration-200",
+                                  )}
+                                >
+                                  <Tooltip showArrow={false} content="Edit">
+                                    <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
+                                  </Tooltip>
+                                </Link>
                               )}
-                            >
-                              <Tooltip showArrow={false} content="Edit">
-                                <RiPencilLine className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cprimary dark:hover:fill-dprimary transition-colors duration-200" />
-                              </Tooltip>
-                            </Link>
+                              <button
+                                onClick={() => {
+                                  setDeleteDialog(app);
+                                }}
+                              >
+                                <Tooltip showArrow={false} content="Delete">
+                                  <RiDeleteBinLine
+                                    className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
+                                    aria-hidden={true}
+                                  />
+                                </Tooltip>
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={() => {
-                              setDeleteDialog(app);
-                            }}
-                          >
-                            <Tooltip showArrow={false} content="Delete">
-                              <RiDeleteBinLine
-                                className="size-5 fill-ctext2 dark:fill-dtext2 inline -mt-1 hover:fill-cerr dark:hover:fill-derr transition-colors duration-200"
-                                aria-hidden={true}
-                              />
-                            </Tooltip>
-                          </button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1073,21 +1091,34 @@ function Index () {
 function RuntimeTooltip ({
   lastRunAt,
   nextRunAt,
+  nextRunType,
   children,
 }: {
   lastRunAt?: number | string;
   nextRunAt?: number | string;
+  nextRunType?: string;
   children?: React.ReactNode;
 }) {
-  if (lastRunAt == null) return children;
+  if (lastRunAt == null && nextRunAt == null && nextRunType !== "init") { return children; }
   const tooltipContent = (
     <>
-      Last Run: <RelativeDate refresh date={new Date(lastRunAt)} />
-      {nextRunAt != null && (
+      {lastRunAt != null && (
         <>
-          <br />
-          Next Run: <RelativeDate refresh date={new Date(nextRunAt)} />
+          Last Run: <RelativeDate refresh date={new Date(lastRunAt)} />
         </>
+      )}
+      {nextRunType === "init" ? (
+        <>
+          {lastRunAt != null && <br />}
+          Next Run: Run on startup
+        </>
+      ) : (
+        nextRunAt != null && (
+          <>
+            {lastRunAt != null && <br />}
+            Next Run: <RelativeDate refresh date={new Date(nextRunAt)} />
+          </>
+        )
       )}
     </>
   );

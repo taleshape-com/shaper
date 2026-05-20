@@ -66,7 +66,7 @@ const DropdownMenuSubMenuContent = React.forwardRef<
       collisionPadding={collisionPadding}
       className={cx(
         // base
-        "relative z-50 overflow-hidden rounded-md border p-1 shadow-xl shadow-black/[2.5%]",
+        "relative z-50 overflow-y-auto overflow-x-hidden rounded-md border p-1 shadow-xl shadow-black/[2.5%]",
         // widths
         "min-w-32",
         // heights
@@ -110,7 +110,7 @@ const DropdownMenuContent = React.forwardRef<
         ref={forwardedRef}
         className={cx(
           // base
-          "relative z-50 overflow-hidden rounded-md border p-1 shadow-xl shadow-black/[2.5%]",
+          "relative z-50 overflow-y-auto overflow-x-hidden rounded-md border p-1 shadow-xl shadow-black/[2.5%]",
           // widths
           "min-w-48",
           // heights
@@ -140,10 +140,7 @@ DropdownMenuContent.displayName = "DropdownMenuContent";
 
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitives.Item>,
-  Omit<
-    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Item>,
-    "asChild"
-  > & {
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Item> & {
     shortcut?: string;
     hint?: string;
   }

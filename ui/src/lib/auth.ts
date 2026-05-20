@@ -15,9 +15,13 @@ export interface IAuthContext {
     password: string,
     variables?: Variables,
   ) => Promise<boolean>;
+  loginWithToken: (token: string, variables?: Variables) => Promise<boolean>;
   hash: string;
   variables: Variables;
   updateVariables: (text: string) => Promise<boolean>;
+  userName: string;
+  userId: string;
+  refreshUserName: () => Promise<void>;
 }
 
 const zVariables = z.record(
@@ -83,11 +87,13 @@ export const refreshJwt = async (token: string, vars: Variables) => {
   });
 };
 
-export const getJwt = async () => {
+export const getJwt = async (force = false) => {
   const jwt = localStorage.getItem(localStorageJwtKey);
-  if (jwt != null) {
+  if (jwt != null && !force) {
     const claims = parseJwt(jwt);
-    if (Date.now() / 1000 < claims.exp) {
+    // Add 30s buffer to prevent race conditions where token expires
+    // between client check and server validation
+    if (Date.now() / 1000 < claims.exp - 30) {
       return jwt;
     }
   }

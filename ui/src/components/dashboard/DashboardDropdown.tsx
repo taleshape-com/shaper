@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { Column, Result } from "../../lib/types";
-import { formatValue } from "../../lib/render";
+import { Column } from "../../lib/types";
+import { formatValue, toCssId } from "../../lib/render";
 import {
   Select,
   SelectContent,
@@ -17,9 +17,10 @@ const EMPTY = "<<EMPTY>>";
 type DropdownProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"];
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDropdown ({
@@ -28,6 +29,7 @@ function DashboardDropdown ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: DropdownProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
@@ -36,13 +38,13 @@ function DashboardDropdown ({
   const selectedValue = Array.isArray(varField) ? varField[0] : varField;
 
   return (
-    <>
+    <div className="flex items-center print:hidden">
       {label && (
-        <Label htmlFor={label} className="ml-3 pr-1 print:hidden">
+        <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:
         </Label>
       )}
-      <div className={cx("select-none print:hidden", { ["ml-2"]: !label })}>
+      <div className={cx("select-none", { ["ml-2"]: !label })}>
         <Select
           onValueChange={(value) => {
             if (value === EMPTY) {
@@ -56,7 +58,7 @@ function DashboardDropdown ({
           ).toString() || EMPTY}
         >
           <SelectTrigger
-            id={label}
+            id={toCssId(`${idPrefix}${varName}`)}
             className="mx-auto my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga"
           >
             <SelectValue />
@@ -76,7 +78,7 @@ function DashboardDropdown ({
           </SelectContent>
         </Select>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -12,7 +12,7 @@ export function MenuTrigger ({
 }: {
   children?: React.ReactNode;
   className?: string;
-  title?: string;
+  title?: string | React.ReactNode;
 }) {
   const { isMenuOpen, setIsMenuOpen, setExtraContent, setTitle } = useContext(MenuContext);
 

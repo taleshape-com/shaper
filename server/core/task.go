@@ -24,6 +24,7 @@ type Task struct {
 	CreatedBy       *string    `db:"created_by" json:"createdBy,omitempty"`
 	UpdatedBy       *string    `db:"updated_by" json:"updatedBy,omitempty"`
 	NextRunAt       *time.Time `db:"next_run_at" json:"nextRunAt,omitempty"`
+	NextRunType     *string    `db:"next_run_type" json:"nextRunType,omitempty"`
 	LastRunAt       *time.Time `db:"last_run_at" json:"lastRunAt,omitempty"`
 	LastRunSuccess  *bool      `db:"last_run_success" json:"lastRunSuccess,omitempty"`
 	LastRunDuration *int64     `db:"last_run_duration" json:"lastRunDuration,omitempty"`
@@ -64,6 +65,7 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	err := app.Sqlite.GetContext(ctx, &task,
 		`SELECT a.id, a.folder_id, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
 						tr.next_run_at,
+						tr.next_run_type,
 						tr.last_run_at,
 		        tr.last_run_success,
 		        tr.last_run_duration
@@ -86,7 +88,7 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 	return task, nil
 }
 
-func CreateTask(app *App, ctx context.Context, name string, content string, path string) (string, error) {
+func CreateTask(app *App, ctx context.Context, name string, content string, path string, requestedID string) (string, error) {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -96,7 +98,12 @@ func CreateTask(app *App, ctx context.Context, name string, content string, path
 	if name == "" {
 		return "", fmt.Errorf("task name cannot be empty")
 	}
+
 	id := cuid2.Generate()
+	if requestedID != "" {
+		id = requestedID
+	}
+
 	err := app.SubmitState(ctx, "create_task", CreateTaskPayload{
 		ID:        id,
 		Timestamp: time.Now(),

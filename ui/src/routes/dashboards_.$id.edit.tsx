@@ -8,7 +8,7 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Helmet } from "react-helmet";
 import {
   RiPencilLine,
@@ -25,12 +25,11 @@ import { Dashboard } from "../components/dashboard";
 import {
   cx,
   focusRing,
-  getSearchParamString,
   varsParamSchema,
   copyToClipboard,
 } from "../lib/utils";
 import { editorStorage } from "../lib/editorStorage";
-import { IDashboard, Result } from "../lib/types";
+import { IDashboard } from "../lib/types";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
@@ -52,6 +51,8 @@ import { SqlEditor } from "../components/SqlEditor";
 import { PreviewError } from "../components/PreviewError";
 import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
+import { DashboardWrapper } from "../components/DashboardWrapper";
+import { redirect } from "@tanstack/react-router";
 
 const MIN_SHOW_LOADING = 300;
 
@@ -61,6 +62,16 @@ export const Route = createFileRoute("/dashboards_/$id/edit")({
   }),
   shouldReload: (match) => {
     return match.cause === "enter";
+  },
+  beforeLoad: ({ params, search }) => {
+    const systemConfig = getSystemConfig();
+    if (!systemConfig.editEnabled) {
+      throw redirect({
+        to: "/dashboards/$id",
+        params: { id: params.id },
+        search: { vars: search.vars },
+      });
+    }
   },
   loader: async ({ params: { id }, context: { queryApi } }) => {
     const data = await queryApi(`dashboards/${id}/info`);
@@ -83,14 +94,15 @@ function DashboardEditor () {
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(dashboard.name);
   const [savingName, setSavingName] = useState(false);
-  const [previewData, setPreviewData] = useState<Result | undefined>(undefined);
+  const [previewId, setPreviewId] = useState<string | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [loadDuration, setLoadDuration] = useState<number | null>(null);
+  const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
+  const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [showPasswordSuccessDialog, setShowPasswordSuccessDialog] =
-		useState(false);
+    useState(false);
   const [showSuccessPassword, setShowSuccessPassword] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [selectedVisibility, setSelectedVisibility] = useState<string>(
@@ -128,15 +140,17 @@ function DashboardEditor () {
 
     setPreviewError(null);
     setIsPreviewLoading(true);
-    setLoadDuration(null); // Reset previous duration
+    setLoadStartTime(Date.now());
+    setLoadEndTime(null);
     const startTime = Date.now();
     try {
-      const searchParams = getSearchParamString(vars);
-      const data = await queryApi(`run/dashboard?${searchParams}`, {
+      const { id } = await queryApi("dashboards", {
         method: "POST",
         body: {
-          dashboardId: params.id,
+          name: dashboard.name,
+          path: dashboard.path,
           content: runningQuery,
+          temporary: true,
         },
         signal: abortController.signal,
       });
@@ -152,10 +166,10 @@ function DashboardEditor () {
 
       // Only apply result if this is the latest request
       if (previewAbortRef.current === abortController) {
-        setLoadDuration(duration);
-        setPreviewData(data);
+        setPreviewId(id);
       }
     } catch (err: unknown) {
+      setIsPreviewLoading(false);
       if ((err as any)?.name === "AbortError") {
         return; // ignore aborts
       }
@@ -163,13 +177,12 @@ function DashboardEditor () {
         return navigate(err.options);
       }
       setPreviewError(err instanceof Error ? err.message : "Unknown error");
-      setLoadDuration(Date.now() - startTime);
     } finally {
       if (previewAbortRef.current === abortController) {
         setIsPreviewLoading(false);
       }
     }
-  }, [queryApi, params, vars, runningQuery, navigate]);
+  }, [queryApi, runningQuery, navigate, dashboard]);
 
   const handleRun = useCallback(() => {
     if (editorQuery !== runningQuery) {
@@ -299,20 +312,20 @@ function DashboardEditor () {
       } else {
         toast({
           title:
-						selectedVisibility === "public"
-						  ? "Dashboard made public"
-						  : "Dashboard made private",
+            selectedVisibility === "public"
+              ? "Dashboard made public"
+              : "Dashboard made private",
           description:
-						selectedVisibility === "public"
-						  ? "Try the link in the sidebar"
-						  : "The dashboard is not publicly accessible anymore.",
+            selectedVisibility === "public"
+              ? "Try the link in the sidebar"
+              : "The dashboard is not publicly accessible anymore.",
         });
       }
 
       dashboard.visibility = selectedVisibility as
-				| "public"
-				| "private"
-				| "password-protected";
+        | "public"
+        | "private"
+        | "password-protected";
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
@@ -391,6 +404,26 @@ function DashboardEditor () {
     setShowDiscardDialog(false);
   };
 
+  const handleError = useCallback((err: Error) => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+    if (isRedirect(err)) {
+      navigate(err.options);
+    }
+  }, [navigate, setIsPreviewLoading, setLoadEndTime]);
+
+  const handleDataChange = useCallback(() => {
+    setIsPreviewLoading(false);
+    setLoadEndTime(Date.now());
+  }, [setIsPreviewLoading, setLoadEndTime]);
+
+  const loadDuration = useMemo(() => {
+    if (!loadStartTime || !loadEndTime) {
+      return null;
+    }
+    return loadEndTime - loadStartTime;
+  }, [loadStartTime, loadEndTime]);
+
   // Load initial preview
   useEffect(() => {
     previewDashboard();
@@ -414,7 +447,7 @@ function DashboardEditor () {
             <MenuTrigger className="pr-2">
               <div className="mt-6 px-4">
                 <div className="text-sm font-medium text-ctext2 dark:text-dtext2 mb-2">
-									Dashboard ID
+                  Dashboard ID
                 </div>
                 <div className="flex items-center space-x-2">
                   <code
@@ -435,7 +468,7 @@ function DashboardEditor () {
               </div>
               <VariablesMenu onVariablesChange={previewDashboard} />
               {(systemConfig.publicSharingEnabled ||
-								systemConfig.passwordProtectedSharingEnabled) && (
+                systemConfig.passwordProtectedSharingEnabled) && (
                 <div className="my-2 px-4">
                   <Button
                     onClick={handleOpenVisibilityDialog}
@@ -448,7 +481,7 @@ function DashboardEditor () {
                     <RiArrowDownSLine className="size-4 inline ml-1.5 mt-0.5 fill-ctext2 dark:fill-dtext2" />
                   </Button>
                   {(dashboard.visibility === "public" ||
-											dashboard.visibility === "password-protected") && (
+                      dashboard.visibility === "password-protected") && (
                     <PublicLink href={`../../view/${params.id}`} />
                   )}
                 </div>
@@ -458,18 +491,20 @@ function DashboardEditor () {
                 variant="destructive"
                 className="mt-4 mx-4"
               >
-								Delete Dashboard
+                Delete Dashboard
               </Button>
-              {loadDuration && (
-                <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
+              <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">
+                {loadDuration ? (
                   <span>
-										Load time:{" "}
+                    Load time:{" "}
                     {loadDuration >= 1000
                       ? `${(loadDuration / 1000).toFixed(2)}s`
                       : `${loadDuration}ms`}
                   </span>
-                </div>
-              )}
+                ) : (
+                  <span>Loading...</span>
+                )}
+              </div>
             </MenuTrigger>
 
             {editingName ? (
@@ -514,7 +549,7 @@ function DashboardEditor () {
                   disabled={savingName}
                   isLoading={savingName}
                 >
-									Save
+                  Save
                 </Button>
               </form>
             ) : (
@@ -525,7 +560,7 @@ function DashboardEditor () {
                   content="Click to edit dashboard name"
                 >
                   <h1
-                    className="text-xl font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-0.5 rounded inline-block"
+                    className="font-semibold font-display cursor-pointer hover:bg-cbga dark:hover:bg-dbga px-2 py-1 rounded inline-block"
                     onClick={() => setEditingName(true)}
                   >
                     {name}
@@ -541,7 +576,7 @@ function DashboardEditor () {
               search={() => ({ vars })}
               className="text-sm text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext hover:underline transition-colors duration-200 flex-grow sm:grow-0"
             >
-							View Dashboard
+              View Dashboard
             </Link>
 
             <div className="space-x-2">
@@ -554,7 +589,7 @@ function DashboardEditor () {
                   disabled={editorQuery === dashboard.content}
                   variant="destructive"
                 >
-									Discard
+                  Discard
                 </Button>
               </Tooltip>
               <Tooltip showArrow={false} asChild content="Save Dashboard">
@@ -567,7 +602,7 @@ function DashboardEditor () {
                   isLoading={saving}
                   variant="secondary"
                 >
-									Save
+                  Save
                 </Button>
               </Tooltip>
               <Tooltip
@@ -580,7 +615,7 @@ function DashboardEditor () {
                   disabled={isPreviewLoading}
                   isLoading={isPreviewLoading}
                 >
-									Run
+                  Run
                 </Button>
               </Tooltip>
             </div>
@@ -595,17 +630,19 @@ function DashboardEditor () {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto relative">
+        <DashboardWrapper className="flex-grow overflow-y-auto relative">
           {previewError && <PreviewError>{previewError}</PreviewError>}
           <Dashboard
+            id={previewId}
             vars={vars}
             hash={auth.hash}
             getJwt={getJwt}
             onVarsChanged={handleVarsChanged}
-            data={previewData} // Pass preview data directly to Dashboard
+            onError={handleError}
+            onDataChange={handleDataChange}
             loading={isPreviewLoading}
           />
-        </div>
+        </DashboardWrapper>
       </div>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -628,7 +665,7 @@ function DashboardEditor () {
                 setShowDeleteDialog(false);
               }}
             >
-							Delete
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -639,14 +676,14 @@ function DashboardEditor () {
           <DialogHeader>
             <DialogTitle>Discard Changes</DialogTitle>
             <DialogDescription>
-							Are you sure you want to discard your unsaved changes? This action
-							cannot be undone.
+              Are you sure you want to discard your unsaved changes? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowDiscardDialog(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDiscardChanges}>
-							Discard
+              Discard
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -660,7 +697,7 @@ function DashboardEditor () {
           <DialogHeader>
             <DialogTitle>Dashboard Visibility</DialogTitle>
             <DialogDescription>
-							Choose who can access this dashboard
+              Choose who can access this dashboard
             </DialogDescription>
           </DialogHeader>
 
@@ -678,7 +715,7 @@ function DashboardEditor () {
                 <div>
                   <div className="font-medium">Private</div>
                   <div className="text-sm text-ctext2 dark:text-dtext2">
-										Only you can access this dashboard
+                    Only you can access this dashboard
                   </div>
                 </div>
               </label>
@@ -697,7 +734,7 @@ function DashboardEditor () {
                     <div className="flex-grow">
                       <div className="font-medium">Password Protected</div>
                       <div className="text-sm text-ctext2 dark:text-dtext2">
-												Anyone with the link and password can access
+                        Anyone with the link and password can access
                       </div>
                     </div>
                   </label>
@@ -768,11 +805,11 @@ function DashboardEditor () {
                         </Tooltip>
                       </div>
                       <div className="text-xs text-ctext2 dark:text-dtext2">
-												Password must be at least 4 characters long
+                        Password must be at least 4 characters long
                       </div>
                       {password && password.length < 4 && (
                         <div className="text-xs text-cerr dark:text-derr">
-													Password is too short
+                          Password is too short
                         </div>
                       )}
                     </div>
@@ -793,7 +830,7 @@ function DashboardEditor () {
                   <div>
                     <div className="font-medium">Public</div>
                     <div className="text-sm text-ctext2 dark:text-dtext2">
-											Anyone with the link can access
+                      Anyone with the link can access
                     </div>
                   </div>
                 </label>
@@ -806,7 +843,7 @@ function DashboardEditor () {
               onClick={() => setShowVisibilityDialog(false)}
               variant="secondary"
             >
-							Cancel
+              Cancel
             </Button>
             <Button
               variant="primary"
@@ -816,11 +853,11 @@ function DashboardEditor () {
               }}
               disabled={
                 selectedVisibility === "password-protected" &&
-								password.length < 4
+                password.length < 4
               }
               isLoading={savingPassword}
             >
-							Save
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -834,8 +871,8 @@ function DashboardEditor () {
           <DialogHeader>
             <DialogTitle>Dashboard Password Protected</DialogTitle>
             <DialogDescription>
-							Your dashboard is now password protected. Copy the password now -
-							you won't be able to see it again.
+              Your dashboard is now password protected. Copy the password now -
+              you won't be able to see it again.
             </DialogDescription>
           </DialogHeader>
 
@@ -907,7 +944,7 @@ function DashboardEditor () {
                   }}
                   className="px-3"
                 >
-									Copy
+                  Copy
                 </Button>
               </div>
             </div>
@@ -915,7 +952,7 @@ function DashboardEditor () {
             <div className="pt-2">
               <a href={`../../view/${params.id}`} target="_blank">
                 <Button type="button" variant="primary" className="w-full">
-									Open Shared Dashboard
+                  Open Shared Dashboard
                   <RiExternalLinkLine className="size-4 ml-2" />
                 </Button>
               </a>
@@ -927,7 +964,7 @@ function DashboardEditor () {
               onClick={() => setShowPasswordSuccessDialog(false)}
               variant="secondary"
             >
-							Close
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

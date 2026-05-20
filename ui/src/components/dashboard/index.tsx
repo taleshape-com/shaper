@@ -2,8 +2,10 @@
 
 import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
+import { toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
-import { cx, getSearchParamString, VarsParamSchema } from "../../lib/utils";
+import { cx, getSearchParamString, VarsParamSchema, getRenderMode, copyToClipboard } from "../../lib/utils";
+import { fetchWithRetry } from "../../lib/fetchWithRetry";
 import DashboardDropdown from "./DashboardDropdown";
 import DashboardDropdownMulti from "./DashboardDropdownMulti";
 import DashboardButton from "./DashboardButton";
@@ -14,12 +16,16 @@ import { Card } from "../tremor/Card";
 import { translate } from "../../lib/translate";
 import DashboardLineChart from "./DashboardLineChart";
 import DashboardBarChart from "./DashboardBarChart";
+import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { RiBarChartFill, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
+import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
+import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
+import { TableDownloadButton } from "../charts/TableDownloadButton";
+import { FullscreenButton } from "./FullscreenButton";
 
 export interface DashboardProps {
   id?: string;
@@ -30,7 +36,6 @@ export interface DashboardProps {
   hash?: string;
   menuButton?: React.ReactNode;
   onError?: (error: Error) => void;
-  data?: Result;
   onDataChange?: (data: Result) => void;
   loading?: boolean;
 }
@@ -47,7 +52,6 @@ export function Dashboard ({
   hash = "",
   menuButton,
   onError,
-  data,
   onDataChange,
   loading,
 }: DashboardProps) {
@@ -55,8 +59,6 @@ export function Dashboard ({
   const [error, setError] = useState<Error | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const errResetFn = useRef<(() => void) | undefined>(undefined);
-
-  const actualData = data ?? fetchedData;
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
@@ -144,13 +146,34 @@ export function Dashboard ({
 
   const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+      const success = await copyToClipboard(error.message);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    };
+
     return (
       <div className="antialiased text-ctext dark:text-dtext">
         {menuButton}
         <div>
           <div className="p-4 z-50 flex justify-center items-center">
-            <div className="p-4 bg-red-100 text-red-700 h-fit rounded">
-              {error.message}
+            <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded flex items-start gap-4">
+              <span>{error.message}</span>
+              <button
+                onClick={handleCopy}
+                className="shrink-0 text-red-500 hover:text-red-700 transition-colors"
+                title="Copy error message"
+              >
+                {copied ? (
+                  <RiCheckLine className="size-5" />
+                ) : (
+                  <RiFileCopyLine className="size-5" />
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -162,10 +185,10 @@ export function Dashboard ({
     return <ErrorDisplay error={error} />;
   }
 
-  return actualData ? (
+  return fetchedData ? (
     <ErrorBoundary fallbackRender={ErrorDisplay}>
       <DataView
-        data={actualData}
+        data={fetchedData}
         onVarsChanged={onVarsChanged}
         menuButton={menuButton}
         vars={vars}
@@ -191,9 +214,20 @@ const DataView = ({
   baseUrl,
   getJwt,
   loading,
-}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt"> & Required<Pick<DashboardProps, "data">>) & { loading: boolean }) => {
-  const firstIsHeader = !(data.sections.length === 0 || data.sections[0].type !== "header");
-  const sections: Result["sections"] = firstIsHeader
+}: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean }) => {
+  const [fullscreenId, setFullscreenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && fullscreenId) {
+        setFullscreenId(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fullscreenId]);
+
+  const sections: Result["sections"] = data.sections.length > 0 && data.sections[0].type === "header"
     ? data.sections
     : [
       {
@@ -207,235 +241,345 @@ const DataView = ({
     (section) => section.type === "content",
   ).length;
 
-  return (<ChartHoverProvider>
-    <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
-      {data.headerImage && (
-        <img
-          src={data.headerImage}
-          alt="Header Image"
-          className="max-h-16 object-contain"
-        />
-      )}
-    </div>
-    {sections.map((section, sectionIndex) => {
-      if (section.type === "header") {
-        const queries = section.queries.filter(
-          (query) => query.rows.length > 0,
-        );
-        return (
-          <section
-            key={sectionIndex}
-            className={cx("flex flex-wrap items-center ml-2 mr-4", {
-              "mt-3 mb-3": section.queries.length > 0 || section.title,
-              "mt-8": section.title && sectionIndex !== 0,
-              "my-2": section.queries.length === 0 && !section.title && sectionIndex === 0,
-            })}
-          >
-            <div
-              className={cx("@sm:flex-grow flex items-center ml-1", {
-                "w-full @sm:w-fit": section.title,
-              })}
-            >
-              {sectionIndex === 0 ? (
-                <>
-                  {menuButton}
-                  {section.title ? (
-                    <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
-                      {section.title}
-                    </h1>
-                  ) : null}
-                </>
-              ) : section.title ? (
-                <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
-                  {section.title}
-                </h2>
-              ) : null}
-            </div>
-            {queries.map(({ render, columns, rows }, index) => {
-              if (render.type === "dropdown") {
-                return (
-                  <DashboardDropdown
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    vars={vars}
-                    onChange={onVarsChanged}
-                  />
-                );
-              }
-              if (render.type === "dropdownMulti") {
-                return (
-                  <DashboardDropdownMulti
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    vars={vars}
-                    onChange={onVarsChanged}
-                  />
-                );
-              }
-              if (render.type === "button") {
-                return (
-                  <DashboardButton
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    baseUrl={baseUrl}
-                    getJwt={getJwt}
-                  />
-                );
-              }
-              if (render.type === "datepicker") {
-                return (
-                  <DashboardDatePicker
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    vars={vars}
-                    onChange={onVarsChanged}
-                  />
-                );
-              }
-              if (render.type === "daterangePicker") {
-                return (
-                  <DashboardDateRangePicker
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    vars={vars}
-                    onChange={onVarsChanged}
-                  />
-                );
-              }
-              if (render.type === "input") {
-                return (
-                  <DashboardInput
-                    key={index}
-                    label={render.label}
-                    headers={columns}
-                    data={rows}
-                    vars={vars}
-                    onChange={onVarsChanged}
-                  />
-                );
-              }
-            })}
-          </section>
-        );
-      }
+  const totalContentQueries = sections.reduce(
+    (acc, section) => section.type === "content"
+      ? acc + section.queries.filter(q => q.render.type !== "placeholder").length
+      : acc,
+    0,
+  );
 
-      const numQueriesInSection = section.queries.length;
-      return (
-        <section
-          key={sectionIndex}
-          className={cx("grid grid-cols-1 ml-4", {
-            "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
-            "@sm:grid-cols-3 print:grid-cols-3":
-              numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
-            "@lg:grid-cols-2 print:grid-cols-2":
-              numQueriesInSection === 2 ||
-              (numContentSections === 1 && numQueriesInSection === 4),
-            "@lg:grid-cols-3":
-              numQueriesInSection > 4 ||
-              numQueriesInSection === 3 ||
-              (numQueriesInSection === 4 && numContentSections > 1),
-            "@xl:grid-cols-4":
-              (numQueriesInSection === 4 && numContentSections > 1) ||
-              numQueriesInSection === 7 ||
-              numQueriesInSection === 8 ||
-              numQueriesInSection > 9,
-            "@4xl:grid-cols-5":
-              (numQueriesInSection === 5 && numContentSections > 1) ||
-              numQueriesInSection >= 9,
-          })}
-        >
-          {section.queries.map((query, queryIndex) => {
-            if (query.render.type === "placeholder") {
-              return <div key={queryIndex}></div>;
+  type HeaderSection = Extract<Result["sections"][number], { type: "header" }>;
+  const groupedSections: {
+    sections: { section: Result["sections"][number]; index: number }[];
+  }[] = [];
+
+  sections.forEach((section, index) => {
+    const lastGroup = groupedSections[groupedSections.length - 1];
+    const lastGroupHasSubstantialContent = lastGroup?.sections.some(
+      (s) => s.section.type === "content" && s.section.queries.length > 0,
+    );
+
+    if (section.type === "header") {
+      if (!lastGroup || lastGroupHasSubstantialContent) {
+        groupedSections.push({
+          sections: [{ section, index }],
+        });
+      } else {
+        lastGroup.sections.push({ section, index });
+      }
+    } else {
+      if (lastGroup) {
+        lastGroup.sections.push({ section, index });
+      } else {
+        groupedSections.push({
+          sections: [{ section, index }],
+        });
+      }
+    }
+  });
+
+  return (<ChartHoverProvider>
+    <div className={cx("relative w-full h-full shaper-scope min-h-0", { "overflow-hidden max-h-screen": !!fullscreenId })}>
+      <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
+        {data.headerImage && (
+          <img
+            src={data.headerImage}
+            alt="Header Image"
+            className="max-h-16 object-contain"
+          />
+        )}
+      </div>
+      {groupedSections.map((group, groupIndex) => (
+        <section key={groupIndex} className="break-inside-avoid">
+          {group.sections.map(({ section, index: sectionIndex }) => {
+            if (section.type === "header") {
+              const header = section as HeaderSection;
+              const queries = header.queries.filter(
+                (query) => query.rows.length > 0,
+              );
+              return (
+                <div
+                  key={sectionIndex}
+                  id={toCssId(`header${sectionIndex}`)}
+                  className={cx("flex flex-wrap items-center ml-2 mr-4", {
+                    "mt-3 mb-3": header.queries.length > 0 || header.title,
+                    "mt-8": header.title && sectionIndex !== 0,
+                    "my-2": header.queries.length === 0 && !header.title && sectionIndex === 0,
+                  })}
+                >
+                  <div
+                    className={cx("@sm:flex-grow flex items-center ml-1", {
+                      "w-full @sm:w-fit": header.title,
+                    })}
+                  >
+                    {sectionIndex === 0 ? (
+                      <>
+                        {menuButton}
+                        {header.title ? (
+                          <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
+                            {header.title}
+                          </h1>
+                        ) : null}
+                      </>
+                    ) : header.title ? (
+                      <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
+                        {header.title}
+                      </h2>
+                    ) : null}
+                  </div>
+                  {queries.map(({ render, columns, rows }, index) => {
+                    if (render.type === "dropdown") {
+                      return (
+                        <DashboardDropdown
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "dropdownMulti") {
+                      return (
+                        <DashboardDropdownMulti
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "button") {
+                      return (
+                        <DashboardButton
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          baseUrl={baseUrl}
+                          getJwt={getJwt}
+                        />
+                      );
+                    }
+                    if (render.type === "datepicker") {
+                      return (
+                        <DashboardDatePicker
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "daterangePicker") {
+                      return (
+                        <DashboardDateRangePicker
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                    if (render.type === "input") {
+                      return (
+                        <DashboardInput
+                          key={index}
+                          idPrefix={`header${sectionIndex}-${render.type}-`}
+                          label={render.label}
+                          headers={columns}
+                          data={rows as (string | number | boolean)[][]}
+                          vars={vars}
+                          onChange={onVarsChanged}
+                        />
+                      );
+                    }
+                  })}
+                </div>
+              );
             }
-            const isChartQuery = query.render.type === "linechart" || query.render.type === "gauge" || query.render.type.startsWith("barchart");
-            const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+
+            const numQueriesInSection = section.queries.length;
+
             return (
-              <Card
-                key={queryIndex}
-                className={cx(
-                  "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group break-inside-avoid",
-                  {
-                    "min-h-[340px] h-[calc(50dvh-3.15rem)] print:h-[340px]": !singleTable && (section.queries.some(q => q.render.type !== "value") || numContentSections <= 2),
-                    "h-[calc(50dvh-1.6rem)] print:h-[340px]": !singleTable && !firstIsHeader && numContentSections === 1,
-                    "h-[calc(100cqh-5.3rem)]": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && firstIsHeader,
-                    "h-[calc(100cqh-2.2rem)] ": !singleTable && numContentSections === 1 && numQueriesInSection === 1 && !firstIsHeader,
-                    "break-before-avoid": singleTable,
-                    "p-4": !isChartQuery,
-                  },
-                )}
+              <div
+                key={sectionIndex}
+                id={toCssId(`content${sectionIndex}`)}
+                className={cx("grid grid-cols-1 ml-4", {
+                  "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+                  "@sm:grid-cols-3 print:grid-cols-3":
+                    numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
+                  "@lg:grid-cols-2 print:grid-cols-2":
+                    numQueriesInSection === 2 ||
+                    (numContentSections === 1 && numQueriesInSection === 4),
+                  "@lg:grid-cols-3":
+                    numQueriesInSection > 4 ||
+                    numQueriesInSection === 3 ||
+                    (numQueriesInSection === 4 && numContentSections > 1),
+                  "@xl:grid-cols-4":
+                    (numQueriesInSection === 4 && numContentSections > 1) ||
+                    numQueriesInSection === 7 ||
+                    numQueriesInSection === 8 ||
+                    numQueriesInSection > 9,
+                  "@4xl:grid-cols-5":
+                    (numQueriesInSection === 5 && numContentSections > 1) ||
+                    numQueriesInSection >= 9,
+                })}
               >
-                {isChartQuery ? (
-                  <ChartDownloadButton
-                    chartId={`${sectionIndex}-${queryIndex}`}
-                    label={query.render.label}
-                    className="absolute top-2 right-2 z-40"
-                  />
-                ) : query.render.label && (
-                  <h2 className="text-md pb-4 mx-4 text-center font-semibold font-display">
-                    {query.render.label}
-                  </h2>
-                )}
-                {
-                  renderContent(
-                    query,
-                    sectionIndex,
-                    queryIndex,
-                    data.minTimeValue,
-                    data.maxTimeValue,
-                    numQueriesInSection,
-                  )
-                }
-              </Card>
+                {section.queries.map((query, queryIndex) => {
+                  if (query.render.type === "placeholder") {
+                    return <div key={queryIndex}></div>;
+                  }
+                  const currentId = `${sectionIndex}-${queryIndex}`;
+                  const isFullscreen = fullscreenId === currentId;
+                  const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+                  const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
+                  const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+                  const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
+                  const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
+                  const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
+                  return (
+                    <Card
+                      key={queryIndex}
+                      id={toCssId(`content${sectionIndex}-${cardCssId}`)}
+                      className={cx(
+                        "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
+                        isFullscreen ? "absolute inset-0 z-[100] m-0 rounded-none h-full w-full overflow-auto p-8" : {
+                          "break-inside-avoid": !singleTable,
+                          "min-h-[240px]": isChartQuery,
+                          "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
+                          "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                          "h-[240px]": isChartQuery && !isBigChartQuery,
+                          "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
+                          // single table
+                          "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
+                          // pdf
+                          "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
+                          // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
+                          "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
+                          // fill screen height if only 2 sections
+                          "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
+                          // single chart and not table
+                          "@sm:h-[calc(70cqh-5.2rem)] @md:h-[calc(85cqh-5.2rem)] @lg:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                          // max heights:
+                          // 1 or 2 cols
+                          "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
+                          // 3 cols
+                          "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
+                            numQueriesInSection > 4 ||
+                            numQueriesInSection === 3 ||
+                            (numQueriesInSection === 4 && numContentSections > 1)),
+                          // 4 cols
+                          "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
+                            (numQueriesInSection === 4 && numContentSections > 1) ||
+                            numQueriesInSection === 7 ||
+                            numQueriesInSection === 8 ||
+                            numQueriesInSection > 9),
+                          // 5 cols
+                          "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
+                            numQueriesInSection >= 9,
+                          // not height related:
+                          "break-before-avoid": singleTable,
+                          "p-4": !isChartQuery,
+                        },
+                      )}
+                    >
+                      {(isChartQuery || query.render.type === "table") && totalContentQueries > 1 && (
+                        <FullscreenButton
+                          isFullscreen={isFullscreen}
+                          onToggle={() => setFullscreenId(isFullscreen ? null : currentId)}
+                          className={cx("right-2", isFullscreen && "top-8 right-8")}
+                        />
+                      )}
+                      {isChartQuery ? (
+                        <ChartDownloadButton
+                          chartId={`${sectionIndex}-${queryIndex}`}
+                          label={query.render.label}
+                          className={cx("absolute top-2 right-2 z-40", { "top-8 right-16": isFullscreen, "right-10": totalContentQueries > 1 && !isFullscreen })}
+                          id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                        />
+                      ) : (
+                        <>
+                          {query.render.label && (
+                            <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
+                              {query.render.label}
+                            </h2>
+                          )}
+                          {query.render.type === "table" && (
+                            <TableDownloadButton
+                              headers={query.columns}
+                              data={query.rows as (string | number | boolean)[][]}
+                              label={query.render.label}
+                              className={cx("right-10", isFullscreen && "top-8 right-16")}
+                              id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                            />
+                          )}
+                        </>
+                      )}
+                      {
+                        renderContent(
+                          query,
+                          sectionIndex,
+                          queryIndex,
+                          data.minTimeValue,
+                          data.maxTimeValue,
+                        )
+                      }
+                    </Card>
+                  );
+                })}
+              </div>
             );
           })}
         </section>
-      );
-    })}
-    {
-      numContentSections === 0 ? (
-        <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
-          <RiLayoutFill
-            className="mx-auto size-9"
-            aria-hidden={true}
-          />
-          <p className="mt-3 font-medium">
-            {translate("Nothing to show yet")}
-          </p>
+      ))}
+      {
+        numContentSections === 0 ? (
+          <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">
+            <RiLayoutFill
+              className="mx-auto size-9"
+              aria-hidden={true}
+            />
+            <p className="mt-3 font-medium">
+              {translate("Nothing to show yet")}
+            </p>
+          </div>
+        ) : null
+      }
+      <div
+        className={cx("shaper-custom-dashboard-footer", {
+          "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
+        })}
+        data-footer-link={data.footerLink}
+      >
+        {data.footerLink && (
+          <a
+            href={data.footerLink}
+            target="_blank"
+            className="no-underline text-ctext2 dark:text-dtext2 text-xs"
+          >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
+        )}
+      </div>
+      {loading && (
+        <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
+          <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
+            <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
+          </div>
         </div>
-      ) : null
-    }
-    <div
-      className={cx("shaper-custom-dashboard-footer", {
-        "grow mx-4 mt-14 pb-4 flex items-end": !!data.footerLink,
-      })}
-      data-footer-link={data.footerLink}
-    >
-      {data.footerLink && (
-        <a
-          href={data.footerLink}
-          target="_blank"
-          className="no-underline text-ctext2 text-xs"
-        >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
       )}
     </div>
-    {loading && (
-      <div className="sticky bottom-0 h-0 z-50 pointer-events-none w-full relative">
-        <div className="p-1 bg-cbgs dark:bg-dbgs rounded-md shadow-md absolute right-2 bottom-2">
-          <RiLoader3Fill className="size-7 fill-ctext dark:fill-dtext animate-spin" />
-        </div>
-      </div>
-    )}
   </ChartHoverProvider >);
 };
 
@@ -445,7 +589,6 @@ const renderContent = (
   queryIndex: number,
   minTimeValue: number,
   maxTimeValue: number,
-  numQueriesInSection: number,
 ) => {
   if (query.rows.length === 0) {
     return (
@@ -468,7 +611,7 @@ const renderContent = (
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
         headers={query.columns}
-        data={query.rows}
+        data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
@@ -505,23 +648,39 @@ const renderContent = (
           query.render.type === "barchartVerticalStacked"
         }
         headers={query.columns}
-        data={query.rows}
+        data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
         maxTimeValue={maxTimeValue}
         markLines={query.render.markLines}
       />
     );
   }
-  if (query.render.type === "value") {
-    return <DashboardValue headers={query.columns} data={query.rows} />;
+  if (query.render.type === "piechart" || query.render.type === "donutchart") {
+    return (
+      <DashboardPieChart
+        chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
+        headers={query.columns}
+        data={query.rows as (string | number | boolean)[][]}
+        isDonut={query.render.type === "donutchart"}
+      />
+    );
   }
-  return (
-    <div
-      className={cx("overflow-auto", { "h-full": numQueriesInSection > 1 })}
-    >
-      <DashboardTable headers={query.columns} data={query.rows} />
-    </div>
-  );
+  if (query.render.type === "boxplot") {
+    return (
+      <DashboardBoxplot
+        chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
+        headers={query.columns}
+        data={query.rows}
+        markLines={query.render.markLines}
+      />
+    );
+  }
+  if (query.render.type === "value") {
+    return <DashboardValue headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
+  }
+  return <DashboardTable headers={query.columns} data={query.rows as (string | number | boolean)[][]} />;
 };
 
 const fetchDashboard = async (
@@ -533,7 +692,7 @@ const fetchDashboard = async (
 ): Promise<Result> => {
   const jwt = await getJwt();
   const searchParams = getSearchParamString(vars);
-  const res = await fetch(`${baseUrl}api/dashboards/${id}?${searchParams}`, {
+  const res = await fetchWithRetry(`${baseUrl}api/dashboards/${id}?${searchParams}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: jwt,

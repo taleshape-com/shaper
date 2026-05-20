@@ -3,7 +3,7 @@
 import { useState } from "react";
 import * as SelectPrimitives from "@radix-ui/react-select";
 import { RiExpandUpDownLine } from "@remixicon/react";
-import { Column, Result } from "../../lib/types";
+import { Column } from "../../lib/types";
 import { Button } from "../tremor/Button";
 import {
   DropdownMenu,
@@ -11,15 +11,16 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../tremor/DropdownMenu";
-import { formatValue } from "../../lib/render";
+import { formatValue, toCssId } from "../../lib/render";
 import { translate } from "../../lib/translate";
 
 type DropdownProps = {
   label?: string;
   headers: Column[];
-  data: Result["sections"][0]["queries"][0]["rows"];
+  data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  idPrefix: string;
 };
 
 function DashboardDropdownMulti ({
@@ -28,6 +29,7 @@ function DashboardDropdownMulti ({
   headers,
   onChange,
   vars,
+  idPrefix,
 }: DropdownProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
@@ -58,6 +60,7 @@ function DashboardDropdownMulti ({
           <Button
             variant="secondary"
             className="flex w-full items-center justify-between my-1 data-[state=open]:bg-cbga data-[state=open]:dark:bg-dbga"
+            id={toCssId(`${idPrefix}${varName}`)}
           >
             {label ?? varName} (
             {noneSelected ? 0 : selectedValArr.length || data.length})

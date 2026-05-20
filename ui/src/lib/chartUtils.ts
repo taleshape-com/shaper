@@ -24,7 +24,7 @@ export const getDisplayFont = (): string => {
 export const getThemeColors = (isDark: boolean) => {
   if (isDark) {
     return {
-      primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color"),
+      primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color-alternate"),
       backgroundColor: getComputedCssValue("--shaper-dark-mode-background-color"),
       backgroundColorSecondary: getComputedCssValue("--shaper-dark-mode-background-color-secondary"),
       backgroundColorInverted: getComputedCssValue("--shaper-dark-mode-background-color-invert"),
@@ -37,7 +37,7 @@ export const getThemeColors = (isDark: boolean) => {
     };
   } else {
     return {
-      primaryColor: getComputedCssValue("--shaper-primary-color"),
+      primaryColor: getComputedCssValue("--shaper-primary-color-alternate"),
       backgroundColor: getComputedCssValue("--shaper-background-color"),
       backgroundColorSecondary: getComputedCssValue("--shaper-background-color-secondary"),
       backgroundColorInverted: getComputedCssValue("--shaper-background-color-invert"),
@@ -52,16 +52,128 @@ export const getThemeColors = (isDark: boolean) => {
 };
 
 // Function to download chart as image
-export const downloadChartAsImage = (
+export const downloadChartAsImage = async (
   chartInstance: ECharts,
   isDarkMode: boolean,
   chartId: string,
   label?: string,
-): void => {
+): Promise<void> => {
   // Get the current chart's dimensions and options
   const chartDom = chartInstance.getDom();
   const { width, height } = chartDom.getBoundingClientRect();
-  const chartOptions = chartInstance.getOption();
+  const chartOptions = chartInstance.getOption() as any;
+  chartOptions.animation = false;
+
+  // Check for watermark URL in CSS variables
+  const watermarkUrlRaw = getComputedCssValue("--shaper-watermark-url");
+  let watermarkUrl = "";
+  if (
+    watermarkUrlRaw &&
+    watermarkUrlRaw !== "none" &&
+    watermarkUrlRaw !== "var(--shaper-watermark-url)"
+  ) {
+    const match = watermarkUrlRaw.match(/url\(['"]?(.*?)['"]?\)/);
+    watermarkUrl = match ? match[1] : watermarkUrlRaw;
+  }
+
+  const watermarkGap = 10;
+  const watermarkHeight = 17;
+  const watermarkPadding = 5;
+  const newHeight = height + watermarkGap * 2 + watermarkHeight + watermarkPadding;
+
+  if (watermarkUrl) {
+    // Adjust grid to keep it at the same position from top
+    if (chartOptions.grid) {
+      const grids = Array.isArray(chartOptions.grid)
+        ? chartOptions.grid
+        : [chartOptions.grid];
+      const spaceBottom = watermarkGap + watermarkHeight + watermarkPadding;
+      grids.forEach((grid: any) => {
+        if (grid.bottom !== undefined) {
+          if (typeof grid.bottom === "number") {
+            grid.bottom += spaceBottom;
+          } else if (
+            typeof grid.bottom === "string" &&
+            grid.bottom.endsWith("px")
+          ) {
+            grid.bottom = `${parseFloat(grid.bottom) + spaceBottom}px`;
+          }
+        } else {
+          grid.bottom = spaceBottom;
+        }
+        if (grid.top !== undefined) {
+          if (typeof grid.top === "number") {
+            grid.top += watermarkGap;
+          } else if (
+            typeof grid.top === "string" &&
+            grid.top.endsWith("px")
+          ) {
+            grid.top = `${parseFloat(grid.top) + watermarkGap}px`;
+          }
+        } else {
+          grid.top = watermarkGap;
+        }
+      });
+    }
+    if (chartOptions.legend) {
+      const legends = Array.isArray(chartOptions.legend)
+        ? chartOptions.legend
+        : [chartOptions.legend];
+      legends.forEach((legend: any) => {
+        if (legend.top !== undefined) {
+          if (typeof legend.top === "number") {
+            legend.top += watermarkGap;
+          } else if (
+            typeof legend.top === "string" &&
+            legend.top.endsWith("px")
+          ) {
+            legend.top = `${parseFloat(legend.top) + watermarkGap}px`;
+          }
+        } else {
+          legend.top = watermarkGap;
+        }
+      });
+    }
+
+    // Pre-load image to ensure it's rendered in getDataURL and to get its dimensions
+    let imgWidth = 0;
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const aspectRatio = img.naturalWidth / img.naturalHeight;
+        imgWidth = watermarkHeight * aspectRatio;
+        resolve(null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = watermarkUrl;
+      setTimeout(() => resolve(null), 2000); // Timeout after 2 seconds
+    });
+
+    // Add watermark graphic
+    const watermarkGraphic = {
+      type: "image",
+      right: watermarkPadding,
+      bottom: watermarkPadding,
+      style: {
+        image: watermarkUrl,
+        height: watermarkHeight,
+        width: imgWidth || undefined,
+      },
+      z: 1000,
+    };
+
+    if (!chartOptions.graphic) {
+      chartOptions.graphic = [watermarkGraphic];
+    } else if (Array.isArray(chartOptions.graphic)) {
+      if (chartOptions.graphic.length === 1 && Array.isArray(chartOptions.graphic[0].elements)) {
+        chartOptions.graphic[0].elements.push(watermarkGraphic);
+      } else {
+        chartOptions.graphic = [...chartOptions.graphic, watermarkGraphic];
+      }
+    } else {
+      chartOptions.graphic = [chartOptions.graphic, watermarkGraphic];
+    }
+  }
 
   // Create a temporary container for the canvas chart
   const tempContainer = document.createElement("div");
@@ -69,14 +181,14 @@ export const downloadChartAsImage = (
   tempContainer.style.top = "-9999px";
   tempContainer.style.left = "-9999px";
   tempContainer.style.width = `${width}px`;
-  tempContainer.style.height = `${height}px`;
+  tempContainer.style.height = `${newHeight}px`;
   document.body.appendChild(tempContainer);
 
   // Create a temporary chart with canvas renderer
   const tempChart = echarts.init(tempContainer, null, {
     renderer: "canvas",
     width: width,
-    height: height,
+    height: newHeight,
   });
 
   // Apply the same options to the temporary chart
@@ -112,8 +224,8 @@ export const downloadChartAsImage = (
 // ECharts color utilities
 const echartsColors = {
   primary: {
-    light: "var(--shaper-primary-color)",
-    dark: "var(--shaper-dark-mode-primary-color)",
+    light: "var(--shaper-primary-color-alternate)",
+    dark: "var(--shaper-dark-mode-primary-color-alternate)",
   },
   color2: {
     light: "var(--shaper-color-two)",
@@ -139,18 +251,6 @@ const echartsColors = {
     light: "var(--shaper-color-seven)",
     dark: "var(--shaper-color-seven)",
   },
-  color8: {
-    light: "var(--shaper-color-eight)",
-    dark: "var(--shaper-color-eight)",
-  },
-  color9: {
-    light: "var(--shaper-color-nine)",
-    dark: "var(--shaper-color-nine)",
-  },
-  color10: {
-    light: "var(--shaper-color-ten)",
-    dark: "var(--shaper-color-ten)",
-  },
 } as const;
 
 const echartsColorKeys = Object.keys(echartsColors) as Array<
@@ -175,7 +275,7 @@ export const constructCategoryColors = (
     if (!color) {
       const echartsKey =
         echartsColors[
-          echartsColorKeys[(index - customColorCount) % echartsColorKeys.length]
+        echartsColorKeys[(index - customColorCount) % echartsColorKeys.length]
         ];
       const cssVar = echartsKey[isDark ? "dark" : "light"];
       color = getComputedCssValue(cssVar.replace("var(", "").replace(")", ""));
@@ -194,8 +294,8 @@ export const getEChartsColor = (
   const color = echartsColors[colorKey];
   if (!color) {
     const fallbackVar = isDark
-      ? "--shaper-dark-mode-primary-color"
-      : "--shaper-primary-color";
+      ? "--shaper-dark-mode-primary-color-alternate"
+      : "--shaper-primary-color-alternate";
     return getComputedCssValue(fallbackVar);
   }
 

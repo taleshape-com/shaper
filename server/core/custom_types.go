@@ -41,20 +41,28 @@ var dbTypes = []struct {
 	{"SECTION", "UNION(\"section_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_CSV", "UNION(\"download_csv_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_XLSX", "UNION(\"download_xlsx_varchar\" VARCHAR)", "string"},
+	{"DOWNLOAD_JSON", "UNION(\"download_json_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_PDF", "UNION(\"download_pdf_varchar\" VARCHAR)", "string"},
 	{"DATEPICKER", "UNION(\"datepicker_date\" DATE)", "date"},
 	{"DATEPICKER_FROM", "UNION(\"datepicker_from_date\" DATE)", "date"},
 	{"DATEPICKER_TO", "UNION(\"datepicker_to_date\" DATE)", "date"},
-	{"COMPARE", "UNION(\"compare_double\" DOUBLE)", "number"},
+	{"COMPARE", "UNION(\"compare_double\" DOUBLE, \"compare_interval\" INTERVAL)", "chart"},
 	{"TREND", "UNION(\"trend_double\" DOUBLE)", "number"},
 	{"PLACEHOLDER", "UNION(\"placeholder_varchar\" VARCHAR)", "string"},
 	{"INPUT", "UNION(\"input_varchar\" VARCHAR)", "string"},
 	{"PERCENT", "UNION(\"percent_double\" DOUBLE)", "percent"},
 	{"RELOAD", "UNION(\"reload_timestamp\" TIMESTAMP, \"reload_timestamptz\" TIMESTAMPTZ, \"reload_interval\" INTERVAL)", "timestamp"},
-	{"SCHEDULE", "UNION(\"schedule_timestamp\" TIMESTAMP, \"schedule_timestamptz\" TIMESTAMPTZ, \"schedule_interval\" INTERVAL)", "timestamp"},
-	{"SCHEDULE_ALL", "UNION(\"schedule_all_timestamp\" TIMESTAMP, \"schedule_all_timestamptz\" TIMESTAMPTZ, \"schedule_all_interval\" INTERVAL)", "timestamp"},
+	{"SCHEDULE", "UNION(\"schedule_timestamp\" TIMESTAMP, \"schedule_timestamptz\" TIMESTAMPTZ, \"schedule_interval\" INTERVAL, \"schedule_varchar\" VARCHAR)", "timestamp"},
+	{"SCHEDULE_ALL", "UNION(\"schedule_all_timestamp\" TIMESTAMP, \"schedule_all_timestamptz\" TIMESTAMPTZ, \"schedule_all_interval\" INTERVAL, \"schedule_all_varchar\" VARCHAR)", "timestamp"},
 	{"GAUGE", "UNION(\"gauge_interval\" INTERVAL, \"gauge_double\" DOUBLE)", "chart"},
 	{"GAUGE_PERCENT", "UNION(\"gauge_percent\" DOUBLE)", "percent"},
+	{"PIECHART", "UNION(\"piechart_double\" DOUBLE)", "chart"},
+	{"PIECHART_PERCENT", "UNION(\"piechart_percent_double\" DOUBLE)", "percent"},
+	{"PIECHART_CATEGORY", "UNION(\"piechart_category_varchar\" VARCHAR)", "string"},
+	{"PIECHART_COLOR", "UNION(\"piechart_color_varchar\" VARCHAR)", "string"},
+	{"DONUTCHART", "UNION(\"donutchart_double\" DOUBLE)", "chart"},
+	{"DONUTCHART_PERCENT", "UNION(\"donutchart_percent_double\" DOUBLE)", "percent"},
+	{"DONUTCHART_CATEGORY", "UNION(\"donutchart_category_varchar\" VARCHAR)", "string"},
 	{"RANGE", "UNION(\"range_interval\" INTERVAL[], \"range_double\" DOUBLE[])", "array"},
 	{"LABELS", "UNION(\"labels_varchar\" VARCHAR[])", "array"},
 	{"COLORS", "UNION(\"colors_varchar\" VARCHAR[])", "array"},
@@ -64,17 +72,57 @@ var dbTypes = []struct {
 	{"HEADER_IMAGE", "UNION(\"header_image_varchar\" VARCHAR)", "string"},
 	{"FOOTER_LINK", "UNION(\"footer_link_varchar\" VARCHAR)", "string"},
 	{"ID", "UNION(\"id_varchar\" VARCHAR)", "string"},
+	{"TEXT_SMALL", "UNION(\"text_small_varchar\" VARCHAR)", "string"},
+	{"TEXT_MEDIUM", "UNION(\"text_medium_varchar\" VARCHAR)", "string"},
+	{"TEXT_LARGE", "UNION(\"text_large_varchar\" VARCHAR)", "string"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {
-	// drop types first
-	_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
-	if err != nil {
-		return fmt.Errorf("failed to drop type %s: %w", name, err)
+	// TODO: Disabled the drop since it's slow (like 500ms). Just be careful to not change definitions
+	// drop types first if changed - we changed SCHEDULE with 0.19.0
+	if name == "SCHEDULE" || name == "SCHEDULE_ALL" {
+		_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
+		if err != nil {
+			return fmt.Errorf("failed to drop type %s: %w", name, err)
+		}
 	}
-	_, err = db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
+	_, err := db.Exec("CREATE TYPE " + name + " AS " + definition + ";")
 	if err != nil && err.Error() != "Catalog Error: Type with name \""+name+"\" already exists!" {
 		return fmt.Errorf("failed to create type %s: %w", name, err)
 	}
 	return nil
+}
+
+const boxplotType = `STRUCT("max" DOUBLE, "min" DOUBLE, "outliers" STRUCT("value" DOUBLE, "info" MAP(VARCHAR, VARCHAR))[], "q1" DOUBLE, "q2" DOUBLE, "q3" DOUBLE)`
+
+const boxplotFunction = `
+CREATE OR REPLACE MACRO BOXPLOT(val, outlier_info := NULL) AS CASE
+  WHEN count(*) filter(WHERE outlier_info IS NOT NULL) > 0 THEN
+    {
+      'max': list(val).filter(lambda v: v <= quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))).list_max()::DOUBLE,
+      'min': list(val).filter(lambda v: v >= quantile_cont(val, 0.25) - 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))).list_min()::DOUBLE,
+      'outliers': list({ value: val, info: outlier_info }).filter(lambda outlier:
+        outlier.value < quantile_cont(val, 0.25) - 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
+        OR
+        outlier.value > quantile_cont(val, 0.75) + 1.5 * (quantile_cont(val, 0.75) - quantile_cont(val, 0.25))
+      )::STRUCT(value DOUBLE, info MAP(VARCHAR, VARCHAR))[],
+      'q1': quantile_cont(val, 0.25)::DOUBLE,
+      'q2': quantile_cont(val, 0.5)::DOUBLE,
+      'q3': quantile_cont(val, 0.75)::DOUBLE,
+    }
+  ELSE
+    {
+      'max': max(val)::DOUBLE,
+      'min': min(val)::DOUBLE,
+      'outliers': []::STRUCT(value DOUBLE, info MAP(VARCHAR, VARCHAR))[],
+      'q1': quantile_cont(val, 0.25)::DOUBLE,
+      'q2': quantile_cont(val, 0.5)::DOUBLE,
+      'q3': quantile_cont(val, 0.75)::DOUBLE,
+    }
+END;
+`
+
+func createBoxlotFunction(db *sqlx.DB) error {
+	_, err := db.Exec(boxplotFunction)
+	return err
 }

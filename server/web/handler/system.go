@@ -14,8 +14,17 @@ func GetSystemConfig(app *core.App) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, map[string]bool{
 			"loginRequired":                   app.LoginRequired,
 			"tasksEnabled":                    !app.NoTasks,
+			"editEnabled":                     !app.NoEdit,
 			"publicSharingEnabled":            !app.NoPublicSharing,
 			"passwordProtectedSharingEnabled": !app.NoPasswordProtectedSharing,
+		})
+	}
+}
+
+func GetVersion(app *core.App) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{
+			"version": app.Version,
 		})
 	}
 }

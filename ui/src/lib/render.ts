@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { Column } from "./types";
+import * as echarts from "echarts/core";
 
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.
@@ -40,7 +41,11 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   }
   if (typeof value === "number") {
     if (shouldFormatNumbers && columnType === "number") {
-      return Number.isInteger(value) ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") : value.toString();
+      return Number.isInteger(value)
+        ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+        : shortFormat
+          ? (Math.round(value * 100) / 100).toString()
+          : value.toString();
     }
     // duration comes in ms
     if (columnType === "duration") {
@@ -60,7 +65,7 @@ export const formatValue = (value: string | number | boolean | null | undefined,
       }
       if (!shortFormat || value < 86400000) {
         if (minutes > 0) {
-          mainParts.push(`${minutes}min`);
+          mainParts.push(`${minutes}m`);
         }
       }
       if (!shortFormat || value < 3600000) {
@@ -68,6 +73,8 @@ export const formatValue = (value: string | number | boolean | null | undefined,
           mainParts.push(`${seconds}.${ms.toString().padStart(3, "0")}s`);
         } else if (seconds > 0) {
           mainParts.push(`${seconds}s`);
+        } else if (minutes >= 0 && hours <= 0 && day <= 0) {
+          mainParts.push("0s");
         }
       }
       if (mainParts.length === 0) {
@@ -109,3 +116,19 @@ export const formatCellValue = (value: string | number | boolean | null | undefi
 export const isJSONType = (columnType: Column["type"]) => {
   return columnType === "array" || columnType === "object";
 };
+
+export const echartsEncode = (v: string | number) => {
+  return echarts.format.encodeHTML(v.toString());
+};
+
+export function toCssId (v: string | number) {
+  return "shaper-" + (v.toString()
+    // Replace spaces and special characters with hyphens
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    // Remove consecutive hyphens
+    .replace(/-+/g, "-")
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, "")
+    // Handle empty string case
+    || Math.random().toString(36).substring(2, 10)).toLowerCase();
+}

@@ -9,10 +9,12 @@ export function SqlEditor ({
   onChange,
   onRun,
   content,
+  readOnly,
 }: {
   onChange: (value: string | undefined) => void;
   onRun: () => void;
   content: string;
+  readOnly?: boolean;
 }) {
   const { isDarkMode } = useContext(DarkModeContext);
 
@@ -46,6 +48,7 @@ export function SqlEditor ({
       theme={isDarkMode ? "vs-dark" : "light"}
       options={{
         minimap: { enabled: false },
+        readOnly: readOnly,
         fontSize: 14,
         lineNumbers: "on",
         scrollBeyondLastLine: true,

@@ -97,6 +97,18 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 		}
 
+		// Check permission
+		var actor *core.Actor
+		if authInfo.IsUser {
+			actor = &core.Actor{Type: core.ActorUser, ID: authInfo.UserID}
+		} else if authInfo.APIKeyID != "" {
+			actor = &core.Actor{Type: core.ActorAPIKey, ID: authInfo.APIKeyID}
+		}
+
+		if actor != nil && !actor.HasPermission(c.Request().Context(), app.Sqlite, core.PermissionGenerateJWT) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "Missing required permission: " + core.PermissionGenerateJWT})
+		}
+
 		// Add user or API key info to claims
 		claims := jwt.MapClaims{
 			"exp": time.Now().Add(app.JWTExp).Unix(),
@@ -110,7 +122,11 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["apiKeyId"] = authInfo.APIKeyID
 			claims["apiKeyName"] = authInfo.APIKeyName
 		}
-		if loginRequest.DashboardID != "" {
+		if loginRequest.DashboardID == "" {
+			if authInfo.APIKeyID != "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing dashboardId"})
+			}
+		} else {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}
 		if len(loginRequest.Variables) > 0 {
@@ -188,9 +204,10 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 
 		// Add user or API key info to claims
 		claims := jwt.MapClaims{
-			"exp": time.Now().Add(app.JWTExp).Unix(),
+			"exp":         time.Now().Add(app.JWTExp).Unix(),
+			"dashboardId": loginRequest.DashboardID,
+			"public":      *dashboard.Visibility,
 		}
-		claims["dashboardId"] = loginRequest.DashboardID
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := jwtToken.SignedString(app.JWTSecret)
@@ -229,7 +246,15 @@ func Setup(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 		}
 
-		return c.JSON(http.StatusOK, map[string]string{"id": id})
+		token, err := core.CreateSessionForUser(app, c.Request().Context(), id)
+		if err != nil {
+			c.Logger().Error("Failed to create session during setup", slog.Any("error", err))
+			// We created the user, but failed to create a session.
+			// Return the ID anyway, user can login manually.
+			return c.JSON(http.StatusOK, map[string]string{"id": id})
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"id": id, "token": token})
 	}
 }
 

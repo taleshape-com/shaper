@@ -32,6 +32,18 @@ Let's just make sure we talk it through before writing code to make sure you spe
   - `npm run all`
 
 
+## Building the Docker image locally
+
+**For now this only works on Linux because the binary has to be built with CGO and is then copied into the Docker image.**
+
+```sh
+npm run build
+GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-linux-amd64
+docker build -t shaper --build-arg TARGET_ARCH=amd64 .
+docker run --rm -it --network host -v ./.shapertestdata/:/data shaper
+```
+
+
 ## Releasing
 
 Create a new Git tag to trigger a release.

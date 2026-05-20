@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path"
 	"shaper/server/comms"
 	"shaper/server/core"
+	"shaper/server/dev"
 	"shaper/server/ingest"
 	"shaper/server/metrics"
 	"shaper/server/snapshots"
@@ -23,6 +25,7 @@ import (
 	"shaper/server/web"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
@@ -80,6 +83,7 @@ type Config struct {
 	NoPublicSharing            bool
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
+	NoEdit                     bool
 	NodeIDFile                 string
 	TLSDomain                  string
 	TLSEmail                   string
@@ -96,6 +100,10 @@ type Config struct {
 	StateStreamName            string
 	IngestStreamName           string
 	ConfigKVBucketName         string
+	TmpDashboardsKVBucketName  string
+	TmpDashboardsTTL           time.Duration
+	DownloadsKVBucketName      string
+	DownloadsTTL               time.Duration
 	IngestStreamMaxAge         time.Duration
 	StateStreamMaxAge          time.Duration
 	IngestConsumerNameFile     string
@@ -125,14 +133,35 @@ type Config struct {
 	SnapshotSubjectPrefix      string
 	NoSnapshots                bool
 	NoAutoRestore              bool
+	NoChromeSandbox            bool
 }
 
 func main() {
-	config := loadConfig()
-	signals.HandleInterrupt(Run(config))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	rootCmd := buildRootCommand(ctx)
+
+	err := rootCmd.ParseAndRun(ctx, os.Args[1:],
+		ff.WithEnvVarPrefix("SHAPER"),
+		ff.WithConfigFileFlag("config-file"),
+		ff.WithConfigFileParser(ff.PlainParser),
+	)
+	if err != nil {
+		// Check if this is a help-related error (help was shown, exit with code 0)
+		if errors.Is(err, ff.ErrHelp) {
+			os.Exit(0)
+		}
+		// Check if user interrupted (CTRL-C), exit with code 0
+		if errors.Is(err, dev.ErrInterrupted) {
+			os.Exit(130)
+		}
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
-func loadConfig() Config {
+func buildRootCommand(ctx context.Context) *ff.Command {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Printf("Error getting home directory: %v\n", err)
@@ -140,6 +169,14 @@ func loadConfig() Config {
 	}
 
 	flags := ff.NewFlagSet(APP_NAME)
+	rootCmd := &ff.Command{
+		Name:      APP_NAME,
+		Usage:     fmt.Sprintf("%s [FLAGS] | %s <subcommand> [FLAGS]", APP_NAME, APP_NAME),
+		ShortHelp: "Shaper is a minimal data platform built on top of DuckDB and NATS to create analytics dashboards",
+		Flags:     flags,
+	}
+
+	// Add all server configuration flags
 	help := flags.Bool('h', "help", "show help")
 	version := flags.Bool('v', "version", "show version")
 	logLevel := flags.StringLong("log-level", "info", "log level: debug, info, warn, error")
@@ -157,14 +194,16 @@ func loadConfig() Config {
 	snapshotS3Region := flags.StringLong("snapshot-s3-region", "", "AWS region for S3 (optional, can use AWS_REGION environment variable)")
 	noSnapshots := flags.BoolLong("no-snapshots", "Disable automatic snapshots")
 	noAutoRestore := flags.BoolLong("no-auto-restore", "Disable automatic restore of latest snapshot on startup")
+	noChromeSandbox := flags.BoolLong("no-chrome-sandbox", "Disable Chrome sandbox for PDF/PNG generation")
 	noPublicSharing := flags.BoolLong("no-public-sharing", "Disable public sharing of dashboards")
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
+	noEdit := flags.BoolLong("no-edit", "Disable editing dashboards via the UI")
 	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
 	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
-	basePath := flags.StringLong("basepath", "/", "Base URL path the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath.")
+	basePath := flags.StringLong("basepath", "/", "Base URL the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath. Can be a path starting with a slash or a full URL. If you want to use the download API with mode=url, you also have to set basepath to a full URL, otherwise URLs will be relative only. Does not apply if tls-domain set")
 	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
@@ -186,6 +225,10 @@ func loadConfig() Config {
 	ingestStream := flags.StringLong("ingest-stream", "shaper-ingest", "NATS stream name for ingest messages")
 	stateStream := flags.StringLong("state-stream", "shaper-state", "NATS stream name for state messages")
 	configKVBucket := flags.StringLong("config-kv-bucket", "shaper-config", "Name for NATS config KV bucket")
+	tmpDashboardsKVBucket := flags.StringLong("tmp-dashboards-kv-bucket", "shaper-tmp-dashboards", "Name for NATS KV bucket to store temporary dashboards")
+	tmpDashboardsTTL := flags.DurationLong("tmp-dashboards-ttl", 24*time.Hour, "TTL for temporary dashboards")
+	downloadsKVBucket := flags.StringLong("downloads-kv-bucket", "shaper-downloads", "Name for NATS KV bucket to store download intents")
+	downloadsTTL := flags.DurationLong("downloads-ttl", 10*time.Minute, "TTL for download intents")
 	tasksStream := flags.StringLong("tasks-stream", "shaper-tasks", "NATS stream name for scheduled task execution")
 	taskResultsStream := flags.StringLong("task-results-stream", "shaper-task-results", "NATS stream name for task results")
 	ingestStreamMaxAge := flags.DurationLong("ingest-max-age", 0, "Maximum age of messages in the ingest stream. Set to 0 for indefinite retention")
@@ -204,154 +247,354 @@ func loadConfig() Config {
 	taskResultsSubjectPrefix := flags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
 	taskBroadcastSubject := flags.StringLong("task-broadcast-subject", "shaper.task-broadcast", "subject to broadcast tasks to run on all nodes in a cluster when running manual task")
 	snapshotSubjectPrefix := flags.StringLong("snapshots-subject-prefix", "shaper.snapshots.", "prefix for snapshots NATS subjects")
-	flags.StringLong("config-file", "", "path to config file")
+	_ = flags.StringLong("config-file", "", "path to config file")
 
-	err = ff.Parse(flags, os.Args[1:],
-		ff.WithEnvVarPrefix("SHAPER"),
-		ff.WithConfigFileFlag("config-file"),
-		ff.WithConfigFileParser(ff.PlainParser),
+	// Collect subcommands so we can include them in help output
+	var subcommands []*ff.Command
+	subcommands = append(subcommands,
+		addDevSubcommand(rootCmd),
+		addPreviewSubcommand(rootCmd),
+		addPullSubcommand(rootCmd),
+		addIdsSubcommand(rootCmd),
+		addDeploySubcommand(rootCmd),
+		addValidateSubcommand(rootCmd),
+		addSchemaSubcommand(rootCmd),
 	)
-	if err != nil {
-		fmt.Printf("Error parsing config: %v\n\nSee --help for config options\n\n", err)
-		os.Exit(1)
-	}
-	if *help {
-		usage := strings.Replace(USAGE, "{{.Version}}", Version, 1)
-		fmt.Printf("%s\n", ffhelp.Flags(flags, usage))
-		os.Exit(0)
-	}
-	if *version {
-		fmt.Printf("%s version %s\n", APP_NAME, Version)
-		os.Exit(0)
-	}
 
-	switch *logLevel {
-	case "debug", "info", "warn", "error":
-		// valid
-	default:
-		fmt.Printf("Invalid log level '%s'. Valid options are: debug, info, warn, error\n", *logLevel)
-		os.Exit(1)
-	}
+	// Set up the root command execution
+	rootCmd.Exec = func(ctx context.Context, args []string) error {
+		// Handle help and version flags
+		if *help {
+			usage := strings.Replace(USAGE, "{{.Version}}", Version, 1)
+			fmt.Printf("%s\n", ffhelp.Flags(flags, usage))
+			fmt.Println("\nSUBCOMMANDS:")
+			for _, cmd := range subcommands {
+				fmt.Printf("  %-10s %s\n", cmd.Name, cmd.ShortHelp)
+			}
+			return nil
+		}
+		if *version {
+			fmt.Printf("%s version %s\n", APP_NAME, Version)
+			return nil
+		}
 
-	executableModTime, err := getExecutableModTime()
-	if err != nil {
-		fmt.Printf("Error getting executable modification time: %v\n", err)
-		os.Exit(1)
-	}
-
-	if *tlsDomain != "" {
-		if *addr != "localhost:5454" && *addr != ":5454" {
-			fmt.Println("Cannot set addr and tls-domain at the same time.")
+		switch *logLevel {
+		case "debug", "info", "warn", "error":
+			// valid values
+		default:
+			fmt.Printf("Invalid log level '%s'. Valid options are: debug, info, warn, error\n", *logLevel)
 			os.Exit(1)
 		}
-		if *basePath != "/" {
-			fmt.Println("Cannot set basepath and tls-domain at the same time.")
+
+		executableModTime, err := getExecutableModTime()
+		if err != nil {
+			fmt.Printf("Error getting executable modification time: %v\n", err)
 			os.Exit(1)
 		}
-	}
 
-	tlsCacheDir := *tlsCache
-	if tlsCacheDir == "" {
-		tlsCacheDir = path.Join(*dataDir, "letsencrypt-cache")
-	}
+		if *tlsDomain != "" {
+			if *addr != "localhost:5454" && *addr != ":5454" {
+				fmt.Println("Cannot set addr and tls-domain at the same time.")
+				os.Exit(1)
+			}
+			if *basePath != "/" {
+				fmt.Println("Cannot set basepath and tls-domain at the same time.")
+				os.Exit(1)
+			}
+		}
 
-	// Parse natsMaxStore as int64
-	maxStore, err := strconv.ParseInt(*natsMaxStore, 10, 64)
-	if err != nil {
-		fmt.Printf("Invalid value for nats-max-store: %v\n", err)
-		os.Exit(1)
-	}
+		tlsCacheDir := *tlsCache
+		if tlsCacheDir == "" {
+			tlsCacheDir = path.Join(*dataDir, "letsencrypt-cache")
+		}
 
-	if *natsServers != "" {
-		if *natsJSDir != "" || *natsJSKey != "" || maxStore > 0 {
-			fmt.Println("when connecting to external NATS servers (nats-servers specified), nats-js-key, nats-dir and nats-max-store must not be specified")
+		maxStore, err := strconv.ParseInt(*natsMaxStore, 10, 64)
+		if err != nil {
+			fmt.Printf("Invalid value for nats-max-store: %v\n", err)
 			os.Exit(1)
 		}
+		if *natsServers != "" {
+			if *natsJSDir != "" || *natsJSKey != "" || maxStore > 0 {
+				fmt.Println("when connecting to external NATS servers (nats-servers specified), nats-js-key, nats-dir and nats-max-store must not be specified")
+				os.Exit(1)
+			}
+		}
+
+		natsDir := path.Join(*dataDir, "nats")
+		if *natsJSDir != "" {
+			natsDir = *natsJSDir
+		}
+
+		bpath := *basePath
+		if *tlsDomain != "" {
+			bpath = "https://" + *tlsDomain + "/"
+		}
+		if bpath == "" {
+			bpath = "/"
+		}
+		if !strings.HasPrefix(bpath, "http://") && !strings.HasPrefix(bpath, "https://") && bpath[0] != '/' {
+			bpath = "/" + bpath
+		}
+		if bpath[len(bpath)-1] != '/' {
+			bpath += "/"
+		}
+
+		initSQLFilePath := path.Join(*dataDir, "init.sql")
+		if *initSQLFile != "" {
+			initSQLFilePath = *initSQLFile
+		}
+
+		config := Config{
+			DeprecatedSchema:           *deprecatedSchema,
+			LogLevel:                   *logLevel,
+			Address:                    *addr,
+			DataDir:                    *dataDir,
+			ExecutableModTime:          executableModTime,
+			BasePath:                   bpath,
+			CustomCSS:                  *customCSS,
+			Favicon:                    *favicon,
+			JWTExp:                     *jwtExp,
+			SessionExp:                 *sessionExp,
+			InviteExp:                  *inviteExp,
+			NoPublicSharing:            *noPublicSharing,
+			NoPasswordProtectedSharing: *noPasswordProtectedSharing,
+			NoTasks:                    *noTasks,
+			NoEdit:                     *noEdit,
+			NodeIDFile:                 *nodeIDFile,
+			TLSDomain:                  *tlsDomain,
+			TLSEmail:                   *tlsEmail,
+			TLSCache:                   tlsCacheDir,
+			HTTPSHost:                  *httpsHost,
+			PdfDateFormat:              *pdfDateFormat,
+			NatsServers:                *natsServers,
+			NatsHost:                   *natsHost,
+			NatsPort:                   *natsPort,
+			NatsToken:                  *natsToken,
+			NatsJSDir:                  natsDir,
+			NatsJSKey:                  *natsJSKey,
+			NatsMaxStore:               maxStore,
+			StateStreamName:            *streamPrefix + *stateStream,
+			IngestStreamName:           *streamPrefix + *ingestStream,
+			ConfigKVBucketName:         *streamPrefix + *configKVBucket,
+			TmpDashboardsKVBucketName:  *streamPrefix + *tmpDashboardsKVBucket,
+			TmpDashboardsTTL:           *tmpDashboardsTTL,
+			DownloadsKVBucketName:      *streamPrefix + *downloadsKVBucket,
+			DownloadsTTL:               *downloadsTTL,
+			IngestStreamMaxAge:         *ingestStreamMaxAge,
+			StateStreamMaxAge:          *stateStreamMaxAge,
+			IngestConsumerNameFile:     *ingestConsumerNameFile,
+			IngestSubjectPrefix:        *subjectPrefix + *ingestSubjectPrefix,
+			StateSubjectPrefix:         *subjectPrefix + *stateSubjectPrefix,
+			TasksStreamName:            *streamPrefix + *tasksStream,
+			TasksSubjectPrefix:         *subjectPrefix + *tasksSubjectPrefix,
+			TaskQueueConsumerName:      *taskQueueConsumerName,
+			TaskResultsStreamName:      *streamPrefix + *taskResultsStream,
+			TaskResultsSubjectPrefix:   *subjectPrefix + *taskResultsSubjectPrefix,
+			TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
+			TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
+			SQLiteDB:                   *sqliteDB,
+			DuckDB:                     *duckdb,
+			DuckDBExtDir:               *duckdbExtDir,
+			DuckDBSecretDir:            *duckdbSecretDir,
+			InitSQL:                    *initSQL,
+			InitSQLFile:                initSQLFilePath,
+			SnapshotTime:               *snapshotTime,
+			SnapshotS3Bucket:           *snapshotS3Bucket,
+			SnapshotS3Region:           *snapshotS3Region,
+			SnapshotS3Endpoint:         *snapshotS3Endpoint,
+			SnapshotS3AccessKey:        *snapshotS3AccessKey,
+			SnapshotS3SecretKey:        *snapshotS3SecretKey,
+			SnapshotStream:             *streamPrefix + *snapshotStream,
+			SnapshotConsumerName:       *snapshotConsumerName,
+			SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
+			NoSnapshots:                *noSnapshots,
+			NoAutoRestore:              *noAutoRestore,
+			NoChromeSandbox:            *noChromeSandbox,
+		}
+		signals.HandleInterrupt(Run(config))
+		return nil
 	}
 
-	natsDir := path.Join(*dataDir, "nats")
-	if *natsJSDir != "" {
-		natsDir = *natsJSDir
-	}
+	return rootCmd
+}
 
-	bpath := *basePath
-	if bpath == "" {
-		bpath = "/"
-	}
-	if bpath[0] != '/' {
-		bpath = "/" + bpath
-	}
-	if bpath[len(bpath)-1] != '/' {
-		bpath += "/"
-	}
+func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
+	devFlags := ff.NewFlagSet("dev")
+	help := devFlags.Bool('h', "help", "show help")
+	devConfigPath := devFlags.StringLong("config", "./shaper.json", "Path to config file")
+	devAuthFile := devFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 
-	initSQLFilePath := path.Join(*dataDir, "init.sql")
-	if *initSQLFile != "" {
-		initSQLFilePath = *initSQLFile
+	usage := "watch local dashboard files and show preview"
+	devCmd := &ff.Command{
+		Name:      "dev",
+		Usage:     "shaper dev [--config path] [--auth-file path]",
+		ShortHelp: usage,
+		Flags:     devFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(devFlags, usage))
+				return nil
+			}
+			return dev.RunDevCommand(ctx, *devConfigPath, *devAuthFile)
+		},
 	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, devCmd)
+	return devCmd
+}
 
-	config := Config{
-		DeprecatedSchema:           *deprecatedSchema,
-		LogLevel:                   *logLevel,
-		Address:                    *addr,
-		DataDir:                    *dataDir,
-		ExecutableModTime:          executableModTime,
-		BasePath:                   bpath,
-		CustomCSS:                  *customCSS,
-		Favicon:                    *favicon,
-		JWTExp:                     *jwtExp,
-		SessionExp:                 *sessionExp,
-		InviteExp:                  *inviteExp,
-		NoPublicSharing:            *noPublicSharing,
-		NoPasswordProtectedSharing: *noPasswordProtectedSharing,
-		NoTasks:                    *noTasks,
-		NodeIDFile:                 *nodeIDFile,
-		TLSDomain:                  *tlsDomain,
-		TLSEmail:                   *tlsEmail,
-		TLSCache:                   tlsCacheDir,
-		HTTPSHost:                  *httpsHost,
-		PdfDateFormat:              *pdfDateFormat,
-		NatsServers:                *natsServers,
-		NatsHost:                   *natsHost,
-		NatsPort:                   *natsPort,
-		NatsToken:                  *natsToken,
-		NatsJSDir:                  natsDir,
-		NatsJSKey:                  *natsJSKey,
-		NatsMaxStore:               maxStore,
-		StateStreamName:            *streamPrefix + *stateStream,
-		IngestStreamName:           *streamPrefix + *ingestStream,
-		ConfigKVBucketName:         *streamPrefix + *configKVBucket,
-		IngestStreamMaxAge:         *ingestStreamMaxAge,
-		StateStreamMaxAge:          *stateStreamMaxAge,
-		IngestConsumerNameFile:     *ingestConsumerNameFile,
-		IngestSubjectPrefix:        *subjectPrefix + *ingestSubjectPrefix,
-		StateSubjectPrefix:         *subjectPrefix + *stateSubjectPrefix,
-		TasksStreamName:            *streamPrefix + *tasksStream,
-		TasksSubjectPrefix:         *subjectPrefix + *tasksSubjectPrefix,
-		TaskQueueConsumerName:      *taskQueueConsumerName,
-		TaskResultsStreamName:      *streamPrefix + *taskResultsStream,
-		TaskResultsSubjectPrefix:   *subjectPrefix + *taskResultsSubjectPrefix,
-		TaskResultsStreamMaxAge:    *taskResultsStreamMaxAge,
-		TaskBroadcastSubject:       *subjectPrefix + *taskBroadcastSubject,
-		SQLiteDB:                   *sqliteDB,
-		DuckDB:                     *duckdb,
-		DuckDBExtDir:               *duckdbExtDir,
-		DuckDBSecretDir:            *duckdbSecretDir,
-		InitSQL:                    *initSQL,
-		InitSQLFile:                initSQLFilePath,
-		SnapshotTime:               *snapshotTime,
-		SnapshotS3Bucket:           *snapshotS3Bucket,
-		SnapshotS3Region:           *snapshotS3Region,
-		SnapshotS3Endpoint:         *snapshotS3Endpoint,
-		SnapshotS3AccessKey:        *snapshotS3AccessKey,
-		SnapshotS3SecretKey:        *snapshotS3SecretKey,
-		SnapshotStream:             *streamPrefix + *snapshotStream,
-		SnapshotConsumerName:       *snapshotConsumerName,
-		SnapshotSubjectPrefix:      *subjectPrefix + *snapshotSubjectPrefix,
-		NoSnapshots:                *noSnapshots,
-		NoAutoRestore:              *noAutoRestore,
+func addPreviewSubcommand(rootCmd *ff.Command) *ff.Command {
+	previewFlags := ff.NewFlagSet("preview")
+	help := previewFlags.Bool('h', "help", "show help")
+	previewConfigPath := previewFlags.StringLong("config", "./shaper.json", "Path to config file")
+	previewAuthFile := previewFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	noOpen := previewFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
+
+	usage := "create a temporary dashboard preview"
+	previewCmd := &ff.Command{
+		Name:      "preview",
+		Usage:     "shaper preview <path/to/dashboard.dashboard.sql> [--config path] [--auth-file path] [--no-open]",
+		ShortHelp: usage,
+		Flags:     previewFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(previewFlags, usage))
+				return nil
+			}
+			if len(args) != 1 {
+				return fmt.Errorf("preview requires exactly one dashboard file path")
+			}
+			return dev.RunPreviewCommand(ctx, *previewConfigPath, *previewAuthFile, *noOpen, args[0])
+		},
 	}
-	return config
+	rootCmd.Subcommands = append(rootCmd.Subcommands, previewCmd)
+	return previewCmd
+}
+
+func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
+	pullFlags := ff.NewFlagSet("pull")
+	help := pullFlags.Bool('h', "help", "show help")
+	pullConfigPath := pullFlags.StringLong("config", "./shaper.json", "Path to config file")
+	pullAuthFile := pullFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	pullYes := pullFlags.Bool('y', "yes", "Skip confirmation prompt")
+
+	usage := "pull dashboards from server to local files"
+	pullCmd := &ff.Command{
+		Name:      "pull",
+		Usage:     "shaper pull [--config path] [--auth-file path] [--yes]",
+		ShortHelp: usage,
+		Flags:     pullFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(pullFlags, usage))
+				return nil
+			}
+			return dev.RunPullCommand(ctx, *pullConfigPath, *pullAuthFile, *pullYes)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
+	return pullCmd
+}
+
+func addIdsSubcommand(rootCmd *ff.Command) *ff.Command {
+	idsFlags := ff.NewFlagSet("ids")
+	help := idsFlags.Bool('h', "help", "show help")
+	idsConfigPath := idsFlags.StringLong("config", "./shaper.json", "Path to config file")
+
+	usage := "add missing IDs to all dashboards in the configured directory"
+	idsCmd := &ff.Command{
+		Name:      "ids",
+		Usage:     "shaper ids [--config path]",
+		ShortHelp: usage,
+		Flags:     idsFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(idsFlags, usage))
+				return nil
+			}
+			return dev.RunIdsCommand(ctx, *idsConfigPath)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, idsCmd)
+	return idsCmd
+}
+
+func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
+	deployFlags := ff.NewFlagSet("deploy")
+	help := deployFlags.Bool('h', "help", "show help")
+	deployConfigPath := deployFlags.StringLong("config", "./shaper.json", "Path to config file")
+	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
+
+	usage := `Deploy dashboards from files using API key auth. Set SHAPER_DEPLOY_API_KEY to authenticate.`
+	deployCmd := &ff.Command{
+		Name:      "deploy",
+		Usage:     "shaper deploy [--config path]",
+		ShortHelp: usage,
+		Flags:     deployFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(deployFlags, usage))
+				return nil
+			}
+			return dev.RunDeployCommand(ctx, *deployConfigPath, *deployValidateOnly)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
+	return deployCmd
+}
+
+func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
+	validateFlags := ff.NewFlagSet("validate")
+	help := validateFlags.Bool('h', "help", "show help")
+	validateConfigPath := validateFlags.StringLong("config", "./shaper.json", "Path to config file")
+
+	usage := `Validate dashboards and tasks.
+
+  If no files are passed, all dashboards in the configured directory are validated.
+  Otherwise, pass file paths to .dashboard.sql files or folders.
+
+  Set SHAPER_DEPLOY_API_KEY to authenticate.`
+
+	validateCmd := &ff.Command{
+		Name:      "validate",
+		Usage:     "shaper validate [files...] [--config path]",
+		ShortHelp: "Validate dashboards",
+		Flags:     validateFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(validateFlags, usage))
+				return nil
+			}
+			return dev.RunValidateCommand(ctx, *validateConfigPath, args)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, validateCmd)
+	return validateCmd
+}
+
+func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
+	schemaFlags := ff.NewFlagSet("schema")
+	help := schemaFlags.Bool('h', "help", "show help")
+	schemaConfigPath := schemaFlags.StringLong("config", "./shaper.json", "Path to config file")
+	schemaAuthFile := schemaFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	includeExtensions := schemaFlags.BoolLong("extensions", "Include extensions in the output")
+	includeSecrets := schemaFlags.BoolLong("secrets", "Include secrets in the output")
+
+	usage := "Show database schema as Markdown"
+	schemaCmd := &ff.Command{
+		Name:      "schema",
+		Usage:     "shaper schema [--config path] [--auth-file path] [--extensions] [--secrets]",
+		ShortHelp: usage,
+		Flags:     schemaFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(schemaFlags, usage))
+				return nil
+			}
+			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaAuthFile, *includeExtensions, *includeSecrets)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, schemaCmd)
+	return schemaCmd
 }
 
 func Run(cfg Config) func(context.Context) {
@@ -370,7 +613,8 @@ func Run(cfg Config) func(context.Context) {
 	}
 
 	handlerOptions := &slog.HandlerOptions{
-		Level: logLevel,
+		Level:       logLevel,
+		ReplaceAttr: util.RedactSensitiveAttrs,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, handlerOptions))
 
@@ -455,7 +699,13 @@ func Run(cfg Config) func(context.Context) {
 		}
 		logger.Info("Set DuckDB extension directory", slog.Any("path", cfg.DuckDBExtDir))
 	}
-	if cfg.DuckDBSecretDir != "" {
+	if cfg.DuckDB == ":memory:" {
+		_, err := duckdbSqlxDb.Exec("SET allow_persistent_secrets = false")
+		if err != nil {
+			logger.Error("Failed to disable persistent secrets", slog.Any("error", err))
+			os.Exit(1)
+		}
+	} else if cfg.DuckDBSecretDir != "" {
 		_, err := duckdbSqlxDb.Exec("SET secret_directory = ?", cfg.DuckDBSecretDir)
 		if err != nil {
 			logger.Error("Failed to set DuckDB secret directory", slog.String("path", cfg.DuckDBSecretDir), slog.Any("error", err))
@@ -464,18 +714,15 @@ func Run(cfg Config) func(context.Context) {
 		logger.Info("Set DuckDB secret directory", slog.Any("path", cfg.DuckDBSecretDir))
 	}
 
+	initSQL := ""
 	if cfg.InitSQL != "" {
-		logger.Info("Executing init-sql")
-		// Substitute environment variables in the SQL
-		sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(cfg.InitSQL)))
-		if sql == "" {
-			logger.Info("init-sql specified but empty, skipping")
-		} else {
-			_, err := duckdbSqlxDb.Exec(sql)
-			if err != nil {
-				logger.Error("Failed to execute init-sql", slog.String("sql", sql), slog.Any("error", err))
-				os.Exit(1)
-			}
+		trimmed := strings.TrimSpace(util.StripSQLComments(cfg.InitSQL))
+		expanded := os.ExpandEnv(trimmed)
+		if expanded != trimmed {
+			logger.Warn("Using environment variables in init-sql via $VAR or ${VAR} is deprecated. Use the getenv() SQL function instead.")
+		}
+		if expanded != "" {
+			initSQL += expanded + ";\n"
 		}
 	}
 	if cfg.InitSQLFile != "" {
@@ -489,18 +736,22 @@ func Run(cfg Config) func(context.Context) {
 				os.Exit(1)
 			}
 		} else {
-			sql := os.ExpandEnv(strings.TrimSpace(util.StripSQLComments(string(data))))
-			if len(sql) == 0 {
+			trimmed := strings.TrimSpace(util.StripSQLComments(string(data)))
+			expanded := os.ExpandEnv(trimmed)
+			if expanded != trimmed {
+				logger.Warn("Using environment variables in init-sql-file via $VAR or ${VAR} is deprecated. Use the getenv() SQL function instead.")
+			}
+			if len(expanded) == 0 {
 				logger.Info("init-sql-file is empty, skipping", slog.Any("path", cfg.InitSQLFile))
 			} else {
-				logger.Info("Executing init-sql-file")
-				_, err = duckdbSqlxDb.Exec(sql)
-				if err != nil {
-					logger.Error("Failed to execute init-sql-file", slog.String("path", cfg.InitSQLFile), slog.Any("error", err))
-					os.Exit(1)
-				}
+				initSQL += expanded + ";\n"
 			}
 		}
+	}
+
+	if _, err := duckdbSqlxDb.Exec("SET lock_configuration = true"); err != nil {
+		logger.Error("Failed to lock DuckDB configuration", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	nodeID := getOrGenerateNodeID(cfg.DataDir, cfg.NodeIDFile, "node-id.txt")
@@ -509,8 +760,13 @@ func Run(cfg Config) func(context.Context) {
 	app, err := core.New(
 		APP_NAME,
 		nodeID,
+		Version,
 		sqliteDbx,
 		duckdbSqlxDb,
+		duckDBFile,
+		cfg.DuckDBExtDir,
+		cfg.DuckDBSecretDir,
+		initSQL,
 		cfg.DeprecatedSchema,
 		logger,
 		cfg.BasePath,
@@ -520,11 +776,17 @@ func Run(cfg Config) func(context.Context) {
 		cfg.NoPublicSharing,
 		cfg.NoPasswordProtectedSharing,
 		cfg.NoTasks,
+		cfg.NoEdit,
+		cfg.NoChromeSandbox,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
 		cfg.StateStreamName,
 		cfg.StateStreamMaxAge,
 		cfg.ConfigKVBucketName,
+		cfg.TmpDashboardsKVBucketName,
+		cfg.TmpDashboardsTTL,
+		cfg.DownloadsKVBucketName,
+		cfg.DownloadsTTL,
 		cfg.TasksStreamName,
 		cfg.TasksSubjectPrefix,
 		cfg.TaskQueueConsumerName,
