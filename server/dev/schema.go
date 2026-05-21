@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"shaper/server/api"
 	"strings"
 )
@@ -33,7 +34,16 @@ func RunSchemaCommand(ctx context.Context, configPath, authFile string, includeE
 		return err
 	}
 
-	resp, err := client.DoRequest(ctx, http.MethodGet, "/api/schema", nil)
+	path := "/api/schema"
+	if len(cfg.SchemaIgnore) > 0 {
+		params := url.Values{}
+		for _, ignore := range cfg.SchemaIgnore {
+			params.Add("ignore", ignore)
+		}
+		path += "?" + params.Encode()
+	}
+
+	resp, err := client.DoRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return err
 	}

@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"shaper/server/api"
+	"strings"
 )
 
-func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
+func (app *App) GetSchema(ctx context.Context, ignore []string) (*api.SchemaResponse, error) {
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get DuckDB connection: %w", err)
@@ -85,6 +86,9 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 	}
 
 	for _, d := range databases {
+		if shouldIgnore(d.Name, "", "", ignore) {
+			continue
+		}
 		database := api.Database{
 			Name:    d.Name,
 			Schemas: make([]api.Schema, 0),
@@ -105,6 +109,9 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 		}
 
 		for _, s := range schemas {
+			if shouldIgnore(d.Name, s.Name, "", ignore) {
+				continue
+			}
 			schema := api.Schema{
 				Name:   s.Name,
 				Tables: make([]api.Table, 0),
@@ -127,6 +134,9 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 			// it's not critical for the whole schema
 
 			for _, e := range enums {
+				if shouldIgnore(d.Name, s.Name, e.Name, ignore) {
+					continue
+				}
 				var values []string
 				// enum_range returns an array, which sqlx might struggle to scan directly into []string
 				// if not careful, but let's try.
@@ -165,6 +175,9 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 			}
 
 			for _, t := range tables {
+				if shouldIgnore(d.Name, s.Name, t.Name, ignore) {
+					continue
+				}
 				table := api.Table{
 					Name:    t.Name,
 					Columns: make([]api.Column, 0),
@@ -277,6 +290,9 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 			}
 
 			for _, v := range views {
+				if shouldIgnore(d.Name, s.Name, v.Name, ignore) {
+					continue
+				}
 				view := api.View{
 					Name:       v.Name,
 					Definition: v.Definition,
@@ -325,4 +341,20 @@ func (app *App) GetSchema(ctx context.Context) (*api.SchemaResponse, error) {
 	}
 
 	return res, nil
+}
+
+func shouldIgnore(database, schema, object string, ignoreList []string) bool {
+	for _, ignore := range ignoreList {
+		parts := strings.Split(ignore, ".")
+		if len(parts) == 1 && database == parts[0] {
+			return true
+		}
+		if len(parts) == 2 && schema != "" && database == parts[0] && schema == parts[1] {
+			return true
+		}
+		if len(parts) == 3 && object != "" && database == parts[0] && schema == parts[1] && object == parts[2] {
+			return true
+		}
+	}
+	return false
 }
