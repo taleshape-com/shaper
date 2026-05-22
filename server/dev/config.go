@@ -23,8 +23,9 @@ const (
 )
 
 type Config struct {
-	URL       string     `json:"url"`
-	Directory string     `json:"directory"`
+	URL          string   `json:"url"`
+	Directory    string   `json:"directory"`
+	SchemaIgnore []string `json:"schemaIgnore"`
 }
 
 var ErrConfigNotFound = errors.New("config file not found")

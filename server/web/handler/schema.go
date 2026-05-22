@@ -21,7 +21,8 @@ func GetSchema(app *core.App) echo.HandlerFunc {
 				}{Error: "Unauthorized"}, "  ")
 			}
 		}
-		res, err := app.GetSchema(c.Request().Context())
+		ignore := c.QueryParams()["ignore"]
+		res, err := app.GetSchema(c.Request().Context(), ignore)
 		if err != nil {
 			return c.JSONPretty(http.StatusInternalServerError, struct {
 				Error string `json:"error"`

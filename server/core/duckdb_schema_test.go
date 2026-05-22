@@ -65,7 +65,7 @@ func TestGetSchema(t *testing.T) {
 		Logger:    logger,
 	}
 
-	res, err := app.GetSchema(context.Background())
+	res, err := app.GetSchema(context.Background(), nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 
@@ -112,4 +112,68 @@ func TestGetSchema(t *testing.T) {
 		}
 	}
 	assert.True(t, foundMain)
+}
+
+func TestGetSchema_Filtering(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "shaper-test-filtering-*")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	duckdbPath := filepath.Join(tmpDir, "test.duckdb")
+	duckdbDbx, err := sqlx.Connect("duckdb", duckdbPath)
+	assert.NoError(t, err)
+	defer duckdbDbx.Close()
+
+	// Create test data in multiple schemas
+	_, err = duckdbDbx.Exec(`
+		CREATE SCHEMA s1;
+		CREATE TABLE s1.t1 (id INTEGER);
+		CREATE TABLE s1.t2 (id INTEGER);
+		CREATE SCHEMA s2;
+		CREATE TABLE s2.t3 (id INTEGER);
+	`)
+	assert.NoError(t, err)
+
+	app := &App{DuckDB: duckdbDbx}
+
+	// 1. Ignore specific table
+	// We need to know the database name. DuckDB defaults to 'main' for the primary database.
+	dbName := "test"
+	// But let's check what it actually is
+	checkRes, _ := app.GetSchema(context.Background(), nil)
+	if len(checkRes.Databases) > 0 {
+		dbName = checkRes.Databases[0].Name
+	}
+
+	res, err := app.GetSchema(context.Background(), []string{dbName + ".s1.t1"})
+	assert.NoError(t, err)
+	foundS1 := false
+	for _, db := range res.Databases {
+		if db.Name == dbName {
+			for _, s := range db.Schemas {
+				if s.Name == "s1" {
+					foundS1 = true
+					assert.Len(t, s.Tables, 1)
+					assert.Equal(t, "t2", s.Tables[0].Name)
+				}
+			}
+		}
+	}
+	assert.True(t, foundS1)
+
+	// 2. Ignore whole schema
+	res, err = app.GetSchema(context.Background(), []string{dbName + ".s1"})
+	assert.NoError(t, err)
+	for _, db := range res.Databases {
+		if db.Name == dbName {
+			for _, s := range db.Schemas {
+				assert.NotEqual(t, "s1", s.Name)
+			}
+		}
+	}
+
+	// 3. Ignore whole database
+	res, err = app.GetSchema(context.Background(), []string{dbName})
+	assert.NoError(t, err)
+	assert.Len(t, res.Databases, 0)
 }
