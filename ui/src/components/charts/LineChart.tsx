@@ -248,6 +248,9 @@ const LineChart = (props: LineChartProps) => {
             Object.entries(extraData).forEach(([key, valueData]) => {
               if (Array.isArray(valueData) && valueData.length >= 2) {
                 const [value, columnType] = valueData;
+                if (!value) {
+                  return;
+                }
                 tooltipContent += `<div class="flex justify-between space-x-2">
                   <span class="font-medium">${echartsEncode(key)}</span>
                   <span>${echartsEncode(formatValue(value, columnType, true))}</span>
