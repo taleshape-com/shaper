@@ -358,6 +358,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 		return false, err
 	}
 
+	ctx = context.WithValue(ctx, dashboardPathKey, dashboard.Path)
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
@@ -476,6 +477,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 		return GetResult{}, err
 	}
 
+	ctx = context.WithValue(ctx, dashboardPathKey, dashboard.Path)
 	return QueryDashboard(app, ctx, DashboardQuery{
 		Content:    dashboard.Content,
 		ID:         dashboardId,
