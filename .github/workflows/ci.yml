@@ -336,10 +336,7 @@ jobs:
           cd npm-package
           # Use --provenance for OIDC-linked builds.
           # Note: Requires Trusted Publishing setup on npmjs.com.
-          # If still using NPM_TOKEN, it will use that for auth but still generate provenance.
           npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   pypi-publish:
     name: Publish to PyPI
