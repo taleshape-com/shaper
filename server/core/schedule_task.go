@@ -29,7 +29,12 @@ type BroadCastPayload struct {
 	Content string `json:"content"`
 }
 
-func GetInitTasks(app *App, ctx context.Context) ([]string, error) {
+type InitTask struct {
+	Content string  `db:"content"`
+	Path    *string `db:"path"`
+}
+
+func GetInitTasks(app *App, ctx context.Context) ([]InitTask, error) {
 	query := `WITH RECURSIVE folder_paths AS (
 			SELECT id, name, CAST(name AS TEXT) as full_path, 0 as depth
 			FROM folders
@@ -40,7 +45,8 @@ func GetInitTasks(app *App, ctx context.Context) ([]string, error) {
 			JOIN folder_paths fp ON f.parent_folder_id = fp.id
 		)
 		SELECT
-			a.content
+			a.content,
+			fp.full_path as path
 		FROM task_runs t
 		JOIN apps a ON a.id = t.task_id
 		LEFT JOIN folder_paths fp ON fp.id = a.folder_id
@@ -51,9 +57,9 @@ func GetInitTasks(app *App, ctx context.Context) ([]string, error) {
 			fp.full_path ASC,
 			a.name ASC`
 
-	var contents []string
-	err := app.Sqlite.SelectContext(ctx, &contents, query)
-	return contents, err
+	var tasks []InitTask
+	err := app.Sqlite.SelectContext(ctx, &tasks, query)
+	return tasks, err
 }
 
 func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, string, error) {

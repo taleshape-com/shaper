@@ -79,6 +79,7 @@ func StreamQueryCSV(
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
+	ctx = context.WithValue(ctx, dashboardPathKey, dashboard.Path)
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
@@ -167,6 +168,7 @@ func StreamQueryJSON(
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
+	ctx = context.WithValue(ctx, dashboardPathKey, dashboard.Path)
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
@@ -415,6 +417,7 @@ func StreamQueryXLSX(
 	if err != nil {
 		return fmt.Errorf("error getting dashboard: %w", err)
 	}
+	ctx = context.WithValue(ctx, dashboardPathKey, dashboard.Path)
 	cleanContent := util.StripSQLComments(dashboard.Content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
