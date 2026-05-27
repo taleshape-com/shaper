@@ -356,7 +356,7 @@ const Boxplot = (props: BoxplotProps) => {
           fontWeight: 500,
           fontSize: 12,
         },
-        jitter: chartWidth / xData.length * 0.95,
+        jitter: chartWidth / xData.length * 0.8,
       },
       yAxis: {
         type: "value" as const,
