@@ -471,7 +471,7 @@ func newAPIKeyClient(baseURL, apiKey string) (*apiKeyClient, error) {
 	return &apiKeyClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 300 * time.Second,
 		},
 		apiKey: apiKey,
 		actor:  actor,
@@ -507,7 +507,7 @@ func newOpenDeployClient(baseURL string) *openDeployClient {
 	return &openDeployClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 300 * time.Second,
 		},
 	}
 }

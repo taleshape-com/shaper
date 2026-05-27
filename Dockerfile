@@ -6,7 +6,7 @@
 # 3. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
 # Keep in sync with .github/workflows/ci.yml
-FROM debian:13.4-slim@sha256:109e2c65005bf160609e4ba6acf7783752f8502ad218e298253428690b9eaa4b
+FROM debian:13.5-slim@sha256:b6e2a152f22a40ff69d92cb397223c906017e1391a73c952b588e51af8883bf8
 
 # install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root
 RUN apt-get update -y \

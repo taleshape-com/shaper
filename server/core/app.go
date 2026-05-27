@@ -222,6 +222,8 @@ func New(
 	return app, nil
 }
 
+const dashboardPathKey contextKey = "dashboardPath"
+
 func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 	if app.DuckDBDSN != ":memory:" {
 		return app.DuckDB, func() {}, nil
@@ -292,8 +294,18 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 			cleanup()
 			return nil, nil, fmt.Errorf("failed to get init tasks: %w", err)
 		}
-		for _, content := range initTasks {
-			res, err := executeTaskOnDB(app, ctx, dbx, content)
+		dashPath, hasDashPath := ctx.Value(dashboardPathKey).(string)
+		for _, task := range initTasks {
+			if hasDashPath {
+				taskPath := "/"
+				if task.Path != nil && *task.Path != "" {
+					taskPath = "/" + *task.Path + "/"
+				}
+				if !strings.HasPrefix(dashPath, taskPath) {
+					continue
+				}
+			}
+			res, err := executeTaskOnDB(app, ctx, dbx, task.Content)
 			if err != nil {
 				app.Logger.WithGroup("tasks").Error("Error running init task on memory db", slog.Any("error", err))
 			} else if !res.Success {

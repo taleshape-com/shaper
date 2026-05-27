@@ -26,7 +26,7 @@ func NewAPIClient(ctx context.Context, baseURL string, auth *AuthManager) (*APIC
 	client := &APIClient{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
+			Timeout: 300 * time.Second,
 		},
 		auth: auth,
 	}

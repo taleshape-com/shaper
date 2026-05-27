@@ -186,3 +186,125 @@ func TestScheduleExistingInitTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, exists)
 }
+
+func TestGetDuckDBMemoryModeFolderFiltering(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Switch to :memory: mode for testing
+	app.DuckDBDSN = ":memory:"
+
+	ctx := context.Background()
+
+	// 1. Create folders
+	// Root is parent_folder_id = nil.
+	// /Marketing
+	marketingFolderID := "f_marketing"
+	_, err := app.Sqlite.Exec(`INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, marketingFolderID, "Marketing")
+	assert.NoError(t, err)
+
+	// /Sales
+	salesFolderID := "f_sales"
+	_, err = app.Sqlite.Exec(`INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, salesFolderID, "Sales")
+	assert.NoError(t, err)
+
+	// /Marketing/Campaigns
+	campaignsFolderID := "f_campaigns"
+	_, err = app.Sqlite.Exec(`INSERT INTO folders (id, name, parent_folder_id, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`, campaignsFolderID, "Campaigns", marketingFolderID)
+	assert.NoError(t, err)
+
+	// 2. Create init tasks in SQLite
+	// Root task (folder_id = nil)
+	_, err = app.Sqlite.Exec(`INSERT INTO apps (id, type, name, content, created_at, updated_at) VALUES (?, 'task', 'root_task', ?, datetime('now'), datetime('now'))`, "t_root", "SELECT 'init'::SCHEDULE; CREATE TABLE root_table (val INT);")
+	assert.NoError(t, err)
+	_, err = app.Sqlite.Exec(`INSERT INTO task_runs (task_id, next_run_type) VALUES (?, 'init')`, "t_root")
+	assert.NoError(t, err)
+
+	// Marketing task
+	_, err = app.Sqlite.Exec(`INSERT INTO apps (id, type, folder_id, name, content, created_at, updated_at) VALUES (?, 'task', ?, 'marketing_task', ?, datetime('now'), datetime('now'))`, "t_marketing", marketingFolderID, "SELECT 'init'::SCHEDULE; CREATE TABLE marketing_table (val INT);")
+	assert.NoError(t, err)
+	_, err = app.Sqlite.Exec(`INSERT INTO task_runs (task_id, next_run_type) VALUES (?, 'init')`, "t_marketing")
+	assert.NoError(t, err)
+
+	// Campaigns task
+	_, err = app.Sqlite.Exec(`INSERT INTO apps (id, type, folder_id, name, content, created_at, updated_at) VALUES (?, 'task', ?, 'campaigns_task', ?, datetime('now'), datetime('now'))`, "t_campaigns", campaignsFolderID, "SELECT 'init'::SCHEDULE; CREATE TABLE campaigns_table (val INT);")
+	assert.NoError(t, err)
+	_, err = app.Sqlite.Exec(`INSERT INTO task_runs (task_id, next_run_type) VALUES (?, 'init')`, "t_campaigns")
+	assert.NoError(t, err)
+
+	// Sales task
+	_, err = app.Sqlite.Exec(`INSERT INTO apps (id, type, folder_id, name, content, created_at, updated_at) VALUES (?, 'task', ?, 'sales_task', ?, datetime('now'), datetime('now'))`, "t_sales", salesFolderID, "SELECT 'init'::SCHEDULE; CREATE TABLE sales_table (val INT);")
+	assert.NoError(t, err)
+	_, err = app.Sqlite.Exec(`INSERT INTO task_runs (task_id, next_run_type) VALUES (?, 'init')`, "t_sales")
+	assert.NoError(t, err)
+
+	// Helper to check table existence
+	checkTableExists := func(db *sqlx.DB, tableName string) bool {
+		var exists int
+		err := db.Get(&exists, "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", tableName)
+		if err != nil {
+			return false
+		}
+		return exists > 0
+	}
+
+	t.Run("Case A: dashboard in /Marketing/", func(t *testing.T) {
+		testCtx := context.WithValue(ctx, dashboardPathKey, "/Marketing/")
+		db, dbCleanup, err := app.GetDuckDB(testCtx)
+		assert.NoError(t, err)
+		defer dbCleanup()
+
+		assert.True(t, checkTableExists(db, "root_table"))
+		assert.True(t, checkTableExists(db, "marketing_table"))
+		assert.False(t, checkTableExists(db, "campaigns_table"))
+		assert.False(t, checkTableExists(db, "sales_table"))
+	})
+
+	t.Run("Case B: dashboard in /Marketing/Campaigns/", func(t *testing.T) {
+		testCtx := context.WithValue(ctx, dashboardPathKey, "/Marketing/Campaigns/")
+		db, dbCleanup, err := app.GetDuckDB(testCtx)
+		assert.NoError(t, err)
+		defer dbCleanup()
+
+		assert.True(t, checkTableExists(db, "root_table"))
+		assert.True(t, checkTableExists(db, "marketing_table"))
+		assert.True(t, checkTableExists(db, "campaigns_table"))
+		assert.False(t, checkTableExists(db, "sales_table"))
+	})
+
+	t.Run("Case C: dashboard in /", func(t *testing.T) {
+		testCtx := context.WithValue(ctx, dashboardPathKey, "/")
+		db, dbCleanup, err := app.GetDuckDB(testCtx)
+		assert.NoError(t, err)
+		defer dbCleanup()
+
+		assert.True(t, checkTableExists(db, "root_table"))
+		assert.False(t, checkTableExists(db, "marketing_table"))
+		assert.False(t, checkTableExists(db, "campaigns_table"))
+		assert.False(t, checkTableExists(db, "sales_table"))
+	})
+
+	t.Run("Case D: dashboard in /Sales/", func(t *testing.T) {
+		testCtx := context.WithValue(ctx, dashboardPathKey, "/Sales/")
+		db, dbCleanup, err := app.GetDuckDB(testCtx)
+		assert.NoError(t, err)
+		defer dbCleanup()
+
+		assert.True(t, checkTableExists(db, "root_table"))
+		assert.False(t, checkTableExists(db, "marketing_table"))
+		assert.False(t, checkTableExists(db, "campaigns_table"))
+		assert.True(t, checkTableExists(db, "sales_table"))
+	})
+
+	t.Run("Case E: no dashboard path context (run all)", func(t *testing.T) {
+		db, dbCleanup, err := app.GetDuckDB(ctx)
+		assert.NoError(t, err)
+		defer dbCleanup()
+
+		assert.True(t, checkTableExists(db, "root_table"))
+		assert.True(t, checkTableExists(db, "marketing_table"))
+		assert.True(t, checkTableExists(db, "campaigns_table"))
+		assert.True(t, checkTableExists(db, "sales_table"))
+	})
+}
+
