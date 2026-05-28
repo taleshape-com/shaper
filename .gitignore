@@ -17,3 +17,7 @@ pip-package/shaper_pkg/__pycache__
 *.njsproj
 *.sln
 *.sw?
+.antigravitycli
+
+# Never accidentally leak any secrets
+.env
