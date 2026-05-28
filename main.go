@@ -303,6 +303,11 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			}
 		}
 
+		if *duckdb == ":memory:" && *snapshotS3Bucket != "" {
+			fmt.Println("Cannot enable backups/snapshots when DuckDB is set to :memory:.")
+			os.Exit(1)
+		}
+
 		tlsCacheDir := *tlsCache
 		if tlsCacheDir == "" {
 			tlsCacheDir = path.Join(*dataDir, "letsencrypt-cache")
