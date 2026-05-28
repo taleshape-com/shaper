@@ -59,6 +59,8 @@ export type Column = {
   | "small"
   | "medium"
   | "large"
+  | "band_lower"
+  | "band_upper"
   | "";
 };
 

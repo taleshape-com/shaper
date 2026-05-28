@@ -75,6 +75,8 @@ var dbTypes = []struct {
 	{"TEXT_SMALL", "UNION(\"text_small_varchar\" VARCHAR)", "string"},
 	{"TEXT_MEDIUM", "UNION(\"text_medium_varchar\" VARCHAR)", "string"},
 	{"TEXT_LARGE", "UNION(\"text_large_varchar\" VARCHAR)", "string"},
+	{"BAND_LOWER", "UNION(\"band_lower_interval\" INTERVAL, \"band_lower_double\" DOUBLE)", "chart"},
+	{"BAND_UPPER", "UNION(\"band_upper_interval\" INTERVAL, \"band_upper_double\" DOUBLE)", "chart"},
 }
 
 func createType(db *sqlx.DB, name string, definition string) error {

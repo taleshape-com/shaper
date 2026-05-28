@@ -499,6 +499,12 @@ func mapTag(index int, rInfo renderInfo) string {
 		if rInfo.ColorIndex != nil && index == *rInfo.ColorIndex {
 			return "color"
 		}
+		if rInfo.BandLowerIndex != nil && index == *rInfo.BandLowerIndex {
+			return "band_lower"
+		}
+		if rInfo.BandUpperIndex != nil && index == *rInfo.BandUpperIndex {
+			return "band_upper"
+		}
 	}
 	if rInfo.Type == "dropdown" || rInfo.Type == "dropdownMulti" {
 		if rInfo.ValueIndex != nil && index == *rInfo.ValueIndex {
@@ -838,6 +844,8 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		if lineColor == nil {
 			lineColor, lineColorIndex = findColumnByTag(columns, "COLOR")
 		}
+		bandLower, bandLowerIndex := findColumnByTag(columns, "BAND_LOWER")
+		bandUpper, bandUpperIndex := findColumnByTag(columns, "BAND_UPPER")
 		r := renderInfo{
 			Label:          labelValue,
 			Type:           "linechart",
@@ -850,6 +858,12 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		if lineColor != nil {
 			r.ColorIndex = &lineColorIndex
+		}
+		if bandLower != nil {
+			r.BandLowerIndex = &bandLowerIndex
+		}
+		if bandUpper != nil {
+			r.BandUpperIndex = &bandUpperIndex
 		}
 		return r
 	}

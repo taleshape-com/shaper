@@ -103,6 +103,31 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, int32(1), result.Sections[0].Queries[0].Rows[0][0])
 	})
 
+	t.Run("Linechart with confidence band", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT
+					'2026-01-01'::TIMESTAMP::XAXIS AS ts,
+					10.0::LINECHART AS val,
+					8.0::BAND_LOWER AS confidence_lower,
+					12.0::BAND_UPPER AS confidence_upper
+			`,
+			ID: "test-dash-band",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "linechart", q.Render.Type)
+		
+		// Verify tags are correct
+		assert.Equal(t, "index", q.Columns[0].Tag)
+		assert.Equal(t, "value", q.Columns[1].Tag)
+		assert.Equal(t, "band_lower", q.Columns[2].Tag)
+		assert.Equal(t, "band_upper", q.Columns[3].Tag)
+	})
+
 	t.Run("Query with variables", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: "SELECT getvariable('myvar') AS val",

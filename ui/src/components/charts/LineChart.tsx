@@ -9,7 +9,7 @@ import {
   getChartFont,
   getDisplayFont,
 } from "../../lib/chartUtils";
-import { cx } from "../../lib/utils";
+import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column, isDatableType, MarkLine } from "../../lib/types";
@@ -33,9 +33,28 @@ interface LineChartProps extends React.HTMLAttributes<HTMLDivElement> {
   xAxisLabel?: string;
   yAxisLabel?: string;
   markLines?: MarkLine[];
+  bandLowerName?: string;
+  bandUpperName?: string;
 }
 
 const chartPadding = 16;
+
+const getBandColor = (color: string, isDarkMode: boolean): string => {
+  const opacity = isDarkMode ? 0.40 : 0.25;
+  if (!color) return `rgba(0, 0, 0, ${opacity})`;
+  const trimmed = color.trim();
+  if (trimmed.startsWith("#")) {
+    if (trimmed.length === 7) {
+      return `rgba(${parseInt(trimmed.slice(1, 3), 16)}, ${parseInt(trimmed.slice(3, 5), 16)}, ${parseInt(trimmed.slice(5, 7), 16)}, ${opacity})`;
+    } else if (trimmed.length === 4) {
+      const r = parseInt(trimmed[1] + trimmed[1], 16);
+      const g = parseInt(trimmed[2] + trimmed[2], 16);
+      const b = parseInt(trimmed[3] + trimmed[3], 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+  }
+  return `color-mix(in srgb, ${trimmed} ${opacity * 100}%, transparent)`;
+};
 
 const LineChart = (props: LineChartProps) => {
   const {
@@ -55,6 +74,8 @@ const LineChart = (props: LineChartProps) => {
     chartId,
     label,
     markLines,
+    bandLowerName,
+    bandUpperName,
     ...other
   } = props;
 
@@ -74,6 +95,14 @@ const LineChart = (props: LineChartProps) => {
     hoveredChartIdRef.current = hoveredChartId;
   }, [hoveredChartId]);
 
+  const dataByIndex = React.useMemo(() => {
+    const map: Record<string | number, any> = {};
+    data.forEach((item) => {
+      map[item[index]] = item;
+    });
+    return map;
+  }, [data, index]);
+
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
@@ -86,35 +115,86 @@ const LineChart = (props: LineChartProps) => {
     // show dots when there are not too many data points per category
     const showDots = data.length / chartWidth / categories.length > 0.02;
 
+    const hasBand = (category: string) => {
+      return data.some(item => item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== "");
+    };
+
     // Set up chart options
-    const series: LineSeriesOption[] = categories.map((category) => ({
-      name: category,
-      id: category,
-      type: "line" as const,
-      data: isTimestampData
-        ? data.map((item) => [item[index], item[category]])
-        : data.map((item) => item[category]),
-      connectNulls: true,
-      symbol: "circle",
-      symbolSize: data.length > 1 ? 8 : 10,
-      cursor: "crosshair",
-      zlevel: 10,
-      emphasis: {
-        scale: 1.3,
-        focus: "self",
-      },
-      animationDelay: 100,
-      animationDelayUpdate: 100,
-      lineStyle: {
-        color: categoryColors.get(category),
-        width: 2,
-      },
-      itemStyle: {
-        color: categoryColors.get(category),
-        borderWidth: 0,
-        opacity: showDots ? 0 : 1,
-      },
-    }));
+    const series: LineSeriesOption[] = [];
+    categories.forEach((category) => {
+      const col = categoryColors.get(category) || "#333";
+      series.push({
+        name: category,
+        id: category,
+        type: "line" as const,
+        data: isTimestampData
+          ? data.map((item) => [item[index], item[category]])
+          : data.map((item) => item[category]),
+        connectNulls: true,
+        symbol: "circle",
+        symbolSize: data.length > 1 ? 8 : 10,
+        cursor: "crosshair",
+        zlevel: 10,
+        emphasis: {
+          scale: 1.3,
+          focus: "self",
+        },
+        animationDelay: 100,
+        animationDelayUpdate: 100,
+        lineStyle: {
+          color: col,
+          width: 2,
+        },
+        itemStyle: {
+          color: col,
+          borderWidth: 0,
+          opacity: showDots ? 0 : 1,
+        },
+      });
+
+      if (hasBand(category)) {
+        series.push({
+          name: category + "_band_lower",
+          id: category + "_band_lower",
+          type: "line" as const,
+          data: isTimestampData
+            ? data.map((item) => [item[index], item[category + "_band_lower"]])
+            : data.map((item) => item[category + "_band_lower"]),
+          lineStyle: {
+            opacity: 0,
+          },
+          stack: "band_" + category,
+          symbol: "none",
+          connectNulls: true,
+        });
+
+        series.push({
+          name: category + "_band_upper",
+          id: category + "_band_upper",
+          type: "line" as const,
+          data: isTimestampData
+            ? data.map((item) => {
+              const lower = item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== "" ? Number(item[category + "_band_lower"]) : null;
+              const upper = item[category + "_band_upper"] !== null && item[category + "_band_upper"] !== undefined && item[category + "_band_upper"] !== "" ? Number(item[category + "_band_upper"]) : null;
+              return [item[index], (lower !== null && upper !== null && !isNaN(lower) && !isNaN(upper)) ? upper - lower : null];
+            })
+            : data.map((item) => {
+              const lower = item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== "" ? Number(item[category + "_band_lower"]) : null;
+              const upper = item[category + "_band_upper"] !== null && item[category + "_band_upper"] !== undefined && item[category + "_band_upper"] !== "" ? Number(item[category + "_band_upper"]) : null;
+              return (lower !== null && upper !== null && !isNaN(lower) && !isNaN(upper)) ? upper - lower : null;
+            }),
+          lineStyle: {
+            opacity: 0,
+          },
+          areaStyle: {
+            color: getBandColor(col, isDarkMode),
+          },
+          stack: "band_" + category,
+          symbol: "none",
+          connectNulls: true,
+        });
+      }
+    });
 
     if (markLines) {
       let foundEventLine = false;
@@ -239,24 +319,95 @@ const LineChart = (props: LineChartProps) => {
           }
           const extraData = extraDataByIndexAxis[indexValue];
 
+          const getExtraDataForCategory = (categoryName: string) => {
+            if (!extraData) return null;
+            const firstVal = Object.values(extraData)[0];
+            if (firstVal && typeof firstVal === "object" && !Array.isArray(firstVal)) {
+              return extraData[categoryName];
+            }
+            if (categoryName === "" || categories.length <= 1) {
+              return extraData;
+            }
+            return null;
+          };
+
+          const globalFields = new Set<string>();
+          const fieldValuesAcrossCategories: Record<string, string[]> = {};
+          const fieldRawData: Record<string, [any, Column["type"]]> = {};
+
+          if (extraData) {
+            const firstVal = Object.values(extraData)[0];
+            const isNested = firstVal && typeof firstVal === "object" && !Array.isArray(firstVal);
+
+            if (isNested) {
+              Object.values(extraData).forEach((fieldsObj) => {
+                if (fieldsObj && typeof fieldsObj === "object") {
+                  Object.entries(fieldsObj).forEach(([fieldName, valueData]) => {
+                    if (Array.isArray(valueData) && valueData.length >= 2) {
+                      const [value, columnType] = valueData;
+                      const formatted = formatValue(value, columnType, true).toString();
+                      if (!fieldValuesAcrossCategories[fieldName]) {
+                        fieldValuesAcrossCategories[fieldName] = [];
+                        fieldRawData[fieldName] = valueData as [any, Column["type"]];
+                      }
+                      fieldValuesAcrossCategories[fieldName].push(formatted);
+                    }
+                  });
+                }
+              });
+
+              const totalCategoriesWithExtra = Object.keys(extraData).filter(c => c !== "").length;
+              Object.entries(fieldValuesAcrossCategories).forEach(([fieldName, list]) => {
+                const allSame = list.every(val => val === list[0]);
+                const isGlobal = allSame && (totalCategoriesWithExtra <= 1 || list.length === totalCategoriesWithExtra);
+                if (isGlobal) {
+                  globalFields.add(fieldName);
+                }
+              });
+            }
+          }
+
           const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue, xSpace / 6.5);
           let tooltipContent = `<div class="text-sm font-medium">${echartsEncode(formattedIndex)}</div>`;
 
+          let hasGlobalExtra = false;
+          let globalExtraContent = "";
           if (extraData) {
-            tooltipContent += "<div class=\"mt-2\">";
-            Object.entries(extraData).forEach(([key, valueData]) => {
-              if (Array.isArray(valueData) && valueData.length >= 2) {
-                const [value, columnType] = valueData;
-                if (!value) {
-                  return;
+            const firstVal = Object.values(extraData)[0];
+            const isNested = firstVal && typeof firstVal === "object" && !Array.isArray(firstVal);
+
+            if (isNested) {
+              globalFields.forEach((fieldName) => {
+                const valueData = fieldRawData[fieldName];
+                if (valueData) {
+                  const [value, columnType] = valueData;
+                  if (value) {
+                    hasGlobalExtra = true;
+                    globalExtraContent += `<div class="flex justify-between space-x-2">
+                      <span class="font-medium">${echartsEncode(fieldName)}</span>
+                      <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                    </div>`;
+                  }
                 }
-                tooltipContent += `<div class="flex justify-between space-x-2">
-                  <span class="font-medium">${echartsEncode(key)}</span>
-                  <span>${echartsEncode(formatValue(value, columnType, true))}</span>
-                </div>`;
-              }
-            });
-            tooltipContent += "</div>";
+              });
+            } else {
+              Object.entries(extraData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  if (value) {
+                    hasGlobalExtra = true;
+                    globalExtraContent += `<div class="flex justify-between space-x-2">
+                      <span class="font-medium">${echartsEncode(key)}</span>
+                      <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                    </div>`;
+                  }
+                }
+              });
+            }
+          }
+
+          if (hasGlobalExtra) {
+            tooltipContent += `<div class="mt-2">${globalExtraContent}</div>`;
           }
 
           // Use a Set to track shown categories
@@ -264,6 +415,10 @@ const LineChart = (props: LineChartProps) => {
           params.forEach((param: any) => {
             if (param.axisDim !== "x") {
               return; // Skip non-index axis items
+            }
+
+            if (param.seriesName.endsWith("_band_lower") || param.seriesName.endsWith("_band_upper")) {
+              return; // Skip band series
             }
 
             let value: number;
@@ -286,6 +441,51 @@ const LineChart = (props: LineChartProps) => {
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
+
+            // Display confidence band if available
+            const item = dataByIndex[indexValue];
+            const lowerVal = item ? item[param.seriesName + "_band_lower"] : undefined;
+            const upperVal = item ? item[param.seriesName + "_band_upper"] : undefined;
+            if (lowerVal !== undefined && lowerVal !== null && lowerVal !== "" && upperVal !== undefined && upperVal !== null && upperVal !== "") {
+              const formattedLower = valueFormatter(Number(lowerVal));
+              const formattedUpper = valueFormatter(Number(upperVal));
+              const bandColor = getBandColor(param.color, isDarkMode);
+
+              tooltipContent += `<div class="flex items-center justify-between space-x-2 pl-4 text-xs text-muted-foreground opacity-80 mt-0.5">
+                <div class="flex items-center space-x-2">
+                  <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(bandColor)}"></span>
+                  <span>${echartsEncode(getNameIfSet(bandLowerName ?? "") ?? "")}</span>
+                </div>
+                <span class="font-medium">${echartsEncode(formattedLower)}</span>
+              </div>`;
+
+              tooltipContent += `<div class="flex items-center justify-between space-x-2 pl-4 text-xs text-muted-foreground opacity-80 mt-0.5">
+                <div class="flex items-center space-x-2">
+                  <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(bandColor)}"></span>
+                  <span>${echartsEncode(getNameIfSet(bandUpperName ?? "") ?? "")}</span>
+                </div>
+                <span class="font-medium">${echartsEncode(formattedUpper)}</span>
+              </div>`;
+            }
+
+            const catExtraData = getExtraDataForCategory(param.seriesName);
+            if (catExtraData) {
+              Object.entries(catExtraData).forEach(([key, valueData]) => {
+                if (globalFields.has(key)) {
+                  return;
+                }
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  if (!value) {
+                    return;
+                  }
+                  tooltipContent += `<div class="flex items-center justify-between space-x-2 pl-4 text-xs text-muted-foreground opacity-80 mt-0.5">
+                    <span>${echartsEncode(key)}</span>
+                    <span class="font-medium">${echartsEncode(formatValue(value, columnType, true))}</span>
+                  </div>`;
+                }
+              });
+            }
           });
           tooltipContent += "</div>";
 
@@ -294,6 +494,7 @@ const LineChart = (props: LineChartProps) => {
       },
       legend: {
         show: showLegend,
+        data: categories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
         orient: "horizontal",
@@ -466,6 +667,7 @@ const LineChart = (props: LineChartProps) => {
     };
   }, [
     data,
+    dataByIndex,
     categories,
     colorsByCategory,
     index,
@@ -482,6 +684,8 @@ const LineChart = (props: LineChartProps) => {
     chartHeight,
     label,
     markLines,
+    bandLowerName,
+    bandUpperName,
   ]);
 
   useEffect(() => {

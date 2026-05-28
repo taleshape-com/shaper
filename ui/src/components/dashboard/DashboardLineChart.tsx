@@ -31,6 +31,11 @@ const DashboardLineChart = ({
   const valueAxisHeader = headers[valueAxisIndex];
   const valueAxisName = valueAxisHeader.name;
   const categoryIndex = headers.findIndex((c) => c.tag === "category");
+  const bandLowerIndex = headers.findIndex((c) => c.tag === "band_lower");
+  const bandUpperIndex = headers.findIndex((c) => c.tag === "band_upper");
+  const bandLowerHeader = bandLowerIndex !== -1 ? headers[bandLowerIndex] : undefined;
+  const bandUpperHeader = bandUpperIndex !== -1 ? headers[bandUpperIndex] : undefined;
+
   const categories = new Set<string>();
   const colorsByCategory = {} as Record<string, string>;
   if (categoryIndex === -1) {
@@ -39,7 +44,7 @@ const DashboardLineChart = ({
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
   // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
-  const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
+  const extraDataByIndexAxis: Record<string, Record<string, Record<string, [any, Column["type"]]>>> = {};
   const dataByIndexAxis = new Map<string | number, Record<string, string | number>>();
   data.forEach((row) => {
     let key = typeof row[indexAxisIndex] === "boolean" ? row[indexAxisIndex] ? "1" : "0" : row[indexAxisIndex];
@@ -90,13 +95,25 @@ const DashboardLineChart = ({
         v[category] = c;
         return;
       }
-      const extraData = extraDataByIndexAxis[key];
-      const header = headers[i];
-      if (extraData != null) {
-        extraData[header.name] = [c, header.type];
-      } else {
-        extraDataByIndexAxis[key] = { [header.name]: [c, header.type] };
+      if (i === bandLowerIndex) {
+        const category = categoryIndex === -1 ? valueAxisName : (row[categoryIndex] ?? "").toString();
+        v[category + "_band_lower"] = c;
+        return;
       }
+      if (i === bandUpperIndex) {
+        const category = categoryIndex === -1 ? valueAxisName : (row[categoryIndex] ?? "").toString();
+        v[category + "_band_upper"] = c;
+        return;
+      }
+      const category = categoryIndex === -1 ? "" : (row[categoryIndex] ?? "").toString();
+      if (!extraDataByIndexAxis[key]) {
+        extraDataByIndexAxis[key] = {};
+      }
+      if (!extraDataByIndexAxis[key][category]) {
+        extraDataByIndexAxis[key][category] = {};
+      }
+      const header = headers[i];
+      extraDataByIndexAxis[key][category][header.name] = [c, header.type];
     });
     return dataByIndexAxis;
   });
@@ -123,6 +140,8 @@ const DashboardLineChart = ({
       yAxisLabel={getNameIfSet(valueAxisName)}
       showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
       markLines={markLines}
+      bandLowerName={bandLowerHeader?.name}
+      bandUpperName={bandUpperHeader?.name}
     />
   );
 };
