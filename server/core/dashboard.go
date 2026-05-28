@@ -76,6 +76,8 @@ type renderInfo struct {
 	ValueAxisIndex  *int
 	CategoryIndex   *int
 	ColorIndex      *int
+	BandLowerIndex  *int
+	BandUpperIndex  *int
 	ValueIndex      *int
 	FromIndex       *int
 	ToIndex         *int

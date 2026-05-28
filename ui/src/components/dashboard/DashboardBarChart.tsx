@@ -43,7 +43,7 @@ const DashboardBarChart = ({
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
   // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
-  const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
+  const extraDataByIndexAxis: Record<string, Record<string, Record<string, [any, Column["type"]]>>> = {};
   const dataByIndexAxis = new Map<string | number, Record<string, string | number>>();
   data.forEach((row) => {
     let key = typeof row[indexAxisIndex] === "boolean" ? row[indexAxisIndex] ? "1" : "0" : row[indexAxisIndex];
@@ -94,13 +94,15 @@ const DashboardBarChart = ({
         v[category] = c;
         return;
       }
-      const extraData = extraDataByIndexAxis[key];
-      const header = headers[i];
-      if (extraData != null) {
-        extraData[header.name] = [c, header.type];
-      } else {
-        extraDataByIndexAxis[key] = { [header.name]: [c, header.type] };
+      const category = categoryIndex === -1 ? "" : (row[categoryIndex] ?? "").toString();
+      if (!extraDataByIndexAxis[key]) {
+        extraDataByIndexAxis[key] = {};
       }
+      if (!extraDataByIndexAxis[key][category]) {
+        extraDataByIndexAxis[key][category] = {};
+      }
+      const header = headers[i];
+      extraDataByIndexAxis[key][category][header.name] = [c, header.type];
     });
     return dataByIndexAxis;
   });

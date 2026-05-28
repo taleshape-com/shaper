@@ -284,21 +284,93 @@ const BarChart = (props: BarChartProps) => {
           }
 
           const extraData = extraDataByIndexAxis[hoverValue];
+
+          const getExtraDataForCategory = (categoryName: string) => {
+            if (!extraData) return null;
+            const firstVal = Object.values(extraData)[0];
+            if (firstVal && typeof firstVal === "object" && !Array.isArray(firstVal)) {
+              return extraData[categoryName];
+            }
+            if (categoryName === "" || categories.length <= 1) {
+              return extraData;
+            }
+            return null;
+          };
+
+          const globalFields = new Set<string>();
+          const fieldValuesAcrossCategories: Record<string, string[]> = {};
+          const fieldRawData: Record<string, [any, Column["type"]]> = {};
+
           if (extraData) {
-            tooltipContent += "<div class=\"mt-2\">";
-            Object.entries(extraData).forEach(([key, valueData]) => {
-              if (Array.isArray(valueData) && valueData.length >= 2) {
-                const [value, columnType] = valueData;
-                if (!value) {
-                  return;
+            const firstVal = Object.values(extraData)[0];
+            const isNested = firstVal && typeof firstVal === "object" && !Array.isArray(firstVal);
+
+            if (isNested) {
+              Object.values(extraData).forEach((fieldsObj) => {
+                if (fieldsObj && typeof fieldsObj === "object") {
+                  Object.entries(fieldsObj).forEach(([fieldName, valueData]) => {
+                    if (Array.isArray(valueData) && valueData.length >= 2) {
+                      const [value, columnType] = valueData;
+                      const formatted = formatValue(value, columnType, true).toString();
+                      if (!fieldValuesAcrossCategories[fieldName]) {
+                        fieldValuesAcrossCategories[fieldName] = [];
+                        fieldRawData[fieldName] = valueData as [any, Column["type"]];
+                      }
+                      fieldValuesAcrossCategories[fieldName].push(formatted);
+                    }
+                  });
                 }
-                tooltipContent += `<div class="flex justify-between space-x-2">
-                  <span class="font-medium">${echartsEncode(key)}</span>
-                  <span>${echartsEncode(formatValue(value, columnType, true))}</span>
-                </div>`;
-              }
-            });
-            tooltipContent += "</div>";
+              });
+
+              const totalCategoriesWithExtra = Object.keys(extraData).filter(c => c !== "").length;
+              Object.entries(fieldValuesAcrossCategories).forEach(([fieldName, list]) => {
+                const allSame = list.every(val => val === list[0]);
+                const isGlobal = allSame && (totalCategoriesWithExtra <= 1 || list.length === totalCategoriesWithExtra);
+                if (isGlobal) {
+                  globalFields.add(fieldName);
+                }
+              });
+            }
+          }
+
+          let hasGlobalExtra = false;
+          let globalExtraContent = "";
+          if (extraData) {
+            const firstVal = Object.values(extraData)[0];
+            const isNested = firstVal && typeof firstVal === "object" && !Array.isArray(firstVal);
+
+            if (isNested) {
+              globalFields.forEach((fieldName) => {
+                const valueData = fieldRawData[fieldName];
+                if (valueData) {
+                  const [value, columnType] = valueData;
+                  if (value) {
+                    hasGlobalExtra = true;
+                    globalExtraContent += `<div class="flex justify-between space-x-2">
+                      <span class="font-medium">${echartsEncode(fieldName)}</span>
+                      <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                    </div>`;
+                  }
+                }
+              });
+            } else {
+              Object.entries(extraData).forEach(([key, valueData]) => {
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  if (value) {
+                    hasGlobalExtra = true;
+                    globalExtraContent += `<div class="flex justify-between space-x-2">
+                      <span class="font-medium">${echartsEncode(key)}</span>
+                      <span>${echartsEncode(formatValue(value, columnType, true))}</span>
+                    </div>`;
+                  }
+                }
+              });
+            }
+          }
+
+          if (hasGlobalExtra) {
+            tooltipContent += `<div class="mt-2">${globalExtraContent}</div>`;
           }
 
           // Use a Set to track shown categories
@@ -327,6 +399,25 @@ const BarChart = (props: BarChartProps) => {
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
+
+            const catExtraData = getExtraDataForCategory(param.seriesName);
+            if (catExtraData) {
+              Object.entries(catExtraData).forEach(([key, valueData]) => {
+                if (globalFields.has(key)) {
+                  return;
+                }
+                if (Array.isArray(valueData) && valueData.length >= 2) {
+                  const [value, columnType] = valueData;
+                  if (!value) {
+                    return;
+                  }
+                  tooltipContent += `<div class="flex items-center justify-between space-x-2 pl-4 text-xs text-muted-foreground opacity-80 mt-0.5">
+                    <span>${echartsEncode(key)}</span>
+                    <span class="font-medium">${echartsEncode(formatValue(value, columnType, true))}</span>
+                  </div>`;
+                }
+              });
+            }
           });
           tooltipContent += "</div>";
 
