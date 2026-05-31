@@ -178,3 +178,104 @@ func TestListAppsPagination(t *testing.T) {
 		t.Fatalf("unexpected pagination order: %+v", dashboards)
 	}
 }
+
+func TestListAppsQueryFilter(t *testing.T) {
+	app := setupListAppsTestApp(t)
+	ctx := context.Background()
+
+	resp, err := ListApps(app, ctx, ListAppsOptions{
+		Path:              "/",
+		IncludeSubfolders: true,
+		Query:             "folder a",
+		Sort:              "name",
+		Order:             "asc",
+	})
+	if err != nil {
+		t.Fatalf("ListApps with query: %v", err)
+	}
+
+	dashboards := dashboardsOnly(resp.Apps)
+	if len(dashboards) != 1 {
+		t.Fatalf("expected 1 dashboard matching 'folder a', got %d", len(dashboards))
+	}
+	if dashboards[0].ID != "dash-a" {
+		t.Fatalf("expected dash-a, got %s", dashboards[0].ID)
+	}
+	if dashboards[0].Name != "Folder A Dashboard" {
+		t.Fatalf("expected 'Folder A Dashboard', got %s", dashboards[0].Name)
+	}
+
+	respPartial, err := ListApps(app, ctx, ListAppsOptions{
+		Path:              "/",
+		IncludeSubfolders: true,
+		Query:             "root",
+		Sort:              "name",
+		Order:             "asc",
+	})
+	if err != nil {
+		t.Fatalf("ListApps with partial query: %v", err)
+	}
+
+	dashboards = dashboardsOnly(respPartial.Apps)
+	if len(dashboards) != 1 {
+		t.Fatalf("expected 1 dashboard matching 'root', got %d", len(dashboards))
+	}
+	if dashboards[0].ID != "dash-root" {
+		t.Fatalf("expected dash-root, got %s", dashboards[0].ID)
+	}
+
+	respAll, err := ListApps(app, ctx, ListAppsOptions{
+		Path:              "/",
+		IncludeSubfolders: true,
+		Query:             "dashboard",
+		Sort:              "name",
+		Order:             "asc",
+	})
+	if err != nil {
+		t.Fatalf("ListApps with common query: %v", err)
+	}
+
+	dashboards = dashboardsOnly(respAll.Apps)
+	if len(dashboards) != 3 {
+		t.Fatalf("expected 3 dashboards matching 'dashboard', got %d", len(dashboards))
+	}
+
+	respNone, err := ListApps(app, ctx, ListAppsOptions{
+		Path:              "/",
+		IncludeSubfolders: true,
+		Query:             "nonexistent",
+		Sort:              "name",
+		Order:             "asc",
+	})
+	if err != nil {
+		t.Fatalf("ListApps with no-match query: %v", err)
+	}
+
+	dashboards = dashboardsOnly(respNone.Apps)
+	if len(dashboards) != 0 {
+		t.Fatalf("expected 0 dashboards matching 'nonexistent', got %d", len(dashboards))
+	}
+
+	// Test that folders are included in search results
+	respFolder, err := ListApps(app, ctx, ListAppsOptions{
+		Path:              "/",
+		IncludeSubfolders: true,
+		Query:             "foldera",
+		Sort:              "name",
+		Order:             "asc",
+	})
+	if err != nil {
+		t.Fatalf("ListApps with folder query: %v", err)
+	}
+
+	var foundFolder bool
+	for _, item := range respFolder.Apps {
+		if item.Type == "_folder" && item.Name == "FolderA" {
+			foundFolder = true
+			break
+		}
+	}
+	if !foundFolder {
+		t.Fatalf("expected to find FolderA in search results, got %d items", len(respFolder.Apps))
+	}
+}

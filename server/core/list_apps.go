@@ -34,6 +34,7 @@ type ListAppsOptions struct {
 	Sort              string
 	Order             string
 	Path              string
+	Query             string
 	IncludeSubfolders bool
 	IncludeContent    bool
 	Limit             int
@@ -71,6 +72,7 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 	order := opts.Order
 	path := opts.Path
 	var orderColumn string
+
 	switch sort {
 	case "created":
 		orderColumn = "created_at"
@@ -132,6 +134,18 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 		}
 	}
 
+	// Build query filter for name search
+	var queryFilter string
+	if opts.Query != "" {
+		if strings.Contains(folderIDFilter, "WHERE") {
+			queryFilter = " AND LOWER(a.name) LIKE ?"
+		} else {
+			queryFilter = "WHERE LOWER(a.name) LIKE ?"
+		}
+		folderIDFilter += queryFilter
+		folderIDArgs = append(folderIDArgs, "%"+strings.ToLower(opts.Query)+"%")
+	}
+
 	var paginationClause string
 	if opts.Limit > 0 {
 		if opts.Offset > 0 {
@@ -141,6 +155,157 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 		}
 	} else if opts.Offset > 0 {
 		paginationClause = " LIMIT -1 OFFSET ?"
+	}
+
+	// Special handling for search queries - use simpler query with relevance ordering
+	if opts.Query != "" {
+		lowerQuery := strings.ToLower(opts.Query)
+		querySearch := fmt.Sprintf(`
+			WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
+				SELECT id, parent_folder_id, name, '/' || name || '/' as path
+				FROM folders
+				WHERE parent_folder_id IS NULL
+
+				UNION ALL
+
+				SELECT f.id, f.parent_folder_id, f.name, fp.path || f.name || '/' as path
+				FROM folders f
+				JOIN folder_path fp ON f.parent_folder_id = fp.id
+			),
+			ranked_apps AS (
+				SELECT
+					a.id,
+					COALESCE(fp.path, '/') as path,
+					a.folder_id,
+					a.name,
+					a.content,
+					a.created_at,
+					a.updated_at,
+					a.created_by,
+					a.updated_by,
+					a.visibility,
+					a.type,
+					t.last_run_at,
+					t.last_run_success,
+					t.last_run_duration,
+					t.next_run_at,
+					t.next_run_type,
+					CASE
+						WHEN LOWER(a.name) = ? THEN 1
+						WHEN LOWER(a.name) LIKE ? THEN 2
+						ELSE 3
+					END as relevance
+				FROM apps a
+				LEFT JOIN folder_path fp ON a.folder_id = fp.id
+				LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
+				WHERE LOWER(a.name) LIKE ?
+
+				UNION ALL
+
+				SELECT
+					f.id,
+					COALESCE(fp.path, '/') as path,
+					f.parent_folder_id as folder_id,
+					f.name,
+					'' as content,
+					f.created_at,
+					f.updated_at,
+					f.created_by,
+					f.updated_by,
+					NULL as visibility,
+					'_folder' as type,
+					NULL as last_run_at,
+					NULL as last_run_success,
+					NULL as last_run_duration,
+					NULL as next_run_at,
+					NULL as next_run_type,
+					CASE
+						WHEN LOWER(f.name) = ? THEN 1
+						WHEN LOWER(f.name) LIKE ? THEN 2
+						ELSE 3
+					END as relevance
+				FROM folders f
+				LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
+				WHERE LOWER(f.name) LIKE ?
+			)
+			SELECT
+				id, path, folder_id, name, content, created_at, updated_at,
+				created_by, updated_by, visibility, type,
+				last_run_at, last_run_success, last_run_duration, next_run_at, next_run_type
+			FROM ranked_apps
+			ORDER BY relevance ASC, name ASC%s`, paginationClause)
+
+		// Args: apps exact, apps prefix, apps contains, folders exact, folders prefix, folders contains
+		searchArgs := []interface{}{
+			lowerQuery, lowerQuery + "%", "%" + lowerQuery + "%",
+			lowerQuery, lowerQuery + "%", "%" + lowerQuery + "%",
+		}
+		if opts.Limit > 0 {
+			searchArgs = append(searchArgs, opts.Limit)
+			if opts.Offset > 0 {
+				searchArgs = append(searchArgs, opts.Offset)
+			}
+		} else if opts.Offset > 0 {
+			searchArgs = append(searchArgs, opts.Offset)
+		}
+
+		err := app.Sqlite.SelectContext(ctx, &dbApps, querySearch, searchArgs...)
+		if err != nil {
+			return api.AppsResponse{}, fmt.Errorf("error listing apps: %w", err)
+		}
+
+		// Convert to API response
+		apps := make([]api.App, len(dbApps))
+		for i, a := range dbApps {
+			apps[i] = api.App{
+				ID:         a.ID,
+				Path:       a.Path,
+				FolderID:   a.FolderID,
+				Name:       a.Name,
+				CreatedAt:  a.CreatedAt,
+				UpdatedAt:  a.UpdatedAt,
+				CreatedBy:  a.CreatedBy,
+				UpdatedBy:  a.UpdatedBy,
+				Visibility: a.Visibility,
+				Type:       a.Type,
+			}
+			if opts.IncludeContent {
+				apps[i].Content = a.Content
+			}
+			apps[i].TaskInfo = &api.TaskInfo{
+				LastRunAt:       a.LastRunAt,
+				LastRunSuccess:  a.LastRunSuccess,
+				LastRunDuration: a.LastRunDuration,
+				NextRunAt:       a.NextRunAt,
+			}
+			if a.NextRunType != nil {
+				apps[i].TaskInfo.NextRunType = *a.NextRunType
+			}
+			if app.NoPublicSharing && apps[i].Visibility != nil && *apps[i].Visibility == "public" {
+				apps[i].Visibility = nil
+			}
+			if app.NoPasswordProtectedSharing && apps[i].Visibility != nil && *apps[i].Visibility == "password-protected" {
+				apps[i].Visibility = nil
+			}
+		}
+
+		pageSize := opts.Limit
+		if pageSize == 0 {
+			pageSize = len(apps)
+			if pageSize == 0 {
+				pageSize = 1
+			}
+		}
+		page := 1
+		if pageSize > 0 && opts.Offset > 0 {
+			page = (opts.Offset / pageSize) + 1
+		}
+
+		return api.AppsResponse{
+			Apps:     apps,
+			Page:     page,
+			PageSize: pageSize,
+		}, nil
 	}
 
 	// Build the query with recursive CTE for folder paths

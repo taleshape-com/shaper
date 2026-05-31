@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../tremor/DropdownMenu";
+import { SearchBar } from "../SearchBar";
 
 const isLg = () => window.innerWidth >= 1024;
 const MENU_STATE_KEY = "shaper-menu-open";
@@ -167,17 +168,17 @@ export function MenuProvider ({
               className="block mx-4 font-display text-lg mb-4"
             >{title}</span>
           )}
+          <SearchBar />
           <Link
             to="/"
             search={isHome ? undefined : { path: currentPath }}
             className={cx("block px-4 py-3", {
-              "hover:underline": !isHome,
               "bg-cprimary dark:bg-dprimary text-ctextb dark:text-dtextb": isHome,
             })}
           >
             <Tooltip content={"Go to " + (isHome ? "/" : currentPath)} showArrow={false}>
               <RiLayoutLine className="size-4 inline mr-1.5 mb-1" />
-              Browse
+              <span className={cx("w-full", { "hover:underline": !isHome })}>Browse</span>
             </Tooltip>
           </Link>
           {config.editEnabled && (

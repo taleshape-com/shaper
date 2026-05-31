@@ -53,6 +53,7 @@ import "../lib/editorInit";
 import { getSystemConfig } from "../lib/system";
 import { DashboardWrapper } from "../components/DashboardWrapper";
 import { redirect } from "@tanstack/react-router";
+import { useRecentApps } from "../hooks/useRecentApps";
 
 const MIN_SHOW_LOADING = 300;
 
@@ -114,6 +115,11 @@ function DashboardEditor () {
   const [generatingPassword, setGeneratingPassword] = useState(false);
   const { toast } = useToast();
   const systemConfig = getSystemConfig();
+  const { addRecentApp } = useRecentApps();
+
+  useEffect(() => {
+    addRecentApp(params.id, dashboard.name, "dashboard");
+  }, [params.id, dashboard.name, addRecentApp]);
 
   // Track the current AbortController for preview requests
   const previewAbortRef = useRef<AbortController | null>(null);

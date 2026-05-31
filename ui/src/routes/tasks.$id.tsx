@@ -29,6 +29,7 @@ import { PreviewError } from "../components/PreviewError";
 import { TaskResults, TaskResult } from "../components/TaskResults";
 import { RelativeDate } from "../components/RelativeDate";
 import { getSystemConfig } from "../lib/system";
+import { useRecentApps } from "../hooks/useRecentApps";
 import "../lib/editorInit";
 
 interface TaskData {
@@ -74,6 +75,11 @@ function TaskEdit () {
   const [name, setName] = useState(task.name);
   const [savingName, setSavingName] = useState(false);
   const { toast } = useToast();
+  const { addRecentApp } = useRecentApps();
+
+  useEffect(() => {
+    addRecentApp(id, task.name, "task");
+  }, [id, task.name, addRecentApp]);
 
   // Check for unsaved changes when component mounts
   useEffect(() => {
