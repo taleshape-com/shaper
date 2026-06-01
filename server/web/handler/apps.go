@@ -26,6 +26,7 @@ func ListApps(app *core.App) echo.HandlerFunc {
 		sort := c.QueryParam("sort")
 		order := c.QueryParam("order")
 		path := c.QueryParam("path")
+		query := c.QueryParam("query")
 
 		includeSubfolders := false
 		if recursive := c.QueryParam("recursive"); recursive != "" {
@@ -75,6 +76,7 @@ func ListApps(app *core.App) echo.HandlerFunc {
 			Sort:              sort,
 			Order:             order,
 			Path:              path,
+			Query:             query,
 			IncludeSubfolders: includeSubfolders,
 			IncludeContent:    includeContent,
 			Limit:             limit,

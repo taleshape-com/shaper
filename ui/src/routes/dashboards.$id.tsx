@@ -25,6 +25,7 @@ import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { DashboardWrapper } from "../components/DashboardWrapper";
 import { getSystemConfig } from "../lib/system";
+import { useRecentApps } from "../hooks/useRecentApps";
 
 export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
@@ -59,6 +60,7 @@ function DashboardViewComponent () {
   const [path, setPath] = useState("/");
   const { toast } = useToast();
   const [dashboardKey, setDashboardKey] = useState(0); // For forcing dashboard re-render
+  const { addRecentApp } = useRecentApps();
 
   // Ref for dashboard ID text selection
   const dashboardIdRef = useRef<HTMLElement>(null);
@@ -72,6 +74,7 @@ function DashboardViewComponent () {
           setPath(dashboard.path);
         }
         setTitle(dashboard.name);
+        addRecentApp(params.id, dashboard.name, "dashboard");
       } catch (err) {
         if (isRedirect(err)) {
           navigate(err.options);
@@ -80,7 +83,7 @@ function DashboardViewComponent () {
       }
     };
     fetchDashboardQuery();
-  }, [params.id, queryApi, navigate]);
+  }, [params.id, queryApi, navigate, addRecentApp]);
 
   // WebSocket connection for dev mode live reload
   useEffect(() => {
