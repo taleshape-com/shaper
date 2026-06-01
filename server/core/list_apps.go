@@ -172,7 +172,7 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 				FROM folders f
 				JOIN folder_path fp ON f.parent_folder_id = fp.id
 			),
-			ranked_apps AS (
+			ranked AS (
 				SELECT
 					a.id,
 					COALESCE(fp.path, '/') as path,
@@ -199,45 +199,16 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 				LEFT JOIN folder_path fp ON a.folder_id = fp.id
 				LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
 				WHERE LOWER(a.name) LIKE ?
-
-				UNION ALL
-
-				SELECT
-					f.id,
-					COALESCE(fp.path, '/') as path,
-					f.parent_folder_id as folder_id,
-					f.name,
-					'' as content,
-					f.created_at,
-					f.updated_at,
-					f.created_by,
-					f.updated_by,
-					NULL as visibility,
-					'_folder' as type,
-					NULL as last_run_at,
-					NULL as last_run_success,
-					NULL as last_run_duration,
-					NULL as next_run_at,
-					NULL as next_run_type,
-					CASE
-						WHEN LOWER(f.name) = ? THEN 1
-						WHEN LOWER(f.name) LIKE ? THEN 2
-						ELSE 3
-					END as relevance
-				FROM folders f
-				LEFT JOIN folder_path fp ON f.parent_folder_id = fp.id
-				WHERE LOWER(f.name) LIKE ?
 			)
 			SELECT
 				id, path, folder_id, name, content, created_at, updated_at,
 				created_by, updated_by, visibility, type,
 				last_run_at, last_run_success, last_run_duration, next_run_at, next_run_type
-			FROM ranked_apps
+			FROM ranked
 			ORDER BY relevance ASC, name ASC%s`, paginationClause)
 
-		// Args: apps exact, apps prefix, apps contains, folders exact, folders prefix, folders contains
+		// Args: apps exact, apps prefix, apps contains
 		searchArgs := []interface{}{
-			lowerQuery, lowerQuery + "%", "%" + lowerQuery + "%",
 			lowerQuery, lowerQuery + "%", "%" + lowerQuery + "%",
 		}
 		if opts.Limit > 0 {

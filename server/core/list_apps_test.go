@@ -255,27 +255,4 @@ func TestListAppsQueryFilter(t *testing.T) {
 	if len(dashboards) != 0 {
 		t.Fatalf("expected 0 dashboards matching 'nonexistent', got %d", len(dashboards))
 	}
-
-	// Test that folders are included in search results
-	respFolder, err := ListApps(app, ctx, ListAppsOptions{
-		Path:              "/",
-		IncludeSubfolders: true,
-		Query:             "foldera",
-		Sort:              "name",
-		Order:             "asc",
-	})
-	if err != nil {
-		t.Fatalf("ListApps with folder query: %v", err)
-	}
-
-	var foundFolder bool
-	for _, item := range respFolder.Apps {
-		if item.Type == "_folder" && item.Name == "FolderA" {
-			foundFolder = true
-			break
-		}
-	}
-	if !foundFolder {
-		t.Fatalf("expected to find FolderA in search results, got %d items", len(respFolder.Apps))
-	}
 }
