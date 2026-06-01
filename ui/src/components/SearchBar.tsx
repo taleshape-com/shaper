@@ -11,6 +11,7 @@ import { useRecentApps, type RecentApp } from "../hooks/useRecentApps";
 import { MenuContext } from "../contexts/MenuContext";
 import { cx, focusInput, isMac } from "../lib/utils";
 import { Tooltip } from "./tremor/Tooltip";
+import { useQueryApi } from "../hooks/useQueryApi";
 
 interface App {
   id: string;
@@ -32,6 +33,7 @@ export function SearchBar () {
   const location = useLocation();
   const { getRecentApps } = useRecentApps();
   const { setIsMenuOpen } = useContext(MenuContext);
+  const queryApi = useQueryApi();
 
   // Extract current app ID from URL
   const currentAppId = location.pathname.match(/\/(dashboards_?|tasks)\/([^/]+)/)?.[2];
@@ -74,21 +76,17 @@ export function SearchBar () {
       setShowEmptyState(false);
 
       try {
-        const response = await fetch(
-          `/api/apps?query=${encodeURIComponent(query)}&limit=10&recursive=true`,
-          { signal: controller.signal },
+        const data = await queryApi(
+          `apps?query=${encodeURIComponent(query)}&limit=10&recursive=true`,
         );
-        if (response.ok) {
-          const data = await response.json();
-          const results = data.apps || [];
-          setSearchResults(results);
+        const results = data.apps || [];
+        setSearchResults(results);
 
-          // Only show empty state after 200ms delay if still no results
-          if (results.length === 0) {
-            emptyStateTimeoutId = setTimeout(() => {
-              setShowEmptyState(true);
-            }, 200);
-          }
+        // Only show empty state after 200ms delay if still no results
+        if (results.length === 0) {
+          emptyStateTimeoutId = setTimeout(() => {
+            setShowEmptyState(true);
+          }, 200);
         }
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") {
@@ -104,7 +102,7 @@ export function SearchBar () {
       clearTimeout(emptyStateTimeoutId);
       controller.abort();
     };
-  }, [query]);
+  }, [query, queryApi]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
