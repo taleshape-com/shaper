@@ -63,8 +63,13 @@ var disallowedTaskStatements = [][]string{
 // We ignore case and extra whitespace when matching the statements
 func isSideEffect(app *App, sqlString string) bool {
 	upper := strings.ToUpper(strings.TrimSpace(sqlString))
-	if app != nil && app.DuckDBDSN == ":memory:" && strings.HasPrefix(upper, "ATTACH") {
-		return true
+	if app != nil && app.DuckDBDSN == ":memory:" {
+		if strings.HasPrefix(upper, "ATTACH") {
+			return true
+		}
+		if matchesPrefix(upper, []string{"SET", "MOTHERDUCK_TOKEN"}) {
+			return true
+		}
 	}
 	for _, stmt := range sideEffectSQLStatements {
 		if matchesPrefix(upper, stmt) {
@@ -82,7 +87,7 @@ func matchesPrefix(upperSql string, prefix []string) bool {
 		}
 		// Check that it's a whole word
 		after := sub[len(s):]
-		if len(after) > 0 && !isSpace(after[0]) && after[0] != '(' && after[0] != ';' && after[0] != ',' {
+		if len(after) > 0 && !isSpace(after[0]) && after[0] != '(' && after[0] != ';' && after[0] != ',' && after[0] != '=' {
 			return false
 		}
 		sub = strings.TrimSpace(after)
@@ -257,6 +262,9 @@ func IsAllowedTaskStatement(sql string) bool {
 	// Handle SET config: if it's SET but not SET VARIABLE
 	if strings.HasPrefix(upper, "SET") {
 		if matchesPrefix(upper, []string{"SET", "VARIABLE"}) {
+			return true
+		}
+		if matchesPrefix(upper, []string{"SET", "MOTHERDUCK_TOKEN"}) {
 			return true
 		}
 		// Other SET statements (config) are never allowed in tasks

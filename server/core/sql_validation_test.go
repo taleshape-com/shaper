@@ -99,6 +99,8 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 		{"Install", "INSTALL httpfs", true},
 		{"Load", "LOAD httpfs", true},
 		{"Set Config", "SET threads = 4", false},
+		{"Set Motherduck Token", "SET motherduck_token = 'foo'", true},
+		{"Set Motherduck Token No Spaces", "SET motherduck_token='foo'", true},
 		{"Reset Config", "RESET threads", false},
 		{"Attach", "ATTACH 'file.db' AS other", true},
 		{"Detach", "DETACH other", true},
@@ -137,6 +139,7 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 		{"Detach", "DETACH other", true},
 		{"Create Secret", "CREATE SECRET (TYPE S3)", true},
 		{"Set Config", "SET threads = 4", false},   // Now false everywhere
+		{"Set Motherduck Token", "SET motherduck_token = 'foo'", true},
 		{"Reset Config", "RESET threads", false}, // Now false everywhere
 		{"Install", "INSTALL httpfs", true},      // Now true everywhere
 	}
@@ -155,6 +158,11 @@ func TestIsAllowedStatementMemory(t *testing.T) {
 	assert.True(t, IsAllowedStatement(appMemory, "ATTACH 'data.db' AS data"))
 	assert.False(t, IsAllowedStatement(appFile, "ATTACH 'data.db' AS data"))
 	assert.False(t, IsAllowedStatement(nil, "ATTACH 'data.db' AS data"))
+
+	assert.True(t, IsAllowedStatement(appMemory, "SET motherduck_token = 'token'"))
+	assert.True(t, IsAllowedStatement(appMemory, "SET motherduck_token='token'"))
+	assert.False(t, IsAllowedStatement(appFile, "SET motherduck_token = 'token'"))
+	assert.False(t, IsAllowedStatement(nil, "SET motherduck_token = 'token'"))
 }
 
 func TestSplitWithStatement(t *testing.T) {

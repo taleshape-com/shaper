@@ -314,11 +314,6 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		}
 	}
 
-	if _, err := dbx.Exec("SET lock_configuration = true"); err != nil {
-		cleanup()
-		return nil, nil, fmt.Errorf("failed to lock configuration: %w", err)
-	}
-
 	return dbx, cleanup, nil
 }
 
