@@ -71,9 +71,9 @@ export const goToLoginPage = () => {
   });
 };
 
-const castRegex = /^CAST\(.+ AS .+\)$/;
-const boxplotRegex = /^boxplot\(.+\)$/;
-const singleQuoteEscapedRegex = /^'(?:[^']|'')*'$/;
+const castRegex = /^CAST\(.+ AS .+\)$/s;
+const boxplotRegex = /^boxplot\(.+\)$/s;
+const singleQuoteEscapedRegex = /^'(?:[^']|'')*'$/s;
 export const getNameIfSet = (name: string) => {
   if (castRegex.test(name) || singleQuoteEscapedRegex.test(name) || boxplotRegex.test(name)) {
     return undefined;
