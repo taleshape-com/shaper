@@ -10,6 +10,20 @@ function parseLocalDate (d: string | number) {
   return new Date(d);
 }
 
+export function formatIntegerPart (str: string): string {
+  if (str.length < 5) return str;
+  return str.replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+}
+
+export function formatFractionPart (str: string): string {
+  if (str.length < 5) return str;
+  const parts: string[] = [];
+  for (let i = 0; i < str.length; i += 3) {
+    parts.push(str.slice(i, i + 3));
+  }
+  return parts.join("\u2009");
+}
+
 export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column["type"], shouldFormatNumbers?: boolean, shortFormat?: boolean | number) => {
   if (value === null || value === undefined) {
     return "";
@@ -41,11 +55,29 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   }
   if (typeof value === "number") {
     if (shouldFormatNumbers && columnType === "number") {
-      return Number.isInteger(value)
-        ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")
-        : shortFormat
-          ? (Math.round(value * 100) / 100).toString()
-          : value.toString();
+      const rawValueString = shortFormat
+        ? (Math.round(value * 100) / 100).toString()
+        : value.toString();
+
+      if (rawValueString.includes("e") || rawValueString.includes("E")) {
+        return rawValueString;
+      }
+
+      const isNegative = rawValueString.startsWith("-");
+      const absString = isNegative ? rawValueString.slice(1) : rawValueString;
+
+      const parts = absString.split(".");
+      const integerPart = parts[0];
+      const fractionPart = parts[1];
+
+      const formattedInteger = formatIntegerPart(integerPart);
+      const formattedFraction = fractionPart !== undefined ? formatFractionPart(fractionPart) : undefined;
+
+      let result = formattedInteger;
+      if (formattedFraction !== undefined) {
+        result += "." + formattedFraction;
+      }
+      return isNegative ? "-" + result : result;
     }
     // duration comes in ms
     if (columnType === "duration") {

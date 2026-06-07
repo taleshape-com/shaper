@@ -58,7 +58,7 @@ function DashboardValue ({ headers, data }: ValueProps) {
   const percent = getComparePercent(value, compareValue);
   const formattedValue = formatValue(value, valueHeader.type, true).toString();
   const label = getNameIfSet(valueHeader.name);
-  const hasLabel = !!label && label !== value && label !== formattedValue && label !== `'${value}'`;
+  const hasLabel = !!label && label !== value.toString() && label !== formattedValue && label !== `'${value}'`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
