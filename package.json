@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "start": "vite ui",
-    "all": "npm run lint && npm run typecheck && npm run build",
+    "all": "npm run lint && npm run typecheck && npm run test && npm run build",
     "build": "npm run build:main && npm run build:embed",
     "build:main": "vite build ui",
     "build:embed": "vite build -c ui/vite.embed.ts",
     "typecheck": "tsc -b ui",
+    "test": "vitest run",
     "lint": "eslint -c ui/eslint.config.js",
     "format": "eslint -c ui/eslint.config.js --fix"
   },
@@ -74,6 +75,7 @@
     "typescript": "^5.6.2",
     "typescript-eslint": "^8.35.0",
     "vite": "^6.4.1",
-    "vite-plugin-css-injected-by-js": "^3.5.2"
+    "vite-plugin-css-injected-by-js": "^3.5.2",
+    "vitest": "^4.1.7"
   }
 }
