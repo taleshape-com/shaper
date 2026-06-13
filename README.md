@@ -18,6 +18,19 @@ FROM dataset
 GROUP BY ALL ORDER BY ALL;
 ```
 
+Render a GitHub-style calendar heatmap of date-based activity with `::HEATMAP`:
+
+```sql
+SELECT 'Activity'::LABEL;
+
+SELECT
+  date_trunc('day', created_at)::XAXIS,
+  count(*)::HEATMAP
+FROM events
+GROUP BY ALL
+ORDER BY ALL;
+```
+
 [
 ![Screenshot](https://taleshape.com/images/session_dashboard.png)
 ](https://taleshape.com/shaper/docs/)

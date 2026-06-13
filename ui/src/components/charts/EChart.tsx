@@ -4,7 +4,7 @@ import { useMemo, useRef, useEffect } from "react";
 import { debounce } from "lodash";
 
 import * as echarts from "echarts/core";
-import { BarChart, LineChart, GaugeChart, BoxplotChart, ScatterChart, PieChart } from "echarts/charts";
+import { BarChart, LineChart, GaugeChart, BoxplotChart, ScatterChart, PieChart, HeatmapChart } from "echarts/charts";
 import {
   TitleComponent,
   TooltipComponent,
@@ -18,6 +18,8 @@ import {
   LegendPlainComponent,
   LegendScrollComponent,
   MarkLineComponent,
+  CalendarComponent,
+  VisualMapComponent,
 } from "echarts/components";
 import { LabelLayout, UniversalTransition } from "echarts/features";
 import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
@@ -38,6 +40,7 @@ echarts.use([
   BoxplotChart,
   ScatterChart,
   PieChart,
+  HeatmapChart,
   TitleComponent,
   TooltipComponent,
   GridComponent,
@@ -51,6 +54,8 @@ echarts.use([
   LegendPlainComponent,
   LegendScrollComponent,
   MarkLineComponent,
+  CalendarComponent,
+  VisualMapComponent,
   LabelLayout,
   UniversalTransition,
   // SVG renderer as default because it looks sharper

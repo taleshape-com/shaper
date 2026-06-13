@@ -56,6 +56,7 @@ var dbTypes = []struct {
 	{"SCHEDULE_ALL", "UNION(\"schedule_all_timestamp\" TIMESTAMP, \"schedule_all_timestamptz\" TIMESTAMPTZ, \"schedule_all_interval\" INTERVAL, \"schedule_all_varchar\" VARCHAR)", "timestamp"},
 	{"GAUGE", "UNION(\"gauge_interval\" INTERVAL, \"gauge_double\" DOUBLE)", "chart"},
 	{"GAUGE_PERCENT", "UNION(\"gauge_percent\" DOUBLE)", "percent"},
+	{"HEATMAP", "UNION(\"heatmap_double\" DOUBLE)", "chart"},
 	{"PIECHART", "UNION(\"piechart_double\" DOUBLE)", "chart"},
 	{"PIECHART_PERCENT", "UNION(\"piechart_percent_double\" DOUBLE)", "percent"},
 	{"PIECHART_CATEGORY", "UNION(\"piechart_category_varchar\" VARCHAR)", "string"},
