@@ -256,8 +256,19 @@ func (s *Service) Stop() {
 		s.consumeCtx.Drain()
 		<-s.consumeCtx.Closed()
 	}
+	// Remove the DuckDB secret to avoid confusing users when listing secrets
+	if err := removeDuckDBSecret(context.Background(), s.config.DuckDB, SECRET_NAME); err != nil {
+		s.config.Logger.Warn("Failed to remove DuckDB secret", slog.Any("error", err))
+	}
 	close(s.stopChan)
 	s.config.Logger.Info("Snapshots service stopped")
+}
+
+// removeDuckDBSecret removes the S3 secret from DuckDB
+func removeDuckDBSecret(ctx context.Context, duckDbx *sqlx.DB, secretName string) error {
+	dropSecretSQL := fmt.Sprintf("DROP SECRET IF EXISTS %s", secretName)
+	_, err := duckDbx.ExecContext(ctx, dropSecretSQL)
+	return err
 }
 
 // createDuckDBSecret creates a temporary S3 secret for DuckDB operations
