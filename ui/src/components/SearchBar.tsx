@@ -182,22 +182,15 @@ export function SearchBar () {
     }
   };
 
-  // Track previous query to detect mode switches
-  const prevQueryRef = useRef(query);
-  const prevIsActiveRef = useRef(isActive);
-
+  // Keep selectedIndex in sync with the first item when items change
   useEffect(() => {
-    // Only auto-select when dropdown opens or when switching between search/recent modes
-    const justOpened = isActive && !prevIsActiveRef.current;
-    const modeSwitched = isActive && (!!query !== !!prevQueryRef.current);
-
-    if (justOpened || modeSwitched) {
-      const items = query ? searchResults : recentApps;
-      setSelectedIndex(items.length > 0 ? 0 : -1);
+    if (!isActive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedIndex(-1);
+      return;
     }
-
-    prevQueryRef.current = query;
-    prevIsActiveRef.current = isActive;
+    const items = query ? searchResults : recentApps;
+    setSelectedIndex(items.length > 0 ? 0 : -1);
   }, [query, isActive, searchResults, recentApps]);
 
   if (!isActive) {

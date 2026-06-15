@@ -731,13 +731,14 @@ const fetchDashboard = async (
 ): Promise<Result> => {
   const jwt = await getJwt();
   const searchParams = getSearchParamString(vars);
+  const isTemporary = id.startsWith("shaper-tmp.");
   const res = await fetchWithRetry(`${baseUrl}api/dashboards/${id}?${searchParams}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: jwt,
     },
     signal,
-  });
+  }, isTemporary ? { maxRetries: 0 } : undefined);
   const json = await res.json();
   if (res.status !== 200) {
     throw new Error(
