@@ -42,6 +42,60 @@ export interface DashboardProps {
 
 const MIN_SHOW_LOADING = 300;
 
+interface ErrorDisplayProps {
+  error: any;
+  resetErrorBoundary?: () => void;
+  errResetRef?: React.MutableRefObject<(() => void) | undefined>;
+  menuButton?: React.ReactNode;
+}
+
+const ErrorDisplay = function ({
+  error,
+  resetErrorBoundary,
+  errResetRef,
+  menuButton,
+}: ErrorDisplayProps) {
+  useEffect(() => {
+    if (errResetRef) {
+      errResetRef.current = resetErrorBoundary;
+    }
+  }, [errResetRef, resetErrorBoundary]);
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const success = await copyToClipboard(error.message);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="antialiased text-ctext dark:text-dtext">
+      {menuButton}
+      <div>
+        <div className="p-4 z-50 flex justify-center items-center">
+          <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded flex items-start gap-4">
+            <span>{error.message}</span>
+            <button
+              onClick={handleCopy}
+              className="shrink-0 text-red-500 hover:text-red-700 transition-colors"
+              title="Copy error message"
+            >
+              {copied ? (
+                <RiCheckLine className="size-5" />
+              ) : (
+                <RiFileCopyLine className="size-5" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function Dashboard ({
   id,
   vars,
@@ -58,12 +112,13 @@ export function Dashboard ({
   const [fetchedData, setFetchedData] = useState<Result | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
-  const errResetFn = useRef<(() => void) | undefined>(undefined);
+  const errResetRef = useRef<(() => void) | undefined>(undefined);
 
   // Add timeout ref to store the timeout ID
   const reloadTimeoutRef = useRef<NodeJS.Timeout>();
   // Track the current AbortController so we can cancel in-flight requests
   const fetchAbortRef = useRef<AbortController | null>(null);
+  const fetchDataRef = useRef<() => Promise<void>>();
 
   // Function to fetch dashboard data
   const fetchData = useCallback(async () => {
@@ -104,7 +159,9 @@ export function Dashboard ({
         // Set up reload timeout if reloadAt is in the future
         if (d.reloadAt > Date.now()) {
           const timeout = Math.max(1000, d.reloadAt - Date.now());
-          reloadTimeoutRef.current = setTimeout(fetchData, timeout);
+          reloadTimeoutRef.current = setTimeout(() => {
+            fetchDataRef.current?.();
+          }, timeout);
         }
       }
     } catch (err: unknown) {
@@ -122,8 +179,13 @@ export function Dashboard ({
     }
   }, [id, vars, baseUrl, getJwt, onDataChange, onError]);
 
+  useEffect(() => {
+    fetchDataRef.current = fetchData;
+  }, [fetchData]);
+
   // Initial fetch and cleanup
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
     return () => {
       // Clear timeouts on cleanup
@@ -138,55 +200,32 @@ export function Dashboard ({
   }, [fetchData, hash]);
 
   useEffect(() => {
-    if (errResetFn.current) {
-      errResetFn.current();
-      errResetFn.current = undefined;
+    if (errResetRef.current) {
+      errResetRef.current();
+      errResetRef.current = undefined;
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: any, resetErrorBoundary?: () => void }) {
-    errResetFn.current = resetErrorBoundary;
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = async () => {
-      const success = await copyToClipboard(error.message);
-      if (success) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    };
-
-    return (
-      <div className="antialiased text-ctext dark:text-dtext">
-        {menuButton}
-        <div>
-          <div className="p-4 z-50 flex justify-center items-center">
-            <div id="shaper-error-message" className="p-4 bg-red-100 text-red-700 h-fit rounded flex items-start gap-4">
-              <span>{error.message}</span>
-              <button
-                onClick={handleCopy}
-                className="shrink-0 text-red-500 hover:text-red-700 transition-colors"
-                title="Copy error message"
-              >
-                {copied ? (
-                  <RiCheckLine className="size-5" />
-                ) : (
-                  <RiFileCopyLine className="size-5" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (error) {
-    return <ErrorDisplay error={error} />;
+    return (
+      <ErrorDisplay
+        error={error}
+        errResetRef={errResetRef}
+        menuButton={menuButton}
+      />
+    );
   }
 
   return fetchedData ? (
-    <ErrorBoundary fallbackRender={ErrorDisplay}>
+    <ErrorBoundary
+      fallbackRender={(props) => (
+        <ErrorDisplay
+          {...props}
+          errResetRef={errResetRef}
+          menuButton={menuButton}
+        />
+      )}
+    >
       <DataView
         data={fetchedData}
         onVarsChanged={onVarsChanged}

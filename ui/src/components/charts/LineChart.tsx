@@ -88,7 +88,12 @@ const LineChart = (props: LineChartProps) => {
     React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
-  const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
+  const isHovering = React.useMemo(() => {
+    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
+      return hoveredIndex;
+    }
+    return null;
+  }, [hoveredIndex, hoveredIndexType, indexType, hoveredChartId, chartId]);
 
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
@@ -686,21 +691,6 @@ const LineChart = (props: LineChartProps) => {
     markLines,
     bandLowerName,
     bandUpperName,
-  ]);
-
-  useEffect(() => {
-    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
-      setIsHovering(hoveredIndex);
-    } else {
-      setIsHovering(null);
-    }
-  }, [
-    chartId,
-    indexType,
-    hoveredIndex,
-    hoveredIndexType,
-    hoveredChartId,
-    setIsHovering,
   ]);
 
   useEffect(() => {

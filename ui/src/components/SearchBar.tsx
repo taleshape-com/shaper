@@ -62,6 +62,7 @@ export function SearchBar () {
 
   useEffect(() => {
     if (!query) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchResults([]);
       setIsLoading(false);
       setShowEmptyState(false);

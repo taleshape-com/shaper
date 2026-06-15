@@ -24,22 +24,6 @@ type ButtonProps = {
   idPrefix: string;
 };
 
-const getIcon = (url: string) => {
-  const extension = url.split("?")[0].split(".").pop()?.toLowerCase();
-  switch (extension) {
-  case "csv":
-    return RiFileTextLine;
-  case "xlsx":
-    return RiFileExcel2Line;
-  case "pdf":
-    return RiFilePdf2Line;
-  case "json":
-    return RiCodeSSlashLine;
-  default:
-    return RiFileDownloadLine;
-  }
-};
-
 function DashboardButton ({
   label,
   data,
@@ -51,7 +35,7 @@ function DashboardButton ({
   const [isLoading, setIsLoading] = useState(false);
 
   const relativeUrl = data[0][0] as string;
-  const Icon = getIcon(relativeUrl);
+  const extension = relativeUrl.split("?")[0].split(".").pop()?.toLowerCase();
 
   const handleDownload = async () => {
     setIsLoading(true);
@@ -113,8 +97,16 @@ function DashboardButton ({
           {headers[0].name}
           {isLoading ? (
             <RiLoader3Fill className="ml-1.5 size-4 text-ctext2 dark:text-dtext2 animate-spin" />
+          ) : extension === "csv" ? (
+            <RiFileTextLine className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
+          ) : extension === "xlsx" ? (
+            <RiFileExcel2Line className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
+          ) : extension === "pdf" ? (
+            <RiFilePdf2Line className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
+          ) : extension === "json" ? (
+            <RiCodeSSlashLine className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
           ) : (
-            <Icon className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
+            <RiFileDownloadLine className="ml-1.5 size-4 text-ctext2 dark:text-dtext2" />
           )}
         </span>
       </Button >

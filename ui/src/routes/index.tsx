@@ -128,7 +128,7 @@ function Index () {
     });
   };
 
-  const SortIcon = ({ field }: { field: "name" | "created" | "updated" }) => {
+  const renderSortIcon = (field: "name" | "created" | "updated") => {
     if (field !== (sort ?? "name")) return null;
     return (order ?? "asc") === "asc" ? (
       <RiArrowDownSLine className="inline size-4" />
@@ -663,19 +663,19 @@ function Index () {
                       onClick={() => handleSort("name" as const)}
                       className="text-ctext dark:text-dtext cursor-pointer hover:underline"
                     >
-                      Name <SortIcon field="name" />
+                      Name {renderSortIcon("name")}
                     </TableHeaderCell>
                     <TableHeaderCell
                       className="text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                       onClick={() => handleSort("created" as const)}
                     >
-                      Created <SortIcon field="created" />
+                      Created {renderSortIcon("created")}
                     </TableHeaderCell>
                     <TableHeaderCell
                       className="text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                       onClick={() => handleSort("updated" as const)}
                     >
-                      Updated <SortIcon field="updated" />
+                      Updated {renderSortIcon("updated")}
                     </TableHeaderCell>
                     <TableHeaderCell className="text-ctext dark:text-dtext  w-16"></TableHeaderCell>
                   </TableRow>

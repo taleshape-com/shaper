@@ -147,7 +147,7 @@ function UsersManagement () {
     });
   };
 
-  const SortIcon = ({ field }: { field: "name" | "email" | "created" }) => {
+  const renderSortIcon = (field: "name" | "email" | "created") => {
     if (field !== (sort ?? "created")) return null;
     return (order ?? "desc") === "asc" ? (
       <RiSortAsc className="inline size-4" />
@@ -625,19 +625,19 @@ function UsersManagement () {
                     onClick={() => handleSort("name")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                   >
-                    Name <SortIcon field="name" />
+                    Name {renderSortIcon("name")}
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("email")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
                   >
-                    Email <SortIcon field="email" />
+                    Email {renderSortIcon("email")}
                   </TableHeaderCell>
                   <TableHeaderCell
                     onClick={() => handleSort("created")}
                     className="text-md text-ctext dark:text-dtext hidden md:table-cell cursor-pointer hover:underline"
                   >
-                    Created <SortIcon field="created" />
+                    Created {renderSortIcon("created")}
                   </TableHeaderCell>
                   <TableHeaderCell className="text-md text-ctext dark:text-dtext">
                     Actions
