@@ -558,7 +558,7 @@ const LineChart = (props: LineChartProps) => {
           rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
-          //customValues,
+          customValues,
         },
         axisPointer: {
           type: "line",

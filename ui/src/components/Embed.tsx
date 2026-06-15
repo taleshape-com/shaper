@@ -207,7 +207,6 @@ export function EmbedComponent ({
       if (visibility === "private") {
         throw new Error(translate("Dashboard is not public"));
       }
-      let password: string | undefined = undefined;
       if (visibility === "password-protected") {
         // Check if we have a cached password first
         const cachedPassword = localStorage.getItem(`${LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX}${props.dashboardId}`);
@@ -215,23 +214,20 @@ export function EmbedComponent ({
           // Try with cached password first
           const jwt = await getPublicJwt(baseUrl, props.dashboardId, cachedPassword);
           if (jwt) {
-            password = cachedPassword;
             return jwt;
           } else {
             // Cached password is invalid, remove it and prompt for new one
             localStorage.removeItem(`${LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX}${props.dashboardId}`);
           }
         }
-        if (!password) {
-          await waitForPassword();
-          const jwt = jwtRef.current;
-          if (!jwt) {
-            throw new Error(translate("Failed to get JWT for password-protected dashboard"));
-          }
-          return jwt;
+        await waitForPassword();
+        const jwt = jwtRef.current;
+        if (!jwt) {
+          throw new Error(translate("Failed to get JWT for password-protected dashboard"));
         }
+        return jwt;
       }
-      const newJwt = await getPublicJwt(baseUrl, props.dashboardId, password);
+      const newJwt = await getPublicJwt(baseUrl, props.dashboardId);
       if (newJwt == null) {
         throw new Error(translate("Failed to retrieve JWT for public dashboard"));
       }

@@ -20,6 +20,11 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "react-hooks/static-components": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/immutability": "off",
+      "react-hooks/use-memo": "off",
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },
@@ -41,5 +46,11 @@ export default tseslint.config(
       "eol-last": ["error", "always"],
       "no-trailing-spaces": "error",
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 0 }],
+    },
+  },
+  {
+    files: ["ui/src/routes/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
     },
   });

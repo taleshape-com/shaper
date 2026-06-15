@@ -44,11 +44,10 @@ function DashboardTable ({ headers, data }: TableProps) {
                   const header = headers[index];
                   let percent = undefined;
                   let percentDisplay = undefined;
-                  let percentValue = undefined;
 
                   if (header.tag === "trend" && typeof item === "number") {
                     // Calculate the percentage change: -100 * (1 - item) = 100 * (item - 1)
-                    percentValue = -100 * (1 - item);
+                    const percentValue = -100 * (1 - item);
 
                     // Format based on the specified ranges
                     if (percentValue > -0.0001 && percentValue < 0.0001) {

@@ -144,7 +144,7 @@ export function Dashboard ({
     }
   }, [loading]);
 
-  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary?: () => void }) {
+  const ErrorDisplay = function ({ error, resetErrorBoundary }: { error: any, resetErrorBoundary?: () => void }) {
     errResetFn.current = resetErrorBoundary;
     const [copied, setCopied] = useState(false);
 

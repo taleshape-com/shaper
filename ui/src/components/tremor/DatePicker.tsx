@@ -17,8 +17,7 @@ import {
   type DateSegment,
 } from "@react-stately/datepicker";
 import { RiCalendar2Fill, RiSubtractFill } from "@remixicon/react";
-import { format, type Locale } from "date-fns";
-import { enUS } from "date-fns/locale";
+import { formatDate } from "../../lib/dateUtils";
 import { tv, VariantProps } from "tailwind-variants";
 
 import { cx, focusInput, focusRing, getUTCDate, hasErrorInput } from "../../lib/utils";
@@ -406,7 +405,6 @@ type CalendarProps = {
   toDay?: Date
   fromDate?: Date
   toDate?: Date
-  locale?: Locale
 }
 
 type Translations = {
@@ -461,7 +459,6 @@ const SingleDatePicker = ({
   placeholder = "Select date",
   hasError,
   enableYearNavigation = false,
-  locale = enUS,
   align = "center",
   ...props
 }: SingleProps) => {
@@ -625,7 +622,6 @@ const SingleDatePicker = ({
                 selected={date}
                 onSelect={onDateChange}
                 disabled={disabledDays}
-                locale={locale}
                 enableYearNavigation={enableYearNavigation}
                 disableNavigation={disableNavigation}
                 initialFocus
@@ -669,7 +665,6 @@ const RangeDatePicker = ({
   disableNavigation,
   disabledDays,
   enableYearNavigation = false,
-  locale = enUS,
   showTimePicker,
   placeholder = "Select date range",
   hasError,
@@ -922,7 +917,6 @@ const RangeDatePicker = ({
                 disabled={disabledDays}
                 disableNavigation={disableNavigation}
                 enableYearNavigation={enableYearNavigation}
-                locale={locale}
                 initialFocus
                 classNames={{
                   months:
@@ -1052,7 +1046,7 @@ const validatePresets = (
 
           if (presetDay > toDay.getDate()) {
             throw new Error(
-              `Preset ${preset.label} is after toDay ${format(
+              `Preset ${preset.label} is after toDay ${formatDate(
                 toDay,
                 "MMM dd, yyyy",
               )}.`,
@@ -1082,7 +1076,7 @@ const validatePresets = (
 
           if (presetMonth && presetMonth < fromMonth.getMonth()) {
             throw new Error(
-              `Preset ${preset.label}'s 'from' is before fromMonth ${format(
+              `Preset ${preset.label}'s 'from' is before fromMonth ${formatDate(
                 fromMonth,
                 "MMM, yyyy",
               )}.`,
@@ -1095,7 +1089,7 @@ const validatePresets = (
 
           if (presetMonth && presetMonth > toMonth.getMonth()) {
             throw new Error(
-              `Preset ${preset.label}'s 'to' is after toMonth ${format(
+              `Preset ${preset.label}'s 'to' is after toMonth ${formatDate(
                 toMonth,
                 "MMM, yyyy",
               )}.`,
@@ -1109,7 +1103,7 @@ const validatePresets = (
           if (presetDay && presetDay < fromDay.getDate()) {
             throw new Error(
               `Preset ${preset.dateRange.from
-              }'s 'from' is before fromDay ${format(fromDay, "MMM dd, yyyy")}.`,
+              }'s 'from' is before fromDay ${formatDate(fromDay, "MMM dd, yyyy")}.`,
             );
           }
         }
@@ -1119,7 +1113,7 @@ const validatePresets = (
 
           if (presetDay && presetDay > toDay.getDate()) {
             throw new Error(
-              `Preset ${preset.label}'s 'to' is after toDay ${format(
+              `Preset ${preset.label}'s 'to' is after toDay ${formatDate(
                 toDay,
                 "MMM dd, yyyy",
               )}.`,
