@@ -9,7 +9,7 @@ import {
   RiArrowRightDoubleLine,
   RiArrowRightSLine,
 } from "@remixicon/react";
-import { addYears, isSameMonth } from "date-fns";
+import { addYears, isSameMonth } from "../../lib/dateUtils";
 import {
   DayPicker,
   useDayPicker,

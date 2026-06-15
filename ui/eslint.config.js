@@ -42,4 +42,10 @@ export default tseslint.config(
       "no-trailing-spaces": "error",
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 0 }],
     },
+  },
+  {
+    files: ["ui/src/routes/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
   });

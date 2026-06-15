@@ -485,7 +485,7 @@ const BarChart = (props: BarChartProps) => {
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
           rotate: shouldRotateXLabel ? 45 : 0,
           hideOverlap: true,
-          //customValues,
+          customValues,
           padding: [4, 8, 4, 8],
         },
         axisPointer: {

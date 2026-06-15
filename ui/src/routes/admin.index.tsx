@@ -76,14 +76,11 @@ function getInviteState (createdAt: string, validTimeInSeconds: number): InviteS
   const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
   const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-  let expiresIn = "";
-  if (days > 0) {
-    expiresIn = ("Expires in %% days").replace("%%", days.toString());
-  } else if (hours > 0) {
-    expiresIn = ("Expires in %% hours").replace("%%", hours.toString());
-  } else {
-    expiresIn = "Expires soon";
-  }
+  const expiresIn = days > 0
+    ? ("Expires in %% days").replace("%%", days.toString())
+    : hours > 0
+      ? ("Expires in %% hours").replace("%%", hours.toString())
+      : "Expires soon";
 
   return { isExpired: false, expiresIn };
 }

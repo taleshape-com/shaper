@@ -35,9 +35,9 @@ export const hasErrorInput = [
 ];
 
 export const varsParamSchema = z
-  .record(z.union([z.string(), z.array(z.string())]))
+  .record(z.string(), z.union([z.string(), z.array(z.string())]))
   .optional();
-export type VarsParamSchema = (typeof varsParamSchema)["_type"];
+export type VarsParamSchema = z.infer<typeof varsParamSchema>;
 
 export const getSearchParamString = (vars: VarsParamSchema) => {
   const params = new URLSearchParams();
@@ -53,7 +53,7 @@ export const getSearchParamString = (vars: VarsParamSchema) => {
       });
       return;
     }
-    params.set(key, value);
+    params.set(key, value as string);
   });
   return params.toString();
 };

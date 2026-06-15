@@ -28,7 +28,7 @@ const zVariables = z.record(
   z.string().min(1),
   z.union([z.string(), z.array(z.string())]),
 );
-export type Variables = (typeof zVariables)["_type"];
+export type Variables = z.infer<typeof zVariables>;
 
 export const localStorageTokenKey = "shaper-session-token";
 export const localStorageJwtKey = "shaper-jwt";
