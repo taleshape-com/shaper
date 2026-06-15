@@ -71,7 +71,14 @@ const Boxplot = (props: BoxplotProps) => {
     React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
-  const [isHovering, setIsHovering] = React.useState<null | string | number>(null);
+  const isHovering = React.useMemo(() => {
+    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
+      return isDatableType(indexType)
+        ? new Date(hoveredIndex as number).toUTCString()
+        : hoveredIndex.toString();
+    }
+    return null;
+  }, [hoveredIndex, hoveredIndexType, indexType, hoveredChartId, chartId]);
 
   // Update hoveredChartId ref whenever it changes
   useEffect(() => {
@@ -433,24 +440,6 @@ const Boxplot = (props: BoxplotProps) => {
     chartHeight,
     label,
     markLines,
-  ]);
-
-  useEffect(() => {
-    if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
-      const strIndex = isDatableType(indexType)
-        ? new Date(hoveredIndex as number).toUTCString()
-        : hoveredIndex.toString();
-      setIsHovering(strIndex);
-    } else {
-      setIsHovering(null);
-    }
-  }, [
-    chartId,
-    indexType,
-    hoveredIndex,
-    hoveredIndexType,
-    hoveredChartId,
-    setIsHovering,
   ]);
 
   useEffect(() => {

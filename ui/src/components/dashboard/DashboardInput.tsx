@@ -6,7 +6,7 @@ import { Input } from "../tremor/Input";
 import { Label } from "../tremor/Label";
 import { cx } from "../../lib/utils";
 import { useThrottledCallback } from "use-debounce";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 type InputProps = {
   label?: string;
@@ -32,11 +32,13 @@ function DashboardInput ({
 
   // Local state for immediate UI updates
   const [localValue, setLocalValue] = useState(externalValue || "");
+  const [prevExternalValue, setPrevExternalValue] = useState(externalValue);
 
-  // Sync local state when external value changes
-  useEffect(() => {
+  // Sync local state when external value changes during rendering phase to avoid useEffect cascading renders
+  if (externalValue !== prevExternalValue) {
     setLocalValue(externalValue || "");
-  }, [externalValue]);
+    setPrevExternalValue(externalValue);
+  }
 
   // Get placeholder from data if available
   const placeholder = data.length > 0 ?

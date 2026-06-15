@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { useMemo, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { debounce } from "lodash";
 
 import * as echarts from "echarts/core";
@@ -81,21 +81,6 @@ export const EChart = ({
 }: EChartProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const prevEventKeysRef = useRef<string[]>([]);
-  const resizeChart = useMemo(
-    () =>
-      debounce(() => {
-        if (chartRef.current) {
-          const chart = echarts.getInstanceByDom(chartRef.current);
-          if (chart) {
-            chart.resize();
-            if (onResize) {
-              onResize(chart);
-            }
-          }
-        }
-      }, 50),
-    [onResize],
-  );
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -105,6 +90,19 @@ export const EChart = ({
     if (onChartReady) {
       onChartReady(chart);
     }
+
+    const resizeChart = debounce(() => {
+      if (chartRef.current) {
+        const chart = echarts.getInstanceByDom(chartRef.current);
+        if (chart) {
+          chart.resize();
+          if (onResize) {
+            onResize(chart);
+          }
+        }
+      }
+    }, 50);
+
     const resizeObserver = new ResizeObserver(() => {
       resizeChart();
     });
@@ -128,6 +126,7 @@ export const EChart = ({
     const currentRef = chartRef.current;
     return () => {
       chart?.dispose();
+      resizeChart.cancel();
       if (currentRef) {
         resizeObserver.unobserve(currentRef);
       }
@@ -135,7 +134,7 @@ export const EChart = ({
       window.removeEventListener("beforeprint", handlePrint);
       window.removeEventListener("afterprint", handlePrint);
     };
-  }, [resizeChart, onChartReady, onResize]);
+  }, [onChartReady, onResize]);
 
   useEffect(() => {
     if (!chartRef.current) return;

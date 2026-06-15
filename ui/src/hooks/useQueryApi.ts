@@ -9,7 +9,7 @@ export type QueryApiFunc = (url: string, options?: { method?: "GET" | "POST" | "
 
 // Use to call API with JWT authentication and redirect to login page on 401
 export const useQueryApi = (): QueryApiFunc => {
-  return useCallback((async (url, options = {}) => {
+  return useCallback<QueryApiFunc>(async (url, options = {}) => {
     const jwt = await getJwt();
     const response = await fetchWithRetry(`${window.shaper.defaultBaseUrl}api/${url}`, {
       headers: {
@@ -31,5 +31,5 @@ export const useQueryApi = (): QueryApiFunc => {
         });
     }
     return response.json();
-  }) as QueryApiFunc, []);
+  }, []);
 };

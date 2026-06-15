@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { isEqual } from "lodash";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import {
   localStorageTokenKey,
   localStorageVariablesKey,
@@ -33,8 +33,34 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
     getVariables(getVariablesString()),
   );
   const [hash, setHash] = useState<string>(getVariablesString());
-  const [userName, setUserName] = useState<string>("");
-  const [userId, setUserId] = useState<string>("");
+  const [userName, setUserName] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const jwt = localStorage.getItem(localStorageJwtKey);
+      if (jwt) {
+        try {
+          const decoded = parseJwt(jwt);
+          return decoded.userName || "";
+        } catch {
+          return "";
+        }
+      }
+    }
+    return "";
+  });
+  const [userId, setUserId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const jwt = localStorage.getItem(localStorageJwtKey);
+      if (jwt) {
+        try {
+          const decoded = parseJwt(jwt);
+          return decoded.userId || "";
+        } catch {
+          return "";
+        }
+      }
+    }
+    return "";
+  });
 
   const updateUserInfoFromJwt = useCallback((jwt: string | null) => {
     if (!jwt) {
@@ -74,11 +100,6 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to refresh username:", error);
     }
-  }, [updateUserInfoFromJwt]);
-
-  useEffect(() => {
-    const jwt = localStorage.getItem(localStorageJwtKey);
-    updateUserInfoFromJwt(jwt);
   }, [updateUserInfoFromJwt]);
 
   const login = useCallback(

@@ -84,13 +84,34 @@ export const Route = createFileRoute("/dashboards_/$id/edit")({
 function DashboardEditor () {
   const params = Route.useParams();
   const { vars } = Route.useSearch();
-  const dashboard = Route.useLoaderData();
+  const loaderDashboard = Route.useLoaderData();
+  const [dashboard, setDashboard] = useState(loaderDashboard);
+  const [prevLoaderDashboard, setPrevLoaderDashboard] = useState(loaderDashboard);
+
+  // Sync state with loader data during render phase
+  if (loaderDashboard !== prevLoaderDashboard) {
+    setDashboard(loaderDashboard);
+    setPrevLoaderDashboard(loaderDashboard);
+  }
   const router = useRouter();
   const auth = useAuth();
   const queryApi = useQueryApi();
   const navigate = useNavigate({ from: "/dashboards/$id/edit" });
-  const [editorQuery, setEditorQuery] = useState(dashboard.content);
-  const [runningQuery, setRunningQuery] = useState(dashboard.content);
+  const [editorQuery, setEditorQuery] = useState(() => {
+    const savedContent = typeof window !== "undefined" ? editorStorage.getChanges(params.id) : null;
+    return (savedContent && savedContent !== dashboard.content) ? savedContent : dashboard.content;
+  });
+  const [runningQuery, setRunningQuery] = useState(editorQuery);
+  const [prevParamsId, setPrevParamsId] = useState(params.id);
+
+  // Sync state with editorStorage when route ID changes in render phase
+  if (params.id !== prevParamsId) {
+    setPrevParamsId(params.id);
+    const savedContent = typeof window !== "undefined" ? editorStorage.getChanges(params.id) : null;
+    const initialContent = (savedContent && savedContent !== dashboard.content) ? savedContent : dashboard.content;
+    setEditorQuery(initialContent);
+    setRunningQuery(initialContent);
+  }
   const [saving, setSaving] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(dashboard.name);
@@ -126,15 +147,6 @@ function DashboardEditor () {
 
   // Ref for dashboard ID text selection
   const dashboardIdRef = useRef<HTMLElement>(null);
-
-  // Check for unsaved changes when component mounts and restore directly
-  useEffect(() => {
-    const savedContent = editorStorage.getChanges(params.id);
-    if (savedContent && savedContent !== dashboard.content) {
-      setEditorQuery(savedContent);
-      setRunningQuery(savedContent);
-    }
-  }, [params.id, dashboard.content]);
 
   const previewDashboard = useCallback(async () => {
     // Abort any in-flight preview request
@@ -214,7 +226,7 @@ function DashboardEditor () {
       });
       // Clear localStorage after successful save
       editorStorage.clearChanges(params.id);
-      dashboard.content = editorQuery;
+      setDashboard((prev) => ({ ...prev, content: editorQuery }));
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
@@ -228,7 +240,7 @@ function DashboardEditor () {
     } finally {
       setSaving(false);
     }
-  }, [queryApi, params.id, editorQuery, dashboard, navigate, toast, router]);
+  }, [queryApi, params.id, editorQuery, navigate, toast, router]);
 
   const handleVarsChanged = useCallback(
     (newVars: any) => {
@@ -253,7 +265,7 @@ function DashboardEditor () {
         method: "POST",
         body: { name: newName },
       });
-      dashboard.name = newName;
+      setDashboard((prev) => ({ ...prev, name: newName }));
       setName(newName);
     } catch (err) {
       if (isRedirect(err)) {
@@ -328,10 +340,13 @@ function DashboardEditor () {
         });
       }
 
-      dashboard.visibility = selectedVisibility as
-        | "public"
-        | "private"
-        | "password-protected";
+      setDashboard((prev) => ({
+        ...prev,
+        visibility: selectedVisibility as
+          | "public"
+          | "private"
+          | "password-protected",
+      }));
       router.invalidate();
     } catch (err) {
       if (isRedirect(err)) {
@@ -432,6 +447,7 @@ function DashboardEditor () {
 
   // Load initial preview
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     previewDashboard();
     return () => {
       // Abort any pending preview when unmounting

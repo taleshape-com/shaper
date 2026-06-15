@@ -64,7 +64,21 @@ function TaskEdit () {
   const queryApi = useQueryApi();
   const navigate = useNavigate();
   const router = useRouter();
-  const [editorQuery, setEditorQuery] = useState("");
+  const [editorQuery, setEditorQuery] = useState(() => {
+    const unsavedContent = typeof window !== "undefined" ? editorStorage.getChanges(id, "task") : null;
+    return (unsavedContent && unsavedContent !== task.content) ? unsavedContent : task.content;
+  });
+  const [prevId, setPrevId] = useState(id);
+  const [prevTaskContent, setPrevTaskContent] = useState(task.content);
+
+  // Sync state with editorStorage when id or task content changes in render phase
+  if (id !== prevId || task.content !== prevTaskContent) {
+    setPrevId(id);
+    setPrevTaskContent(task.content);
+    const unsavedContent = typeof window !== "undefined" ? editorStorage.getChanges(id, "task") : null;
+    const initialContent = (unsavedContent && unsavedContent !== task.content) ? unsavedContent : task.content;
+    setEditorQuery(initialContent);
+  }
   const [saving, setSaving] = useState(false);
   const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -80,16 +94,6 @@ function TaskEdit () {
   useEffect(() => {
     addRecentApp(id, task.name, "task");
   }, [id, task.name, addRecentApp]);
-
-  // Check for unsaved changes when component mounts
-  useEffect(() => {
-    const unsavedContent = editorStorage.getChanges(id, "task");
-    if (unsavedContent && unsavedContent !== task.content) {
-      setEditorQuery(unsavedContent);
-    } else {
-      setEditorQuery(task.content);
-    }
-  }, [task, id]);
 
   const handleRun = useCallback(async () => {
     setPreviewError(null);

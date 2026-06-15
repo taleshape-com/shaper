@@ -128,8 +128,31 @@ function NewDashboard () {
   const [appType, setAppType] = useState<"dashboard" | "task">(() =>
     systemConfig.tasksEnabled ? getStoredAppType() : "dashboard",
   );
-  const [editorQuery, setEditorQuery] = useState("");
-  const [runningQuery, setRunningQuery] = useState("");
+  const [editorQuery, setEditorQuery] = useState(() => {
+    const unsavedContent = typeof window !== "undefined" ? editorStorage.getChanges("new") : null;
+    if (unsavedContent) {
+      return unsavedContent;
+    }
+    const defaultAppType = systemConfig.tasksEnabled ? getStoredAppType() : "dashboard";
+    return defaultAppType === "task" ? defaultTaskQuery : defaultDashboardQuery;
+  });
+  const [runningQuery, setRunningQuery] = useState(editorQuery);
+  const [prevAppType, setPrevAppType] = useState(appType);
+
+  // Sync state with editorStorage/appType when appType changes in render phase
+  if (appType !== prevAppType) {
+    setPrevAppType(appType);
+    const unsavedContent = typeof window !== "undefined" ? editorStorage.getChanges("new") : null;
+    if (unsavedContent) {
+      setEditorQuery(unsavedContent);
+      setRunningQuery(unsavedContent);
+    } else {
+      const defaultContent =
+        appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
+      setEditorQuery(defaultContent);
+      setRunningQuery(defaultContent);
+    }
+  }
   const [creating, setCreating] = useState(false);
   const [previewId, setPreviewId] = useState<string | undefined>(undefined);
   const [taskData, setTaskData] = useState<TaskResult | undefined>(undefined);
@@ -141,21 +164,6 @@ function NewDashboard () {
   const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
   const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
   const { toast } = useToast();
-
-  // Check for unsaved changes when component mounts or type changes
-  useEffect(() => {
-    const unsavedContent = editorStorage.getChanges("new");
-    if (unsavedContent) {
-      setEditorQuery(unsavedContent);
-      setRunningQuery(unsavedContent);
-    } else {
-      // Set default content based on app type
-      const defaultContent =
-        appType === "task" ? defaultTaskQuery : defaultDashboardQuery;
-      setEditorQuery(defaultContent);
-      setRunningQuery(defaultContent);
-    }
-  }, [appType]);
 
   const previewDashboard = useCallback(async () => {
     if (!runningQuery.trim()) {
@@ -207,6 +215,7 @@ function NewDashboard () {
 
   useEffect(() => {
     if (appType === "dashboard") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       previewDashboard();
     }
   }, [previewDashboard, appType]);

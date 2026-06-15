@@ -11,20 +11,20 @@ const STORAGE_KEY = "shaper-recent-apps";
 const MAX_RECENT = 10;
 
 export function useRecentApps () {
-  const [recentApps, setRecentApps] = useState<RecentApp[]>([]);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setRecentApps(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        setRecentApps([]);
+  const [recentApps, setRecentApps] = useState<RecentApp[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
       }
     }
-  }, []);
+    return [];
+  });
 
   // Listen for changes from other components
   useEffect(() => {
