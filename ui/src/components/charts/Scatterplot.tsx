@@ -2,7 +2,7 @@
 
 import React, { useEffect, useCallback, useRef } from "react";
 import type { ECharts } from "echarts/core";
-import type { BarSeriesOption } from "echarts/charts";
+import type { ScatterSeriesOption } from "echarts/charts";
 import {
   constructCategoryColors,
   getThemeColors,
@@ -15,12 +15,9 @@ import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue, echartsEncode } from "../../lib/render";
 import { safeColor } from "../../lib/safeColor";
-import { translate } from "../../lib/translate";
 import { EChart } from "./EChart";
 
-const chartPadding = 16;
-
-interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ScatterplotProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   label?: string;
   data: Record<string, any>[];
@@ -35,12 +32,12 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showLegend?: boolean;
   xAxisLabel?: string;
   yAxisLabel?: string;
-  layout: "vertical" | "horizontal";
-  type: "default" | "stacked";
   markLines?: MarkLine[];
 }
 
-const BarChart = (props: BarChartProps) => {
+const chartPadding = 16;
+
+const Scatterplot = (props: ScatterplotProps) => {
   const {
     data,
     extraDataByIndexAxis,
@@ -55,8 +52,6 @@ const BarChart = (props: BarChartProps) => {
     className,
     xAxisLabel,
     yAxisLabel,
-    layout,
-    type,
     chartId,
     label,
     markLines,
@@ -64,15 +59,14 @@ const BarChart = (props: BarChartProps) => {
   } = props;
 
   const chartRef = useRef<ECharts | null>(null);
-  const hoveredChartIdRef = useRef<string | null>(null);
   const [chartWidth, setChartWidth] = React.useState(450);
   const [chartHeight, setChartHeight] = React.useState(300);
+  const hoveredChartIdRef = useRef<string | null>(null);
 
   const { hoveredIndex, hoveredChartId, hoveredIndexType, setHoverState } =
     React.useContext(ChartHoverContext);
 
   const { isDarkMode } = React.useContext(DarkModeContext);
-
   const isHovering = React.useMemo(() => {
     if (hoveredIndex != null && hoveredIndexType === indexType && hoveredChartId != null && hoveredChartId !== chartId) {
       return hoveredIndex;
@@ -92,48 +86,42 @@ const BarChart = (props: BarChartProps) => {
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
+
     const isTimestampData = isDatableType(indexType) || indexType === "number";
 
-    // We treat vertical timestamp data as categories.
-    let dataCopy = data;
-    if (layout === "vertical" && isDatableType(indexType)) {
-      dataCopy = data.map((item) => {
-        return {
-          ...item,
-          // Since we treat index as category, it will be converted to text. Cannot keep date in the original number format.
-          [index]: new Date(item[index]).toISOString(),
-        };
-      });
-    }
-
     // Set up chart options
-    const series: BarSeriesOption[] = categories.map((category) => ({
-      name: category,
-      id: category,
-      type: "bar" as const,
-      barGap: "3%",
-      barMaxWidth: dataCopy.length === 1 ? layout == "horizontal" ? "50%" : "25%" : undefined,
-      stack: type === "stacked" ? "stack" : category,
-      cursor: "crosshair",
-      data: isTimestampData && layout === "horizontal"
-        ? dataCopy.map((item) => [item[index], item[category]])
-        : dataCopy.map((item) => item[category]),
-      itemStyle: {
-        color: categoryColors.get(category),
-      },
-      emphasis: {
-        focus: "series",
-      },
-      animationDelay: 100,
-      animationDelayUpdate: 100,
-    }));
+    const series: ScatterSeriesOption[] = [];
+    categories.forEach((category) => {
+      const col = categoryColors.get(category) || "#333";
+      series.push({
+        name: category,
+        id: category,
+        type: "scatter" as const,
+        data: isTimestampData
+          ? data.map((item) => [item[index], item[category]])
+          : data.map((item) => item[category]),
+        symbol: "circle",
+        symbolSize: data.length > 1 ? 10 : 12,
+        cursor: "crosshair",
+        zlevel: 10,
+        emphasis: {
+          scale: 1.3,
+          focus: "self",
+        },
+        animationDelay: 100,
+        animationDelayUpdate: 100,
+        itemStyle: {
+          color: col,
+          borderWidth: 0,
+        },
+      });
+    });
 
     if (markLines) {
       let foundEventLine = false;
       let multiEventLines = false;
       for (const m of markLines) {
-        const isEventLine = !m.isYAxis && layout === "horizontal";
-        if (isEventLine) {
+        if (!m.isYAxis) {
           if (foundEventLine) {
             multiEventLines = true;
             break;
@@ -142,43 +130,41 @@ const BarChart = (props: BarChartProps) => {
         }
       }
       series.push({
-        type: "bar" as const,
-        stack: type === "stacked" ? "stack" : categories[0],
+        type: "scatter" as const,
         markLine: {
           silent: true,
-          symbol: "none",
           animation: false,
-          data: markLines.filter(m => !m.isYAxis || layout === "horizontal").map(m => {
-            const isGoalLine = m.isYAxis || layout === "vertical";
+          symbol: "none",
+          data: markLines.map(m => {
             return {
               xAxis: m.isYAxis ? undefined : m.value,
               yAxis: m.isYAxis ? m.value : undefined,
-              symbol: isGoalLine ? "none" : "circle",
+              symbol: m.isYAxis ? "none" : "circle",
               symbolSize: 6.5,
               lineStyle: {
                 color: textColorSecondary,
                 type: "dashed",
-                width: isGoalLine ? 1.2 : 1.0,
-                opacity: isGoalLine ? 0.5 : 0.8,
+                width: m.isYAxis ? 1.2 : 1.0,
+                opacity: m.isYAxis ? 0.5 : 0.8,
               },
               label: {
                 formatter: m.label,
-                position: isGoalLine ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
-                distance: isGoalLine ? 1.5 : multiEventLines ? 5 : 3.8,
+                position: m.isYAxis ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
+                distance: m.isYAxis ? 1.5 : multiEventLines ? 5 : 3.8,
                 color: textColorSecondary,
                 fontFamily: chartFont,
                 fontWeight: 500,
                 fontSize: 11,
-                opacity: isGoalLine ? 0.5 : 0.8,
+                opacity: m.isYAxis ? 0.5 : 0.8,
                 width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
                 overflow: "truncate",
                 textBorderColor: backgroundColorSecondary,
-                textBorderWidth: !isGoalLine && multiEventLines ? 2 : 0,
+                textBorderWidth: !m.isYAxis && multiEventLines ? 2 : 0,
               },
             };
           }),
         },
-      });
+      } as any);
     }
 
     const numLegendItems = categories.filter(c => c.length > 0).length;
@@ -193,20 +179,12 @@ const BarChart = (props: BarChartProps) => {
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
-    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 36 : 58) : 0);
+    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
     const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
-    const xData = layout === "horizontal" && !isTimestampData ? dataCopy.map((item) => item[index]) : undefined;
+    const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
-    const shortenLabel = layout === "horizontal" ? xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true : false;
-    let maxLabelLen = 0;
-    (xData ?? []).forEach(x => {
-      const v = layout === "horizontal" ? indexFormatter(indexType === "duration" || indexType === "time" ? new Date(x).getTime() : x, shortenLabel) : valueFormatter(x, true);
-      if (v.length > maxLabelLen) {
-        maxLabelLen = v.length;
-      }
-    });
-    const shouldRotateXLabel = !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12;
+    const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
 
     return {
       title: {
@@ -229,8 +207,8 @@ const BarChart = (props: BarChartProps) => {
         triggerOn: "mousemove",
         enterable: false,
         confine: true,
-        hideDelay: 200, // Increase hide delay to prevent flickering
-        showDelay: 0, // Show immediately
+        hideDelay: 200,
+        showDelay: 0,
         borderRadius: 5,
         borderWidth: 0,
         backgroundColor: backgroundColorSecondary,
@@ -239,39 +217,15 @@ const BarChart = (props: BarChartProps) => {
           color: textColor,
         },
         formatter: (params: any) => {
-          const indexDim = layout === "horizontal" ? "x" : "y";
-          const axisData = params.find((item: any) => item?.axisDim === indexDim);
-          const hoverValue = axisData?.axisValue;
-          const title = indexFormatter(indexType === "duration" || indexType === "time" ? new Date(hoverValue).getTime() : hoverValue, xSpace / 6.5);
+          let indexValue: any;
 
-          let tooltipContent = `<div class="text-sm font-medium">${echartsEncode(title)}</div>`;
-
-          if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
-            const total = params.reduce((sum: number, item: any) => {
-              if (item.axisDim !== indexDim) {
-                return sum; // Skip non-index axis items
-              }
-              let value: number;
-              if (isTimestampData && layout === "horizontal" && Array.isArray(item.value) && item.value.length >= 2) {
-                value = item.value[1] as number;
-              } else {
-                value = item.value as number;
-              }
-
-              // Only include valid values in the total
-              if (value === null || value === undefined || isNaN(value)) {
-                return sum;
-              }
-
-              return sum + value;
-            }, 0);
-            tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
-              <span class="font-medium">${echartsEncode(translate("TOTAL"))}</span>
-              <span>${echartsEncode(valueFormatter(total))}</span>
-            </div>`;
+          const axisData = params.find((item: any) => item?.axisDim === "x");
+          if (isTimestampData) {
+            indexValue = axisData.value[0]; // timestamp is the first element
+          } else {
+            indexValue = axisData.axisValue;
           }
-
-          const extraData = extraDataByIndexAxis[hoverValue];
+          const extraData = extraDataByIndexAxis[indexValue];
 
           const getExtraDataForCategory = (categoryName: string) => {
             if (!extraData) return null;
@@ -321,6 +275,9 @@ const BarChart = (props: BarChartProps) => {
             }
           }
 
+          const formattedIndex = indexFormatter(indexType === "duration" ? new Date(indexValue).getTime() : indexValue, xSpace / 6.5);
+          let tooltipContent = `<div class="text-sm font-medium">${echartsEncode(formattedIndex)}</div>`;
+
           let hasGlobalExtra = false;
           let globalExtraContent = "";
           if (extraData) {
@@ -361,20 +318,19 @@ const BarChart = (props: BarChartProps) => {
             tooltipContent += `<div class="mt-2">${globalExtraContent}</div>`;
           }
 
-          // Use a Set to track shown categories
           tooltipContent += "<div class=\"mt-2\">";
           params.forEach((param: any) => {
-            if (param.axisDim !== indexDim) {
-              return; // Skip non-index axis items
+            if (param.axisDim !== "x") {
+              return;
             }
+
             let value: number;
-            if (isTimestampData && layout === "horizontal" && Array.isArray(param.value) && param.value.length >= 2) {
+            if (isTimestampData && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
             } else {
               value = param.value as number;
             }
 
-            // Skip categories with missing or null values
             if (value === null || value === undefined || isNaN(value)) {
               return;
             }
@@ -414,6 +370,7 @@ const BarChart = (props: BarChartProps) => {
       },
       legend: {
         show: showLegend,
+        data: categories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
         orient: "horizontal",
@@ -427,9 +384,13 @@ const BarChart = (props: BarChartProps) => {
           width: canFitLegendItems ? legendItemWidth : undefined,
           overflow: "truncate",
         },
+        itemStyle: {
+          opacity: 1,
+          borderWidth: 0,
+        },
         itemGap: legendItemGap,
-        itemHeight: 10,
-        itemWidth: 10,
+        itemHeight: 8,
+        itemWidth: 16,
         pageButtonPosition: "end",
         pageButtonGap: 10,
         pageButtonItemGap: 5,
@@ -446,6 +407,8 @@ const BarChart = (props: BarChartProps) => {
         pageTextStyle: {
           fontSize: 1,
         },
+        width: "auto",
+        height: categories.length > 4 ? 40 : 20,
       },
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
@@ -456,43 +419,34 @@ const BarChart = (props: BarChartProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: layout === "vertical" ? "value" as const : (isTimestampData ? "time" as const : "category" as const),
+        type: isTimestampData ? "time" as const : "category" as const,
         data: xData,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            if (layout === "horizontal") {
-              return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
-            }
-            return valueFormatter(value, true);
+            return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
-          interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
-          rotate: shouldRotateXLabel ? 45 : 0,
-          hideOverlap: true,
+          rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
+          hideOverlap: true,
         },
         axisPointer: {
           type: "line",
-          show: layout === "horizontal" || dataCopy.length > 1,
-          triggerEmphasis: layout === "horizontal",
+          show: true,
           triggerOn: "mousemove",
-          triggerTooltip: layout === "horizontal",
           lineStyle: {
             color: referenceLineColor,
             type: "solid",
             width: 0.65,
           },
           label: {
-            show: data.length > 1,
+            show: true,
             formatter: (params: any) => {
-              if (layout === "horizontal") {
-                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
-              }
-              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value, true);
+              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
             },
             fontFamily: chartFont,
             margin: 5,
@@ -506,12 +460,9 @@ const BarChart = (props: BarChartProps) => {
         axisTick: {
           show: false,
         },
-        splitLine: layout === "vertical" ? {
-          show: dataCopy.length > 1,
-          lineStyle: {
-            color: borderColor,
-          },
-        } : undefined,
+        splitLine: {
+          show: false,
+        },
         name: xAxisLabel,
         nameLocation: "middle",
         nameGap: 36,
@@ -523,47 +474,37 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       yAxis: {
-        type: layout === "horizontal" ? "value" as const : ("category" as const),
-        data: layout === "vertical" ? dataCopy.map((item) => item[index]) : undefined,
+        type: "value" as const,
         show: true,
         axisLabel: {
-          show: true, // Always show labels
+          show: true,
           formatter: (value: any) => {
-            if (layout === "horizontal") {
-              return valueFormatter(value, true);
-            }
-            return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, xSpace / 30);
+            return valueFormatter(value, true);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
-          fontSize: 12,
-          showMinLabel: true,
-          showMaxLabel: true,
-          padding: [4, 8, 4, 8], // Add padding around labels
+          padding: [4, 8, 4, 8],
           hideOverlap: true,
         },
         axisPointer: {
-          type: "line",
-          show: layout === "vertical" || dataCopy.length > 1,
-          triggerEmphasis: layout === "vertical",
+          type: data.length > 1 ? "line" : "none",
+          show: data.length > 1,
           triggerOn: "mousemove",
-          lineStyle: {
-            color: referenceLineColor,
-            type: "solid",
-            width: 0.65,
-          },
+          triggerEmphasis: false,
           label: {
-            show: layout === "horizontal" || dataCopy.length > 1,
+            show: true,
             formatter: (params: any) => {
-              if (layout === "horizontal") {
-                return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
-              }
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
+              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
             },
             fontFamily: chartFont,
             margin: 10,
             color: textColorInverted,
             backgroundColor: backgroundColorInverted,
+          },
+          lineStyle: {
+            color: referenceLineColor,
+            type: "solid",
+            width: 0.65,
           },
         },
         axisLine: {
@@ -572,17 +513,13 @@ const BarChart = (props: BarChartProps) => {
         axisTick: {
           show: false,
         },
-        splitLine: layout === "horizontal" ? {
-          show: dataCopy.length > 1,
+        splitLine: {
+          show: true,
           lineStyle: {
             color: borderColor,
           },
-        } : undefined,
+        },
       },
-      series,
-      // We use a graphic element to display the y-axis label instead of the axis name
-      // since the name can overlap with the axis labels.
-      // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
       graphic: {
         type: "text",
         rotation: Math.PI / 2,
@@ -597,6 +534,7 @@ const BarChart = (props: BarChartProps) => {
           textAlign: "center",
         },
       },
+      series,
     };
   }, [
     data,
@@ -608,8 +546,6 @@ const BarChart = (props: BarChartProps) => {
     valueFormatter,
     indexFormatter,
     showLegend,
-    layout,
-    type,
     xAxisLabel,
     yAxisLabel,
     extraDataByIndexAxis,
@@ -626,12 +562,12 @@ const BarChart = (props: BarChartProps) => {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
-    const isTimestampData = isDatableType(indexType) || indexType === "number";
-    const series: BarSeriesOption[] = [{
+    const series = [{
       id: "shaper-hover-reference-line",
-      type: "bar" as const,
-      stack: type === "stacked" ? "stack" : categories[0],
+      type: "scatter" as const,
       markLine: {
+        animationDuration: 100,
+        animationDurationUpdate: 100,
         silent: true,
         symbol: "none",
         animation: false,
@@ -643,76 +579,44 @@ const BarChart = (props: BarChartProps) => {
           type: "solid",
           width: 0.65,
         },
-        data: isHovering != null && (data.length !== 1 || data[0][index] === isHovering) ? [{
-          [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && layout === "vertical"
-            ? indexType === "number" ? isHovering.toString() : new Date(isHovering).toISOString()
-            : isHovering,
-        }] : [],
+        data: isHovering != null && (data.length !== 1 || data[0][index] === isHovering) ? [{ xAxis: isHovering }] : [],
       },
     }];
     chart.setOption({ series }, { lazyUpdate: true });
   }, [
     data,
     index,
-    categories,
-    indexType,
     isDarkMode,
-    layout,
-    type,
     isHovering,
   ]);
 
   // Event handlers for the EChart component
   const chartEvents = React.useMemo(() => {
     return {
-      // Add tooltip event handler
       showTip: (params: any) => {
-        let dataIndex = -1;
         let indexValue: any;
 
-        if (layout === "vertical") {
-          // Safely access nested properties for vertical layout
-          const dataByCoordSys = Array.isArray(params?.dataByCoordSys) && params.dataByCoordSys.length > 0
-            ? params.dataByCoordSys[0]
-            : undefined;
-          if (dataByCoordSys?.dataByAxis) {
-            const yAxisData = dataByCoordSys.dataByAxis.find((item: any) => item?.axisDim === "y");
-            if (yAxisData?.value !== undefined) {
-              dataIndex = yAxisData.value;
-            }
+        if (params.dataIndex !== undefined && params.seriesIndex !== undefined) {
+          const dataIndex = params.dataIndex;
+          if (dataIndex >= 0 && dataIndex < data.length) {
+            indexValue = data[dataIndex][index];
           }
-        } else {
-          // For horizontal layout, use standard params
-          if (params?.dataIndex !== undefined && params?.seriesIndex !== undefined) {
-            dataIndex = params.dataIndex;
-          } else if (params?.axisValue !== undefined) {
-            indexValue = params.axisValue;
-          }
-        }
-
-        // Only try to get indexValue from data if we have a valid dataIndex
-        if (dataIndex >= 0 && dataIndex < data.length) {
-          const item = data[dataIndex];
-          if (item && index in item) {
-            indexValue = item[index];
-          }
+        } else if (params.axisValue !== undefined) {
+          indexValue = params.axisValue;
         }
 
         if (indexValue !== undefined) {
           setHoverState(indexValue, chartId, indexType);
         }
       },
-      // Also handle tooltip hide to clear hover state
       hideTip: () => {
-        // Always clear hover state when tooltip is hidden
         if (hoveredChartIdRef.current === chartId) {
           setHoverState(null, null, null);
         }
       },
     };
-  }, [data, index, chartId, setHoverState, indexType, layout]);
+  }, [indexType, data, index, chartId, setHoverState]);
 
-  // Handle chart instance reference
   const handleChartReady = useCallback((chart: ECharts) => {
     chartRef.current = chart;
     setChartWidth(chart.getWidth());
@@ -741,6 +645,6 @@ const BarChart = (props: BarChartProps) => {
   );
 };
 
-BarChart.displayName = "BarChart";
+Scatterplot.displayName = "Scatterplot";
 
-export { BarChart, type BarChartProps };
+export { Scatterplot, type ScatterplotProps };

@@ -212,6 +212,32 @@ func (c *APIClient) ensureValidToken(ctx context.Context) error {
 	return nil
 }
 
+func (c *APIClient) Actor() string {
+	if c.token == "" {
+		return "no_auth"
+	}
+	parts := strings.Split(c.token, ".")
+	if len(parts) < 2 {
+		return "no_auth"
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "no_auth"
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return "no_auth"
+	}
+
+	if userID, ok := claims["userId"].(string); ok && userID != "" {
+		return "user:" + userID
+	}
+	if apiKeyID, ok := claims["apiKeyId"].(string); ok && apiKeyID != "" {
+		return "api_key:" + apiKeyID
+	}
+	return "no_auth"
+}
+
 func decodeAPIError(resp *http.Response) error {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
 	if len(body) == 0 {
