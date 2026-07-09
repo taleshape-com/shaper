@@ -15,6 +15,7 @@ import DashboardInput from "./DashboardInput";
 import { Card } from "../tremor/Card";
 import { translate } from "../../lib/translate";
 import DashboardLineChart from "./DashboardLineChart";
+import DashboardScatterplot from "./DashboardScatterplot";
 import DashboardBarChart from "./DashboardBarChart";
 import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
@@ -483,7 +484,7 @@ const DataView = ({
                   }
                   const currentId = `${sectionIndex}-${queryIndex}`;
                   const isFullscreen = fullscreenId === currentId;
-                  const isBigChartQuery = query.render.type === "linechart" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+                  const isBigChartQuery = query.render.type === "linechart" || query.render.type === "scatterplot" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
                   const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
                   const singleTable = numQueriesInSection === 1 && query.render.type === "table";
                   const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
@@ -647,6 +648,19 @@ const renderContent = (
   if (query.render.type === "linechart") {
     return (
       <DashboardLineChart
+        chartId={`${sectionIndex}-${queryIndex}`}
+        label={query.render.label}
+        headers={query.columns}
+        data={query.rows as (string | number | boolean)[][]}
+        minTimeValue={minTimeValue}
+        maxTimeValue={maxTimeValue}
+        markLines={query.render.markLines}
+      />
+    );
+  }
+  if (query.render.type === "scatterplot") {
+    return (
+      <DashboardScatterplot
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
         headers={query.columns}
