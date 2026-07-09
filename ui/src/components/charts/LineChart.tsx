@@ -269,19 +269,6 @@ const LineChart = (props: LineChartProps) => {
     const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
-    let customValues = undefined;
-    if (isTimestampData) {
-      const numVals = Math.floor(xSpace / 130);
-      const dataMin = Math.min(...data.map(d => d[index]));
-      const dataMax = Math.max(...data.map(d => d[index]));
-      const dataPadding = (dataMax - dataMin) * (60 / xSpace);
-      const dataSpan = (dataMax - dataMin) - 2 * dataPadding;
-      const offset = dataSpan / numVals;
-      customValues = [];
-      for (let i = 0; i <= numVals; i++) {
-        customValues.push(Math.round(dataMin + dataPadding + i * offset));
-      }
-    }
 
     return {
       title: {
@@ -563,7 +550,6 @@ const LineChart = (props: LineChartProps) => {
           rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
-          customValues,
         },
         axisPointer: {
           type: "line",

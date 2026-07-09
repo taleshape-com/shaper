@@ -207,24 +207,6 @@ const BarChart = (props: BarChartProps) => {
       }
     });
     const shouldRotateXLabel = !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12;
-    let customValues = undefined;
-    if (layout === "horizontal" && isTimestampData) {
-      const canFitAll = (chartWidth - 2 * chartPadding + (yAxisLabel ? 20 : 0)) / dataCopy.length > (isTimeType(indexType) ? 80 : indexType === "duration" ? 75 : 45);
-      if (canFitAll) {
-        customValues = dataCopy.map((item) => item[index]);
-      } else {
-        const numVals = Math.floor(xSpace / 130);
-        const dataMin = Math.min(...data.map(d => d[index]));
-        const dataMax = Math.max(...data.map(d => d[index]));
-        const dataPadding = (dataMax - dataMin) * (60 / xSpace);
-        const dataSpan = (dataMax - dataMin) - 2 * dataPadding;
-        const offset = dataSpan / numVals;
-        customValues = [];
-        for (let i = 0; i <= numVals; i++) {
-          customValues.push(Math.round(dataMin + dataPadding + i * offset));
-        }
-      }
-    }
 
     return {
       title: {
@@ -491,7 +473,6 @@ const BarChart = (props: BarChartProps) => {
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
           rotate: shouldRotateXLabel ? 45 : 0,
           hideOverlap: true,
-          customValues,
           padding: [4, 8, 4, 8],
         },
         axisPointer: {
