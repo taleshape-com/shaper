@@ -47,7 +47,7 @@ const getComparePercent = (
   return Math.round(percent);
 };
 
-function DashboardValue ({ headers, data }: ValueProps) {
+function DashboardValue({ headers, data }: ValueProps) {
   const valueIndex = headers.findIndex(header => header.tag === "value" || header.tag === "small" || header.tag === "medium" || header.tag === "large");
   const valueHeader = headers[valueIndex];
   const value = data[0][valueIndex];
@@ -58,7 +58,7 @@ function DashboardValue ({ headers, data }: ValueProps) {
   const percent = getComparePercent(value, compareValue);
   const formattedValue = formatValue(value, valueHeader.type, true).toString();
   const label = getNameIfSet(valueHeader.name);
-  const hasLabel = !!label && label !== value.toString() && label !== formattedValue && label !== `'${value}'`;
+  const hasLabel = !!label && label !== (value ?? '').toString() && label !== formattedValue && label !== `'${value}'`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
