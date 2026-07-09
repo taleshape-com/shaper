@@ -486,7 +486,7 @@ func GetDashboard(app *App, ctx context.Context, dashboardId string, queryParams
 }
 
 func mapTag(index int, rInfo renderInfo) string {
-	if rInfo.Type == "linechart" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" || rInfo.Type == "piechart" || rInfo.Type == "donutchart" {
+	if rInfo.Type == "linechart" || rInfo.Type == "scatterplot" || rInfo.Type == "barchartHorizontal" || rInfo.Type == "barchartHorizontalStacked" || rInfo.Type == "barchartVertical" || rInfo.Type == "barchartVerticalStacked" || rInfo.Type == "boxplot" || rInfo.Type == "piechart" || rInfo.Type == "donutchart" {
 		if rInfo.IndexAxisIndex != nil && index == *rInfo.IndexAxisIndex {
 			return "index"
 		}
@@ -864,6 +864,35 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		if bandUpper != nil {
 			r.BandUpperIndex = &bandUpperIndex
+		}
+		return r
+	}
+
+	scatterplot, scatterplotIndex := findColumnByTag(columns, "SCATTERPLOT")
+	if scatterplot == nil {
+		scatterplot, scatterplotIndex = findColumnByTag(columns, "SCATTERPLOT_PERCENT")
+	}
+	if scatterplot != nil && xaxis != nil {
+		scatterCat, scatterCatIndex := findColumnByTag(columns, "SCATTERPLOT_CATEGORY")
+		if scatterCat == nil {
+			scatterCat, scatterCatIndex = findColumnByTag(columns, "CATEGORY")
+		}
+		scatterColor, scatterColorIndex := findColumnByTag(columns, "SCATTERPLOT_COLOR")
+		if scatterColor == nil {
+			scatterColor, scatterColorIndex = findColumnByTag(columns, "COLOR")
+		}
+		r := renderInfo{
+			Label:          labelValue,
+			Type:           "scatterplot",
+			IndexAxisIndex: &xaxisIndex,
+			ValueAxisIndex: &scatterplotIndex,
+			MarkLines:      markLines,
+		}
+		if scatterCat != nil {
+			r.CategoryIndex = &scatterCatIndex
+		}
+		if scatterColor != nil {
+			r.ColorIndex = &scatterColorIndex
 		}
 		return r
 	}
