@@ -37,7 +37,7 @@ type deployHTTPClient interface {
 	Actor() string
 }
 
-func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool) error {
+func RunDeployCommand(ctx context.Context, configPath, authFile string, validateOnly bool) error {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
@@ -69,10 +69,21 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 		if err != nil {
 			return err
 		}
-	case !systemCfg.LoginRequired:
-		client = newOpenDeployClient(cfg.URL)
 	default:
-		return fmt.Errorf("%s must be set to run shaper deploy when login is required", deployAPIKeyEnv)
+		authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve auth file path: %w", err)
+		}
+		authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
+		if systemCfg.LoginRequired {
+			if err := authManager.EnsureSession(); err != nil {
+				return fmt.Errorf("deploy failed: no API key found in %s and user authentication failed: %w", deployAPIKeyEnv, err)
+			}
+		}
+		client, err = NewAPIClient(ctx, cfg.URL, authManager)
+		if err != nil {
+			return fmt.Errorf("failed to initialize API client for deploy: %w", err)
+		}
 	}
 	fmt.Println("Fetching remote apps from", cfg.URL)
 	remoteApps, err := fetchAllApps(ctx, client)

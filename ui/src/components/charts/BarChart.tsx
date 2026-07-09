@@ -12,7 +12,7 @@ import {
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
-import { Column, isDatableType, isTimeType, MarkLine } from "../../lib/types";
+import { Column, isDatableType, MarkLine } from "../../lib/types";
 import { formatValue, echartsEncode } from "../../lib/render";
 import { safeColor } from "../../lib/safeColor";
 import { translate } from "../../lib/translate";
