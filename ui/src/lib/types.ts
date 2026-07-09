@@ -136,6 +136,7 @@ export type Result = {
           | "value"
           | "placeholder"
           | "linechart"
+          | "scatterplot"
           | "barchartHorizontal"
           | "barchartHorizontalStacked"
           | "barchartVertical"

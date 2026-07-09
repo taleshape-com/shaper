@@ -527,12 +527,13 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	deployFlags := ff.NewFlagSet("deploy")
 	help := deployFlags.Bool('h', "help", "show help")
 	deployConfigPath := deployFlags.StringLong("config", "./shaper.json", "Path to config file")
+	deployAuthFile := deployFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
 
-	usage := `Deploy dashboards from files using API key auth. Set SHAPER_DEPLOY_API_KEY to authenticate.`
+	usage := `Deploy dashboards from files using API key or user auth. Set SHAPER_DEPLOY_API_KEY to authenticate or log in.`
 	deployCmd := &ff.Command{
 		Name:      "deploy",
-		Usage:     "shaper deploy [--config path]",
+		Usage:     "shaper deploy [--config path] [--auth-file path]",
 		ShortHelp: usage,
 		Flags:     deployFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -540,7 +541,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(deployFlags, usage))
 				return nil
 			}
-			return dev.RunDeployCommand(ctx, *deployConfigPath, *deployValidateOnly)
+			return dev.RunDeployCommand(ctx, *deployConfigPath, *deployAuthFile, *deployValidateOnly)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
