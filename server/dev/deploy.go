@@ -37,7 +37,7 @@ type deployHTTPClient interface {
 	Actor() string
 }
 
-func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool) error {
+func RunDeployCommand(ctx context.Context, configPath, authFile string, validateOnly bool) error {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
@@ -69,10 +69,21 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 		if err != nil {
 			return err
 		}
-	case !systemCfg.LoginRequired:
-		client = newOpenDeployClient(cfg.URL)
 	default:
-		return fmt.Errorf("%s must be set to run shaper deploy when login is required", deployAPIKeyEnv)
+		authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve auth file path: %w", err)
+		}
+		authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
+		if systemCfg.LoginRequired {
+			if err := authManager.EnsureSession(); err != nil {
+				return fmt.Errorf("deploy failed: no API key found in %s and user authentication failed: %w", deployAPIKeyEnv, err)
+			}
+		}
+		client, err = NewAPIClient(ctx, cfg.URL, authManager)
+		if err != nil {
+			return fmt.Errorf("failed to initialize API client for deploy: %w", err)
+		}
 	}
 	fmt.Println("Fetching remote apps from", cfg.URL)
 	remoteApps, err := fetchAllApps(ctx, client)
@@ -130,6 +141,48 @@ func RunDeployCommand(ctx context.Context, configPath string, validateOnly bool)
 	}
 
 	fmt.Printf("\nDeploy completed.\n")
+
+	// Fetch remote apps again to update local shapersync timestamps and avoid forcing users to pull after every deploy.
+	fmt.Println("Updating local shapersync timestamps...")
+	newRemoteApps, err := fetchAllApps(ctx, client)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to fetch remote apps to update local shapersync timestamps: %s\n", err)
+	} else {
+		newRemoteByID := make(map[string]api.App, len(newRemoteApps))
+		for _, app := range newRemoteApps {
+			if app.Type == "dashboard" || app.Type == "task" {
+				newRemoteByID[app.ID] = app
+			}
+		}
+
+		updatedCount := 0
+		for _, op := range ops {
+			if op.Operation == "create" || op.Operation == "update" {
+				if op.Data.ID == nil {
+					continue
+				}
+				id := *op.Data.ID
+				if remoteApp, exists := newRemoteByID[id]; exists {
+					if localApp, localExists := localApps[id]; localExists {
+						contentBytes, err := os.ReadFile(localApp.FilePath)
+						if err == nil {
+							truncatedTime := remoteApp.UpdatedAt.Truncate(time.Second)
+							newContent := prependAppMetadata(localApp.ID, &truncatedTime, stripAppMetadata(string(contentBytes)))
+							if err := os.WriteFile(localApp.FilePath, []byte(newContent), 0o644); err == nil {
+								updatedCount++
+							} else {
+								fmt.Printf("WARNING: Failed to write updated shapersync timestamp to %s: %s\n", localApp.FilePath, err)
+							}
+						}
+					}
+				}
+			}
+		}
+		if updatedCount > 0 {
+			fmt.Printf("Successfully updated shapersync timestamps for %d local files.\n", updatedCount)
+		}
+	}
+
 	return nil
 }
 
@@ -256,6 +309,12 @@ func ensureRemoteFreshness(remote []api.App, local map[string]LocalApp, actor st
 			isStale = app.UpdatedAt.Truncate(time.Second).After(*localApp.SyncTimestamp)
 		} else {
 			isStale = true
+		}
+
+		// If the remote app was last updated by the exact same actor (e.g. CI deployment key or same user),
+		// we know the changes are coming from ourselves and it is not an out-of-band manual edit in the UI.
+		if isStale && updatedBy == actor {
+			isStale = false
 		}
 
 		if isStale {

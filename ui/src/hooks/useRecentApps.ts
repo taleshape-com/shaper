@@ -17,7 +17,8 @@ export function useRecentApps () {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          return Array.isArray(parsed) ? parsed : [];
+          const apps = (Array.isArray(parsed) ? parsed : []) as RecentApp[];
+          return apps.filter((app) => !app.id.startsWith("shaper-tmp."));
         } catch {
           return [];
         }
@@ -32,7 +33,8 @@ export function useRecentApps () {
       if (e.key === STORAGE_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          setRecentApps(Array.isArray(parsed) ? parsed : []);
+          const apps = (Array.isArray(parsed) ? parsed : []) as RecentApp[];
+          setRecentApps(apps.filter((app) => !app.id.startsWith("shaper-tmp.")));
         } catch {
           setRecentApps([]);
         }
@@ -47,7 +49,8 @@ export function useRecentApps () {
       const customEvent = e as CustomEvent<string>;
       try {
         const parsed = JSON.parse(customEvent.detail);
-        setRecentApps(Array.isArray(parsed) ? parsed : []);
+        const apps = (Array.isArray(parsed) ? parsed : []) as RecentApp[];
+        setRecentApps(apps.filter((app) => !app.id.startsWith("shaper-tmp.")));
       } catch {
         setRecentApps([]);
       }
@@ -62,6 +65,9 @@ export function useRecentApps () {
   }, []);
 
   const addRecentApp = useCallback((id: string, name: string, type?: string) => {
+    if (id.startsWith("shaper-tmp.")) {
+      return;
+    }
     setRecentApps((currentApps) => {
       const timestamp = Date.now();
       const newApp: RecentApp = { id, name, type, timestamp };

@@ -39,6 +39,13 @@ func Deploy(app *core.App) echo.HandlerFunc {
 		}
 
 		ctx := c.Request().Context()
+		actor := core.ActorFromContext(ctx)
+		if app.NoEdit && actor != nil && actor.Type == core.ActorUser {
+			return c.JSONPretty(http.StatusForbidden, struct {
+				Error string `json:"error"`
+			}{Error: "User deployment is disabled on this server because editing is disabled"}, "  ")
+		}
+
 		results := make([]deployResult, 0, len(req.Apps))
 
 		for idx, item := range req.Apps {

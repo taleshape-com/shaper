@@ -128,6 +128,31 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, "band_upper", q.Columns[3].Tag)
 	})
 
+	t.Run("Scatterplot", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT
+					'2026-01-01'::TIMESTAMP::XAXIS AS ts,
+					10.0::SCATTERPLOT AS val,
+					'my-category'::SCATTERPLOT_CATEGORY AS cat,
+					'#ff0000'::SCATTERPLOT_COLOR AS col
+			`,
+			ID: "test-dash-scatter",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "scatterplot", q.Render.Type)
+		
+		// Verify tags are correct
+		assert.Equal(t, "index", q.Columns[0].Tag)
+		assert.Equal(t, "value", q.Columns[1].Tag)
+		assert.Equal(t, "category", q.Columns[2].Tag)
+		assert.Equal(t, "color", q.Columns[3].Tag)
+	})
+
 	t.Run("Query with variables", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: "SELECT getvariable('myvar') AS val",
