@@ -29,7 +29,7 @@ import { SearchBar } from "../SearchBar";
 const isLg = () => window.innerWidth >= 1024;
 const MENU_STATE_KEY = "shaper-menu-open";
 
-export function MenuProvider({
+export function MenuProvider ({
   children,
   isHome = false,
   isAdmin = false,

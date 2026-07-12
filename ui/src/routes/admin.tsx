@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-function Admin() {
+function Admin () {
   const location = useLocation();
   const queryApi = useQueryApi();
   const [version, setVersion] = useState<string | null>(null);

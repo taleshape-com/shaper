@@ -18,7 +18,7 @@ export const Route = createFileRoute("/settings")({
   component: Settings,
 });
 
-function Settings() {
+function Settings () {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryApi = useQueryApi();
