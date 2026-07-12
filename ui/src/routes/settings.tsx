@@ -9,7 +9,7 @@ import { Label } from "../components/tremor/Label";
 import { useToast } from "../hooks/useToast";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
-import { RiSettings4Line } from "@remixicon/react";
+import { RiAdminLine } from "@remixicon/react";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { useAuth } from "../lib/auth";
 import { useEffect } from "react";
@@ -108,15 +108,15 @@ function Settings () {
   return (
     <MenuProvider isSettings>
       <Helmet>
-        <title>Settings</title>
+        <title>User Settings</title>
       </Helmet>
 
       <div className="px-3 pb-3 min-h-dvh flex flex-col">
         <div className="flex">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
           <h1 className="font-semibold font-display flex-grow pb-4 pt-3.5">
-            <RiSettings4Line className="size-4 inline ml-1 mr-1 -mt-1" />
-            Settings
+            <RiAdminLine className="size-4 inline ml-1 mr-1 -mt-1" />
+            User Settings
           </h1>
         </div>
 

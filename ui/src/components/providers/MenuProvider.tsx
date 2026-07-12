@@ -245,8 +245,8 @@ export function MenuProvider ({
                         "underline cursor-default": isSettings,
                       })}
                     >
-                      <RiSettings4Line className="size-4" />
-                      Settings
+                      <RiAdminLine className="size-4" />
+                      Profile
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled={isAdmin} className="mt-1">
@@ -256,8 +256,8 @@ export function MenuProvider ({
                         "underline cursor-default": isAdmin,
                       })}
                     >
-                      <RiAdminLine className="size-4" />
-                      Admin
+                      <RiSettings4Line className="size-4" />
+                      Admin Settings
                     </Link>
                   </DropdownMenuItem>
 

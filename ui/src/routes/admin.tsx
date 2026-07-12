@@ -5,7 +5,7 @@ import { Helmet } from "react-helmet";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
 import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
-import { RiAdminLine } from "@remixicon/react";
+import { RiSettings4Line } from "@remixicon/react";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { useEffect, useState } from "react";
 
@@ -41,7 +41,7 @@ function Admin () {
   return (
     <MenuProvider isAdmin>
       <Helmet>
-        <title>Admin</title>
+        <title>Admin Settings</title>
         <meta name="description" content="Admin Settings" />
       </Helmet>
 
@@ -49,8 +49,8 @@ function Admin () {
         <div className="flex">
           <MenuTrigger className="pr-1.5 py-3 -ml-1.5" />
           <h1 className="font-semibold font-display flex-grow pb-4 pt-3.5">
-            <RiAdminLine className="size-4 inline ml-1 mr-1 -mt-1" />
-            Admin
+            <RiSettings4Line className="size-4 inline ml-1 mr-1 -mt-1" />
+            Admin Settings
           </h1>
         </div>
 
