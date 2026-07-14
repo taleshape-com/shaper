@@ -419,6 +419,98 @@ func TestProcessBatchWithMultipleTables(t *testing.T) {
 	}
 }
 
+func TestProcessBatchWithMultiPartTableName(t *testing.T) {
+	dbConnector, db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	tableCache := make(map[string]TableCache)
+	subjectPrefix := "test."
+
+	// Since schemas are not auto-created in the ingestion system, we pre-create the schema.
+	_, err := db.Exec("CREATE SCHEMA custom_schema")
+	require.NoError(t, err)
+
+	// Test 2 parts (schema.table)
+	batchSchema := []jetstream.Msg{
+		createMockMsg("test.custom_schema.users", map[string]any{
+			"id":        1,
+			"name":      "John Doe",
+			"is_active": true,
+		}),
+	}
+
+	err = processBatch(ctx, batchSchema, tableCache, dbConnector, db, logger, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch for schema table")
+
+	var countSchema int
+	err = db.GetContext(ctx, &countSchema, "SELECT COUNT(*) FROM custom_schema.users")
+	require.NoError(t, err)
+	assert.Equal(t, 1, countSchema)
+
+	// Test 3 parts (catalog.schema.table)
+	batchCatalog := []jetstream.Msg{
+		createMockMsg("test.memory.custom_schema.users", map[string]any{
+			"id":        2,
+			"name":      "Jane Smith",
+			"is_active": false,
+		}),
+	}
+
+	err = processBatch(ctx, batchCatalog, tableCache, dbConnector, db, logger, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch for catalog schema table")
+
+	var countCatalog int
+	err = db.GetContext(ctx, &countCatalog, "SELECT COUNT(*) FROM memory.custom_schema.users")
+	require.NoError(t, err)
+	assert.Equal(t, 2, countCatalog)
+
+	// Test Attached Database
+	dbFile := "temp_test_attached.db"
+	defer os.Remove(dbFile)
+
+	_, err = db.Exec("ATTACH '" + dbFile + "' AS attached_db")
+	require.NoError(t, err, "Failed to attach database file")
+
+	// Test attached db with 2 parts (attached_db.users)
+	batchAttached2 := []jetstream.Msg{
+		createMockMsg("test.attached_db.users", map[string]any{
+			"id":        10,
+			"name":      "Attached Two Parts",
+			"is_active": true,
+		}),
+	}
+
+	err = processBatch(ctx, batchAttached2, tableCache, dbConnector, db, logger, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch for attached_db 2-parts table")
+
+	var countAttached2 int
+	err = db.GetContext(ctx, &countAttached2, "SELECT COUNT(*) FROM attached_db.users")
+	require.NoError(t, err)
+	assert.Equal(t, 1, countAttached2)
+
+	// Pre-create schema inside attached database since schemas are not auto-created
+	_, err = db.Exec("CREATE SCHEMA attached_db.custom_schema")
+	require.NoError(t, err)
+
+	// Test attached db with 3 parts (attached_db.custom_schema.users)
+	batchAttached3 := []jetstream.Msg{
+		createMockMsg("test.attached_db.custom_schema.users", map[string]any{
+			"id":        11,
+			"name":      "Attached Three Parts",
+			"is_active": false,
+		}),
+	}
+
+	err = processBatch(ctx, batchAttached3, tableCache, dbConnector, db, logger, subjectPrefix)
+	require.NoError(t, err, "Failed to process batch for attached_db 3-parts table")
+
+	var countAttached3 int
+	err = db.GetContext(ctx, &countAttached3, "SELECT COUNT(*) FROM attached_db.custom_schema.users")
+	require.NoError(t, err)
+	assert.Equal(t, 1, countAttached3)
+}
+
 func TestProcessBatchWithNestedJsonData(t *testing.T) {
 	dbConnector, db := setupTestDB(t)
 	defer db.Close()

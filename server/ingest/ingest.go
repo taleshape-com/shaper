@@ -496,13 +496,44 @@ func determineColumnType(samples []any) string {
 	return SQL_TYPE_JSON
 }
 
+func escapeTableName(tableName string) string {
+	parts := strings.Split(tableName, ".")
+	escapedParts := make([]string, len(parts))
+	for i, part := range parts {
+		escapedParts[i] = fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(part))
+	}
+	return strings.Join(escapedParts, ".")
+}
+
+func resolveTableParts(ctx context.Context, duckDbx *sqlx.DB, tableName string) (catalog, schema, table string, err error) {
+	parts := strings.Split(tableName, ".")
+	switch len(parts) {
+	case 1:
+		return "", "", parts[0], nil
+	case 2:
+		var dbExists bool
+		err := duckDbx.GetContext(ctx, &dbExists, "SELECT EXISTS (SELECT 1 FROM duckdb_databases() WHERE database_name = $1)", parts[0])
+		if err != nil {
+			return "", parts[0], parts[1], nil
+		}
+		if dbExists {
+			return parts[0], "", parts[1], nil
+		} else {
+			return "", parts[0], parts[1], nil
+		}
+	case 3:
+		return parts[0], parts[1], parts[2], nil
+	default:
+		return "", "", "", fmt.Errorf("invalid table name %q: must have 1 to 3 dot-separated parts", tableName)
+	}
+}
+
 func createTable(ctx context.Context, duckDbx *sqlx.DB, tableName string, columnTypes map[string]string, columnOrder []string) error {
 	if len(columnTypes) == 0 {
 		return fmt.Errorf("cannot create table with no columns")
 	}
 
-	// Escape and quote the table name
-	escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
+	escapedTableName := escapeTableName(tableName)
 
 	// Build CREATE TABLE statement
 	var sb strings.Builder
@@ -576,7 +607,7 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 
 				if !existingColumns[column] {
 					// New column found - add it to the table
-					escapedTableName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(tableName))
+					escapedTableName := escapeTableName(tableName)
 					escapedColumnName := fmt.Sprintf("\"%s\"", util.EscapeSQLIdentifier(column))
 					logger.Info("Adding new column", slog.String("table", tableName), slog.String("column", column), slog.String("type", dataType))
 					alterSQL := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", escapedTableName, escapedColumnName, dataType)
@@ -613,8 +644,13 @@ func processBatch(ctx context.Context, batch []jetstream.Msg, tableCache map[str
 		}
 		defer conn.Close()
 
+		catalog, schema, table, err := resolveTableParts(ctx, duckDbx, tableName)
+		if err != nil {
+			return fmt.Errorf("failed to resolve table parts: %w", err)
+		}
+
 		// Create appender
-		appender, err := duckdb.NewAppenderFromConn(conn, "", tableName)
+		appender, err := duckdb.NewAppender(conn, catalog, schema, table)
 		if err != nil {
 			return fmt.Errorf("failed to create appender: %w", err)
 		}
