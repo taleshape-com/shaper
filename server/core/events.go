@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nrednav/cuid2"
@@ -14,12 +15,24 @@ import (
 
 const ID_COLUMN = "_id"
 
-// TODO: Support schema prefix in the table name
-var tableNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]{0,127}$`)
+var partRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]{0,127}$`)
+
+func validateTableName(tableName string) bool {
+	parts := strings.Split(tableName, ".")
+	if len(parts) == 0 || len(parts) > 3 {
+		return false
+	}
+	for _, part := range parts {
+		if !partRegex.MatchString(part) {
+			return false
+		}
+	}
+	return true
+}
 
 func PublishEvent(ctx context.Context, app *App, tableName string, payload any) (string, error) {
-	if !tableNameRegex.MatchString(tableName) {
-		return "", fmt.Errorf("invalid table name. Must be alphanumeric with underscores, max 64 characters")
+	if !validateTableName(tableName) {
+		return "", fmt.Errorf("invalid table name. Each part must be alphanumeric with underscores (max 128 characters) and separated by dots (up to 3 parts)")
 	}
 
 	// Verify it can be marshaled to JSON
@@ -42,8 +55,8 @@ func PublishEvent(ctx context.Context, app *App, tableName string, payload any) 
 }
 
 func PublishEvents(ctx context.Context, app *App, tableName string, payloads []map[string]any) ([]string, error) {
-	if !tableNameRegex.MatchString(tableName) {
-		return nil, fmt.Errorf("invalid table name. Must be alphanumeric with underscores, max 64 characters")
+	if !validateTableName(tableName) {
+		return nil, fmt.Errorf("invalid table name. Each part must be alphanumeric with underscores (max 128 characters) and separated by dots (up to 3 parts)")
 	}
 
 	ids := make([]string, 0, len(payloads))
