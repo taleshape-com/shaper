@@ -49,17 +49,6 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 			return err
 		}
 		storedToken = token
-		if token != "" && isJWT(token) {
-			expiry, err := extractJWTExpiry(token)
-			if err == nil {
-				// If the JWT has more than 10 minutes of life left, use it directly!
-				if time.Now().Add(10 * time.Minute).Before(expiry) {
-					c.token = token
-					c.tokenExpiry = expiry
-					return nil
-				}
-			}
-		}
 	}
 
 	for attempt := 0; attempt < 2; attempt++ {
@@ -87,18 +76,20 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 			return fmt.Errorf("failed to request token: %w", err)
 		}
 
-		if resp.StatusCode == http.StatusUnauthorized && c.auth != nil && c.auth.LoginRequired() {
+		if resp.StatusCode == http.StatusUnauthorized {
 			resp.Body.Close()
-			if err := c.auth.RequireInteractiveLogin(); err != nil {
-				return err
+			storedToken = ""
+			if c.auth != nil && c.auth.LoginRequired() {
+				if err := c.auth.RequireInteractiveLogin(); err != nil {
+					return err
+				}
+				newToken, err := c.auth.SessionToken()
+				if err != nil {
+					return err
+				}
+				storedToken = newToken
+				continue
 			}
-			// Read the newly acquired token after interactive login
-			newToken, err := c.auth.SessionToken()
-			if err != nil {
-				return err
-			}
-			storedToken = newToken
-			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -221,10 +212,26 @@ func (c *APIClient) authedRequest(ctx context.Context, method, path string, body
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
-		if err := c.refreshToken(ctx); err != nil {
-			return nil, err
+		c.token = ""
+		c.tokenExpiry = time.Time{}
+		if c.auth != nil && c.auth.LoginRequired() {
+			if err := c.auth.RequireInteractiveLogin(); err != nil {
+				return nil, err
+			}
+			if err := c.refreshToken(ctx); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("request failed with status 401 Unauthorized")
 		}
-		return c.authedRequest(ctx, method, path, body)
+
+		reqRetry, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(body))
+		if err != nil {
+			return nil, fmt.Errorf("failed to build retry request: %w", err)
+		}
+		reqRetry.Header.Set("Authorization", "Bearer "+c.token)
+		reqRetry.Header.Set("Content-Type", "application/json")
+		return c.httpClient.Do(reqRetry)
 	}
 	return resp, nil
 }

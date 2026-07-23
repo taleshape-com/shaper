@@ -17,6 +17,36 @@ import { getSystemConfig } from "../lib/system";
 import { Button } from "../components/tremor/Button";
 import { copyToClipboard } from "../lib/utils";
 
+function getFinalSSORedirectUrl (redirectTarget?: string): string {
+  const origin = window.location.origin;
+  const baseUrl = window.shaper.defaultBaseUrl || "/";
+
+  if (redirectTarget && (redirectTarget.startsWith("http://") || redirectTarget.startsWith("https://"))) {
+    return redirectTarget;
+  }
+
+  let basePath = baseUrl;
+  if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
+    basePath = new URL(baseUrl).pathname;
+  }
+
+  if (!basePath.startsWith("/")) {
+    basePath = "/" + basePath;
+  }
+
+  const pathAndQuery = redirectTarget || "/";
+
+  if (basePath !== "/" && pathAndQuery.startsWith(basePath)) {
+    return new URL(pathAndQuery, origin).toString();
+  }
+
+  const cleanBase = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
+  const cleanTarget = pathAndQuery.startsWith("/") ? pathAndQuery : "/" + pathAndQuery;
+
+  const fullPath = `${cleanBase}${cleanTarget}`;
+  return new URL(fullPath, origin).toString();
+}
+
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({
     redirect: z.string().optional(),
@@ -40,8 +70,7 @@ export const Route = createFileRoute("/login")({
     const config = getSystemConfig();
     if (config.ssoLoginUrl) {
       const ssoUrl = new URL(config.ssoLoginUrl, window.location.href);
-      const targetRedirect = redirectUrl || window.shaper.defaultBaseUrl || "/";
-      const finalRedirect = new URL(targetRedirect, window.location.href).toString();
+      const finalRedirect = getFinalSSORedirectUrl(redirectUrl);
       ssoUrl.searchParams.set("redirect", finalRedirect);
       window.location.href = ssoUrl.toString();
     }
@@ -91,8 +120,7 @@ function LoginComponent () {
   if (config.ssoLoginUrl) {
     const handleSSOLogin = () => {
       const ssoUrl = new URL(config.ssoLoginUrl!, window.location.href);
-      const targetRedirect = search.redirect || window.shaper.defaultBaseUrl || "/";
-      const finalRedirect = new URL(targetRedirect, window.location.href).toString();
+      const finalRedirect = getFinalSSORedirectUrl(search.redirect);
       ssoUrl.searchParams.set("redirect", finalRedirect);
       window.location.href = ssoUrl.toString();
     };

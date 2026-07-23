@@ -111,30 +111,30 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			})
 			if err == nil && token.Valid {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
-					if uID, ok := claims["userId"].(string); ok && uID != "" {
-						expDuration := app.JWTExp
-						if loginRequest.LongLived {
-							expDuration = 30 * 24 * time.Hour
-						}
-						newClaims := jwt.MapClaims{
-							"exp":       time.Now().Add(expDuration).Unix(),
-							"userId":    uID,
-							"userEmail": claims["userEmail"],
-							"userName":  claims["userName"],
-						}
-						if loginRequest.DashboardID != "" {
-							newClaims["dashboardId"] = loginRequest.DashboardID
-						}
-						if len(loginRequest.Variables) > 0 {
-							newClaims["variables"] = loginRequest.Variables
-						}
-						newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
-						newTokenString, err := newToken.SignedString(app.JWTSecret)
-						if err != nil {
-							return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
-						}
-						return c.JSON(http.StatusOK, map[string]string{"jwt": newTokenString})
+					expDuration := app.JWTExp
+					if loginRequest.LongLived {
+						expDuration = 30 * 24 * time.Hour
 					}
+					newClaims := jwt.MapClaims{
+						"exp": time.Now().Add(expDuration).Unix(),
+					}
+					for k, v := range claims {
+						if k != "exp" {
+							newClaims[k] = v
+						}
+					}
+					if loginRequest.DashboardID != "" {
+						newClaims["dashboardId"] = loginRequest.DashboardID
+					}
+					if len(loginRequest.Variables) > 0 {
+						newClaims["variables"] = loginRequest.Variables
+					}
+					newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+					newTokenString, err := newToken.SignedString(app.JWTSecret)
+					if err != nil {
+						return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
+					}
+					return c.JSON(http.StatusOK, map[string]string{"jwt": newTokenString})
 				}
 			}
 		}

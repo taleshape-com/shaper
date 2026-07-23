@@ -114,7 +114,17 @@ func RequirePermission(app *core.App, permissions ...string) echo.MiddlewareFunc
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
 	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
 		TokenLookup: "header:Authorization",
-		KeyFunc:     GetJWTKeyfunc(app),
+		ParseTokenFunc: func(c echo.Context, auth string) (any, error) {
+			tokenString := strings.TrimSpace(auth)
+			if len(tokenString) >= 7 && strings.EqualFold(tokenString[:7], "bearer ") {
+				tokenString = strings.TrimSpace(tokenString[7:])
+			}
+			token, err := jwt.Parse(tokenString, GetJWTKeyfunc(app))
+			if err != nil {
+				return nil, err
+			}
+			return token, nil
+		},
 	})
 	apiWithAuth := e.Group("/api",
 		jwtMiddleware,

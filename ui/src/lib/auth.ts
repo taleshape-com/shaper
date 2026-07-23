@@ -91,9 +91,7 @@ export const getJwt = async (force = false) => {
   const jwt = localStorage.getItem(localStorageJwtKey);
   if (jwt != null && !force) {
     const claims = parseJwt(jwt);
-    // Add 30s buffer to prevent race conditions where token expires
-    // between client check and server validation
-    if (Date.now() / 1000 < claims.exp - 30) {
+    if (claims && claims.exp && Date.now() / 1000 < claims.exp - 30) {
       return jwt;
     }
   }
@@ -102,11 +100,8 @@ export const getJwt = async (force = false) => {
     return refreshJwt("", vars) ?? "";
   }
   const token = localStorage.getItem(localStorageTokenKey);
-  if (token == null) {
-    throw goToLoginPage();
-  }
   const vars = getVariables(getVariablesString());
-  const newJwt = await refreshJwt(token, vars);
+  const newJwt = await refreshJwt(token || "", vars);
   if (newJwt == null) {
     throw goToLoginPage();
   }
@@ -118,14 +113,33 @@ export const testLogin = async () => {
   if (!getSystemConfig().loginRequired) {
     return true;
   }
+  const jwt = localStorage.getItem(localStorageJwtKey);
+  if (jwt != null && jwt !== "") {
+    const claims = parseJwt(jwt);
+    if (claims && claims.exp && Date.now() / 1000 < claims.exp - 30) {
+      return true;
+    }
+  }
   const token = localStorage.getItem(localStorageTokenKey);
-  if (token == null || token === "") {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (jwt) {
+    headers["Authorization"] = jwt.startsWith("Bearer ") ? jwt : `Bearer ${jwt}`;
+  }
+  try {
+    const response = await fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ token: token || undefined }),
+    });
+    if (response.status === 200) {
+      const res = await response.json();
+      if (res.jwt) {
+        localStorage.setItem(localStorageJwtKey, res.jwt);
+      }
+      return true;
+    }
+  } catch {
     return false;
   }
-  const response = await fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
-  });
-  return response.status === 200;
+  return false;
 };
