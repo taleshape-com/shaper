@@ -58,7 +58,7 @@ export const getSearchParamString = (vars: VarsParamSchema) => {
   return params.toString();
 };
 
-export const goToLoginPage = () => {
+export const goToLoginPage = (isLogout?: boolean) => {
   return redirect({
     to: "/login",
     replace: true,
@@ -66,7 +66,8 @@ export const goToLoginPage = () => {
       // Use the current location to power a redirect after login
       // (Do not use `router.state.resolvedLocation` as it can
       // potentially lag behind the actual current location)
-      redirect: location.pathname + location.search + location.hash,
+      redirect: isLogout ? undefined : location.pathname + location.search + location.hash,
+      logout: isLogout ? true : undefined,
     },
   });
 };

@@ -11,12 +11,14 @@ import (
 
 func GetSystemConfig(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]bool{
+		return c.JSON(http.StatusOK, map[string]any{
 			"loginRequired":                   app.LoginRequired,
 			"tasksEnabled":                    !app.NoTasks,
 			"editEnabled":                     !app.NoEdit,
 			"publicSharingEnabled":            !app.NoPublicSharing,
 			"passwordProtectedSharingEnabled": !app.NoPasswordProtectedSharing,
+			"ssoLoginUrl":                     app.SSOLoginURL,
+			"jwtSecretStatic":                 app.JWTSecretStatic,
 		})
 	}
 }

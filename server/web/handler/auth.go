@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"shaper/server/core"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -84,10 +85,60 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			Token       string         `json:"token"`
 			DashboardID string         `json:"dashboardId"`
 			Variables   map[string]any `json:"variables"`
+			LongLived   bool           `json:"longLived"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		}
+
+		// Check if the request is already authenticated via a valid JWT for a user and refresh if it is
+		authHeader := c.Request().Header.Get("Authorization")
+		tokenString := ""
+		if authHeader != "" {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+			tokenString = strings.TrimSpace(tokenString)
+		} else if loginRequest.Token != "" && strings.HasPrefix(loginRequest.Token, "ey") && len(strings.Split(loginRequest.Token, ".")) == 3 {
+			// Old CLI clients might send JWTs as token in the body instead of as headers. Handle to support them
+			tokenString = loginRequest.Token
+		}
+
+		if tokenString != "" {
+			token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
+				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+				}
+				return app.JWTSecret, nil
+			})
+			if err == nil && token.Valid {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					if uID, ok := claims["userId"].(string); ok && uID != "" {
+						expDuration := app.JWTExp
+						if loginRequest.LongLived {
+							expDuration = 30 * 24 * time.Hour
+						}
+						newClaims := jwt.MapClaims{
+							"exp":       time.Now().Add(expDuration).Unix(),
+							"userId":    uID,
+							"userEmail": claims["userEmail"],
+							"userName":  claims["userName"],
+						}
+						if loginRequest.DashboardID != "" {
+							newClaims["dashboardId"] = loginRequest.DashboardID
+						}
+						if len(loginRequest.Variables) > 0 {
+							newClaims["variables"] = loginRequest.Variables
+						}
+						newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+						newTokenString, err := newToken.SignedString(app.JWTSecret)
+						if err != nil {
+							return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
+						}
+						return c.JSON(http.StatusOK, map[string]string{"jwt": newTokenString})
+					}
+				}
+			}
+		}
+
 		// Check if the token is valid and get auth info
 		authInfo, err := core.ValidToken(app, c.Request().Context(), loginRequest.Token)
 		if err != nil {
@@ -141,12 +192,12 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		}
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := jwtToken.SignedString(app.JWTSecret)
+		signedToken, err := jwtToken.SignedString(app.JWTSecret)
 		if err != nil {
 			c.Logger().Error("Failed to sign token", slog.Any("error", err))
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to sign token"})
 		}
-		return c.JSON(http.StatusOK, map[string]string{"jwt": tokenString})
+		return c.JSON(http.StatusOK, map[string]string{"jwt": signedToken})
 	}
 }
 

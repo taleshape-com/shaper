@@ -57,7 +57,7 @@ export async function logout () {
   }
   localStorage.clear();
   loadSystemConfig();
-  return goToLoginPage();
+  return goToLoginPage(true);
 }
 
 export const getVariablesString = () => {

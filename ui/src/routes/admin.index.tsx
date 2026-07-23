@@ -5,6 +5,7 @@ import {
   createFileRoute,
   isRedirect,
   useNavigate,
+  redirect,
 } from "@tanstack/react-router";
 import {
   Table,
@@ -98,6 +99,12 @@ export const Route = createFileRoute("/admin/")({
     context: { queryApi },
     deps: { sort = "created", order = "desc" },
   }) => {
+    const config = getSystemConfig();
+    if (config.ssoLoginUrl) {
+      throw redirect({
+        to: "/admin/keys",
+      });
+    }
     return queryApi(
       `users?sort=${sort}&order=${order}`,
     ) as Promise<UserListResponse>;

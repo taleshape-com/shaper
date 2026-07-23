@@ -36,17 +36,36 @@ func NewAPIClient(ctx context.Context, baseURL string, auth *AuthManager) (*APIC
 	return client, nil
 }
 
+func isJWT(token string) bool {
+	parts := strings.Split(token, ".")
+	return len(parts) == 3 && strings.HasPrefix(token, "ey")
+}
+
 func (c *APIClient) refreshToken(ctx context.Context) error {
+	var storedToken string
+	if c.auth != nil && c.auth.LoginRequired() {
+		token, err := c.auth.SessionToken()
+		if err != nil {
+			return err
+		}
+		storedToken = token
+		if token != "" && isJWT(token) {
+			expiry, err := extractJWTExpiry(token)
+			if err == nil {
+				// If the JWT has more than 10 minutes of life left, use it directly!
+				if time.Now().Add(10 * time.Minute).Before(expiry) {
+					c.token = token
+					c.tokenExpiry = expiry
+					return nil
+				}
+			}
+		}
+	}
+
 	for attempt := 0; attempt < 2; attempt++ {
 		bodyMap := map[string]any{}
-		if c.auth != nil && c.auth.LoginRequired() {
-			token, err := c.auth.SessionToken()
-			if err != nil {
-				return err
-			}
-			if token != "" {
-				bodyMap["token"] = token
-			}
+		if storedToken != "" && !isJWT(storedToken) {
+			bodyMap["token"] = storedToken
 		}
 
 		body, err := json.Marshal(bodyMap)
@@ -59,6 +78,9 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 			return fmt.Errorf("failed to build token request: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
+		if storedToken != "" && isJWT(storedToken) {
+			req.Header.Set("Authorization", "Bearer "+storedToken)
+		}
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
@@ -70,6 +92,12 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 			if err := c.auth.RequireInteractiveLogin(); err != nil {
 				return err
 			}
+			// Read the newly acquired token after interactive login
+			newToken, err := c.auth.SessionToken()
+			if err != nil {
+				return err
+			}
+			storedToken = newToken
 			continue
 		}
 
@@ -184,7 +212,7 @@ func (c *APIClient) authedRequest(ctx context.Context, method, path string, body
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request: %w", err)
 	}
-	req.Header.Set("Authorization", c.token)
+	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)

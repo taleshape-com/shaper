@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import * as React from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { Button } from "../components/tremor/Button";
 import { Input } from "../components/tremor/Input";
@@ -13,8 +13,17 @@ import { RiAdminLine } from "@remixicon/react";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { useAuth } from "../lib/auth";
 import { useEffect } from "react";
+import { getSystemConfig } from "../lib/system";
 
 export const Route = createFileRoute("/settings")({
+  loader: () => {
+    const config = getSystemConfig();
+    if (config.ssoLoginUrl) {
+      throw redirect({
+        to: "/",
+      });
+    }
+  },
   component: Settings,
 });
 
