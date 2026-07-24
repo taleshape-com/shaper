@@ -6,12 +6,22 @@ import {
   createFileRoute,
   isRedirect,
   useNavigate,
+  redirect,
 } from "@tanstack/react-router";
+import { getSystemConfig } from "../lib/system";
 import { useToast } from "../hooks/useToast";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { RiLockLine } from "@remixicon/react";
 
 export const Route = createFileRoute("/admin/security")({
+  loader: () => {
+    const config = getSystemConfig();
+    if (config.jwtSecretStatic) {
+      throw redirect({
+        to: "/admin/keys",
+      });
+    }
+  },
   component: Admin,
 });
 

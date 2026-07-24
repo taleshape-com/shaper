@@ -134,6 +134,8 @@ type Config struct {
 	NoSnapshots                bool
 	NoAutoRestore              bool
 	NoChromeSandbox            bool
+	SSOLoginURL                string
+	JWTSecret                  string
 }
 
 func main() {
@@ -218,6 +220,8 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	duckdbSecretDir := flags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
 	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
+	ssoLoginURL := flags.StringLong("sso-login-url", "", "SSO Login URL to redirect users when authentication is missing or expired")
+	jwtSecret := flags.StringLong("jwt-secret", "", "Static shared secret for signing and validating JWTs")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
 	streamPrefix := flags.StringLong("stream-prefix", "", "Prefix for NATS stream and KV bucket names. Must be a valid NATS subject name")
@@ -415,6 +419,8 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			NoSnapshots:                *noSnapshots,
 			NoAutoRestore:              *noAutoRestore,
 			NoChromeSandbox:            *noChromeSandbox,
+			SSOLoginURL:                *ssoLoginURL,
+			JWTSecret:                  *jwtSecret,
 		}
 		signals.HandleInterrupt(Run(config))
 		return nil
@@ -627,6 +633,8 @@ func Run(cfg Config) func(context.Context) {
 	logger.Info("Starting Shaper", slog.String("version", Version))
 	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")
 
+
+
 	if cfg.Favicon != "" {
 		logger.Info("Custom favicon: " + cfg.Favicon)
 	}
@@ -800,6 +808,8 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TaskResultsSubjectPrefix,
 		cfg.TaskResultsStreamMaxAge,
 		cfg.TaskBroadcastSubject,
+		cfg.SSOLoginURL,
+		cfg.JWTSecret,
 	)
 	if err != nil {
 		logger.Error("Failed to create application core", slog.Any("error", err))

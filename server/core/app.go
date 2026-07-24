@@ -23,19 +23,22 @@ const (
 
 // TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
-	Name                       string
-	NodeID                     string
-	Version                    string
-	Sqlite                     *sqlx.DB
-	DuckDB                     *sqlx.DB
-	DuckDBDSN                  string
-	DuckDBExtDir               string
-	DuckDBSecretDir            string
-	InitSQL                    string
-	Logger                     *slog.Logger
-	LoginRequired              bool
-	BasePath                   string
-	JWTSecret                  []byte
+	Name            string
+	NodeID          string
+	Version         string
+	Sqlite          *sqlx.DB
+	DuckDB          *sqlx.DB
+	DuckDBDSN       string
+	DuckDBExtDir    string
+	DuckDBSecretDir string
+	InitSQL         string
+	Logger          *slog.Logger
+	LoginRequired   bool
+	BasePath        string
+	SSOLoginURL     string
+	JWTSecret       []byte
+	JWTSecretStatic bool
+
 	JWTExp                     time.Duration
 	SessionExp                 time.Duration
 	InviteExp                  time.Duration
@@ -111,6 +114,8 @@ func New(
 	taskResultsSubjectPrefix string,
 	taskResultsStreamMaxAge time.Duration,
 	taskBroadcastSubject string,
+	ssoLoginURL string,
+	jwtSecret string,
 ) (*App, error) {
 	logger.Info("Setting up SQLite")
 	if err := initSQLite(sqliteDbx); err != nil {
@@ -159,6 +164,9 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+	if ssoLoginURL != "" {
+		loginRequired = true
+	}
 	if !loginRequired {
 		logger.Warn("No users found. Authentication is disabled until first user is created. Make sure you don't expose sensitive data publicly.")
 	}
@@ -192,6 +200,9 @@ func New(
 		Logger:                     logger,
 		LoginRequired:              loginRequired,
 		BasePath:                   baseURL,
+		SSOLoginURL:                ssoLoginURL,
+		JWTSecret:                  []byte(jwtSecret),
+		JWTSecretStatic:            jwtSecret != "",
 		JWTExp:                     jwtExp,
 		SessionExp:                 sessionExp,
 		InviteExp:                  inviteExp,

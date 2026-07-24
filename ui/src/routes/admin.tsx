@@ -8,6 +8,7 @@ import { MenuTrigger } from "../components/MenuTrigger";
 import { RiSettings4Line } from "@remixicon/react";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { useEffect, useState } from "react";
+import { getSystemConfig } from "../lib/system";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
@@ -18,7 +19,14 @@ function Admin () {
   const queryApi = useQueryApi();
   const [version, setVersion] = useState<string | null>(null);
 
+  const config = getSystemConfig();
+  const showUsersTab = !config.ssoLoginUrl;
+  const showSecurityTab = !config.jwtSecretStatic;
+
   let selectedTab = "users";
+  if (!showUsersTab) {
+    selectedTab = "keys";
+  }
   if (location.pathname.endsWith("/admin/keys")) {
     selectedTab = "keys";
   } else if (location.pathname.endsWith("/admin/security")) {
@@ -58,15 +66,19 @@ function Admin () {
           <div className="px-6 pt-6">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
-                <TabsTrigger value="users" asChild>
-                  <Link to="/admin">Users</Link>
-                </TabsTrigger>
+                {showUsersTab && (
+                  <TabsTrigger value="users" asChild>
+                    <Link to="/admin">Users</Link>
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="keys" asChild>
                   <Link to="/admin/keys">API Keys</Link>
                 </TabsTrigger>
-                <TabsTrigger value="security" asChild>
-                  <Link to="/admin/security">Security</Link>
-                </TabsTrigger>
+                {showSecurityTab && (
+                  <TabsTrigger value="security" asChild>
+                    <Link to="/admin/security">Security</Link>
+                  </TabsTrigger>
+                )}
               </TabsList>
             </Tabs>
           </div>

@@ -6,7 +6,12 @@ import * as monaco from "monaco-editor";
 // Initialize Monaco Editor from source files instead of CDN
 self.MonacoEnvironment = {
   getWorker () {
-    return new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker", window.shaper.defaultBaseUrl));
+    const defaultBaseUrl = window.shaper.defaultBaseUrl || "/";
+    const baseUrl = defaultBaseUrl.startsWith("http://") || defaultBaseUrl.startsWith("https://")
+      ? defaultBaseUrl
+      : `${window.location.origin}${defaultBaseUrl.startsWith("/") ? "" : "/"}${defaultBaseUrl}`;
+    const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+    return new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker", normalizedBaseUrl));
   },
 };
 loader.config({ monaco });

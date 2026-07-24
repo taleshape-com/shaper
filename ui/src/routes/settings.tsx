@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import * as React from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { Button } from "../components/tremor/Button";
 import { Input } from "../components/tremor/Input";
@@ -11,10 +11,19 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { RiAdminLine } from "@remixicon/react";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { useAuth } from "../lib/auth";
+import { useAuth, localStorageJwtKey } from "../lib/auth";
 import { useEffect } from "react";
+import { getSystemConfig } from "../lib/system";
 
 export const Route = createFileRoute("/settings")({
+  loader: () => {
+    const config = getSystemConfig();
+    if (config.ssoLoginUrl) {
+      throw redirect({
+        to: "/",
+      });
+    }
+  },
   component: Settings,
 });
 
@@ -28,7 +37,7 @@ function Settings () {
     if (!userName && !userId) {
       // Small delay to let AuthProvider initialize from localStorage
       const timer = setTimeout(() => {
-        const jwt = localStorage.getItem("shaper-jwt");
+        const jwt = localStorage.getItem(localStorageJwtKey);
         if (!jwt) {
           navigate({ to: "/", replace: true });
         }

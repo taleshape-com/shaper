@@ -79,7 +79,8 @@
     "vitest": "^4.1.8"
   },
   "overrides": {
-    "dompurify": "^3.4.5",
+    "brace-expansion": "^5.0.7",
+    "dompurify": "^3.4.12",
     "esbuild": "0.28.1"
   }
 }

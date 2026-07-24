@@ -13,23 +13,73 @@ import { Input } from "../components/tremor/Input";
 import { Helmet } from "react-helmet";
 import { RiCheckLine, RiFileCopyLine } from "@remixicon/react";
 import { useAuth, testLogin } from "../lib/auth";
+import { getSystemConfig } from "../lib/system";
 import { Button } from "../components/tremor/Button";
 import { copyToClipboard } from "../lib/utils";
+
+function getFinalSSORedirectUrl (redirectTarget?: string): string {
+  const origin = window.location.origin;
+  const baseUrl = window.shaper.defaultBaseUrl || "/";
+
+  if (redirectTarget && (redirectTarget.startsWith("http://") || redirectTarget.startsWith("https://"))) {
+    return redirectTarget;
+  }
+
+  let basePath = baseUrl;
+  if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
+    basePath = new URL(baseUrl).pathname;
+  }
+
+  if (!basePath.startsWith("/")) {
+    basePath = "/" + basePath;
+  }
+
+  const cleanBase = basePath === "/" ? "" : (basePath.endsWith("/") ? basePath.slice(0, -1) : basePath);
+  const pathAndQuery = redirectTarget || "/";
+
+  if (cleanBase !== "") {
+    if (
+      pathAndQuery === cleanBase ||
+      pathAndQuery.startsWith(cleanBase + "/") ||
+      pathAndQuery.startsWith(cleanBase + "?") ||
+      pathAndQuery.startsWith(cleanBase + "#")
+    ) {
+      return new URL(pathAndQuery, origin).toString();
+    }
+  }
+
+  const cleanTarget = pathAndQuery.startsWith("/") ? pathAndQuery : "/" + pathAndQuery;
+
+  const fullPath = `${cleanBase}${cleanTarget}`;
+  return new URL(fullPath, origin).toString();
+}
 
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({
     redirect: z.string().optional(),
+    logout: z.boolean().or(z.string()).optional(),
   }),
-  loaderDeps: ({ search: { redirect } }) => ({
+  loaderDeps: ({ search: { redirect, logout } }) => ({
     redirectUrl: redirect,
+    logout: !!logout,
   }),
   loader: async ({
-    deps: { redirectUrl },
+    deps: { redirectUrl, logout },
   }) => {
+    if (logout) {
+      return;
+    }
     if (await testLogin()) {
       throw redirect({
         to: redirectUrl || "/",
       });
+    }
+    const config = getSystemConfig();
+    if (config.ssoLoginUrl) {
+      const ssoUrl = new URL(config.ssoLoginUrl, window.location.href);
+      const finalRedirect = getFinalSSORedirectUrl(redirectUrl);
+      ssoUrl.searchParams.set("redirect", finalRedirect);
+      window.location.href = ssoUrl.toString();
     }
   },
   component: LoginComponent,
@@ -72,20 +122,55 @@ function LoginComponent () {
     setIsLoggingIn(false);
   };
 
+  const config = getSystemConfig();
+
+  if (config.ssoLoginUrl) {
+    const handleSSOLogin = () => {
+      const ssoUrl = new URL(config.ssoLoginUrl!, window.location.href);
+      const finalRedirect = getFinalSSORedirectUrl(search.redirect);
+      ssoUrl.searchParams.set("redirect", finalRedirect);
+      window.location.href = ssoUrl.toString();
+    };
+
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-cbg dark:bg-dbg">
+        <div className="px-8 py-10 w-96 rounded-xl border border-cb dark:border-db bg-cbgs dark:bg-dbgs shadow-xl space-y-6 text-center text-ctext dark:text-dtext">
+          <Helmet>
+            <title>Login</title>
+            <meta name="description" content="Login with SSO to continue" />
+          </Helmet>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold font-display text-ctext dark:text-dtext">Logged Out</h1>
+            <p className="text-sm text-ctext2 dark:text-dtext2">
+              You have been successfully logged out of Shaper. Click below to sign in again.
+            </p>
+          </div>
+          <Button
+            onClick={handleSSOLogin}
+            variant="primary"
+            className="w-full py-2.5 font-semibold"
+          >
+            Login with SSO
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="px-6 pt-2 pb-10">
+    <div className="flex items-center justify-center min-h-screen bg-cbg dark:bg-dbg">
+      <div className="px-8 py-10 w-96 rounded-xl border border-cb dark:border-db bg-cbgs dark:bg-dbgs shadow-xl text-ctext dark:text-dtext">
         <Helmet>
           <title>Login</title>
           <meta name="description" content="Login to continue" />
         </Helmet>
         <form
           onSubmit={onSubmit}
-          className="space-y-4 w-80 "
+          className="space-y-4 w-full"
           name="login"
           autoComplete="on"
         >
-          <h1 className="text-xl font-semibold text-center">Welcome</h1>
+          <h1 className="text-2xl font-bold font-display text-center text-ctext dark:text-dtext">Welcome</h1>
           <Input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -113,17 +198,17 @@ function LoginComponent () {
             type="submit"
             variant="primary"
             disabled={!email || !password || isLoggingIn}
-            className="w-full py-2"
+            className="w-full py-2.5 font-semibold"
           >
             {isLoggingIn ? "Logging in..." : "Login"}
           </Button>
         </form>
         {err && (
-          <div className="mt-4 text-red-500 text-sm flex items-center justify-between">
+          <div className="mt-4 text-cerr dark:text-derr text-sm flex items-center justify-between">
             <span>{err}</span>
             <button
               onClick={handleCopy}
-              className="ml-2 text-red-400 hover:text-red-600 transition-colors"
+              className="ml-2 text-cerr/80 dark:text-derr/80 hover:text-cerr dark:hover:text-derr transition-colors"
               title="Copy error message"
             >
               {copied ? (

@@ -9,7 +9,7 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { Button } from "../components/tremor/Button";
 import { Card } from "../components/tremor/Card";
-import { localStorageTokenKey, testLogin } from "../lib/auth";
+import { localStorageTokenKey, localStorageJwtKey, testLogin } from "../lib/auth";
 
 export const Route = createFileRoute("/dev-login")({
   validateSearch: z.object({
@@ -45,22 +45,44 @@ function DevLoginPage () {
       return;
     }
 
-    const token = window.localStorage.getItem(localStorageTokenKey);
-    if (!token) {
-      setStatus("error");
-      setMessage("No session token found. Please log in again and retry.");
-      return;
-    }
+    const currentJwt = window.localStorage.getItem(localStorageJwtKey);
+    const sessionToken = window.localStorage.getItem(localStorageTokenKey);
 
     setStatus("sending");
-    setMessage("");
+    setMessage("Generating secure CLI token...");
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (currentJwt) {
+        headers["Authorization"] = currentJwt.startsWith("Bearer ") ? currentJwt : `Bearer ${currentJwt}`;
+      }
+
+      const tokenResp = await fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          token: sessionToken || undefined,
+          longLived: true,
+        }),
+      });
+
+      if (!tokenResp.ok) {
+        const text = await tokenResp.text();
+        throw new Error(`Failed to generate CLI token: ${text || tokenResp.statusText}`);
+      }
+
+      const { jwt: cliJwt } = await tokenResp.json();
+      if (!cliJwt) {
+        throw new Error("Failed to generate CLI token: response was missing the jwt field.");
+      }
+
       const response = await fetch(`http://localhost:${port}/token`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token: cliJwt }),
       });
       if (!response.ok) {
         const text = await response.text();

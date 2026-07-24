@@ -406,6 +406,10 @@ func ResetJWTSecret(app *App, ctx context.Context) ([]byte, error) {
 }
 
 func LoadJWTSecret(app *App) error {
+	// If a static JWT secret is configured, use it directly
+	if len(app.JWTSecret) > 0 {
+		return nil
+	}
 	// Empty secret until login is required
 	if !app.LoginRequired {
 		app.JWTSecret = []byte{}

@@ -8,6 +8,8 @@ export interface ISystemConfig {
   editEnabled: boolean;
   publicSharingEnabled: boolean;
   passwordProtectedSharingEnabled: boolean;
+  ssoLoginUrl?: string;
+  jwtSecretStatic?: boolean;
 }
 
 export const localStorageSystemConfigKey = "shaper-system-config";
@@ -50,7 +52,9 @@ const configChanged = (existingSystemConfig: ISystemConfig) => {
     existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled ||
     existingSystemConfig.editEnabled !== refreshedSystemConfig.editEnabled ||
     existingSystemConfig.publicSharingEnabled !== refreshedSystemConfig.publicSharingEnabled ||
-    existingSystemConfig.passwordProtectedSharingEnabled !== refreshedSystemConfig.passwordProtectedSharingEnabled;
+    existingSystemConfig.passwordProtectedSharingEnabled !== refreshedSystemConfig.passwordProtectedSharingEnabled ||
+    existingSystemConfig.ssoLoginUrl !== refreshedSystemConfig.ssoLoginUrl ||
+    existingSystemConfig.jwtSecretStatic !== refreshedSystemConfig.jwtSecretStatic;
 };
 
 export const reloadSystemConfig = async () => {

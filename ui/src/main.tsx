@@ -12,6 +12,7 @@ import { App } from "./App";
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "./components/ErrorComponent";
 import { loadSystemConfig } from "./lib/system";
+import { localStorageJwtKey } from "./lib/auth";
 import "./lib/globals";
 
 // Polyfill container queries
@@ -49,6 +50,18 @@ declare module "@tanstack/react-router" {
 (async () => {
   const rootElement = document.getElementById("root")!;
   if (!rootElement.innerHTML) {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenParam = urlParams.get("token");
+      if (tokenParam) {
+        localStorage.setItem(localStorageJwtKey, tokenParam);
+        urlParams.delete("token");
+        const newSearch = urlParams.toString();
+        const cleanUrl = window.location.pathname + (newSearch ? "?" + newSearch : "") + window.location.hash;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    }
+
     await loadSystemConfig();
     const root = ReactDOM.createRoot(rootElement);
     root.render(

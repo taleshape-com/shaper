@@ -238,17 +238,19 @@ export function MenuProvider ({
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="top" className="w-48">
-                  <DropdownMenuItem disabled={isSettings}>
-                    <Link
-                      to="/settings"
-                      className={cx("flex gap-2 items-center", {
-                        "underline cursor-default": isSettings,
-                      })}
-                    >
-                      <RiAdminLine className="size-4" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
+                  {!config.ssoLoginUrl && (
+                    <DropdownMenuItem disabled={isSettings}>
+                      <Link
+                        to="/settings"
+                        className={cx("flex gap-2 items-center", {
+                          "underline cursor-default": isSettings,
+                        })}
+                      >
+                        <RiAdminLine className="size-4" />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem disabled={isAdmin} className="mt-1">
                     <Link
                       to="/admin"

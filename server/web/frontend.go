@@ -136,6 +136,9 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, b
 	html := string(fileContent)
 	// Set base path
 	html = strings.ReplaceAll(html, "\"/assets/", "\""+basePath+"assets/")
+	html = strings.ReplaceAll(html, "\"./assets/", "\""+basePath+"assets/")
+	html = strings.ReplaceAll(html, "\"/favicon.ico\"", "\""+basePath+"favicon.ico\"")
+	html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\""+basePath+"favicon.ico\"")
 	html = strings.Replace(html, "<script>window.shaper = { defaultBaseUrl: '/' }</script>", fmt.Sprintf("<script>window.shaper = { defaultBaseUrl: %q };</script>", basePath), 1)
 	// Inject custom CSS
 	html = strings.Replace(html, "<style></style>", "<style>"+customCSS+"</style>", 1)
