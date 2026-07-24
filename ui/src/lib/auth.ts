@@ -91,6 +91,8 @@ export const getJwt = async (force = false) => {
   const jwt = localStorage.getItem(localStorageJwtKey);
   if (jwt != null && !force) {
     const claims = parseJwt(jwt);
+    // Add 30s buffer to prevent race conditions where token expires
+    // between client check and server validation
     if (claims && claims.exp && Date.now() / 1000 < claims.exp - 30) {
       return jwt;
     }

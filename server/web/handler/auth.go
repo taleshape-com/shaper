@@ -15,6 +15,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+const LONG_LIVED_TOKEN_DURATION = 30 * 24 * time.Hour
+
 func Logout(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
@@ -113,7 +115,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
 					expDuration := app.JWTExp
 					if loginRequest.LongLived {
-						expDuration = 30 * 24 * time.Hour
+						expDuration = LONG_LIVED_TOKEN_DURATION
 					}
 					newClaims := jwt.MapClaims{
 						"exp": time.Now().Add(expDuration).Unix(),

@@ -9,7 +9,7 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { Button } from "../components/tremor/Button";
 import { Card } from "../components/tremor/Card";
-import { localStorageTokenKey, testLogin } from "../lib/auth";
+import { localStorageTokenKey, localStorageJwtKey, testLogin } from "../lib/auth";
 
 export const Route = createFileRoute("/dev-login")({
   validateSearch: z.object({
@@ -45,7 +45,7 @@ function DevLoginPage () {
       return;
     }
 
-    const currentJwt = window.localStorage.getItem("shaper-jwt");
+    const currentJwt = window.localStorage.getItem(localStorageJwtKey);
     const sessionToken = window.localStorage.getItem(localStorageTokenKey);
 
     setStatus("sending");

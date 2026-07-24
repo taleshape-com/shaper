@@ -114,6 +114,7 @@ func RequirePermission(app *core.App, permissions ...string) echo.MiddlewareFunc
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
 	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
 		TokenLookup: "header:Authorization",
+		// Custom token parsing to handle with and without bearer prefix to support outdated shaper cli clients that don't send bearer prefix
 		ParseTokenFunc: func(c echo.Context, auth string) (any, error) {
 			tokenString := strings.TrimSpace(auth)
 			if len(tokenString) >= 7 && strings.EqualFold(tokenString[:7], "bearer ") {
@@ -277,7 +278,7 @@ func extractAuthorizationToken(c echo.Context) string {
 	return header
 }
 
-// We overide the Keyfunc handler so we can send the JWT secret dynamically when it changes over time
+// We overide the Keyfunc handler to handle if our JWT secret changes
 func GetJWTKeyfunc(app *core.App) jwt.Keyfunc {
 	return func(token *jwt.Token) (any, error) {
 		if token.Method.Alg() != echojwt.AlgorithmHS256 {

@@ -34,13 +34,20 @@ function getFinalSSORedirectUrl (redirectTarget?: string): string {
     basePath = "/" + basePath;
   }
 
+  const cleanBase = basePath === "/" ? "" : (basePath.endsWith("/") ? basePath.slice(0, -1) : basePath);
   const pathAndQuery = redirectTarget || "/";
 
-  if (basePath !== "/" && pathAndQuery.startsWith(basePath)) {
-    return new URL(pathAndQuery, origin).toString();
+  if (cleanBase !== "") {
+    if (
+      pathAndQuery === cleanBase ||
+      pathAndQuery.startsWith(cleanBase + "/") ||
+      pathAndQuery.startsWith(cleanBase + "?") ||
+      pathAndQuery.startsWith(cleanBase + "#")
+    ) {
+      return new URL(pathAndQuery, origin).toString();
+    }
   }
 
-  const cleanBase = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
   const cleanTarget = pathAndQuery.startsWith("/") ? pathAndQuery : "/" + pathAndQuery;
 
   const fullPath = `${cleanBase}${cleanTarget}`;
@@ -126,22 +133,22 @@ function LoginComponent () {
     };
 
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="px-8 py-10 w-96 rounded-xl border border-ctext/10 dark:border-dtext/10 bg-cbgs dark:bg-dbgs shadow-xl space-y-6 text-center">
+      <div className="flex items-center justify-center min-h-screen bg-cbg dark:bg-dbg">
+        <div className="px-8 py-10 w-96 rounded-xl border border-cb dark:border-db bg-cbgs dark:bg-dbgs shadow-xl space-y-6 text-center text-ctext dark:text-dtext">
           <Helmet>
             <title>Login</title>
             <meta name="description" content="Login with SSO to continue" />
           </Helmet>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold font-display">Logged Out</h1>
-            <p className="text-sm text-ctext/60 dark:text-dtext/60">
+            <h1 className="text-2xl font-bold font-display text-ctext dark:text-dtext">Logged Out</h1>
+            <p className="text-sm text-ctext2 dark:text-dtext2">
               You have been successfully logged out of Shaper. Click below to sign in again.
             </p>
           </div>
           <Button
             onClick={handleSSOLogin}
             variant="primary"
-            className="w-full py-2.5 font-semibold text-white bg-indigo-600 hover:bg-indigo-700"
+            className="w-full py-2.5 font-semibold"
           >
             Login with SSO
           </Button>
@@ -151,19 +158,19 @@ function LoginComponent () {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="px-6 pt-2 pb-10">
+    <div className="flex items-center justify-center min-h-screen bg-cbg dark:bg-dbg">
+      <div className="px-8 py-10 w-96 rounded-xl border border-cb dark:border-db bg-cbgs dark:bg-dbgs shadow-xl text-ctext dark:text-dtext">
         <Helmet>
           <title>Login</title>
           <meta name="description" content="Login to continue" />
         </Helmet>
         <form
           onSubmit={onSubmit}
-          className="space-y-4 w-80 "
+          className="space-y-4 w-full"
           name="login"
           autoComplete="on"
         >
-          <h1 className="text-xl font-semibold text-center">Welcome</h1>
+          <h1 className="text-2xl font-bold font-display text-center text-ctext dark:text-dtext">Welcome</h1>
           <Input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -191,17 +198,17 @@ function LoginComponent () {
             type="submit"
             variant="primary"
             disabled={!email || !password || isLoggingIn}
-            className="w-full py-2"
+            className="w-full py-2.5 font-semibold"
           >
             {isLoggingIn ? "Logging in..." : "Login"}
           </Button>
         </form>
         {err && (
-          <div className="mt-4 text-red-500 text-sm flex items-center justify-between">
+          <div className="mt-4 text-cerr dark:text-derr text-sm flex items-center justify-between">
             <span>{err}</span>
             <button
               onClick={handleCopy}
-              className="ml-2 text-red-400 hover:text-red-600 transition-colors"
+              className="ml-2 text-cerr/80 dark:text-derr/80 hover:text-cerr dark:hover:text-derr transition-colors"
               title="Copy error message"
             >
               {copied ? (

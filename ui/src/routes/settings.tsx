@@ -11,7 +11,7 @@ import { MenuProvider } from "../components/providers/MenuProvider";
 import { MenuTrigger } from "../components/MenuTrigger";
 import { RiAdminLine } from "@remixicon/react";
 import { useQueryApi } from "../hooks/useQueryApi";
-import { useAuth } from "../lib/auth";
+import { useAuth, localStorageJwtKey } from "../lib/auth";
 import { useEffect } from "react";
 import { getSystemConfig } from "../lib/system";
 
@@ -37,7 +37,7 @@ function Settings () {
     if (!userName && !userId) {
       // Small delay to let AuthProvider initialize from localStorage
       const timer = setTimeout(() => {
-        const jwt = localStorage.getItem("shaper-jwt");
+        const jwt = localStorage.getItem(localStorageJwtKey);
         if (!jwt) {
           navigate({ to: "/", replace: true });
         }
