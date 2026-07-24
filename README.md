@@ -61,7 +61,7 @@ For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs
 To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
 
 
-## Managed Hosting and Expert Support
+## Managed Hosting and Professional Support
 
 Shaper is 100% free and open source. Through **Taleshape**, we offer managed hosting and hands-on support for teams who need help getting analytics into production:
 
