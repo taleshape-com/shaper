@@ -39,7 +39,7 @@
     "@tailwindcss/container-queries": "^0.1.1",
     "@tanstack/react-router": "^1.170.15",
     "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
+    "date-fns": "^4.4.0",
     "echarts": "^6.1.0",
     "lodash": "^4.18.1",
     "monaco-editor": "^0.55.1",
