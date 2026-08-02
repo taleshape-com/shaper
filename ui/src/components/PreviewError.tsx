@@ -20,9 +20,9 @@ export function PreviewError ({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="fixed w-full h-full p-4 z-50 backdrop-blur-sm flex justify-center">
-      <div className="p-4 bg-red-100 text-red-700 rounded mt-32 h-fit flex items-start gap-4">
-        <div id="preview-error-content">{children}</div>
+    <div className="absolute inset-0 p-4 z-50 backdrop-blur-sm flex items-center justify-center">
+      <div className="p-4 bg-red-100 text-red-700 rounded h-fit max-w-full flex items-start gap-4">
+        <div id="preview-error-content" className="break-words">{children}</div>
         <button
           onClick={handleCopy}
           className="shrink-0 text-red-500 hover:text-red-700 transition-colors"

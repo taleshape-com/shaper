@@ -92,7 +92,9 @@ const BarChart = (props: BarChartProps) => {
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
-    const isTimestampData = isDatableType(indexType) || indexType === "number";
+    const isTimestampData = isDatableType(indexType);
+    const isNumericData = indexType === "number" || indexType === "percent";
+    const isContinuousData = isTimestampData || isNumericData;
 
     // We treat vertical timestamp data as categories.
     let dataCopy = data;
@@ -115,7 +117,7 @@ const BarChart = (props: BarChartProps) => {
       barMaxWidth: dataCopy.length === 1 ? layout == "horizontal" ? "50%" : "25%" : undefined,
       stack: type === "stacked" ? "stack" : category,
       cursor: "crosshair",
-      data: isTimestampData && layout === "horizontal"
+      data: isContinuousData && layout === "horizontal"
         ? dataCopy.map((item) => [item[index], item[category]])
         : dataCopy.map((item) => item[category]),
       itemStyle: {
@@ -196,7 +198,7 @@ const BarChart = (props: BarChartProps) => {
     const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 36 : 58) : 0);
     const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
-    const xData = layout === "horizontal" && !isTimestampData ? dataCopy.map((item) => item[index]) : undefined;
+    const xData = layout === "horizontal" && !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = layout === "horizontal" ? xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true : false;
     let maxLabelLen = 0;
@@ -252,7 +254,7 @@ const BarChart = (props: BarChartProps) => {
                 return sum; // Skip non-index axis items
               }
               let value: number;
-              if (isTimestampData && layout === "horizontal" && Array.isArray(item.value) && item.value.length >= 2) {
+              if (isContinuousData && layout === "horizontal" && Array.isArray(item.value) && item.value.length >= 2) {
                 value = item.value[1] as number;
               } else {
                 value = item.value as number;
@@ -368,7 +370,7 @@ const BarChart = (props: BarChartProps) => {
               return; // Skip non-index axis items
             }
             let value: number;
-            if (isTimestampData && layout === "horizontal" && Array.isArray(param.value) && param.value.length >= 2) {
+            if (isContinuousData && layout === "horizontal" && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
             } else {
               value = param.value as number;
@@ -456,9 +458,10 @@ const BarChart = (props: BarChartProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: layout === "vertical" ? "value" as const : (isTimestampData ? "time" as const : "category" as const),
+        type: layout === "vertical" ? "value" as const : (isTimestampData ? "time" as const : isNumericData ? "value" as const : "category" as const),
         data: xData,
         show: true,
+        scale: layout === "horizontal" && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
@@ -626,7 +629,7 @@ const BarChart = (props: BarChartProps) => {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
-    const isTimestampData = isDatableType(indexType) || indexType === "number";
+    const isTimestampData = isDatableType(indexType);
     const series: BarSeriesOption[] = [{
       id: "shaper-hover-reference-line",
       type: "bar" as const,
@@ -645,7 +648,7 @@ const BarChart = (props: BarChartProps) => {
         },
         data: isHovering != null && (data.length !== 1 || data[0][index] === isHovering) ? [{
           [layout === "horizontal" ? "xAxis" : "yAxis"]: isTimestampData && layout === "vertical"
-            ? indexType === "number" ? isHovering.toString() : new Date(isHovering).toISOString()
+            ? new Date(isHovering).toISOString()
             : isHovering,
         }] : [],
       },

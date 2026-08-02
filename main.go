@@ -78,6 +78,7 @@ type Config struct {
 	ExecutableModTime          time.Time
 	BasePath                   string
 	CustomCSS                  string
+	CustomCSSFile              string
 	Favicon                    string
 	JWTExp                     time.Duration
 	NoPublicSharing            bool
@@ -185,6 +186,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	addr := flags.StringLong("addr", "localhost:5454", "HTTP server address. Not used if --tls-domain is set. In that case, server is automatically listening on the ports 80 and 443.")
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
+	customCSSFile := flags.StringLong("css-file", "", "Path to CSS file to inject into the frontend")
 	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
@@ -361,6 +363,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			ExecutableModTime:          executableModTime,
 			BasePath:                   bpath,
 			CustomCSS:                  *customCSS,
+			CustomCSSFile:              *customCSSFile,
 			Favicon:                    *favicon,
 			JWTExp:                     *jwtExp,
 			SessionExp:                 *sessionExp,
@@ -637,6 +640,19 @@ func Run(cfg Config) func(context.Context) {
 
 	if cfg.Favicon != "" {
 		logger.Info("Custom favicon: " + cfg.Favicon)
+	}
+	if cfg.CustomCSSFile != "" {
+		logger.Info("Loading custom CSS file", slog.Any("path", cfg.CustomCSSFile))
+		data, err := os.ReadFile(cfg.CustomCSSFile)
+		if err != nil {
+			logger.Error("Failed to read custom CSS file", slog.String("path", cfg.CustomCSSFile), slog.Any("error", err))
+			os.Exit(1)
+		}
+		if cfg.CustomCSS != "" {
+			cfg.CustomCSS += "\n" + string(data)
+		} else {
+			cfg.CustomCSS = string(data)
+		}
 	}
 	if cfg.CustomCSS != "" {
 		logger.Info("Custom CSS injected into frontend")
