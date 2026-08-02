@@ -88,7 +88,7 @@ const Boxplot = (props: BoxplotProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { primaryColor, borderColor, backgroundColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary } = getThemeColors(isDarkMode);
+    const { primaryColor, borderColor, backgroundColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
 
@@ -105,16 +105,16 @@ const Boxplot = (props: BoxplotProps) => {
         emphasis: {
           itemStyle: {
             shadowBlur: 0,
-            color: backgroundColorSecondary,
+            color: backgroundColor,
             borderWidth: 2.2,
           },
         },
         itemStyle: {
-          color: backgroundColorSecondary,
+          color: backgroundColor,
           borderWidth: 1.9,
           // This hides marklines
           shadowOffsetX: 1,
-          shadowColor: backgroundColorSecondary,
+          shadowColor: backgroundColor,
         },
       },
       {
@@ -172,7 +172,7 @@ const Boxplot = (props: BoxplotProps) => {
                 type: "dashed",
                 width: m.isYAxis ? 1.2 : 1,
                 opacity: m.isYAxis ? 0.5 : 0.8,
-                shadowColor: backgroundColorSecondary,
+                shadowColor: backgroundColor,
               },
               label: {
                 formatter: m.label,
@@ -185,7 +185,7 @@ const Boxplot = (props: BoxplotProps) => {
                 opacity: m.isYAxis ? 0.5 : 0.8,
                 width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
                 overflow: "truncate",
-                textBorderColor: backgroundColorSecondary,
+                textBorderColor: backgroundColor,
                 textBorderWidth: !m.isYAxis && multiEventLines ? 2 : 0,
               },
             };

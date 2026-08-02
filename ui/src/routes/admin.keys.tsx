@@ -195,7 +195,7 @@ function Admin () {
         <TableRoot>
           <Table>
             <TableHead>
-              <TableRow>
+              <TableRow className="bg-cbgs dark:bg-dbgs">
                 <TableHeaderCell className="text-md text-ctext dark:text-dtext">Name</TableHeaderCell>
                 <TableHeaderCell className="text-md text-ctext dark:text-dtext hidden md:table-cell">Created</TableHeaderCell>
                 <TableHeaderCell className="text-md text-ctext dark:text-dtext">Permissions</TableHeaderCell>
@@ -204,7 +204,7 @@ function Admin () {
             </TableHead>
             <TableBody>
               {data.keys.map((key) => (
-                <TableRow key={key.id} className="[tbody_&]:odd:bg-cbgs [tbody_&]:odd:dark:bg-dbgs [tbody_&]:hover:bg-cbga [tbody_&]:dark:hover:bg-dbga">
+                <TableRow key={key.id}>
                   <TableCell className="font-medium text-ctext dark:text-dtext">
                     {key.name}
                   </TableCell>

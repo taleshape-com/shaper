@@ -655,7 +655,7 @@ function Index () {
             <TableRoot className="h-full overflow-y-auto">
               <Table>
                 <TableHead>
-                  <TableRow>
+                  <TableRow className="bg-cbgs dark:bg-dbgs">
                     <TableHeaderCell className="text-ctext">
                       Type
                     </TableHeaderCell>
@@ -686,7 +686,6 @@ function Index () {
                       key={app.id}
                       className={cx(
                         "group",
-                        "[tbody_&]:odd:bg-cbgs [tbody_&]:odd:dark:bg-dbgs hover:bg-cbga hover:dark:bg-dbga [tbody_&]:odd:hover:bg-cbga [tbody_&]:odd:hover:dark:bg-dbga",
                         {
                           "opacity-50": draggedItem?.id === app.id,
                           "outline-2 outline-dashed outline-cprimary dark:outline-dprimary -outline-offset-2":

@@ -230,7 +230,7 @@ function UsersManagement () {
 
       {!getSystemConfig().loginRequired && (
         <div className="mb-6">
-          <Callout title="Setup Authentication">
+          <Callout title="Setup Authentication" className="max-w-xl">
             <p className="mb-4">
               Create a first user account to enable authentication and secure the system
             </p>
@@ -558,7 +558,7 @@ function UsersManagement () {
                     </TableHead>
                     <TableBody>
                       {data.invites.map((invite) => (
-                        <TableRow key={invite.code}>
+                        <TableRow key={invite.code} className="[tbody_&]:bg-cbgs [tbody_&]:dark:bg-dbgs">
                           <TableCell className="text-ctext2 dark:text-dtext2">
                             {invite.email}
                           </TableCell>
@@ -627,7 +627,7 @@ function UsersManagement () {
           <TableRoot>
             <Table>
               <TableHead>
-                <TableRow>
+                <TableRow className="bg-cbgs dark:bg-dbgs">
                   <TableHeaderCell
                     onClick={() => handleSort("name")}
                     className="text-md text-ctext dark:text-dtext cursor-pointer hover:underline"
