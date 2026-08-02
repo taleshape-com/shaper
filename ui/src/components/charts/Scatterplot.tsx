@@ -87,7 +87,9 @@ const Scatterplot = (props: ScatterplotProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    const isTimestampData = isDatableType(indexType) || indexType === "number";
+    const isTimestampData = isDatableType(indexType);
+    const isNumericData = indexType === "number" || indexType === "percent";
+    const isContinuousData = isTimestampData || isNumericData;
 
     // Set up chart options
     const series: ScatterSeriesOption[] = [];
@@ -97,7 +99,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         name: category,
         id: category,
         type: "scatter" as const,
-        data: isTimestampData
+        data: isContinuousData
           ? data.map((item) => [item[index], item[category]])
           : data.map((item) => item[category]),
         symbol: "circle",
@@ -182,7 +184,7 @@ const Scatterplot = (props: ScatterplotProps) => {
     const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
     const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
-    const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
+    const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
 
@@ -220,7 +222,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           let indexValue: any;
 
           const axisData = params.find((item: any) => item?.axisDim === "x");
-          if (isTimestampData) {
+          if (isContinuousData) {
             indexValue = axisData.value[0]; // timestamp is the first element
           } else {
             indexValue = axisData.axisValue;
@@ -325,7 +327,7 @@ const Scatterplot = (props: ScatterplotProps) => {
             }
 
             let value: number;
-            if (isTimestampData && Array.isArray(param.value) && param.value.length >= 2) {
+            if (isContinuousData && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
             } else {
               value = param.value as number;
@@ -419,9 +421,10 @@ const Scatterplot = (props: ScatterplotProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: isTimestampData ? "time" as const : "category" as const,
+        type: isTimestampData ? "time" as const : isNumericData ? "value" as const : "category" as const,
         data: xData,
         show: true,
+        scale: isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           formatter: (value: any) => {

@@ -113,7 +113,7 @@ func New(config Config) (Comms, error) {
 		if err != nil {
 			return Comms{}, err
 		}
-		config.Logger.Info("nats: Connected to external NATS", slog.String("servers", config.Servers))
+		config.Logger.Info("nats: Connected to external NATS")
 		return Comms{Conn: nc}, nil
 	}
 

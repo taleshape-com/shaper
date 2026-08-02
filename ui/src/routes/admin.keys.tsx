@@ -79,7 +79,7 @@ export const Route = createFileRoute("/admin/keys")({
   component: Admin,
 });
 
-function Admin () {
+function Admin() {
   const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
@@ -298,7 +298,7 @@ function Admin () {
           if (!open) setNewKey(null);
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {newKey ? "API Key Created" : "Create New API Key"}
@@ -389,7 +389,8 @@ function Admin () {
                         defaultChecked={false}
                         className="rounded border-cb dark:border-db text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm">{perm.label}</span>
+                      <span className="text-sm flex-grow">{perm.label}</span>
+                      <span className="font-mono text-xs text-ctext2">{perm.value}</span>
                     </label>
                   ))}
                 </div>
