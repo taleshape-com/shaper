@@ -79,7 +79,7 @@ export const Route = createFileRoute("/admin/keys")({
   component: Admin,
 });
 
-function Admin() {
+function Admin () {
   const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
