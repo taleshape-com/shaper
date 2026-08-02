@@ -50,7 +50,7 @@ interface ErrorDisplayProps {
   menuButton?: React.ReactNode;
 }
 
-const ErrorDisplay = function({
+const ErrorDisplay = function ({
   error,
   resetErrorBoundary,
   errResetRef,
@@ -97,7 +97,7 @@ const ErrorDisplay = function({
   );
 };
 
-export function Dashboard({
+export function Dashboard ({
   id,
   vars,
   getJwt,
