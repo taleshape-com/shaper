@@ -116,7 +116,9 @@ const LineChart = (props: LineChartProps) => {
     const displayFont = getDisplayFont();
     const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
 
-    const isTimestampData = isDatableType(indexType) || indexType === "number";
+    const isTimestampData = isDatableType(indexType);
+    const isNumericData = indexType === "number" || indexType === "percent";
+    const isContinuousData = isTimestampData || isNumericData;
     // show dots when there are not too many data points per category
     const showDots = data.length / chartWidth / categories.length > 0.02;
 
@@ -132,7 +134,7 @@ const LineChart = (props: LineChartProps) => {
         name: category,
         id: category,
         type: "line" as const,
-        data: isTimestampData
+        data: isContinuousData
           ? data.map((item) => [item[index], item[category]])
           : data.map((item) => item[category]),
         connectNulls: true,
@@ -162,7 +164,7 @@ const LineChart = (props: LineChartProps) => {
           name: category + "_band_lower",
           id: category + "_band_lower",
           type: "line" as const,
-          data: isTimestampData
+          data: isContinuousData
             ? data.map((item) => [item[index], item[category + "_band_lower"]])
             : data.map((item) => item[category + "_band_lower"]),
           lineStyle: {
@@ -177,7 +179,7 @@ const LineChart = (props: LineChartProps) => {
           name: category + "_band_upper",
           id: category + "_band_upper",
           type: "line" as const,
-          data: isTimestampData
+          data: isContinuousData
             ? data.map((item) => {
               const lower = item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== "" ? Number(item[category + "_band_lower"]) : null;
               const upper = item[category + "_band_upper"] !== null && item[category + "_band_upper"] !== undefined && item[category + "_band_upper"] !== "" ? Number(item[category + "_band_upper"]) : null;
@@ -266,7 +268,7 @@ const LineChart = (props: LineChartProps) => {
     const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
     const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
-    const xData = !isTimestampData ? data.map((item) => item[index]) : undefined;
+    const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
 
@@ -304,7 +306,7 @@ const LineChart = (props: LineChartProps) => {
           let indexValue: any;
 
           const axisData = params.find((item: any) => item?.axisDim === "x");
-          if (isTimestampData) {
+          if (isContinuousData) {
             indexValue = axisData.value[0]; // timestamp is the first element
           } else {
             indexValue = axisData.axisValue;
@@ -414,7 +416,7 @@ const LineChart = (props: LineChartProps) => {
             }
 
             let value: number;
-            if (isTimestampData && Array.isArray(param.value) && param.value.length >= 2) {
+            if (isContinuousData && Array.isArray(param.value) && param.value.length >= 2) {
               value = param.value[1] as number;
             } else {
               value = param.value as number;
@@ -536,9 +538,10 @@ const LineChart = (props: LineChartProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: isTimestampData ? "time" as const : "category" as const,
+        type: isTimestampData ? "time" as const : isNumericData ? "value" as const : "category" as const,
         data: xData,
         show: true,
+        scale: isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
