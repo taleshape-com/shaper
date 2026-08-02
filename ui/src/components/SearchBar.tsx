@@ -310,7 +310,7 @@ export function SearchBar () {
                     <Link
                       key={app.id}
                       to="/"
-                      search={{ path: `${app.id}/` }}
+                      search={{ path: `${app.path || ""}${app.name}/` }}
                       onClick={handleLinkClick}
                       data-selected={selectedIndex === index}
                       className={itemClassName}

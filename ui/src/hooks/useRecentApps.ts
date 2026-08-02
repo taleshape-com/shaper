@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 export interface RecentApp {
   id: string;
   name: string;
+  path?: string;
   type?: string;
   timestamp: number;
 }
@@ -64,13 +65,13 @@ export function useRecentApps () {
     };
   }, []);
 
-  const addRecentApp = useCallback((id: string, name: string, type?: string) => {
+  const addRecentApp = useCallback((id: string, name: string, type?: string, path?: string) => {
     if (id.startsWith("shaper-tmp.")) {
       return;
     }
     setRecentApps((currentApps) => {
       const timestamp = Date.now();
-      const newApp: RecentApp = { id, name, type, timestamp };
+      const newApp: RecentApp = { id, name, type, path, timestamp };
 
       const filtered = currentApps.filter((app) => app.id !== id);
       const updated = [newApp, ...filtered].slice(0, MAX_RECENT);
