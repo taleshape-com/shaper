@@ -3,15 +3,12 @@
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 
+import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+
 // Initialize Monaco Editor from source files instead of CDN
 self.MonacoEnvironment = {
   getWorker () {
-    const defaultBaseUrl = window.shaper.defaultBaseUrl || "/";
-    const baseUrl = defaultBaseUrl.startsWith("http://") || defaultBaseUrl.startsWith("https://")
-      ? defaultBaseUrl
-      : `${window.location.origin}${defaultBaseUrl.startsWith("/") ? "" : "/"}${defaultBaseUrl}`;
-    const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-    return new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker", normalizedBaseUrl));
+    return new editorWorker();
   },
 };
 loader.config({ monaco });
