@@ -17,7 +17,7 @@ type InputProps = {
   idPrefix: string;
 };
 
-function DashboardInput ({
+function DashboardInput({
   label,
   data,
   headers,
@@ -70,6 +70,7 @@ function DashboardInput ({
             throttledOnChange(newValue.trim());
           }}
           className="mx-auto my-0 min-w-[120px]"
+          inputClassName="py-1.5"
         />
       </div>
     </div>

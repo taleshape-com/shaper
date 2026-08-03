@@ -93,7 +93,6 @@ const TableRow = React.forwardRef<
     className={cx(
       "table-row [&_td:last-child]:pr-4 [&_th:last-child]:pr-4",
       "[&_td:first-child]:pl-4 [&_th:first-child]:pl-4",
-      "border-solid border-b border-cb dark:border-db",
       className,
     )}
     {...props}
