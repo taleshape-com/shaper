@@ -103,6 +103,15 @@
   position: relative
 }
 
+.shaper-scope .\@container {
+  container-type: size;
+}
+
+.shaper-scope.shaper-auto-height .\@container,
+.shaper-scope .shaper-auto-height .\@container {
+  container-type: inline-size;
+}
+
 @page {
   size: A4;
   margin-left: 7.048mm;

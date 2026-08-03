@@ -28,13 +28,59 @@ type EmbedArgs = EmbedProps & {
   container: HTMLElement;
 };
 
+function checkIsDynamicHeight (container: HTMLElement): boolean {
+  const inlineHeight = container.style.height;
+  if (inlineHeight === "auto") return true;
+  if (
+    inlineHeight &&
+    inlineHeight !== "auto" &&
+    inlineHeight !== "initial" &&
+    inlineHeight !== "inherit" &&
+    inlineHeight !== "unset"
+  ) {
+    return false;
+  }
+
+  const initialHeight = container.clientHeight;
+
+  // Temporarily detach child nodes to test if container height is content-dependent
+  const childNodes = Array.from(container.childNodes);
+  childNodes.forEach(node => node.remove());
+
+  const heightWithoutChildren = container.clientHeight;
+  const computedHeightWithoutChildren = window.getComputedStyle(container).height;
+
+  // Re-attach child nodes synchronously
+  childNodes.forEach(node => container.appendChild(node));
+
+  // If removing content changed the height, container height depends on content (dynamic height)
+  if (initialHeight !== heightWithoutChildren) {
+    return true;
+  }
+
+  // If container height without content is 0px or auto, it's dynamic height
+  if (computedHeightWithoutChildren === "0px" || computedHeightWithoutChildren === "auto") {
+    return true;
+  }
+
+  return false;
+}
+
 export function dashboard ({ container, ...initialProps }: EmbedArgs) {
   injectCustomCSS();
   container.classList.add("shaper-scope");
 
-  // Expose renderMode on the global shaper object so the UI
-  // (especially charts) can adjust behaviour for PDF rendering.
   if (typeof window !== "undefined") {
+    // Automatically detect if the container has dynamic height (e.g. height: auto)
+    // versus a fixed/explicit height (e.g. height: 600px, height: 100vh).
+    // Dynamic height containers require container-type: inline-size so content can expand the container height.
+    const isDynamicHeight = checkIsDynamicHeight(container);
+    if (isDynamicHeight) {
+      container.classList.add("shaper-auto-height");
+    }
+
+    // Expose renderMode on the global shaper object so the UI
+    // (especially charts) can adjust behaviour for PDF rendering.
     // Ensure window.shaper exists
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -61,7 +107,7 @@ export function dashboard ({ container, ...initialProps }: EmbedArgs) {
 
     destroy: () => {
       root.unmount();
-      container.classList.remove("shaper-scope");
+      container.classList.remove("shaper-scope", "shaper-auto-height");
       updateProps = () => { };
     },
   };

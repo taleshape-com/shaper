@@ -17,7 +17,7 @@ type InputProps = {
   idPrefix: string;
 };
 
-function DashboardInput({
+function DashboardInput ({
   label,
   data,
   headers,
