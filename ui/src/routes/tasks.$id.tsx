@@ -92,8 +92,8 @@ function TaskEdit () {
   const { addRecentApp } = useRecentApps();
 
   useEffect(() => {
-    addRecentApp(id, task.name, "task");
-  }, [id, task.name, addRecentApp]);
+    addRecentApp(id, task.name, "task", task.path);
+  }, [id, task.name, task.path, addRecentApp]);
 
   const handleRun = useCallback(async () => {
     setPreviewError(null);

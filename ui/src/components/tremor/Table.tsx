@@ -41,7 +41,7 @@ const TableHead = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, forwardedRef) => (
-  <thead ref={forwardedRef} className={cx("table-header-group sticky top-0 bg-cbgs dark:bg-dbgs border-b border-cbga dark:border-dbga", className)} {...props} />
+  <thead ref={forwardedRef} className={cx("table-header-group sticky top-0 bg-cbg dark:bg-dbg border-b border-cbga dark:border-dbga", className)} {...props} />
 ));
 
 TableHead.displayName = "TableHead";
@@ -93,8 +93,6 @@ const TableRow = React.forwardRef<
     className={cx(
       "table-row [&_td:last-child]:pr-4 [&_th:last-child]:pr-4",
       "[&_td:first-child]:pl-4 [&_th:first-child]:pl-4",
-      "border-none",
-      "[tbody_&]:odd:bg-cbga [tbody_&]:odd:dark:bg-dbga",
       className,
     )}
     {...props}

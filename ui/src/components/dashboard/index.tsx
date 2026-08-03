@@ -495,7 +495,7 @@ const DataView = ({
                       key={queryIndex}
                       id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                       className={cx(
-                        "mr-4 mb-4 bg-cbgs dark:bg-dbgs border-none shadow-sm flex flex-col group",
+                        "mr-4 mb-4 bg-cbg dark:bg-dbg border-none flex flex-col group",
                         isFullscreen ? "absolute inset-0 z-[100] m-0 rounded-none h-full w-full overflow-auto p-8" : {
                           "break-inside-avoid": !singleTable,
                           "min-h-[240px]": isChartQuery,

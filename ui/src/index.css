@@ -79,7 +79,7 @@
   --shaper-background-color-secondary: #f6f8fa;
   --shaper-background-color-alternate: #e8e8ef;
   --shaper-background-color-invert: #353d4b;
-  --shaper-border-color: #d6d8fa;
+  --shaper-border-color: #e0e0e4;
   --shaper-error-color: #df4f56;
   --shaper-error-color-alternate: #ce474d;
 
@@ -101,6 +101,15 @@
 
 .shaper-scope {
   position: relative
+}
+
+.shaper-scope .\@container {
+  container-type: size;
+}
+
+.shaper-scope.shaper-auto-height .\@container,
+.shaper-scope .shaper-auto-height .\@container {
+  container-type: inline-size;
 }
 
 @page {

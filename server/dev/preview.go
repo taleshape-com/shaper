@@ -55,7 +55,7 @@ func RunPreviewCommand(ctx context.Context, configPath, authFile string, noOpen 
 		return fmt.Errorf("failed to create preview dashboard: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/dashboards/%s", strings.TrimSuffix(cfg.URL, "/"), dashboardID)
+	url := fmt.Sprintf("%s/dashboards/%s?preview=true", strings.TrimSuffix(cfg.URL, "/"), dashboardID)
 	fmt.Printf("Preview created: %s\n", url)
 
 	if !noOpen {

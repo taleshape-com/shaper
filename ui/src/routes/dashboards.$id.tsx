@@ -31,6 +31,7 @@ export const Route = createFileRoute("/dashboards/$id")({
   validateSearch: z.object({
     vars: varsParamSchema,
     dev: z.string().optional(),
+    preview: z.union([z.string(), z.boolean()]).optional(),
   }),
   errorComponent: DashboardErrorComponent,
   notFoundComponent: () => {
@@ -50,7 +51,8 @@ function DashboardErrorComponent ({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />;
 }
 function DashboardViewComponent () {
-  const { vars, dev } = Route.useSearch();
+  const { vars, dev, preview } = Route.useSearch();
+  const isPreview = Boolean(dev || preview);
   const params = Route.useParams();
   const auth = useAuth();
   const navigate = useNavigate({ from: "/dashboards/$id" });
@@ -74,7 +76,7 @@ function DashboardViewComponent () {
           setPath(dashboard.path);
         }
         setTitle(dashboard.name);
-        addRecentApp(params.id, dashboard.name, "dashboard");
+        addRecentApp(params.id, dashboard.name, "dashboard", dashboard.path);
       } catch (err) {
         if (isRedirect(err)) {
           navigate(err.options);
@@ -175,7 +177,7 @@ function DashboardViewComponent () {
   const systemConfig = getSystemConfig();
   const MenuButton = (
     <MenuTrigger className="-ml-1 mt-0.5 py-[6px] xl:fixed xl:top-1 xl:left-2 xl:ml-0" title={menuTitle}>
-      {!dev && (
+      {!isPreview && (
         <>
           {systemConfig.editEnabled && (
             <Link
@@ -242,7 +244,7 @@ function DashboardViewComponent () {
           onError={handleRedirectError}
           onDataChange={onDataChange}
         />
-        {dev && (
+        {isPreview && (
           <div
             className="fixed top-1 left-1 px-2.5 py-2 text-xs font-mono cursor-help bg-cerr dark:bg-derr text-ctextb dark:text-dtextb opacity-80 pointer-events-none z-50"
           >

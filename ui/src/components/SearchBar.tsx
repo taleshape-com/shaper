@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useContext } from "react";
-import { useNavigate, useLocation } from "@tanstack/react-router";
+import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
+import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import {
   RiTimeLine,
   RiSearchLine,
@@ -127,7 +127,6 @@ export function SearchBar () {
 
   const handleAppClick = (appId: string, appType: string, appPath?: string, appName?: string) => {
     if (appType === "_folder") {
-      // Navigate to browse page with folder path
       const folderPath = `${appPath}${appName}/`;
       navigate({ to: "/", search: { path: folderPath } });
     } else if (appType === "task") {
@@ -141,16 +140,23 @@ export function SearchBar () {
     setSelectedIndex(-1);
   };
 
-  const recentApps = getRecentApps().filter((app) => app.id !== currentAppId);
+  const handleLinkClick = () => {
+    setIsActive(false);
+    setQuery("");
+    setSelectedIndex(-1);
+  };
+
+  const recentApps = useMemo(
+    () => getRecentApps().filter((app) => app.id !== currentAppId),
+    [getRecentApps, currentAppId],
+  );
   const showRecent = !query && recentApps.length > 0;
   const showResults = query && searchResults.length > 0;
   const showEmpty = query && !isLoading && searchResults.length === 0 && showEmptyState;
   const showDropdown = isActive && (showRecent || showResults || showEmpty || isLoading);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Get fresh values at the time of the keypress
-    const currentRecentApps = getRecentApps().filter((app) => app.id !== currentAppId);
-    const allItems = query ? searchResults : currentRecentApps;
+    const allItems = query ? searchResults : recentApps;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -192,6 +198,16 @@ export function SearchBar () {
     const items = query ? searchResults : recentApps;
     setSelectedIndex(items.length > 0 ? 0 : -1);
   }, [query, isActive, searchResults, recentApps]);
+
+  // Scroll selected item into view if dropdown overflows
+  useEffect(() => {
+    if (selectedIndex >= 0 && dropdownRef.current) {
+      const selectedEl = dropdownRef.current.querySelector("[data-selected='true']");
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [selectedIndex]);
 
   if (!isActive) {
     const shortcut = isMac() ? "⌘K" : "Ctrl+K";
@@ -258,20 +274,8 @@ export function SearchBar () {
               </div>
               {recentApps.map((app: RecentApp, index: number) => {
                 const appType = app.type || "dashboard";
-                return (
-                  <button
-                    key={app.id}
-                    onClick={() => handleAppClick(app.id, appType)}
-                    className={cx(
-                      "flex items-center gap-2 w-full px-3 py-2 text-left text-sm transition-colors",
-                      "text-ctext dark:text-dtext",
-                      {
-                        "bg-gray-100 dark:bg-gray-800": selectedIndex === index,
-                        "hover:bg-gray-100 dark:hover:bg-gray-800":
-                          selectedIndex !== index,
-                      },
-                    )}
-                  >
+                const content = (
+                  <>
                     {appType === "_folder" ? (
                       <RiFolderFill
                         className="size-4 shrink-0 fill-ctext2 dark:fill-dtext2"
@@ -289,7 +293,43 @@ export function SearchBar () {
                       />
                     )}
                     <span>{app.name}</span>
-                  </button>
+                  </>
+                );
+
+                const itemClassName = cx(
+                  "flex items-center gap-2 w-full px-3 py-2 text-left text-sm transition-colors",
+                  "text-ctext dark:text-dtext",
+                  {
+                    "bg-gray-100 dark:bg-gray-800": selectedIndex === index,
+                    "hover:bg-gray-100 dark:hover:bg-gray-800": selectedIndex !== index,
+                  },
+                );
+
+                if (appType === "_folder") {
+                  return (
+                    <Link
+                      key={app.id}
+                      to="/"
+                      search={{ path: `${app.path || ""}${app.name}/` }}
+                      onClick={handleLinkClick}
+                      data-selected={selectedIndex === index}
+                      className={itemClassName}
+                    >
+                      {content}
+                    </Link>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={app.id}
+                    to={(appType === "task" ? `/tasks/${app.id}` : `/dashboards/${app.id}`) as any}
+                    onClick={handleLinkClick}
+                    data-selected={selectedIndex === index}
+                    className={itemClassName}
+                  >
+                    {content}
+                  </Link>
                 );
               })}
             </div>
@@ -297,46 +337,72 @@ export function SearchBar () {
 
           {showResults && (
             <div className="py-1">
-              {searchResults.map((app: App, index: number) => (
-                <button
-                  key={app.id}
-                  onClick={() => handleAppClick(app.id, app.type, app.path, app.name)}
-                  className={cx(
-                    "flex items-start gap-2 w-full px-3 py-2 text-left text-sm transition-colors",
-                    "text-ctext dark:text-dtext",
-                    {
-                      "bg-gray-100 dark:bg-gray-800": selectedIndex === index,
-                      "hover:bg-gray-100 dark:hover:bg-gray-800":
-                        selectedIndex !== index,
-                    },
-                  )}
-                >
-                  {app.type === "_folder" ? (
-                    <RiFolderFill
-                      className="size-4 shrink-0 mt-0.5 fill-ctext2 dark:fill-dtext2"
-                      aria-hidden={true}
-                    />
-                  ) : app.type === "task" ? (
-                    <RiCodeSSlashFill
-                      className="size-4 shrink-0 mt-0.5 fill-ctext2 dark:fill-dtext2"
-                      aria-hidden={true}
-                    />
-                  ) : (
-                    <RiBarChart2Line
-                      className="size-4 shrink-0 mt-0.5 fill-ctext2 dark:fill-dtext2"
-                      aria-hidden={true}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{app.name}</div>
-                    {app.path !== "/" && (
-                      <div className="text-xs text-ctext2 dark:text-dtext2 truncate">
-                        {app.path}
-                      </div>
+              {searchResults.map((app: App, index: number) => {
+                const content = (
+                  <>
+                    {app.type === "_folder" ? (
+                      <RiFolderFill
+                        className="size-4 shrink-0 mt-0.5 fill-ctext2 dark:fill-dtext2"
+                        aria-hidden={true}
+                      />
+                    ) : app.type === "task" ? (
+                      <RiCodeSSlashFill
+                        className="size-4 shrink-0 mt-0.5 fill-ctext2 dark:fill-dtext2"
+                        aria-hidden={true}
+                      />
+                    ) : (
+                      <RiBarChart2Line
+                        className="size-4 shrink-0 mt-0.5 fill-ctext2 dark:fill-dtext2"
+                        aria-hidden={true}
+                      />
                     )}
-                  </div>
-                </button>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">{app.name}</div>
+                      {app.path !== "/" && (
+                        <div className="text-xs text-ctext2 dark:text-dtext2 truncate">
+                          {app.path}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+
+                const itemClassName = cx(
+                  "flex items-start gap-2 w-full px-3 py-2 text-left text-sm transition-colors",
+                  "text-ctext dark:text-dtext",
+                  {
+                    "bg-gray-100 dark:bg-gray-800": selectedIndex === index,
+                    "hover:bg-gray-100 dark:hover:bg-gray-800": selectedIndex !== index,
+                  },
+                );
+
+                if (app.type === "_folder") {
+                  return (
+                    <Link
+                      key={app.id}
+                      to="/"
+                      search={{ path: `${app.path}${app.name}/` }}
+                      onClick={handleLinkClick}
+                      data-selected={selectedIndex === index}
+                      className={itemClassName}
+                    >
+                      {content}
+                    </Link>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={app.id}
+                    to={(app.type === "task" ? `/tasks/${app.id}` : `/dashboards/${app.id}`) as any}
+                    onClick={handleLinkClick}
+                    data-selected={selectedIndex === index}
+                    className={itemClassName}
+                  >
+                    {content}
+                  </Link>
+                );
+              })}
             </div>
           )}
 

@@ -12,8 +12,8 @@ const calloutVariants = tv({
       default: [
         // text color
         "text-ctext dark:text-dtext",
-        // background color
-        "bg-cbga dark:bg-dbga",
+        // border
+        "border border-solid border-cb dark:border-db",
       ],
       success: [
         // text color

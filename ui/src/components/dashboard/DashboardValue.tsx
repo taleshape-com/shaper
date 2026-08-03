@@ -97,7 +97,7 @@ function DashboardValue ({ headers, data }: ValueProps) {
       ref={containerRef}
     >
       <div
-        className={cx("overflow-auto py-2", {
+        className={cx("overflow-auto py-4", {
           "font-mono": isJSONType(valueHeader.type),
           "font-semibold text-center": valueHeader.tag === "large" || (valueHeader.tag === "value" && (hasLabel || (formattedValue.length <= 100 && !formattedValue.includes("\n")))),
           "text-justify": valueHeader.tag === "small" || (valueHeader.tag === "value" && formattedValue.length >= 300),
