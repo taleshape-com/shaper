@@ -13,7 +13,8 @@ import {
   refreshJwt,
   getJwt,
 } from "../../lib/auth";
-import { parseJwt } from "../../lib/utils";
+import { goToLoginPage, parseJwt } from "../../lib/utils";
+import { getSystemConfig } from "../../lib/system";
 
 const getSessionToken = async (email: string, password: string) => {
   const response = await fetch(`${window.shaper.defaultBaseUrl}api/login`, {
@@ -81,6 +82,9 @@ export function AuthProvider ({ children }: { children: React.ReactNode }) {
   const updateJwtWithVars = useCallback(async (token: string, vars: Variables) => {
     const jwt = await refreshJwt(token, vars);
     if (!jwt) {
+      if (getSystemConfig().loginRequired) {
+        goToLoginPage();
+      }
       return false;
     }
     if (token !== "") {
