@@ -19,8 +19,8 @@ type ValidateResponse struct {
 	Error    string `json:"error,omitempty"`
 }
 
-func RunValidateCommand(ctx context.Context, configPath string, args []string) error {
-	cfg, err := loadOrPromptConfig(configPath)
+func RunValidateCommand(ctx context.Context, configPath, urlOverride string, args []string) error {
+	cfg, err := loadOrPromptConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}

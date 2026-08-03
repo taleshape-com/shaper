@@ -7,10 +7,10 @@ import (
 	"fmt"
 )
 
-func RunDevCommand(ctx context.Context, configPath, authFile string) error {
+func RunDevCommand(ctx context.Context, configPath, urlOverride, authFile string) error {
 	fmt.Printf("Starting Shaper Dev File Watcher...\n\n")
 
-	cfg, err := loadOrPromptConfig(configPath)
+	cfg, err := loadOrPromptConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}

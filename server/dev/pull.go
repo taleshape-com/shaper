@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-func RunPullCommand(ctx context.Context, configPath, authFile string, skipConfirm bool) error {
-	cfg, err := loadOrPromptConfig(configPath)
+func RunPullCommand(ctx context.Context, configPath, urlOverride, authFile string, skipConfirm bool) error {
+	cfg, err := loadOrPromptConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}

@@ -37,8 +37,8 @@ type deployHTTPClient interface {
 	Actor() string
 }
 
-func RunDeployCommand(ctx context.Context, configPath, authFile string, validateOnly bool) error {
-	cfg, err := LoadConfig(configPath)
+func RunDeployCommand(ctx context.Context, configPath, urlOverride, authFile string, validateOnly bool) error {
+	cfg, err := LoadConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}

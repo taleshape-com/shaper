@@ -31,18 +31,18 @@ type Config struct {
 var ErrConfigNotFound = errors.New("config file not found")
 var ErrInterrupted = errors.New("interrupted by user")
 
-func loadOrPromptConfig(path string) (Config, error) {
-	cfg, err := LoadConfig(path)
+func loadOrPromptConfig(path string, urlOverride ...string) (Config, error) {
+	cfg, err := LoadConfig(path, urlOverride...)
 	if err == nil {
 		return cfg, nil
 	}
 	if !errors.Is(err, ErrConfigNotFound) {
 		return Config{}, err
 	}
-	return promptAndSaveConfig(path)
+	return promptAndSaveConfig(path, urlOverride...)
 }
 
-func LoadConfig(path string) (Config, error) {
+func LoadConfig(path string, urlOverride ...string) (Config, error) {
 	resolvedPath, err := expandUserPath(path)
 	if err != nil {
 		return Config{}, err
@@ -55,13 +55,16 @@ func LoadConfig(path string) (Config, error) {
 		}
 		return Config{}, fmt.Errorf("failed to read config: %w", err)
 	}
-	return parseConfig(data)
+	return parseConfig(data, urlOverride...)
 }
 
-func parseConfig(data []byte) (Config, error) {
+func parseConfig(data []byte, urlOverride ...string) (Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, fmt.Errorf("failed to parse config: %w", err)
+	}
+	if len(urlOverride) > 0 && strings.TrimSpace(urlOverride[0]) != "" {
+		cfg.URL = urlOverride[0]
 	}
 	return normalizeConfig(cfg)
 }
@@ -83,7 +86,7 @@ func normalizeConfig(cfg Config) (Config, error) {
 	return cfg, nil
 }
 
-func promptAndSaveConfig(path string) (Config, error) {
+func promptAndSaveConfig(path string, urlOverride ...string) (Config, error) {
 	fmt.Printf("Config file %s not found. Let's create it.\n\n", path)
 	reader := bufio.NewReader(os.Stdin)
 
@@ -113,6 +116,10 @@ func promptAndSaveConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 	fmt.Printf("\nSaved config to %s\n\n", path)
+	if len(urlOverride) > 0 && strings.TrimSpace(urlOverride[0]) != "" {
+		cfg.URL = urlOverride[0]
+		return normalizeConfig(cfg)
+	}
 	return cfg, nil
 }
 

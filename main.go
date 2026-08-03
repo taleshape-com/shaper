@@ -436,12 +436,13 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 	devFlags := ff.NewFlagSet("dev")
 	help := devFlags.Bool('h', "help", "show help")
 	devConfigPath := devFlags.StringLong("config", "./shaper.json", "Path to config file")
+	devURL := devFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	devAuthFile := devFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 
 	usage := "watch local dashboard files and show preview"
 	devCmd := &ff.Command{
 		Name:      "dev",
-		Usage:     "shaper dev [--config path] [--auth-file path]",
+		Usage:     "shaper dev [--config path] [--url url] [--auth-file path]",
 		ShortHelp: usage,
 		Flags:     devFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -449,7 +450,7 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(devFlags, usage))
 				return nil
 			}
-			return dev.RunDevCommand(ctx, *devConfigPath, *devAuthFile)
+			return dev.RunDevCommand(ctx, *devConfigPath, *devURL, *devAuthFile)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, devCmd)
@@ -460,13 +461,14 @@ func addPreviewSubcommand(rootCmd *ff.Command) *ff.Command {
 	previewFlags := ff.NewFlagSet("preview")
 	help := previewFlags.Bool('h', "help", "show help")
 	previewConfigPath := previewFlags.StringLong("config", "./shaper.json", "Path to config file")
+	previewURL := previewFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	previewAuthFile := previewFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	noOpen := previewFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
 
 	usage := "create a temporary dashboard preview"
 	previewCmd := &ff.Command{
 		Name:      "preview",
-		Usage:     "shaper preview <path/to/dashboard.dashboard.sql> [--config path] [--auth-file path] [--no-open]",
+		Usage:     "shaper preview <path/to/dashboard.dashboard.sql> [--config path] [--url url] [--auth-file path] [--no-open]",
 		ShortHelp: usage,
 		Flags:     previewFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -477,7 +479,7 @@ func addPreviewSubcommand(rootCmd *ff.Command) *ff.Command {
 			if len(args) != 1 {
 				return fmt.Errorf("preview requires exactly one dashboard file path")
 			}
-			return dev.RunPreviewCommand(ctx, *previewConfigPath, *previewAuthFile, *noOpen, args[0])
+			return dev.RunPreviewCommand(ctx, *previewConfigPath, *previewURL, *previewAuthFile, *noOpen, args[0])
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, previewCmd)
@@ -488,13 +490,14 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 	pullFlags := ff.NewFlagSet("pull")
 	help := pullFlags.Bool('h', "help", "show help")
 	pullConfigPath := pullFlags.StringLong("config", "./shaper.json", "Path to config file")
+	pullURL := pullFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	pullAuthFile := pullFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	pullYes := pullFlags.Bool('y', "yes", "Skip confirmation prompt")
 
 	usage := "pull dashboards from server to local files"
 	pullCmd := &ff.Command{
 		Name:      "pull",
-		Usage:     "shaper pull [--config path] [--auth-file path] [--yes]",
+		Usage:     "shaper pull [--config path] [--url url] [--auth-file path] [--yes]",
 		ShortHelp: usage,
 		Flags:     pullFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -502,7 +505,7 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(pullFlags, usage))
 				return nil
 			}
-			return dev.RunPullCommand(ctx, *pullConfigPath, *pullAuthFile, *pullYes)
+			return dev.RunPullCommand(ctx, *pullConfigPath, *pullURL, *pullAuthFile, *pullYes)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, pullCmd)
@@ -513,11 +516,12 @@ func addIdsSubcommand(rootCmd *ff.Command) *ff.Command {
 	idsFlags := ff.NewFlagSet("ids")
 	help := idsFlags.Bool('h', "help", "show help")
 	idsConfigPath := idsFlags.StringLong("config", "./shaper.json", "Path to config file")
+	idsURL := idsFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 
 	usage := "add missing IDs to all dashboards in the configured directory"
 	idsCmd := &ff.Command{
 		Name:      "ids",
-		Usage:     "shaper ids [--config path]",
+		Usage:     "shaper ids [--config path] [--url url]",
 		ShortHelp: usage,
 		Flags:     idsFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -525,7 +529,7 @@ func addIdsSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(idsFlags, usage))
 				return nil
 			}
-			return dev.RunIdsCommand(ctx, *idsConfigPath)
+			return dev.RunIdsCommand(ctx, *idsConfigPath, *idsURL)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, idsCmd)
@@ -536,13 +540,14 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	deployFlags := ff.NewFlagSet("deploy")
 	help := deployFlags.Bool('h', "help", "show help")
 	deployConfigPath := deployFlags.StringLong("config", "./shaper.json", "Path to config file")
+	deployURL := deployFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	deployAuthFile := deployFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
 
 	usage := `Deploy dashboards from files using API key or user auth. Set SHAPER_DEPLOY_API_KEY to authenticate or log in.`
 	deployCmd := &ff.Command{
 		Name:      "deploy",
-		Usage:     "shaper deploy [--config path] [--auth-file path]",
+		Usage:     "shaper deploy [--config path] [--url url] [--auth-file path]",
 		ShortHelp: usage,
 		Flags:     deployFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -550,7 +555,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(deployFlags, usage))
 				return nil
 			}
-			return dev.RunDeployCommand(ctx, *deployConfigPath, *deployAuthFile, *deployValidateOnly)
+			return dev.RunDeployCommand(ctx, *deployConfigPath, *deployURL, *deployAuthFile, *deployValidateOnly)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, deployCmd)
@@ -561,6 +566,7 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 	validateFlags := ff.NewFlagSet("validate")
 	help := validateFlags.Bool('h', "help", "show help")
 	validateConfigPath := validateFlags.StringLong("config", "./shaper.json", "Path to config file")
+	validateURL := validateFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 
 	usage := `Validate dashboards and tasks.
 
@@ -571,7 +577,7 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 
 	validateCmd := &ff.Command{
 		Name:      "validate",
-		Usage:     "shaper validate [files...] [--config path]",
+		Usage:     "shaper validate [files...] [--config path] [--url url]",
 		ShortHelp: "Validate dashboards",
 		Flags:     validateFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -579,7 +585,7 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(validateFlags, usage))
 				return nil
 			}
-			return dev.RunValidateCommand(ctx, *validateConfigPath, args)
+			return dev.RunValidateCommand(ctx, *validateConfigPath, *validateURL, args)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, validateCmd)
@@ -590,6 +596,7 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 	schemaFlags := ff.NewFlagSet("schema")
 	help := schemaFlags.Bool('h', "help", "show help")
 	schemaConfigPath := schemaFlags.StringLong("config", "./shaper.json", "Path to config file")
+	schemaURL := schemaFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	schemaAuthFile := schemaFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	includeExtensions := schemaFlags.BoolLong("extensions", "Include extensions in the output")
 	includeSecrets := schemaFlags.BoolLong("secrets", "Include secrets in the output")
@@ -597,7 +604,7 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 	usage := "Show database schema as Markdown"
 	schemaCmd := &ff.Command{
 		Name:      "schema",
-		Usage:     "shaper schema [--config path] [--auth-file path] [--extensions] [--secrets]",
+		Usage:     "shaper schema [--config path] [--url url] [--auth-file path] [--extensions] [--secrets]",
 		ShortHelp: usage,
 		Flags:     schemaFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -605,7 +612,7 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(schemaFlags, usage))
 				return nil
 			}
-			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaAuthFile, *includeExtensions, *includeSecrets)
+			return dev.RunSchemaCommand(ctx, *schemaConfigPath, *schemaURL, *schemaAuthFile, *includeExtensions, *includeSecrets)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, schemaCmd)

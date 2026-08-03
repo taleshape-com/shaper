@@ -7,8 +7,8 @@ import (
 	"fmt"
 )
 
-func RunIdsCommand(ctx context.Context, configPath string) error {
-	cfg, err := loadOrPromptConfig(configPath)
+func RunIdsCommand(ctx context.Context, configPath, urlOverride string) error {
+	cfg, err := loadOrPromptConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}
