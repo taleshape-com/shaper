@@ -22,6 +22,11 @@ import (
 
 const QUERY_MAX_ROWS = 3000
 
+var (
+	getVariableRegex = regexp.MustCompile(`(?i)getvariable\s*\(\s*'([^']+)'\s*\)`)
+	setVariableRegex = regexp.MustCompile(`(?i)SET\s+VARIABLE\s+([a-zA-Z0-9_]+)`)
+)
+
 type DashboardQuery struct {
 	Content    string
 	ID         string
@@ -49,6 +54,17 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	if err != nil {
 		return result, err
 	}
+
+	definedVars := make(map[string]bool)
+	for k := range singleVars {
+		definedVars[k] = true
+	}
+	for k := range multiVars {
+		definedVars[k] = true
+	}
+	unsetVarsMap := make(map[string]bool)
+	unsetVariables := []string{}
+
 	// Used to set params for download links
 	downloadLinkParams := url.Values{}
 
@@ -68,6 +84,28 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if sqlString == "" {
 			continue
 		}
+
+		// Check for getvariable('varname') references before running query
+		matches := getVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		for _, m := range matches {
+			if len(m) > 1 {
+				varName := m[1]
+				if !definedVars[varName] && !unsetVarsMap[varName] {
+					unsetVarsMap[varName] = true
+					unsetVariables = append(unsetVariables, varName)
+				}
+			}
+		}
+
+		// Check for SET VARIABLE statements in SQL
+		setMatches := setVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		for _, m := range setMatches {
+			if len(m) > 1 {
+				varName := m[1]
+				definedVars[varName] = true
+			}
+		}
+
 		if !IsAllowedStatement(app, sqlString) {
 			return result, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
 		}
@@ -235,6 +273,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		if err != nil {
 			return result, err
 		}
+		for k := range singleVars {
+			definedVars[k] = true
+		}
+		for k := range multiVars {
+			definedVars[k] = true
+		}
 		err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
@@ -348,6 +392,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 	if footerLink != "" {
 		result.FooterLink = &footerLink
+	}
+	if len(unsetVariables) > 0 {
+		result.UnsetVariables = unsetVariables
 	}
 	return result, err
 }

@@ -68,11 +68,25 @@ export const getVariables = (s: string): Variables => {
 };
 
 export const refreshJwt = async (token: string, vars: Variables) => {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (getSystemConfig().loginRequired) {
+    const jwt = localStorage.getItem(localStorageJwtKey);
+    if (jwt) {
+      try {
+        const claims = parseJwt(jwt);
+        if (claims && claims.exp && Date.now() / 1000 < claims.exp) {
+          headers["Authorization"] = jwt.startsWith("Bearer ") ? jwt : `Bearer ${jwt}`;
+        }
+      } catch {
+        // Ignore invalid JWT format
+      }
+    }
+  }
   return fetch(`${window.shaper.defaultBaseUrl}api/auth/token`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       token: token === "" ? undefined : token,
       variables: Object.keys(vars).length > 0 ? vars : undefined,

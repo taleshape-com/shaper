@@ -113,16 +113,35 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			})
 			if err == nil && token.Valid {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
-					expDuration := app.JWTExp
+					if _, hasId := claims["dashboardId"]; hasId {
+						return c.JSONPretty(http.StatusUnauthorized, struct {
+							Error string `json:"error"`
+						}{Error: "Unauthorized"}, "  ")
+					}
+					isLongLived, _ := claims["longLived"].(bool)
 					if loginRequest.LongLived {
-						expDuration = LONG_LIVED_TOKEN_DURATION
+						if isLongLived {
+							return c.JSONPretty(http.StatusUnauthorized, struct {
+								Error string `json:"error"`
+							}{Error: "Cannot generate a long-lived token from a long-lived token"}, "  ")
+						}
 					}
-					newClaims := jwt.MapClaims{
-						"exp": time.Now().Add(expDuration).Unix(),
-					}
+
+					newClaims := jwt.MapClaims{}
 					for k, v := range claims {
 						if k != "exp" {
 							newClaims[k] = v
+						}
+					}
+
+					if loginRequest.LongLived {
+						newClaims["exp"] = time.Now().Add(LONG_LIVED_TOKEN_DURATION).Unix()
+						newClaims["longLived"] = true
+					} else {
+						if origExp, ok := claims["exp"]; ok {
+							newClaims["exp"] = origExp
+						} else {
+							newClaims["exp"] = time.Now().Add(app.JWTExp).Unix()
 						}
 					}
 					if loginRequest.DashboardID != "" {
@@ -162,9 +181,17 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "Missing required permission: " + core.PermissionGenerateJWT})
 		}
 
+		expDuration := app.JWTExp
+		if loginRequest.LongLived {
+			expDuration = LONG_LIVED_TOKEN_DURATION
+		}
+
 		// Add user or API key info to claims
 		claims := jwt.MapClaims{
-			"exp": time.Now().Add(app.JWTExp).Unix(),
+			"exp": time.Now().Add(expDuration).Unix(),
+		}
+		if loginRequest.LongLived {
+			claims["longLived"] = true
 		}
 		if authInfo.IsUser {
 			claims["userId"] = authInfo.UserID

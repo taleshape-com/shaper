@@ -29,7 +29,7 @@ import {
   copyToClipboard,
 } from "../lib/utils";
 import { editorStorage } from "../lib/editorStorage";
-import { IDashboard } from "../lib/types";
+import { IDashboard, Result } from "../lib/types";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
@@ -130,6 +130,7 @@ function DashboardEditor () {
   const [selectedVisibility, setSelectedVisibility] = useState<string>(
     dashboard.visibility || "private",
   );
+  const [unsetVariables, setUnsetVariables] = useState<string[]>([]);
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -433,9 +434,10 @@ function DashboardEditor () {
     }
   }, [navigate, setIsPreviewLoading, setLoadEndTime]);
 
-  const handleDataChange = useCallback(() => {
+  const handleDataChange = useCallback((data: Result) => {
     setIsPreviewLoading(false);
     setLoadEndTime(Date.now());
+    setUnsetVariables(data.unsetVariables || []);
   }, [setIsPreviewLoading, setLoadEndTime]);
 
   const loadDuration = useMemo(() => {
@@ -488,7 +490,7 @@ function DashboardEditor () {
                   </Button>
                 </div>
               </div>
-              <VariablesMenu onVariablesChange={previewDashboard} />
+              <VariablesMenu onVariablesChange={previewDashboard} unsetVariables={unsetVariables} />
               {(systemConfig.publicSharingEnabled ||
                 systemConfig.passwordProtectedSharingEnabled) && (
                 <div className="my-2 px-4">
