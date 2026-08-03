@@ -210,4 +210,20 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, 2, len(result.Sections))
 		assert.Equal(t, "val2", result.Sections[1].Queries[0].Rows[0][0])
 	})
+
+	t.Run("Detects unset variables accurately", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT getvariable('already_set') AS v1, getvariable('missing_var1') AS v2;
+				SET VARIABLE local_var = 'foo';
+				SELECT getvariable('local_var') AS v3, getvariable('missing_var2') AS v4;
+			`,
+			ID: "test-unset-vars",
+		}
+
+		variables := map[string]any{"already_set": "hello"}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, variables)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"missing_var1", "missing_var2"}, result.UnsetVariables)
+	})
 }

@@ -59,6 +59,7 @@ function DashboardViewComponent () {
   const queryApi = useQueryApi();
   const [title, setTitle] = useState("Dashboard");
   const [visibility, setVisibility] = useState<Result["visibility"]>(undefined);
+  const [unsetVariables, setUnsetVariables] = useState<string[]>([]);
   const [path, setPath] = useState("/");
   const { toast } = useToast();
   const [dashboardKey, setDashboardKey] = useState(0); // For forcing dashboard re-render
@@ -213,7 +214,7 @@ function DashboardViewComponent () {
           </div>
         </>
       )}
-      <VariablesMenu />
+      <VariablesMenu unsetVariables={unsetVariables} />
       {(visibility === "public" || visibility === "password-protected") && (
         <div className="my-2 px-4">
           <PublicLink href={`../view/${params.id}`} />
@@ -224,6 +225,7 @@ function DashboardViewComponent () {
 
   const onDataChange = useCallback((data: Result) => {
     setVisibility(data.visibility);
+    setUnsetVariables(data.unsetVariables || []);
   }, []);
 
   return (

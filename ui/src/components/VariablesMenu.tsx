@@ -7,6 +7,7 @@ import {
   RiCloseLine,
   RiEqualizerLine,
   RiEditLine,
+  RiAlertLine,
 } from "@remixicon/react";
 import { cx } from "../lib/utils";
 import { useAuth, Variables } from "../lib/auth";
@@ -33,6 +34,7 @@ interface VariableItem {
 
 interface VariablesMenuProps {
   onVariablesChange?: () => void;
+  unsetVariables?: string[];
 }
 
 function generateId (): string {
@@ -74,12 +76,20 @@ function itemsToVariables (items: VariableItem[]): Variables {
   return result;
 }
 
-export function VariablesMenu ({ onVariablesChange }: VariablesMenuProps) {
+export function VariablesMenu ({
+  onVariablesChange,
+  unsetVariables = [],
+}: VariablesMenuProps) {
   const auth = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [items, setItems] = useState<VariableItem[]>(() =>
     variablesToItems(auth.variables),
+  );
+
+  const currentItemKeys = new Set(items.map((i) => i.key.trim()));
+  const missingVariables = unsetVariables.filter(
+    (v) => !(v in auth.variables) && !currentItemKeys.has(v),
   );
 
   const handleOpenChange = (open: boolean) => {
@@ -167,6 +177,22 @@ export function VariablesMenu ({ onVariablesChange }: VariablesMenuProps) {
     setItems((prev) => [...prev, newItem]);
   };
 
+  const handleQuickAddMissing = () => {
+    const existingKeys = new Set(items.map((i) => i.key.trim()));
+    const newItems: VariableItem[] = missingVariables
+      .filter((v) => !existingKeys.has(v))
+      .map((v) => ({
+        id: generateId(),
+        key: v,
+        type: "string",
+        stringValue: "",
+        arrayValues: [""],
+      }));
+    if (newItems.length > 0) {
+      setItems((prev) => [...prev, ...newItems]);
+    }
+  };
+
   const handleRemoveVariable = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
@@ -191,23 +217,34 @@ export function VariablesMenu ({ onVariablesChange }: VariablesMenuProps) {
   const entries = Object.entries(auth.variables);
   const activeCount = entries.length;
 
-  const tooltipContent =
-    entries.length === 0 ? (
-      <span className="italic opacity-80 text-xs">No variables set</span>
-    ) : (
-      <div className="font-mono text-xs space-y-1 max-w-xs overflow-hidden">
-        {entries.map(([k, v]) => (
-          <div key={k} className="truncate">
-            <span className="font-semibold opacity-90">{k}: </span>
-            <span className="opacity-80">
-              {Array.isArray(v)
-                ? `[${v.map((item) => JSON.stringify(item)).join(", ")}]`
-                : JSON.stringify(v)}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
+  const tooltipContent = (
+    <div className="space-y-1.5 max-w-xs overflow-hidden">
+      {entries.length === 0 ? (
+        <span className="italic opacity-80 text-xs">No variables set</span>
+      ) : (
+        <div className="font-mono text-xs space-y-1">
+          {entries.map(([k, v]) => (
+            <div key={k} className="truncate">
+              <span className="font-semibold opacity-90">{k}: </span>
+              <span className="opacity-80">
+                {Array.isArray(v)
+                  ? `[${v.map((item) => JSON.stringify(item)).join(", ")}]`
+                  : JSON.stringify(v)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {missingVariables.length > 0 && (
+        <div className="text-[11px] text-cerr dark:text-derr font-semibold border-t border-cb dark:border-db pt-1 mt-1">
+          Unset SQL variable{missingVariables.length > 1 ? "s" : ""}:{" "}
+          <span className="font-mono">
+            {missingVariables.join(", ")}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="mt-5 px-4 w-full">
@@ -220,17 +257,31 @@ export function VariablesMenu ({ onVariablesChange }: VariablesMenuProps) {
           <DialogTrigger asChild>
             <button
               type="button"
-              className="w-full flex items-center justify-between px-3 py-2 bg-cbgs dark:bg-dbgs hover:bg-cbga dark:hover:bg-dbga border border-cb dark:border-db rounded-md text-xs font-medium text-ctext dark:text-dtext transition-colors shadow-sm"
+              className={cx(
+                "w-full flex items-center justify-between space-x-2 px-3 py-2 bg-cbgs dark:bg-dbgs hover:bg-cbga dark:hover:bg-dbga border rounded-md text-xs font-medium text-ctext dark:text-dtext transition-colors shadow-sm",
+                missingVariables.length > 0
+                  ? "border-cprimary dark:border-dprimary"
+                  : "border-cb dark:border-db",
+              )}
             >
-              <span className="flex items-center space-x-2">
-                <RiEqualizerLine className="size-4 text-ctext2 dark:text-dtext2" />
-                <span>
-                  {activeCount > 0
-                    ? `${activeCount} active variable${activeCount > 1 ? "s" : ""}`
-                    : "Set Variables"}
+              <span className="flex items-center space-x-2 truncate">
+                {missingVariables.length > 0 ? (
+                  <span className="relative flex size-2 shrink-0">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-cprimary dark:bg-dprimary opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-cprimary dark:bg-dprimary" />
+                  </span>
+                ) : (
+                  <RiEqualizerLine className="size-4 text-ctext2 dark:text-dtext2 shrink-0" />
+                )}
+                <span className="truncate">
+                  {missingVariables.length > 0
+                    ? `${missingVariables.length} unset variable${missingVariables.length > 1 ? "s" : ""}`
+                    : activeCount > 0
+                      ? `${activeCount} active variable${activeCount > 1 ? "s" : ""}`
+                      : "Set Variables"}
                 </span>
               </span>
-              <RiEditLine className="size-3.5 text-ctext2 dark:text-dtext2" />
+              <RiEditLine className="size-3.5 text-ctext2 dark:text-dtext2 shrink-0" />
             </button>
           </DialogTrigger>
         </Tooltip>
@@ -242,6 +293,31 @@ export function VariablesMenu ({ onVariablesChange }: VariablesMenuProps) {
               Set variables to simulate parameters passed when embedding a dashboard in another application.
             </DialogDescription>
           </DialogHeader>
+
+          {missingVariables.length > 0 && (
+            <div className="p-3 bg-cbgs dark:bg-dbgs border border-cprimary dark:border-dprimary rounded-md text-xs text-ctext dark:text-dtext flex items-center justify-between space-x-2 my-2 shadow-sm">
+              <div className="flex items-start space-x-2">
+                <RiAlertLine className="size-4 text-cprimary dark:text-dprimary shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold block">Unset Variables Detected</span>
+                  <span className="opacity-90">
+                    SQL references:{" "}
+                    <code className="font-mono bg-cbg dark:bg-dbg px-1 py-0.5 rounded border border-cb dark:border-db">
+                      {missingVariables.join(", ")}
+                    </code>
+                  </span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 text-xs py-1 px-2.5"
+                onClick={handleQuickAddMissing}
+              >
+                Add Missing
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-3 my-2 max-h-[60vh] overflow-y-auto pr-1">
             {items.length === 0 ? (
