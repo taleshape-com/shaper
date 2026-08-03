@@ -145,6 +145,48 @@ func TestInitTask(t *testing.T) {
 	})
 }
 
+func TestGetNextTaskRun(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	t.Run("Does not execute non-schedule statements", func(t *testing.T) {
+		content := `
+			CREATE TABLE side_effect_check (val INT);
+			INSERT INTO side_effect_check VALUES (99);
+		`
+		nextRun, runType, err := getNextTaskRun(app, ctx, content)
+		assert.NoError(t, err)
+		assert.Nil(t, nextRun)
+		assert.Equal(t, "single", runType)
+
+		// Table should NOT have been created because getNextTaskRun skipped non-schedule statements
+		var exists int
+		err = app.DuckDB.Get(&exists, "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'side_effect_check'")
+		assert.NoError(t, err)
+		assert.Equal(t, 0, exists)
+	})
+
+	t.Run("Finds schedule statement even if not first statement", func(t *testing.T) {
+		content := `
+			CREATE TABLE dummy_table (val INT);
+			SELECT 'init'::SCHEDULE;
+			INSERT INTO dummy_table VALUES (1);
+		`
+		nextRun, runType, err := getNextTaskRun(app, ctx, content)
+		assert.NoError(t, err)
+		assert.Nil(t, nextRun)
+		assert.Equal(t, "init", runType)
+
+		// dummy_table should NOT have been created during getNextTaskRun
+		var exists int
+		err = app.DuckDB.Get(&exists, "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'dummy_table'")
+		assert.NoError(t, err)
+		assert.Equal(t, 0, exists)
+	})
+}
+
 func TestScheduleExistingInitTasks(t *testing.T) {
 	app, cleanup := setupTestApp(t)
 	defer cleanup()

@@ -62,8 +62,16 @@ func GetInitTasks(app *App, ctx context.Context) ([]InitTask, error) {
 	return tasks, err
 }
 
+func isScheduleQueryCandidate(sqlString string) bool {
+	trimmed := strings.TrimSpace(sqlString)
+	upper := strings.ToUpper(trimmed)
+	if !strings.Contains(upper, "SCHEDULE") {
+		return false
+	}
+	return strings.HasPrefix(upper, "SELECT") || strings.HasPrefix(upper, "WITH") || strings.HasPrefix(upper, "(")
+}
+
 func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, string, error) {
-	// Run first query
 	cleanContent := util.StripSQLComments(content)
 	sqls, err := util.SplitSQLQueries(cleanContent)
 	if err != nil {
@@ -72,6 +80,18 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 	if len(sqls) == 0 {
 		return nil, "", fmt.Errorf("no SQL queries found in task content")
 	}
+
+	var candidateSQLs []string
+	for _, sqlString := range sqls {
+		if isScheduleQueryCandidate(sqlString) {
+			candidateSQLs = append(candidateSQLs, strings.TrimSpace(sqlString))
+		}
+	}
+
+	if len(candidateSQLs) == 0 {
+		return nil, "single", nil
+	}
+
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("Error getting DB: %v", err)
@@ -82,43 +102,43 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 		return nil, "", fmt.Errorf("failed to get database connection: %w", err)
 	}
 	defer conn.Close()
-	sqlString := strings.TrimSpace(sqls[0])
-	if sqlString == "" {
-		return nil, "", fmt.Errorf("first SQL query is empty")
-	}
-	rows, err := conn.QueryxContext(ctx, sqlString)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to execute first SQL query: %w", err)
-	}
-	colTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get column types: %w", err)
-	}
-	result := [][]any{}
-	for rows.Next() {
-		row, err := rows.SliceScan()
+
+	for _, sqlString := range candidateSQLs {
+		rows, err := conn.QueryxContext(ctx, sqlString)
+		if err != nil {
+			continue
+		}
+		colTypes, err := rows.ColumnTypes()
 		if err != nil {
 			rows.Close()
-			return nil, "", fmt.Errorf("failed to scan row: %w", err)
+			continue
 		}
-		result = append(result, row)
+		result := [][]any{}
+		for rows.Next() {
+			row, err := rows.SliceScan()
+			if err != nil {
+				rows.Close()
+				break
+			}
+			result = append(result, row)
+		}
+		rows.Close()
+
+		scheduleType, isSchedule := getScheduleColumn(colTypes, result)
+		if isSchedule {
+			reloadValue := getScheduleTime(result)
+			if reloadValue == -1 {
+				return nil, "init", nil
+			}
+			if reloadValue <= 0 {
+				return nil, scheduleType, nil
+			}
+			nextRunAt := time.UnixMilli(reloadValue)
+			return &nextRunAt, scheduleType, nil
+		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, "", fmt.Errorf("error iterating over rows: %w", err)
-	}
-	scheduleType, isSchedule := getScheduleColumn(colTypes, result)
-	if !isSchedule {
-		return nil, "single", nil
-	}
-	reloadValue := getScheduleTime(result)
-	if reloadValue == -1 {
-		return nil, "init", nil
-	}
-	if reloadValue <= 0 {
-		return nil, scheduleType, nil
-	}
-	nextRunAt := time.UnixMilli(reloadValue)
-	return &nextRunAt, scheduleType, nil
+
+	return nil, "single", nil
 }
 
 func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, content string) {
@@ -246,9 +266,16 @@ func (app *App) HandleTask(msg jetstream.Msg) {
 		app.Logger.WithGroup("tasks").Error("Error acking message", slog.Any("error", err))
 		return
 	}
-	nextRunAt, scheduleType, err := getNextTaskRun(app, ctx, task.Content)
-	if err != nil {
-		app.Logger.WithGroup("tasks").Error("Error getting next task run", slog.String("task", taskID), slog.Any("error", err))
+	var nextRunAt *time.Time
+	scheduleType := runResult.ScheduleType
+	if scheduleType == "" {
+		scheduleType = "single"
+	}
+	if runResult.NextRunAt == -1 {
+		scheduleType = "init"
+	} else if runResult.NextRunAt > 0 {
+		t := time.UnixMilli(runResult.NextRunAt)
+		nextRunAt = &t
 	}
 	var totalDuration time.Duration
 	for _, queryResult := range runResult.Queries {
@@ -282,9 +309,16 @@ func runAll(app *App, taskID string, runTime time.Time) {
 		app.Logger.WithGroup("tasks").Error("Error running task", slog.String("task", taskID), slog.Any("error", err))
 		return
 	}
-	nextRunAt, scheduleType, err := getNextTaskRun(app, ctx, task.Content)
-	if err != nil {
-		app.Logger.WithGroup("tasks").Error("Error getting next task run", slog.String("task", taskID), slog.Any("error", err))
+	var nextRunAt *time.Time
+	scheduleType := runResult.ScheduleType
+	if scheduleType == "" {
+		scheduleType = "single"
+	}
+	if runResult.NextRunAt == -1 {
+		scheduleType = "init"
+	} else if runResult.NextRunAt > 0 {
+		t := time.UnixMilli(runResult.NextRunAt)
+		nextRunAt = &t
 	}
 	var totalDuration time.Duration
 	for _, queryResult := range runResult.Queries {
