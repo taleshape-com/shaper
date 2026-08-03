@@ -139,8 +139,8 @@ function DashboardEditor () {
   const { addRecentApp } = useRecentApps();
 
   useEffect(() => {
-    addRecentApp(params.id, dashboard.name, "dashboard");
-  }, [params.id, dashboard.name, addRecentApp]);
+    addRecentApp(params.id, dashboard.name, "dashboard", dashboard.path);
+  }, [params.id, dashboard.name, dashboard.path, addRecentApp]);
 
   // Track the current AbortController for preview requests
   const previewAbortRef = useRef<AbortController | null>(null);
