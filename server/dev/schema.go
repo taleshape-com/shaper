@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-func RunSchemaCommand(ctx context.Context, configPath, authFile string, includeExtensions, includeSecrets bool) error {
-	cfg, err := LoadConfig(configPath)
+func RunSchemaCommand(ctx context.Context, configPath, urlOverride, authFile string, includeExtensions, includeSecrets bool) error {
+	cfg, err := LoadConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}

@@ -10,12 +10,12 @@ import (
 	"strings"
 )
 
-func RunPreviewCommand(ctx context.Context, configPath, authFile string, noOpen bool, dashboardPath string) error {
+func RunPreviewCommand(ctx context.Context, configPath, urlOverride, authFile string, noOpen bool, dashboardPath string) error {
 	if !strings.HasSuffix(dashboardPath, DASHBOARD_SUFFIX) {
 		return fmt.Errorf("file %s is not a dashboard (must end with %s)", dashboardPath, DASHBOARD_SUFFIX)
 	}
 
-	cfg, err := loadOrPromptConfig(configPath)
+	cfg, err := loadOrPromptConfig(configPath, urlOverride)
 	if err != nil {
 		return err
 	}
