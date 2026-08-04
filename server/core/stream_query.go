@@ -113,7 +113,7 @@ func StreamQueryCSV(
 	defer conn.Close()
 
 	// Execute the query and get rows
-	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls[:queryID], params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
@@ -202,7 +202,7 @@ func StreamQueryJSON(
 	defer conn.Close()
 
 	// Execute the query and get rows
-	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls[:queryID], params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}
@@ -495,7 +495,7 @@ func StreamQueryXLSX(
 	}
 
 	// Execute the query and get rows
-	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls, params, variables)
+	varPrefix, varCleanup, err := getVarPrefix(app, conn, ctx, sqls[:queryID], params, variables)
 	if err != nil {
 		return fmt.Errorf("failed to get variable prefix: %w", err)
 	}

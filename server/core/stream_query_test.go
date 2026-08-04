@@ -148,3 +148,41 @@ func TestResolveDownloadQueryID(t *testing.T) {
 		})
 	}
 }
+
+func TestGetVarPrefixOnlyQueriesBeforeDownload(t *testing.T) {
+	db, err := sqlx.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("failed to open duckdb: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := initDuckDB(db); err != nil {
+		t.Fatalf("failed to init duckdb: %v", err)
+	}
+
+	app := &App{DuckDB: db}
+	ctx := context.Background()
+	conn, err := db.Connx(ctx)
+	if err != nil {
+		t.Fatalf("failed to get conn: %v", err)
+	}
+	defer conn.Close()
+
+	sqls := []string{
+		"SELECT 'bar'::DROPDOWN AS my_var;",
+		"SELECT 1 AS result;",
+		"SELECT INVALID SYNTAX HERE;",
+	}
+
+	queryID := 1 // download query is at index 1
+
+	// When passing sqls[:queryID], the invalid query at index 2 should not be evaluated
+	varPrefix, _, err := getVarPrefix(app, conn, ctx, sqls[:queryID], nil, nil)
+	if err != nil {
+		t.Fatalf("getVarPrefix failed: %v", err)
+	}
+
+	if !strings.Contains(varPrefix, "my_var") {
+		t.Errorf("expected varPrefix to contain my_var, got: %q", varPrefix)
+	}
+}
