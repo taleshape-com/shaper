@@ -20,10 +20,10 @@ var dbTypes = []struct {
 	ResultType string
 }{
 	{"LABEL", "UNION(\"label_varchar\" VARCHAR)", "string"},
-	{"XAXIS", "UNION(\"xaxis_varchar\" VARCHAR, \"xaxis_timestamp\" TIMESTAMP, \"xaxis_time\" TIME, \"xaxis_double\" DOUBLE, \"xaxis_interval\" INTERVAL)", "axis"},
-	{"YAXIS", "UNION(\"yaxis_varchar\" VARCHAR, \"xaxis_timestamp\" TIMESTAMP, \"yaxis_time\" TIME, \"yaxis_double\" DOUBLE, \"yaxis_interval\" INTERVAL)", "axis"},
-	{"XLINE", "UNION(\"xline_varchar\" VARCHAR, \"xline_timestamp\" TIMESTAMP, \"xline_time\" TIME, \"xline_double\" DOUBLE, \"xline_interval\" INTERVAL)", "axis"},
-	{"YLINE", "UNION(\"yline_timestamp\" TIMESTAMP, \"yline_time\" TIME, \"yline_double\" DOUBLE, \"yline_interval\" INTERVAL)", "axis"},
+	{"XAXIS", "UNION(\"xaxis_varchar\" VARCHAR, \"xaxis_timestamp\" TIMESTAMP, \"xaxis_timestamptz\" TIMESTAMPTZ, \"xaxis_time\" TIME, \"xaxis_double\" DOUBLE, \"xaxis_interval\" INTERVAL)", "axis"},
+	{"YAXIS", "UNION(\"yaxis_varchar\" VARCHAR, \"yaxis_timestamp\" TIMESTAMP, \"yaxis_timestamptz\" TIMESTAMPTZ, \"yaxis_time\" TIME, \"yaxis_double\" DOUBLE, \"yaxis_interval\" INTERVAL)", "axis"},
+	{"XLINE", "UNION(\"xline_varchar\" VARCHAR, \"xline_timestamp\" TIMESTAMP, \"xline_timestamptz\" TIMESTAMPTZ, \"xline_time\" TIME, \"xline_double\" DOUBLE, \"xline_interval\" INTERVAL)", "axis"},
+	{"YLINE", "UNION(\"yline_timestamp\" TIMESTAMP, \"yline_timestamptz\" TIMESTAMPTZ, \"yline_time\" TIME, \"yline_double\" DOUBLE, \"yline_interval\" INTERVAL)", "axis"},
 	{"LINECHART", "UNION(\"linechart_interval\" INTERVAL, \"linechart_double\" DOUBLE)", "chart"},
 	{"LINECHART_PERCENT", "UNION(\"linechart_percent_double\" DOUBLE)", "percent"},
 	{"LINECHART_CATEGORY", "UNION(\"linechart_category_varchar\" VARCHAR)", "string"},
@@ -46,9 +46,9 @@ var dbTypes = []struct {
 	{"DOWNLOAD_XLSX", "UNION(\"download_xlsx_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_JSON", "UNION(\"download_json_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_PDF", "UNION(\"download_pdf_varchar\" VARCHAR)", "string"},
-	{"DATEPICKER", "UNION(\"datepicker_date\" DATE)", "date"},
-	{"DATEPICKER_FROM", "UNION(\"datepicker_from_date\" DATE)", "date"},
-	{"DATEPICKER_TO", "UNION(\"datepicker_to_date\" DATE)", "date"},
+	{"DATEPICKER", "UNION(\"datepicker_date\" DATE, \"datepicker_timestamp\" TIMESTAMP, \"datepicker_timestamptz\" TIMESTAMPTZ)", "date"},
+	{"DATEPICKER_FROM", "UNION(\"datepicker_from_date\" DATE, \"datepicker_from_timestamp\" TIMESTAMP, \"datepicker_from_timestamptz\" TIMESTAMPTZ)", "date"},
+	{"DATEPICKER_TO", "UNION(\"datepicker_to_date\" DATE, \"datepicker_to_timestamp\" TIMESTAMP, \"datepicker_to_timestamptz\" TIMESTAMPTZ)", "date"},
 	{"COMPARE", "UNION(\"compare_double\" DOUBLE, \"compare_interval\" INTERVAL)", "chart"},
 	{"TREND", "UNION(\"trend_double\" DOUBLE)", "number"},
 	{"PLACEHOLDER", "UNION(\"placeholder_varchar\" VARCHAR)", "string"},
@@ -86,7 +86,7 @@ var dbTypes = []struct {
 func createType(db *sqlx.DB, name string, definition string) error {
 	// TODO: Disabled the drop since it's slow (like 500ms). Just be careful to not change definitions
 	// drop types first if changed - we changed SCHEDULE with 0.19.0
-	if name == "SCHEDULE" || name == "SCHEDULE_ALL" {
+	if name == "SCHEDULE" || name == "SCHEDULE_ALL" || name == "XAXIS" || name == "YAXIS" || name == "XLINE" || name == "YLINE" || name == "DATEPICKER" || name == "DATEPICKER_FROM" || name == "DATEPICKER_TO" {
 		_, err := db.Exec("DROP TYPE IF EXISTS " + name + ";")
 		if err != nil {
 			return fmt.Errorf("failed to drop type %s: %w", name, err)
