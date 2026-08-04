@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func RunDevCommand(ctx context.Context, configPath, urlOverride, authFile string) error {
+func RunDevCommand(ctx context.Context, configPath, urlOverride, authFile string, noOpen bool) error {
 	fmt.Printf("Starting Shaper Dev File Watcher...\n\n")
 
 	cfg, err := loadOrPromptConfig(configPath, urlOverride)
@@ -52,6 +52,7 @@ func RunDevCommand(ctx context.Context, configPath, urlOverride, authFile string
 		WatchDirPath: watchDir,
 		Client:       client,
 		BaseURL:      cfg.URL,
+		NoOpen:       noOpen,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to start watcher: %w", err)

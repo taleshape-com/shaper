@@ -471,6 +471,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		addDeploySubcommand(rootCmd),
 		addValidateSubcommand(rootCmd),
 		addSchemaSubcommand(rootCmd),
+		addLoginSubcommand(rootCmd),
 	)
 
 	// Set up the root command execution
@@ -644,11 +645,12 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 	devConfigPath := devFlags.StringLong("config", "./shaper.json", "Path to config file")
 	devURL := devFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	devAuthFile := devFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	noOpen := devFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
 
 	usage := "watch local dashboard files and show preview"
 	devCmd := &ff.Command{
 		Name:      "dev",
-		Usage:     "shaper dev [--config path] [--url url] [--auth-file path]",
+		Usage:     "shaper dev [--config path] [--url url] [--auth-file path] [--no-open]",
 		ShortHelp: usage,
 		Flags:     devFlags,
 		Exec: func(ctx context.Context, args []string) error {
@@ -656,7 +658,7 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 				fmt.Printf("%s\n", ffhelp.Flags(devFlags, usage))
 				return nil
 			}
-			return dev.RunDevCommand(ctx, *devConfigPath, *devURL, *devAuthFile)
+			return dev.RunDevCommand(ctx, *devConfigPath, *devURL, *devAuthFile, *noOpen)
 		},
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, devCmd)
@@ -823,6 +825,32 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, schemaCmd)
 	return schemaCmd
+}
+
+func addLoginSubcommand(rootCmd *ff.Command) *ff.Command {
+	loginFlags := ff.NewFlagSet("login")
+	help := loginFlags.Bool('h', "help", "show help")
+	loginConfigPath := loginFlags.StringLong("config", "./shaper.json", "Path to config file")
+	loginURL := loginFlags.StringLong("url", "", "Server URL (overrides url in config file)")
+	loginAuthFile := loginFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
+	noOpen := loginFlags.BoolLong("no-open", "Disable auto-opening the browser")
+
+	usage := "log in to shaper server"
+	loginCmd := &ff.Command{
+		Name:      "login",
+		Usage:     "shaper login [--config path] [--url url] [--auth-file path] [--no-open]",
+		ShortHelp: usage,
+		Flags:     loginFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(loginFlags, usage))
+				return nil
+			}
+			return dev.RunLoginCommand(ctx, *loginConfigPath, *loginURL, *loginAuthFile, *noOpen)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, loginCmd)
+	return loginCmd
 }
 
 func Run(cfg Config) func(context.Context) {
