@@ -648,7 +648,7 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "number", nil
 	case "DATE":
 		return "date", nil
-	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPTZ":
+	case "TIMESTAMP", "TIMESTAMP_NS", "TIMESTAMP_MS", "TIMESTAMP_S", "TIMESTAMPTZ", "TIMESTAMPTZ_NS", "TIMESTAMPTZ_MS", "TIMESTAMPTZ_S", "TIMESTAMP WITH TIME ZONE", "TIMESTAMP_TZ":
 		return getTimestampType(rows, index)
 	case "INTERVAL":
 		return "duration", nil

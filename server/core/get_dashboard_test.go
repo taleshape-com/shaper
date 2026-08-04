@@ -226,4 +226,56 @@ func TestQueryDashboard(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"missing_var1", "missing_var2"}, result.UnsetVariables)
 	})
+
+	t.Run("TIMESTAMPTZ support in custom types and standalone columns", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT '2026-08-04 10:00:00+00'::TIMESTAMPTZ::XLINE;
+				SELECT
+					'2026-08-04 12:00:00+00'::TIMESTAMPTZ::XAXIS AS ts_xaxis,
+					10.0::LINECHART AS val;
+				SELECT '2026-08-04 10:00:00+00'::TIMESTAMPTZ::YLINE;
+				SELECT
+					5.0::BARCHART AS bval,
+					'2026-08-04 12:00:00+00'::TIMESTAMPTZ::YAXIS AS ts_yaxis;
+				SELECT
+					'2026-08-04 12:00:00+00'::TIMESTAMPTZ AS standalone_tz;
+				SELECT
+					'2026-08-04 12:00:00+00'::TIMESTAMPTZ::DATEPICKER AS dp;
+				SELECT
+					'2026-08-04 12:00:00+00'::TIMESTAMPTZ::RELOAD;
+			`,
+			ID: "test-timestamptz",
+		}
+
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, len(result.Sections), 1)
+
+		// First query: linechart with XAXIS (TIMESTAMPTZ) and XLINE (TIMESTAMPTZ)
+		q1 := result.Sections[0].Queries[0]
+		assert.Equal(t, "linechart", q1.Render.Type)
+		assert.Equal(t, "timestamp", q1.Columns[0].Type)
+		assert.Equal(t, 1, len(q1.Render.MarkLines))
+		assert.False(t, q1.Render.MarkLines[0].IsYaxis)
+		assert.Equal(t, int64(1785837600000), q1.Render.MarkLines[0].Value) // 2026-08-04 10:00:00 UTC = 1785837600000 ms
+
+		// Second query: barchartVertical with YAXIS (TIMESTAMPTZ) and YLINE (TIMESTAMPTZ)
+		q2 := result.Sections[0].Queries[1]
+		assert.Equal(t, "barchartVertical", q2.Render.Type)
+		assert.Equal(t, "timestamp", q2.Columns[1].Type)
+		assert.Equal(t, 1, len(q2.Render.MarkLines))
+		assert.True(t, q2.Render.MarkLines[0].IsYaxis)
+
+		// Third query: standalone TIMESTAMPTZ
+		q3 := result.Sections[0].Queries[2]
+		assert.Equal(t, "timestamp", q3.Columns[0].Type)
+
+		// Fourth query: DATEPICKER with TIMESTAMPTZ
+		q4 := result.Sections[1].Queries[0] // Header section for datepicker
+		assert.Equal(t, "datepicker", q4.Render.Type)
+
+		// Reload check
+		assert.Equal(t, int64(1785844800000), result.ReloadAt) // 2026-08-04 12:00:00 UTC = 1785844800000 ms
+	})
 }
