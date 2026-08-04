@@ -51,6 +51,7 @@ type AuthManager struct {
 	allowedOrigin string
 	authFile      string
 	loginRequired bool
+	noOpen        bool
 	sessionToken  string
 	mu            sync.Mutex
 }
@@ -73,6 +74,12 @@ func NewAuthManager(ctx context.Context, baseURL, authFile string, loginRequired
 	}
 }
 
+func (a *AuthManager) SetNoOpen(noOpen bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.noOpen = noOpen
+}
+
 func (a *AuthManager) LoginRequired() bool {
 	return a.loginRequired
 }
@@ -81,29 +88,11 @@ func (a *AuthManager) EnsureSession() error {
 	if !a.loginRequired {
 		return nil
 	}
-	_, err := a.getOrPromptSessionTokenLocked(true)
+	_, err := a.SessionToken()
 	return err
 }
 
 func (a *AuthManager) SessionToken() (string, error) {
-	if !a.loginRequired {
-		return "", nil
-	}
-	return a.getOrPromptSessionTokenLocked(true)
-}
-
-func (a *AuthManager) RequireInteractiveLogin() error {
-	if !a.loginRequired {
-		return nil
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.sessionToken = ""
-	_, err := a.promptForLoginLocked()
-	return err
-}
-
-func (a *AuthManager) getOrPromptSessionTokenLocked(allowPrompt bool) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -119,20 +108,28 @@ func (a *AuthManager) getOrPromptSessionTokenLocked(allowPrompt bool) (string, e
 		return a.sessionToken, nil
 	}
 
-	if !allowPrompt {
-		return "", errors.New("authentication required")
+	if !a.loginRequired {
+		return "", nil
 	}
 
+	return "", errors.New("not authenticated: please run 'shaper login'")
+}
+
+func (a *AuthManager) Login() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.sessionToken = ""
 	token, err := a.promptForLoginLocked()
 	if err != nil {
-		return "", err
+		return err
 	}
 	a.sessionToken = token
-	return a.sessionToken, nil
+	return nil
 }
 
 func (a *AuthManager) promptForLoginLocked() (string, error) {
-	fmt.Fprintln(os.Stdout, "Authentication is required to use shaper dev.")
+	fmt.Fprintln(os.Stdout, "Logging in to Shaper...")
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -191,9 +188,13 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 
 	loginURL := fmt.Sprintf("%s/dev-login?port=%d", a.baseURL, port)
 	fmt.Fprintf(os.Stdout, "\nDev auth callback listening on port %d\n\n", port)
-	fmt.Fprintf(os.Stdout, "Opening %s ...\n", loginURL)
-	if err := OpenURL(loginURL); err != nil {
-		fmt.Fprintf(os.Stdout, "Failed to open browser automatically: %v\nPlease open the URL manually.\n", err)
+	if !a.noOpen {
+		fmt.Fprintf(os.Stdout, "Opening %s ...\n", loginURL)
+		if err := OpenURL(loginURL); err != nil {
+			fmt.Fprintf(os.Stdout, "Failed to open browser automatically: %v\nPlease open the URL manually.\n", err)
+		}
+	} else {
+		fmt.Fprintf(os.Stdout, "Please open the login URL manually:\n%s\n", loginURL)
 	}
 
 	var token string

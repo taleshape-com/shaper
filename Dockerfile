@@ -44,6 +44,8 @@ ENV SHAPER_DUCKDB_EXT_DIR=/data/duckdb_extensions
 ENV SHAPER_INIT_SQL_FILE=/var/lib/shaper/init.sql
 # Disable Chrome sandbox. As non-root user we don't have the permissions to sandbox and the docker container already is our sandbox.
 ENV SHAPER_NO_CHROME_SANDBOX=true
+# Disable automatically opening URLs in browser for CLI commands since this won't work in Docker.
+ENV SHAPER_NO_OPEN=true
 
 EXPOSE 5454
 HEALTHCHECK --interval=5s --timeout=3s --retries=1 --start-period=60s CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
