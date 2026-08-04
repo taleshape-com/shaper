@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"reflect"
 	"shaper/server/comms"
 	"shaper/server/core"
 	"shaper/server/dev"
@@ -144,8 +145,9 @@ func main() {
 	defer stop()
 
 	rootCmd := buildRootCommand(ctx)
+	args := preprocessArgs(rootCmd, os.Args[1:])
 
-	err := rootCmd.ParseAndRun(ctx, os.Args[1:],
+	err := rootCmd.ParseAndRun(ctx, args,
 		ff.WithEnvVarPrefix("SHAPER"),
 		ff.WithConfigFileFlag("config-file"),
 		ff.WithConfigFileParser(ff.PlainParser),
@@ -162,6 +164,210 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func isBoolFlag(f ff.Flag) bool {
+	if f == nil {
+		return false
+	}
+	if bf, ok := f.(interface{ IsBoolFlag() bool }); ok {
+		return bf.IsBoolFlag()
+	}
+	v := reflect.ValueOf(f)
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
+		v = v.Elem()
+	}
+	if v.Kind() == reflect.Struct {
+		field := v.FieldByName("isBoolFlag")
+		if field.IsValid() && field.Kind() == reflect.Bool {
+			return field.Bool()
+		}
+	}
+	return false
+}
+
+func reorderArgs(flags ff.Flags, args []string) []string {
+	var flagArgs []string
+	var posArgs []string
+
+	i := 0
+	for i < len(args) {
+		arg := args[i]
+
+		if arg == "--" {
+			posArgs = append(posArgs, args[i:]...)
+			break
+		}
+
+		if strings.HasPrefix(arg, "-") && arg != "-" {
+			if strings.Contains(arg, "=") {
+				flagArgs = append(flagArgs, arg)
+				i++
+				continue
+			}
+
+			name := strings.TrimLeft(arg, "-")
+
+			var isBool bool
+			var known bool
+			if flags != nil {
+				if f, ok := flags.GetFlag(name); ok {
+					known = true
+					isBool = isBoolFlag(f)
+				}
+			}
+
+			if isBool {
+				flagArgs = append(flagArgs, arg)
+				i++
+			} else {
+				flagArgs = append(flagArgs, arg)
+				i++
+				if i < len(args) {
+					if known || !strings.HasPrefix(args[i], "-") {
+						flagArgs = append(flagArgs, args[i])
+						i++
+					}
+				}
+			}
+		} else {
+			posArgs = append(posArgs, arg)
+			i++
+		}
+	}
+
+	return append(flagArgs, posArgs...)
+}
+
+func preprocessArgs(rootCmd *ff.Command, args []string) []string {
+	subcmdIdx := -1
+	var subCmd *ff.Command
+
+	i := 0
+	for i < len(args) {
+		arg := args[i]
+
+		if arg == "--" {
+			break
+		}
+
+		if strings.HasPrefix(arg, "-") && arg != "-" {
+			if strings.Contains(arg, "=") {
+				i++
+				continue
+			}
+			name := strings.TrimLeft(arg, "-")
+			if f, ok := rootCmd.Flags.GetFlag(name); ok {
+				if !isBoolFlag(f) {
+					i += 2
+					continue
+				}
+				i++
+				continue
+			}
+			foundSubcmdFlag := false
+			for _, sc := range rootCmd.Subcommands {
+				if f, ok := sc.Flags.GetFlag(name); ok {
+					foundSubcmdFlag = true
+					if !isBoolFlag(f) {
+						i += 2
+					} else {
+						i++
+					}
+					break
+				}
+			}
+			if foundSubcmdFlag {
+				continue
+			}
+
+			i++
+			continue
+		}
+
+		for _, sc := range rootCmd.Subcommands {
+			if strings.EqualFold(arg, sc.Name) {
+				subcmdIdx = i
+				subCmd = sc
+				break
+			}
+		}
+
+		if subcmdIdx != -1 {
+			break
+		}
+		i++
+	}
+
+	if subcmdIdx != -1 {
+		beforeSubcmd := args[:subcmdIdx]
+		subcmdName := args[subcmdIdx]
+		afterSubcmd := args[subcmdIdx+1:]
+
+		var rootFlags []string
+		var subcmdFlags []string
+
+		j := 0
+		for j < len(beforeSubcmd) {
+			arg := beforeSubcmd[j]
+
+			if arg == "--" {
+				rootFlags = append(rootFlags, beforeSubcmd[j:]...)
+				break
+			}
+
+			if strings.HasPrefix(arg, "-") && arg != "-" {
+				var name string
+				if strings.Contains(arg, "=") {
+					name = strings.SplitN(strings.TrimLeft(arg, "-"), "=", 2)[0]
+					if _, ok := rootCmd.Flags.GetFlag(name); ok {
+						rootFlags = append(rootFlags, arg)
+					} else {
+						subcmdFlags = append(subcmdFlags, arg)
+					}
+					j++
+					continue
+				}
+
+				name = strings.TrimLeft(arg, "-")
+				if f, ok := rootCmd.Flags.GetFlag(name); ok {
+					rootFlags = append(rootFlags, arg)
+					j++
+					if !isBoolFlag(f) && j < len(beforeSubcmd) {
+						rootFlags = append(rootFlags, beforeSubcmd[j])
+						j++
+					}
+				} else if f, ok := subCmd.Flags.GetFlag(name); ok {
+					subcmdFlags = append(subcmdFlags, arg)
+					j++
+					if !isBoolFlag(f) && j < len(beforeSubcmd) {
+						subcmdFlags = append(subcmdFlags, beforeSubcmd[j])
+						j++
+					}
+				} else {
+					subcmdFlags = append(subcmdFlags, arg)
+					j++
+				}
+			} else {
+				rootFlags = append(rootFlags, arg)
+				j++
+			}
+		}
+
+		combinedSubcmdArgs := make([]string, 0, len(subcmdFlags)+len(afterSubcmd))
+		combinedSubcmdArgs = append(combinedSubcmdArgs, subcmdFlags...)
+		combinedSubcmdArgs = append(combinedSubcmdArgs, afterSubcmd...)
+
+		reorderedSubcmdArgs := reorderArgs(subCmd.Flags, combinedSubcmdArgs)
+
+		res := make([]string, 0, len(rootFlags)+1+len(reorderedSubcmdArgs))
+		res = append(res, rootFlags...)
+		res = append(res, subcmdName)
+		res = append(res, reorderedSubcmdArgs...)
+		return res
+	}
+
+	return reorderArgs(rootCmd.Flags, args)
 }
 
 func buildRootCommand(ctx context.Context) *ff.Command {
