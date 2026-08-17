@@ -4,45 +4,27 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     cooldown:
-      default-days: 7
-    # Group all updates together
-    # TODO: Reenable grouping once all dependencies are up to date
-    #groups:
-    #dependencies:
-    #patterns:
-    #- '*'
+      default-days: 3
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     cooldown:
-      default-days: 7
-    groups:
-      github-actions:
-        patterns:
-          - "*"
+      default-days: 3
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     cooldown:
-      default-days: 7
-    groups:
-      docker-images:
-        patterns:
-          - "*"
+      default-days: 3
 
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     cooldown:
-      default-days: 7
-    groups:
-      gomod:
-        patterns:
-          - "*"
+      default-days: 3
