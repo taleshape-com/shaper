@@ -45,7 +45,7 @@ jobs:
 
       - name: Set up Go
         if: matrix.language == 'go'
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v6.3.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
           cache: true
@@ -65,17 +65,17 @@ jobs:
           touch dist/placeholder
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@b56ba49b26e50535fa1e7f7db0f4f7b4765d80d1 # v3.28.10
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
       - name: Autobuild Go
         if: matrix.language == 'go'
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@b56ba49b26e50535fa1e7f7db0f4f7b4765d80d1 # v3.28.10
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@b56ba49b26e50535fa1e7f7db0f4f7b4765d80d1 # v3.28.10
         with:
           category: "/language:${{ matrix.language }}"
 
@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v6.3.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
           cache: true
@@ -102,10 +102,8 @@ jobs:
           touch dist/placeholder
 
       - name: Run govulncheck
-        uses: golang/govulncheck-action@v1
-        with:
-          go-version-file: "go.mod"
-          check-package: "./..."
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   secret-scan:
     name: Secret Scan (Gitleaks)
@@ -119,10 +117,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.0_linux_x64.tar.gz | sudo tar -xz -C /usr/local/bin gitleaks
+
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gitleaks detect --verbose --redact
 
   zizmor:
     name: GitHub Actions Security (zizmor)
