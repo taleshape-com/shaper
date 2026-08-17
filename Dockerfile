@@ -9,10 +9,20 @@
 FROM debian:13.6-slim@sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258
 
 # install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root
-RUN apt-get update -y \
-  && apt-get install --no-install-recommends -y wget ca-certificates libnspr4 libnss3 libexpat1 libfontconfig1 libuuid1 socat gosu \
+RUN export DEBIAN_FRONTEND=noninteractive \
+  && apt-get update \
+  && apt-get install --no-install-recommends -y \
+    ca-certificates \
+    gosu \
+    libexpat1 \
+    libfontconfig1 \
+    libnspr4 \
+    libnss3 \
+    libuuid1 \
+    socat \
+    wget \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+  && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/* /var/tmp/*
 
 # Get headless-shell (a minimal Chromium build)
 # It is also built on Debian slim so should be compatible

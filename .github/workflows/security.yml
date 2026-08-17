@@ -122,6 +122,9 @@ jobs:
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.24.0_linux_x64.tar.gz | sudo tar -xz -C /usr/local/bin gitleaks
 
       - name: Run Gitleaks
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gitleaks detect --verbose --redact
 
