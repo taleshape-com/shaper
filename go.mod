@@ -17,7 +17,7 @@ require (
 	github.com/labstack/gommon v0.5.0
 	github.com/minio/minio-go/v7 v7.2.0
 	github.com/nats-io/nats-server/v2 v2.14.2
-	github.com/nats-io/nats.go v1.52.0
+	github.com/nats-io/nats.go v1.53.1
 	github.com/nrednav/cuid2 v1.1.0
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/prometheus/client_golang v1.23.2
