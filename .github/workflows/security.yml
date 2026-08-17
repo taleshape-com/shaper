@@ -130,15 +130,15 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run zizmor
-        uses: woodruffw/zizmor-action@v1
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pipx run zizmor .
 
   osv-scan:
     name: Dependency Scan (OSV-Scanner)
@@ -146,14 +146,15 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Install OSV-Scanner
+        run: |
+          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o /usr/local/bin/osv-scanner
+          chmod +x /usr/local/bin/osv-scanner
+
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v1
-        with:
-          scan-args: |-
-            --recursive
-            ./
+        run: |
+          osv-scanner -r .
