@@ -116,8 +116,10 @@ jobs:
           path: dist/
 
       - name: Build Linux binaries
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          VERSION=$(echo "$REF_NAME" | sed 's/^v//')
           mkdir -p bin
           # Build amd64
           GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-linux-amd64 -ldflags="-w -s -X 'main.Version=$VERSION'"
@@ -173,8 +175,10 @@ jobs:
           path: dist/
 
       - name: Build macOS binaries
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          VERSION=$(echo "$REF_NAME" | sed 's/^v//')
           mkdir -p bin
           # Build amd64
           GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -o bin/shaper-darwin-amd64 -ldflags="-X 'main.Version=$VERSION'"
@@ -282,8 +286,10 @@ jobs:
 
       - name: Extract version
         id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          VERSION=$(echo "$REF_NAME" | sed 's/^v//')
           # Split version into components
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -347,9 +353,11 @@ jobs:
           node-version: "lts/*"
 
       - name: Update npm package version
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           cd npm-package
-          npm version $(echo ${{ github.ref_name }} | sed 's/^v//') --no-git-tag-version
+          npm version $(echo "$REF_NAME" | sed 's/^v//') --no-git-tag-version
 
       - name: Publish to npm
         run: |
@@ -402,9 +410,11 @@ jobs:
           pip install build
 
       - name: Update Python package version
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           cd pip-package
-          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          VERSION=$(echo "$REF_NAME" | sed 's/^v//')
           # Update version in pyproject.toml
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
           # Update version in __init__.py
@@ -444,7 +454,7 @@ jobs:
           done
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1.12.4
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
         # No token needed since we are using Trusted Publishing
         with:
           packages-dir: pip-package/dist/
