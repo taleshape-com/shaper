@@ -41,8 +41,6 @@ jobs:
       - name: Install dependencies
         # Ignore Scripts for security
         run: npm ci --ignore-scripts
-      - name: Audit (level=high)
-        run: npm audit --audit-level=high
       - name: Build frontend
         run: |
           NODE_ENV=production npm run all
