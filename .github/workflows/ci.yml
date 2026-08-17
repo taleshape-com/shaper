@@ -203,6 +203,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -227,6 +229,14 @@ jobs:
           cd bin
           cat checksums-*.txt | sort | uniq > SHA256SUMS
           rm checksums-*.txt
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            bin/shaper-linux-*
+            bin/shaper-darwin-*
+            bin/SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
@@ -291,6 +301,8 @@ jobs:
             taleshape/shaper:${{ steps.version.outputs.VERSION }}
             taleshape/shaper:${{ steps.version.outputs.MINOR }}
             taleshape/shaper:${{ steps.version.outputs.MAJOR }}
+          sbom: true
+          provenance: mode=max
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
