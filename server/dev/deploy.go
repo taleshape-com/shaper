@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"shaper/server/api"
+	"shaper/server/core"
+	"shaper/server/web/handler"
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +23,64 @@ const (
 	deployAPIKeyEnv = "SHAPER_DEPLOY_API_KEY"
 	noAuthActor     = "no_auth"
 )
+
+func DeployOnStartup(ctx context.Context, app *core.App, deployDir string) error {
+	if err := ensureDirExists(deployDir); err != nil {
+		return fmt.Errorf("deploy directory error: %w", err)
+	}
+
+	actor := &core.Actor{Type: core.ActorNoAuth, ID: "system"}
+	ctx = core.ContextWithActor(ctx, actor)
+
+	appsResp, err := core.ListApps(app, ctx, core.ListAppsOptions{
+		IncludeSubfolders: true,
+		IncludeContent:    true,
+		Path:              "/",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list existing apps from database: %w", err)
+	}
+
+	remoteApps := make([]api.App, 0, len(appsResp.Apps))
+	for _, a := range appsResp.Apps {
+		if a.Type == "dashboard" || a.Type == "task" {
+			remoteApps = append(remoteApps, a)
+		}
+	}
+
+	localApps, err := loadLocalApps(deployDir)
+	if err != nil {
+		return fmt.Errorf("failed to load local apps from %s: %w", deployDir, err)
+	}
+
+	actorStr := actor.String()
+	if err := ensureRemoteFreshness(remoteApps, localApps, actorStr); err != nil {
+		return fmt.Errorf("freshness check failed: %w", err)
+	}
+
+	ops := buildDeployOperations(localApps, remoteApps)
+	if len(ops) == 0 {
+		fmt.Printf("Startup deploy: no changes detected in %s; apps up to date.\n", deployDir)
+		return nil
+	}
+
+	remoteAppsByID := make(map[string]api.App, len(remoteApps))
+	for _, a := range remoteApps {
+		remoteAppsByID[a.ID] = a
+	}
+
+	fmt.Printf("Startup deploy: applying %d changes from %s...\n", len(ops), deployDir)
+	logDeployChanges(ops, localApps, remoteAppsByID)
+
+	for idx, op := range ops {
+		if _, err := handler.ProcessDeployOperation(ctx, app, idx, op); err != nil {
+			return fmt.Errorf("failed executing deploy operation %d: %w", idx, err)
+		}
+	}
+
+	fmt.Printf("Startup deploy completed successfully.\n")
+	return nil
+}
 
 type LocalApp struct {
 	ID            string
