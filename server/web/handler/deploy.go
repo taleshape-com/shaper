@@ -16,7 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type deployResult struct {
+type DeployResult struct {
 	Operation string `json:"operation"`
 	Type      string `json:"type"`
 	ID        string `json:"id,omitempty"`
@@ -46,10 +46,10 @@ func Deploy(app *core.App) echo.HandlerFunc {
 			}{Error: "User deployment is disabled on this server because editing is disabled"}, "  ")
 		}
 
-		results := make([]deployResult, 0, len(req.Apps))
+		results := make([]DeployResult, 0, len(req.Apps))
 
 		for idx, item := range req.Apps {
-			result, err := processDeployOperation(ctx, app, idx, item)
+			result, err := ProcessDeployOperation(ctx, app, idx, item)
 			if err != nil {
 				c.Logger().Error("deploy operation failed",
 					slog.Int("index", idx),
@@ -63,17 +63,17 @@ func Deploy(app *core.App) echo.HandlerFunc {
 		}
 
 		return c.JSONPretty(http.StatusOK, struct {
-			Results []deployResult `json:"results"`
+			Results []DeployResult `json:"results"`
 		}{Results: results}, "  ")
 	}
 }
 
-func processDeployOperation(ctx context.Context, app *core.App, idx int, req api.AppRequest) (deployResult, error) {
+func ProcessDeployOperation(ctx context.Context, app *core.App, idx int, req api.AppRequest) (DeployResult, error) {
 	appType := strings.ToLower(strings.TrimSpace(req.Type))
 	switch appType {
 	case "dashboard", "task":
 	default:
-		return deployResult{}, fmt.Errorf("apps[%d]: unsupported type %q", idx, req.Type)
+		return DeployResult{}, fmt.Errorf("apps[%d]: unsupported type %q", idx, req.Type)
 	}
 
 	switch strings.ToLower(strings.TrimSpace(req.Operation)) {
@@ -84,33 +84,33 @@ func processDeployOperation(ctx context.Context, app *core.App, idx int, req api
 	case "delete":
 		return handleDeployDelete(ctx, app, idx, req.Data, appType)
 	default:
-		return deployResult{}, fmt.Errorf("apps[%d]: unsupported operation %q", idx, req.Operation)
+		return DeployResult{}, fmt.Errorf("apps[%d]: unsupported operation %q", idx, req.Operation)
 	}
 }
 
-func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (deployResult, error) {
+func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (DeployResult, error) {
 	if data.Name == nil || strings.TrimSpace(*data.Name) == "" {
-		return deployResult{}, fmt.Errorf("apps[%d]: name is required for create operations", idx)
+		return DeployResult{}, fmt.Errorf("apps[%d]: name is required for create operations", idx)
 	}
 	if data.Path == nil {
-		return deployResult{}, fmt.Errorf("apps[%d]: path is required for create operations", idx)
+		return DeployResult{}, fmt.Errorf("apps[%d]: path is required for create operations", idx)
 	}
 	if data.Content == nil {
-		return deployResult{}, fmt.Errorf("apps[%d]: content is required for create operations", idx)
+		return DeployResult{}, fmt.Errorf("apps[%d]: content is required for create operations", idx)
 	}
 
 	name := strings.TrimSpace(*data.Name)
 	content := *data.Content
 	path, err := ensureFolderPathExists(ctx, app, *data.Path)
 	if err != nil {
-		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+		return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 	}
 
 	var requestedID string
 	if data.ID != nil {
 		requestedID = strings.TrimSpace(*data.ID)
 		if requestedID == "" {
-			return deployResult{}, fmt.Errorf("apps[%d]: id cannot be empty when provided", idx)
+			return DeployResult{}, fmt.Errorf("apps[%d]: id cannot be empty when provided", idx)
 		}
 	}
 
@@ -121,10 +121,10 @@ func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.Da
 		id, err = core.CreateDashboard(app, ctx, name, content, path, false, requestedID)
 	}
 	if err != nil {
-		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+		return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 	}
 
-	return deployResult{
+	return DeployResult{
 		Operation: "create",
 		Type:      appType,
 		ID:        id,
@@ -132,9 +132,9 @@ func handleDeployCreate(ctx context.Context, app *core.App, idx int, data api.Da
 	}, nil
 }
 
-func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (deployResult, error) {
+func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (DeployResult, error) {
 	if data.ID == nil || strings.TrimSpace(*data.ID) == "" {
-		return deployResult{}, fmt.Errorf("apps[%d]: id is required for update operations", idx)
+		return DeployResult{}, fmt.Errorf("apps[%d]: id is required for update operations", idx)
 	}
 
 	id := strings.TrimSpace(*data.ID)
@@ -143,7 +143,7 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 	if data.Name != nil {
 		name := strings.TrimSpace(*data.Name)
 		if name == "" {
-			return deployResult{}, fmt.Errorf("apps[%d]: name cannot be empty when provided", idx)
+			return DeployResult{}, fmt.Errorf("apps[%d]: name cannot be empty when provided", idx)
 		}
 		var err error
 		if appType == "task" {
@@ -152,7 +152,7 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 			err = core.SaveDashboardName(app, ctx, id, name)
 		}
 		if err != nil {
-			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+			return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		changed = true
 	}
@@ -165,7 +165,7 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 			err = core.SaveDashboardQuery(app, ctx, id, *data.Content)
 		}
 		if err != nil {
-			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+			return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		changed = true
 	}
@@ -194,11 +194,11 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 	if data.Path != nil {
 		desiredPath, err := ensureFolderPathExists(ctx, app, *data.Path)
 		if err != nil {
-			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+			return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		info, err := getAppInfo()
 		if err != nil {
-			return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+			return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 		}
 		currentPath := normalizeFolderPath(info.Path)
 		if desiredPath != currentPath {
@@ -209,17 +209,17 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 			}
 			err = core.MoveItems(app, ctx, moveReq)
 			if err != nil {
-				return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+				return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 			}
 			changed = true
 		}
 	}
 
 	if !changed {
-		return deployResult{}, fmt.Errorf("apps[%d]: no updates provided", idx)
+		return DeployResult{}, fmt.Errorf("apps[%d]: no updates provided", idx)
 	}
 
-	return deployResult{
+	return DeployResult{
 		Operation: "update",
 		Type:      appType,
 		ID:        id,
@@ -227,9 +227,9 @@ func handleDeployUpdate(ctx context.Context, app *core.App, idx int, data api.Da
 	}, nil
 }
 
-func handleDeployDelete(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (deployResult, error) {
+func handleDeployDelete(ctx context.Context, app *core.App, idx int, data api.DashboardData, appType string) (DeployResult, error) {
 	if data.ID == nil || strings.TrimSpace(*data.ID) == "" {
-		return deployResult{}, fmt.Errorf("apps[%d]: id is required for delete operations", idx)
+		return DeployResult{}, fmt.Errorf("apps[%d]: id is required for delete operations", idx)
 	}
 
 	id := strings.TrimSpace(*data.ID)
@@ -240,10 +240,10 @@ func handleDeployDelete(ctx context.Context, app *core.App, idx int, data api.Da
 		err = core.DeleteDashboard(app, ctx, id)
 	}
 	if err != nil {
-		return deployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
+		return DeployResult{}, fmt.Errorf("apps[%d]: %w", idx, err)
 	}
 
-	return deployResult{
+	return DeployResult{
 		Operation: "delete",
 		Type:      appType,
 		ID:        id,

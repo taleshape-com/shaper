@@ -138,6 +138,7 @@ type Config struct {
 	NoChromeSandbox            bool
 	SSOLoginURL                string
 	JWTSecret                  string
+	Deploy                     string
 }
 
 func main() {
@@ -459,6 +460,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	taskResultsSubjectPrefix := flags.StringLong("task-results-subject-prefix", "shaper.task-results.", "prefix for task-results NATS subjects")
 	taskBroadcastSubject := flags.StringLong("task-broadcast-subject", "shaper.task-broadcast", "subject to broadcast tasks to run on all nodes in a cluster when running manual task")
 	snapshotSubjectPrefix := flags.StringLong("snapshots-subject-prefix", "shaper.snapshots.", "prefix for snapshots NATS subjects")
+	deployDir := flags.StringLong("deploy", "", "Directory path containing dashboards and tasks to deploy on startup")
 	_ = flags.StringLong("config-file", "", "path to config file")
 
 	// Collect subcommands so we can include them in help output
@@ -631,6 +633,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			NoChromeSandbox:            *noChromeSandbox,
 			SSOLoginURL:                *ssoLoginURL,
 			JWTSecret:                  *jwtSecret,
+			Deploy:                     *deployDir,
 		}
 		signals.HandleInterrupt(Run(config))
 		return nil
@@ -854,6 +857,7 @@ func addLoginSubcommand(rootCmd *ff.Command) *ff.Command {
 }
 
 func Run(cfg Config) func(context.Context) {
+	ctx := context.Background()
 	var logLevel slog.Level
 	switch cfg.LogLevel {
 	case "debug":
@@ -1110,6 +1114,14 @@ func Run(cfg Config) func(context.Context) {
 	if err != nil {
 		logger.Error("Failed to initialize application", slog.Any("error", err))
 		os.Exit(1)
+	}
+
+	if cfg.Deploy != "" {
+		logger.Info("Deploying apps from directory on startup", slog.String("dir", cfg.Deploy))
+		if err := dev.DeployOnStartup(ctx, app, cfg.Deploy); err != nil {
+			logger.Error("Failed to deploy apps on startup", slog.String("dir", cfg.Deploy), slog.Any("error", err))
+			os.Exit(1)
+		}
 	}
 
 	snapshotConfig.Sqlite = sqliteDbx
