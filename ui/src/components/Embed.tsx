@@ -18,8 +18,6 @@ export type EmbedProps = {
   onTitleChanged?: (title: string) => void;
 }
 
-const LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX = "shaper-dashboard-password-";
-
 const getPublicJwt = async (baseUrl: string, dashboardId: string, password?: string): Promise<string | null> => {
   return fetch(`${baseUrl}api/auth/public`, {
     method: "POST",
@@ -181,7 +179,6 @@ export function EmbedComponent ({
     // Try to get JWT with the password - verification happens server-side
     const jwt = await getPublicJwt(baseUrl, props.dashboardId, password);
     if (jwt) {
-      localStorage.setItem(`${LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX}${props.dashboardId}`, password);
       jwtRef.current = jwt;
       setShowPasswordDialog(false);
       setPasswordError("");
@@ -196,30 +193,24 @@ export function EmbedComponent ({
 
   const handleGetJwt = useCallback(async () => {
     if (jwtRef.current != null) {
-      const claims = parseJwt(jwtRef.current);
-      // Check if the JWT is still valid for at least 30 seconds to prevent race conditions
-      if ((Date.now() / 1000) + 30 < claims.exp) {
-        return jwtRef.current;
+      try {
+        const claims = parseJwt(jwtRef.current);
+        // Check if the JWT is still valid for at least 30 seconds to prevent race conditions
+        if (claims && claims.exp && (Date.now() / 1000) + 30 < claims.exp) {
+          return jwtRef.current;
+        }
+      } catch {
+        // Ignore invalid JWT format
       }
+      jwtRef.current = null;
     }
+
     if (!getJwt) {
       const visibility = await getVisibility(baseUrl, props.dashboardId);
       if (visibility === "private") {
         throw new Error(translate("Dashboard is not public"));
       }
       if (visibility === "password-protected") {
-        // Check if we have a cached password first
-        const cachedPassword = localStorage.getItem(`${LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX}${props.dashboardId}`);
-        if (cachedPassword) {
-          // Try with cached password first
-          const jwt = await getPublicJwt(baseUrl, props.dashboardId, cachedPassword);
-          if (jwt) {
-            return jwt;
-          } else {
-            // Cached password is invalid, remove it and prompt for new one
-            localStorage.removeItem(`${LOCALSTORAGE_DASHBOARD_PASSWORD_PREFIX}${props.dashboardId}`);
-          }
-        }
         await waitForPassword();
         const jwt = jwtRef.current;
         if (!jwt) {

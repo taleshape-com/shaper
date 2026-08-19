@@ -546,13 +546,8 @@ const SingleDatePicker = ({
 
     const newDate = new Date(date.getTime());
 
-    if (!time) {
-      newDate.setHours(0);
-      newDate.setMinutes(0);
-    } else {
-      newDate.setHours(time.hour);
-      newDate.setMinutes(time.minute);
-    }
+    newDate.setHours(time.hour);
+    newDate.setMinutes(time.minute);
 
     setDate(newDate);
   };
@@ -801,13 +796,8 @@ const RangeDatePicker = ({
 
       const newDate = new Date(range.from.getTime());
 
-      if (!time) {
-        newDate.setHours(0);
-        newDate.setMinutes(0);
-      } else {
-        newDate.setHours(time.hour);
-        newDate.setMinutes(time.minute);
-      }
+      newDate.setHours(time.hour);
+      newDate.setMinutes(time.minute);
 
       setRange({
         ...range,
@@ -822,13 +812,8 @@ const RangeDatePicker = ({
 
       const newDate = new Date(range.to.getTime());
 
-      if (!time) {
-        newDate.setHours(0);
-        newDate.setMinutes(0);
-      } else {
-        newDate.setHours(time.hour);
-        newDate.setMinutes(time.minute);
-      }
+      newDate.setHours(time.hour);
+      newDate.setMinutes(time.minute);
 
       setRange({
         ...range,

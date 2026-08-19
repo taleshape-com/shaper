@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const crypto = require('crypto');
 const axios = require('axios');
 

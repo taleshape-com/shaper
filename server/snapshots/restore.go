@@ -220,9 +220,6 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 		return fmt.Errorf("failed to create DuckDB S3 secret: %w", err)
 	}
 
-	// Extract timestamp from snapshot path for secret naming
-	timestamp := strings.TrimSuffix(filepath.Base(latestSnapshot), filepath.Ext(filepath.Base(latestSnapshot)))
-	timestamp = strings.ReplaceAll(timestamp, "-", "_")
 	s3Path := fmt.Sprintf("s3://%s/%s", config.S3Bucket, latestSnapshot)
 
 	// Import database from S3 into temporary database

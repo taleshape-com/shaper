@@ -111,5 +111,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-replace github.com/marcboeker/go-duckdb/v2 v2.2.0 => github.com/taleshape-com/go-duckdb/v2 v2.2.1

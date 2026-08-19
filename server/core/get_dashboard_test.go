@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -278,4 +279,90 @@ func TestQueryDashboard(t *testing.T) {
 		// Reload check
 		assert.Equal(t, int64(1785844800000), result.ReloadAt) // 2026-08-04 12:00:00 UTC = 1785844800000 ms
 	})
+
+	t.Run("Rejects invalid variable names in token variables", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: "SELECT 1 AS val",
+			ID:      "test-invalid-var-name",
+		}
+		// Semicolon/SQL injection attempt in var name
+		invalidVars := map[string]any{"bad;name": "val"}
+		_, err := QueryDashboard(app, ctx, dq, url.Values{}, invalidVars)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid variable name")
+
+		// Name starting with number
+		invalidVars2 := map[string]any{"123var": "val"}
+		_, err = QueryDashboard(app, ctx, dq, url.Values{}, invalidVars2)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid variable name")
+	})
+
+	t.Run("Rejects token variable string exceeding maximum length", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: "SELECT 1 AS val",
+			ID:      "test-oversized-var",
+		}
+		oversizedVars := map[string]any{"my_var": strings.Repeat("a", 4097)}
+		_, err := QueryDashboard(app, ctx, dq, url.Values{}, oversizedVars)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeds maximum allowed length")
+	})
+
+	t.Run("Rejects token variable array exceeding maximum count", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: "SELECT 1 AS val",
+			ID:      "test-oversized-array",
+		}
+		hugeArray := make([]any, 501)
+		for i := range hugeArray {
+			hugeArray[i] = "opt"
+		}
+		oversizedVars := map[string]any{"my_multi_var": hugeArray}
+		_, err := QueryDashboard(app, ctx, dq, url.Values{}, oversizedVars)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeds maximum allowed count")
+	})
+
+	t.Run("Rejects input variable exceeding maximum length in query param", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Enter name'::INPUT AS search_term;
+				SELECT getvariable('search_term') AS res;
+			`,
+			ID: "test-oversized-input-param",
+		}
+		oversizedParam := url.Values{"search_term": []string{strings.Repeat("a", 4097)}}
+		_, err := QueryDashboard(app, ctx, dq, oversizedParam, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeds maximum allowed length")
+	})
+
+	t.Run("Rejects invalid variable name in dashboard query column", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Enter name'::INPUT AS "invalid-name";
+			`,
+			ID: "test-invalid-col-name",
+		}
+		_, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid variable name")
+	})
+
+	t.Run("Accepts valid input variable within limit", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Enter name'::INPUT AS search_term;
+				SELECT getvariable('search_term') AS res;
+			`,
+			ID: "test-valid-input-param",
+		}
+		validParam := url.Values{"search_term": []string{"hello world"}}
+		result, err := QueryDashboard(app, ctx, dq, validParam, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+		assert.Equal(t, "hello world", result.Sections[1].Queries[0].Rows[0][0])
+	})
 }
+

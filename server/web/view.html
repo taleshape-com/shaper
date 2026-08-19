@@ -18,7 +18,7 @@
           try {
             vars[key] = JSON.parse(decodeURIComponent(value));
           } catch (e) {
-            console.warn(`Failed to parse variable ${key} with value ${value}:`, e);
+            console.warn("Failed to parse variable %s with value %s:", key, value, e);
             vars[key] = value;
           }
         }

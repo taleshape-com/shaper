@@ -26,7 +26,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 
 # Get headless-shell (a minimal Chromium build)
 # It is also built on Debian slim so should be compatible
-COPY --from=chromedp/headless-shell:stable /headless-shell /headless-shell
+COPY --from=chromedp/headless-shell:151.0.7922.109@sha256:2d349b544a1ea6b5b5fd7c0fe99215ff662339c57407ee2e8c0a11af93516b04 /headless-shell /headless-shell
 
 LABEL maintainer="hi@taleshape.com"
 

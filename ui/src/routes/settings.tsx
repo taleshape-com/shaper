@@ -50,7 +50,19 @@ function Settings () {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
-    const newName = formData.get("name") as string;
+    const rawName = formData.get("name");
+    const newName = typeof rawName === "string" ? rawName.trim() : "";
+    const MIN_NAME_LENGTH = 1;
+    const MAX_NAME_LENGTH = 64;
+
+    if (newName.length < MIN_NAME_LENGTH || newName.length > MAX_NAME_LENGTH) {
+      toast({
+        title: "Error",
+        description: `Name must be between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters.`,
+        variant: "error",
+      });
+      return;
+    }
 
     try {
       await queryApi(`users/${userId}/name`, {

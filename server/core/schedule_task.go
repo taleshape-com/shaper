@@ -487,6 +487,9 @@ func (app *App) HandleTaskResult(msg jetstream.Msg) {
 		trackTaskRun(app, ctx, payload)
 	}
 	err = trackConsumerState(app, INTERNAL_TASK_RESULTS_CONSUMER_NAME, meta.Sequence.Stream)
+	if err != nil {
+		app.Logger.WithGroup("tasks").Warn("Error tracking consumer state", slog.Any("error", err))
+	}
 	if err := msg.Ack(); err != nil {
 		app.Logger.WithGroup("tasks").Error("Error acking message", slog.Any("error", err), slog.String("subject", msg.Subject()))
 		return

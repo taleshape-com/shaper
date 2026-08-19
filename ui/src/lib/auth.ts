@@ -113,7 +113,7 @@ export const getJwt = async (force = false) => {
   }
   if (!getSystemConfig().loginRequired) {
     const vars = getVariables(getVariablesString());
-    return refreshJwt("", vars) ?? "";
+    return (await refreshJwt("", vars)) ?? "";
   }
   const token = localStorage.getItem(localStorageTokenKey);
   const vars = getVariables(getVariablesString());
