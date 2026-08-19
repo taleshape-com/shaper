@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,6 +30,11 @@ func DeployOnStartup(ctx context.Context, app *core.App, deployDir string) error
 		return fmt.Errorf("deploy directory error: %w", err)
 	}
 
+	logger := app.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	actor := &core.Actor{Type: core.ActorNoAuth, ID: "system"}
 	ctx = core.ContextWithActor(ctx, actor)
 
@@ -48,7 +54,7 @@ func DeployOnStartup(ctx context.Context, app *core.App, deployDir string) error
 		}
 	}
 
-	localApps, err := loadLocalApps(deployDir)
+	localApps, err := loadLocalApps(deployDir, logger)
 	if err != nil {
 		return fmt.Errorf("failed to load local apps from %s: %w", deployDir, err)
 	}
@@ -60,7 +66,7 @@ func DeployOnStartup(ctx context.Context, app *core.App, deployDir string) error
 
 	ops := buildDeployOperations(localApps, remoteApps)
 	if len(ops) == 0 {
-		fmt.Printf("Startup deploy: no changes detected in %s; apps up to date.\n", deployDir)
+		logger.Info("Startup deploy: no changes detected; apps up to date", slog.String("dir", deployDir))
 		return nil
 	}
 
@@ -69,8 +75,8 @@ func DeployOnStartup(ctx context.Context, app *core.App, deployDir string) error
 		remoteAppsByID[a.ID] = a
 	}
 
-	fmt.Printf("Startup deploy: applying %d changes from %s...\n", len(ops), deployDir)
-	logDeployChanges(ops, localApps, remoteAppsByID)
+	logger.Info("Startup deploy: applying changes", slog.Int("count", len(ops)), slog.String("dir", deployDir))
+	logDeployChangesWithLogger(logger, ops, localApps, remoteAppsByID)
 
 	for idx, op := range ops {
 		if _, err := handler.ProcessDeployOperation(ctx, app, idx, op); err != nil {
@@ -78,7 +84,7 @@ func DeployOnStartup(ctx context.Context, app *core.App, deployDir string) error
 		}
 	}
 
-	fmt.Printf("Startup deploy completed successfully.\n")
+	logger.Info("Startup deploy completed successfully")
 	return nil
 }
 
@@ -153,7 +159,7 @@ func RunDeployCommand(ctx context.Context, configPath, urlOverride, authFile str
 	fmt.Printf("Found %d remote apps.\n", len(remoteApps))
 
 	fmt.Println("Loading apps from folder", watchDir)
-	localApps, err := loadLocalApps(watchDir)
+	localApps, err := loadLocalApps(watchDir, nil)
 	if err != nil {
 		return err
 	}
@@ -246,7 +252,7 @@ func RunDeployCommand(ctx context.Context, configPath, urlOverride, authFile str
 	return nil
 }
 
-func loadLocalApps(baseDir string) (map[string]LocalApp, error) {
+func loadLocalApps(baseDir string, logger *slog.Logger) (map[string]LocalApp, error) {
 	apps := make(map[string]LocalApp)
 	err := filepath.WalkDir(baseDir, func(p string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -261,7 +267,11 @@ func loadLocalApps(baseDir string) (map[string]LocalApp, error) {
 
 		if !isDashboard && !isTask {
 			if strings.HasSuffix(d.Name(), ".sql") {
-				fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
+				if logger != nil {
+					logger.Warn("File ends with .sql but not with dashboard or task suffix; ignoring", slog.String("file", p))
+				} else {
+					fmt.Printf("WARNING: %s ends with .sql but not with %s or %s; ignoring\n", p, DASHBOARD_SUFFIX, TASK_SUFFIX)
+				}
 			}
 			return nil
 		}
@@ -552,6 +562,76 @@ func logDeployChanges(ops []api.AppRequest, local map[string]LocalApp, remote ma
 		}
 
 		fmt.Printf("%s %s: %s%s%s%s\n", op.Operation, opID, currentPath, currentName, suffix, extra)
+	}
+}
+
+func logDeployChangesWithLogger(logger *slog.Logger, ops []api.AppRequest, local map[string]LocalApp, remote map[string]api.App) {
+	for _, op := range ops {
+		var (
+			currentPath string
+			currentName string
+			appType     string
+		)
+
+		if op.Data.ID != nil {
+			if localApp, ok := local[*op.Data.ID]; ok {
+				currentPath = localApp.Path
+				currentName = localApp.Name
+				appType = localApp.Type
+			}
+		}
+		if currentPath == "" && op.Data.Path != nil {
+			currentPath = *op.Data.Path
+		}
+		if currentName == "" && op.Data.Name != nil {
+			currentName = *op.Data.Name
+		}
+		if appType == "" {
+			appType = op.Type
+		}
+
+		var prev api.App
+		var hasPrev bool
+		if op.Data.ID != nil {
+			prev, hasPrev = remote[*op.Data.ID]
+		}
+		if currentPath == "" && hasPrev {
+			currentPath = prev.Path
+		}
+		if currentName == "" && hasPrev {
+			currentName = prev.Name
+		}
+		if appType == "" && hasPrev {
+			appType = prev.Type
+		}
+
+		opID := "unknown"
+		if op.Data.ID != nil {
+			opID = *op.Data.ID
+		}
+
+		suffix := DASHBOARD_SUFFIX
+		if appType == "task" {
+			suffix = TASK_SUFFIX
+		}
+
+		appFilePath := currentPath + currentName + suffix
+		attrs := []any{
+			slog.String("operation", op.Operation),
+			slog.String("id", opID),
+			slog.String("path", appFilePath),
+		}
+		if hasPrev && op.Operation != "delete" {
+			attrs = append(attrs, slog.Time("last_updated", prev.UpdatedAt))
+			if prev.Path != currentPath {
+				attrs = append(attrs, slog.String("previous_path", prev.Path))
+			}
+			if prev.Name != currentName {
+				attrs = append(attrs, slog.String("previous_name", prev.Name))
+			}
+		}
+
+		logger.Info("Deploy operation", attrs...)
 	}
 }
 

@@ -576,10 +576,16 @@ func buildVariablesPrefix(singleVars map[string]string, multiVars map[string][]s
 	varCleanup := strings.Builder{}
 
 	for k, v := range singleVars {
+		if !util.IsValidVariableName(k) {
+			continue
+		}
 		varPrefix.WriteString(fmt.Sprintf("SET VARIABLE \"%s\" = %s;\n", util.EscapeSQLIdentifier(k), v))
 		varCleanup.WriteString(fmt.Sprintf("RESET VARIABLE \"%s\";\n", util.EscapeSQLIdentifier(k)))
 	}
 	for k, v := range multiVars {
+		if !util.IsValidVariableName(k) {
+			continue
+		}
 		l := ""
 		for i, p := range v {
 			prefix := ", "

@@ -3,13 +3,16 @@
 package dev
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"shaper/server/api"
 	"shaper/server/comms"
 	"shaper/server/core"
+	"strings"
 	"testing"
 	"time"
 
@@ -172,5 +175,106 @@ func TestDeployOnStartup(t *testing.T) {
 	}
 	if resp.Apps[0].Content != "SELECT id, amount FROM sales;" {
 		t.Fatalf("expected updated content in DB, got %q", resp.Apps[0].Content)
+	}
+}
+
+func TestDeployOnStartup_StructuredLogging(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	var logBuf bytes.Buffer
+	app.Logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	// Add an ignored .sql file and a valid dashboard
+	ignoredPath := filepath.Join(tmpDir, "ignored.sql")
+	if err := os.WriteFile(ignoredPath, []byte("SELECT 1;"), 0o644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	dashPath := filepath.Join(tmpDir, "sales.dashboard.sql")
+	dashContent := "-- shaperid:dash123\n\nSELECT * FROM sales;"
+	if err := os.WriteFile(dashPath, []byte(dashContent), 0o644); err != nil {
+		t.Fatalf("failed to write dashboard file: %v", err)
+	}
+
+	if err := DeployOnStartup(ctx, app, tmpDir); err != nil {
+		t.Fatalf("DeployOnStartup failed: %v", err)
+	}
+
+	logs := logBuf.String()
+	if !strings.Contains(logs, `level=WARN`) || !strings.Contains(logs, `File ends with .sql`) {
+		t.Errorf("expected warning log for ignored .sql file, got:\n%s", logs)
+	}
+	if !strings.Contains(logs, `level=INFO msg="Startup deploy: applying changes" count=1`) {
+		t.Errorf("expected applying changes log, got:\n%s", logs)
+	}
+	if !strings.Contains(logs, `level=INFO msg="Deploy operation" operation=create id=dash123 path=/sales.dashboard.sql`) {
+		t.Errorf("expected deploy operation log, got:\n%s", logs)
+	}
+	if !strings.Contains(logs, `level=INFO msg="Startup deploy completed successfully"`) {
+		t.Errorf("expected completion log, got:\n%s", logs)
+	}
+
+	// Second run: no changes
+	logBuf.Reset()
+	if err := DeployOnStartup(ctx, app, tmpDir); err != nil {
+		t.Fatalf("DeployOnStartup second run failed: %v", err)
+	}
+
+	logs = logBuf.String()
+	if !strings.Contains(logs, `level=INFO msg="Startup deploy: no changes detected; apps up to date"`) {
+		t.Errorf("expected no changes log, got:\n%s", logs)
+	}
+}
+
+func TestLogDeployChanges_Format(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+
+	id := "dash123"
+	name := "sales"
+	path := "/"
+	content := "SELECT 1;"
+	ops := []api.AppRequest{
+		{
+			Operation: "create",
+			Type:      "dashboard",
+			Data: api.DashboardData{
+				ID:      &id,
+				Name:    &name,
+				Path:    &path,
+				Content: &content,
+			},
+		},
+	}
+	localApps := map[string]LocalApp{
+		"dash123": {
+			ID:   "dash123",
+			Name: "sales",
+			Path: "/",
+			Type: "dashboard",
+		},
+	}
+	remoteApps := map[string]api.App{}
+
+	logDeployChanges(ops, localApps, remoteApps)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+
+	expected := "create dash123: /sales.dashboard.sql\n"
+	if out != expected {
+		t.Errorf("expected %q, got %q", expected, out)
 	}
 }

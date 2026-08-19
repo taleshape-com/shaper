@@ -3,17 +3,47 @@
 package util
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
+	"regexp"
 	"strings"
 )
+
+const (
+	// MaxVariableNameLength is the maximum allowed length for SQL/DuckDB variable names.
+	MaxVariableNameLength = 64
+	// MaxInputVariableLength is the maximum allowed string length for free-text input variables.
+	MaxInputVariableLength = 4096
+	// MaxMultiVariableCount is the maximum number of items allowed in a multi-variable array.
+	MaxMultiVariableCount = 500
+	// MaxMultiVariableItemLength is the maximum string length for each item in a multi-variable array.
+	MaxMultiVariableItemLength = 4096
+)
+
+var validVariableNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+// IsValidVariableName checks if a string is a valid SQL/DuckDB variable name
+// (alphanumeric and underscore, starting with a letter or underscore, at most MaxVariableNameLength chars).
+func IsValidVariableName(name string) bool {
+	if len(name) == 0 || len(name) > MaxVariableNameLength {
+		return false
+	}
+	return validVariableNameRegex.MatchString(name)
+}
+
 
 // Human-readable random string
 func GenerateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
+	max := big.NewInt(int64(len(charset)))
 	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
+		num, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			panic(fmt.Sprintf("failed to generate random string: %v", err))
+		}
+		b[i] = charset[num.Int64()]
 	}
 	return string(b)
 }

@@ -1504,7 +1504,6 @@ func getAxisType(rows Rows, index int) (string, error) {
 	return "string", nil
 }
 
-// TODO: assert that variable names are alphanumeric
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
 // NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
@@ -1522,6 +1521,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdown")
+		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for dropdown", columnName)
 		}
 		if _, protected := protectedVariables[columnName]; protected {
 			return nil
@@ -1589,10 +1591,21 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for dropdownMulti", columnName)
+		}
 		if _, protected := protectedVariables[columnName]; protected {
 			return nil
 		}
 		params := queryParams[columnName]
+		if len(params) > util.MaxMultiVariableCount {
+			return fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(params), util.MaxMultiVariableCount)
+		}
+		for _, param := range params {
+			if len(param) > util.MaxMultiVariableItemLength {
+				return fmt.Errorf("dropdownMulti variable %q item exceeds maximum allowed length of %d characters", columnName, util.MaxMultiVariableItemLength)
+			}
+		}
 		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
 			paramsToCheck := map[string]bool{}
@@ -1672,6 +1685,9 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if columnName == "" {
 			return fmt.Errorf("missing datepicker column")
 		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for datepicker", columnName)
+		}
 		if _, protected := protectedVariables[columnName]; protected {
 			return nil
 		}
@@ -1718,8 +1734,14 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if fromColumnName == "" {
 			return fmt.Errorf("missing DATEPICKER_FROM column")
 		}
+		if !util.IsValidVariableName(fromColumnName) {
+			return fmt.Errorf("invalid variable name %q for daterangePicker (from)", fromColumnName)
+		}
 		if toColumnName == "" {
 			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		if !util.IsValidVariableName(toColumnName) {
+			return fmt.Errorf("invalid variable name %q for daterangePicker (to)", toColumnName)
 		}
 		if _, protected := protectedVariables[fromColumnName]; protected {
 			return nil
@@ -1779,10 +1801,16 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if columnName == "" {
 			return fmt.Errorf("missing hint column for input")
 		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for input", columnName)
+		}
 		if _, protected := protectedVariables[columnName]; protected {
 			return nil
 		}
 		param := queryParams.Get(columnName)
+		if len(param) > util.MaxInputVariableLength {
+			return fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
+		}
 		if param != "" {
 			singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
 		}
@@ -1805,6 +1833,9 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		}
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdown")
+		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for dropdown", columnName)
 		}
 		param := queryParams.Get(columnName)
 		if param != "" {
@@ -1869,7 +1900,18 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if columnName == "" {
 			return fmt.Errorf("missing value column for dropdownMulti")
 		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for dropdownMulti", columnName)
+		}
 		params := queryParams[columnName]
+		if len(params) > util.MaxMultiVariableCount {
+			return fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(params), util.MaxMultiVariableCount)
+		}
+		for _, param := range params {
+			if len(param) > util.MaxMultiVariableItemLength {
+				return fmt.Errorf("dropdownMulti variable %q item exceeds maximum allowed length of %d characters", columnName, util.MaxMultiVariableItemLength)
+			}
+		}
 		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
 			paramsToCheck := map[string]bool{}
@@ -1951,6 +1993,9 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if columnName == "" {
 			return fmt.Errorf("missing datepicker column")
 		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for datepicker", columnName)
+		}
 		param := queryParams.Get(columnName)
 		if param == "" {
 			// Set default value
@@ -1994,8 +2039,14 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if fromColumnName == "" {
 			return fmt.Errorf("missing DATEPICKER_FROM column")
 		}
+		if !util.IsValidVariableName(fromColumnName) {
+			return fmt.Errorf("invalid variable name %q for daterangePicker (from)", fromColumnName)
+		}
 		if toColumnName == "" {
 			return fmt.Errorf("missing DATEPICKER_TO column")
+		}
+		if !util.IsValidVariableName(toColumnName) {
+			return fmt.Errorf("invalid variable name %q for daterangePicker (to)", toColumnName)
 		}
 		fromParam := queryParams.Get(fromColumnName)
 		if fromParam == "" {
@@ -2049,7 +2100,13 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if columnName == "" {
 			return fmt.Errorf("missing hint column for input")
 		}
+		if !util.IsValidVariableName(columnName) {
+			return fmt.Errorf("invalid variable name %q for input", columnName)
+		}
 		param := queryParams.Get(columnName)
+		if len(param) > util.MaxInputVariableLength {
+			return fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
+		}
 		if param != "" {
 			downloadLinkParams.Add(columnName, param)
 		}
@@ -2066,13 +2123,25 @@ func getTokenVars(variables map[string]any) (map[string]string, map[string][]str
 	singleVars := map[string]string{}
 	multiVars := map[string][]string{}
 	for k, v := range variables {
+		if !util.IsValidVariableName(k) {
+			return singleVars, multiVars, fmt.Errorf("invalid variable name %q: must match ^[a-zA-Z_][a-zA-Z0-9_]*$ and be at most %d characters", k, util.MaxVariableNameLength)
+		}
 		switch v := v.(type) {
 		case string:
+			if len(v) > util.MaxInputVariableLength {
+				return singleVars, multiVars, fmt.Errorf("variable %q value exceeds maximum allowed length of %d characters", k, util.MaxInputVariableLength)
+			}
 			singleVars[k] = "'" + util.EscapeSQLString(v) + "'"
 		case []any:
+			if len(v) > util.MaxMultiVariableCount {
+				return singleVars, multiVars, fmt.Errorf("variable %q array size (%d) exceeds maximum allowed count of %d", k, len(v), util.MaxMultiVariableCount)
+			}
 			strSlice := make([]string, 0, len(v))
 			for _, item := range v {
 				if str, ok := item.(string); ok {
+					if len(str) > util.MaxMultiVariableItemLength {
+						return singleVars, multiVars, fmt.Errorf("variable %q array item exceeds maximum allowed length of %d characters", k, util.MaxMultiVariableItemLength)
+					}
 					strSlice = append(strSlice, str)
 				} else {
 					return singleVars, multiVars, fmt.Errorf("invalid type in array for key %s: %T", k, item)
