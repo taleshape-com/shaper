@@ -777,12 +777,12 @@ const RangeDatePicker = ({
     }
 
     switch (pos) {
-      case "start":
-        setStartTime(time);
-        break;
-      case "end":
-        setEndTime(time);
-        break;
+    case "start":
+      setStartTime(time);
+      break;
+    case "end":
+      setEndTime(time);
+      break;
     }
 
     if (!range) {
@@ -850,7 +850,7 @@ const RangeDatePicker = ({
     }
 
     return `${range.from ? formatValue(getUTCDate(range.from).getTime(), showTimePicker ? "timestamp" : "date", false, true) : ""} - ${range.to ? formatValue(getUTCDate(range.to).getTime(), showTimePicker ? "timestamp" : "date", false, true) : ""
-      }`;
+    }`;
   }, [range, showTimePicker]);
 
   return (

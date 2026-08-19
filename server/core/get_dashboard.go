@@ -630,7 +630,7 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "boolean", nil
 	case "VARCHAR":
 		// Check if it's a JSON object or array. Unfortunately the database doesn't tell us if it's JSON.
-		cell := getFirstNonEmtpyCell(rows, index)
+		cell := getFirstNonEmptyCell(rows, index)
 		if cell != nil {
 			if _, ok := cell.(map[string]any); ok {
 				return "object", nil
@@ -694,7 +694,7 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	return "", fmt.Errorf("unsupported type: %s", t)
 }
 
-func getFirstNonEmtpyCell(rows Rows, index int) any {
+func getFirstNonEmptyCell(rows Rows, index int) any {
 	for _, row := range rows {
 		if row[index] != nil {
 			return row[index]
@@ -746,7 +746,7 @@ func findAllColumnsByTag(columns []*sql.ColumnType, tag string) []int {
 	return indices
 }
 
-func findBoxlotColumnIndex(columns []*sql.ColumnType) int {
+func findBoxplotColumnIndex(columns []*sql.ColumnType) int {
 	for i, c := range columns {
 		if c.DatabaseTypeName() == boxplotType {
 			return i
@@ -1275,7 +1275,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		return r
 	}
 
-	boxplotIndex := findBoxlotColumnIndex(columns)
+	boxplotIndex := findBoxplotColumnIndex(columns)
 	boxplotColor, boxplotColorIndex := findColumnByTag(columns, "COLOR")
 	if boxplotIndex > -1 && xaxis != nil {
 		r := renderInfo{
