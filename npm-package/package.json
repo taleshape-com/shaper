@@ -4,19 +4,13 @@
   "description": "Minimal Embedded Analytics and Data Platform",
   "main": "index.js",
   "bin": {
-    "shaper": "./bin/shaper"
-  },
-  "scripts": {
-    "postinstall": "node install.js",
-    "preuninstall": "node uninstall.js"
+    "shaper": "./bin/shaper.js"
   },
   "files": [
     "bin",
     "README.md",
     "LICENSE",
-    "index.js",
-    "install.js",
-    "uninstall.js"
+    "index.js"
   ],
   "keywords": [
     "data",
@@ -38,8 +32,11 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "axios": "^1.6.7"
+  "optionalDependencies": {
+    "@taleshape/shaper-darwin-arm64": "0.0.0",
+    "@taleshape/shaper-darwin-x64": "0.0.0",
+    "@taleshape/shaper-linux-arm64": "0.0.0",
+    "@taleshape/shaper-linux-x64": "0.0.0"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,28 @@
+{
+  "name": "@taleshape/shaper-linux-arm64",
+  "version": "0.0.0",
+  "description": "Linux arm64 binary for @taleshape/shaper",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taleshape-com/shaper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/taleshape-com/shaper/issues"
+  },
+  "homepage": "https://taleshape.com/shaper",
+  "publishConfig": {
+    "access": "public"
+  }
+}

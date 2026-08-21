@@ -317,7 +317,7 @@ jobs:
 
   npm-publish:
     name: Publish to npm
-    needs: [release]
+    needs: [build-linux, build-darwin]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -343,29 +343,35 @@ jobs:
           name: darwin-binaries
           path: bin
 
-      - name: Combine checksums
-        run: |
-          cat bin/checksums-*.txt | sort | uniq > npm-package/bin/SHA256SUMS
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "lts/*"
           package-manager-cache: false
 
-      - name: Update npm package version
+      - name: Prepare npm packages
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
-          cd npm-package
-          npm version $(echo "$REF_NAME" | sed 's/^v//') --no-git-tag-version
+          VERSION=$(echo "$REF_NAME" | sed 's/^v//')
+          node npm-package/scripts/prepare-packages.js "$VERSION" bin
 
-      - name: Publish to npm
+      - name: Publish platform packages to npm
+        run: |
+          for dir in npm-package/packages/*; do
+            if [ -d "$dir" ]; then
+              echo "Publishing $dir..."
+              (cd "$dir" && npm publish --provenance --access public)
+            fi
+          done
+
+      - name: Publish main package to npm
         run: |
           cd npm-package
           # Use --provenance for OIDC-linked builds.
           # Note: Requires Trusted Publishing setup on npmjs.com.
           npm publish --provenance --access public
+
 
   pypi-publish:
     name: Publish to PyPI

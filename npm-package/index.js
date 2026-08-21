@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
-const path = require('path');
+const { getBinaryPath } = require('./bin/get-binary');
 
 module.exports = {
-  path: path.join(__dirname, 'bin', 'shaper')
+  get path() {
+    return getBinaryPath();
+  },
+  getBinaryPath,
 };
