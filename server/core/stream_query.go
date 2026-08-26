@@ -271,6 +271,7 @@ func StreamSQLToJSONWithConn(
 		valuePtrs[i] = &values[i]
 	}
 
+	encoder := json.NewEncoder(writer)
 	first := true
 	// Stream rows
 	for rows.Next() {
@@ -293,7 +294,6 @@ func StreamSQLToJSONWithConn(
 		}
 
 		// Write the record
-		encoder := json.NewEncoder(writer)
 		if err := encoder.Encode(rowMap); err != nil {
 			return fmt.Errorf("error encoding JSON record: %w", err)
 		}
