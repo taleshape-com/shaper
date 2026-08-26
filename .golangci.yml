@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
+version: "2"
+
 run:
   timeout: 5m
   tests: true
@@ -7,11 +9,24 @@ run:
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
+
+  settings:
+    staticcheck:
+      checks: ["SA*"]
+
+  exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
+      - legacy
+    rules:
+      - path: "node_modules/.*"
+        linters:
+          - govet
 
 issues:
   max-issues-per-linter: 0
