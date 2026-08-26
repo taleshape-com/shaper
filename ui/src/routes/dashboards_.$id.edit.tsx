@@ -250,6 +250,7 @@ function DashboardEditor () {
           ...old,
           vars: newVars,
         }),
+        resetScroll: false,
       });
     },
     [navigate],

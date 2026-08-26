@@ -143,6 +143,7 @@ function DashboardViewComponent () {
           ...old,
           vars: newVars,
         }),
+        resetScroll: false,
       });
     },
     [navigate],

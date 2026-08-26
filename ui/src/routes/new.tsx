@@ -346,6 +346,7 @@ function NewDashboard () {
           ...old,
           vars: newVars,
         }),
+        resetScroll: false,
       });
     },
     [navigate],
