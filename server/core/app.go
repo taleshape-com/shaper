@@ -511,7 +511,7 @@ func (app *App) Close() {
 		<-app.TaskResultConsumeCtx.Closed()
 	}
 	if app.TaskBroadcastSubscription != nil {
-		app.TaskBroadcastSubscription.Unsubscribe()
+		_ = app.TaskBroadcastSubscription.Unsubscribe()
 	}
 }
 

@@ -503,7 +503,7 @@ func HandleMoveItems(app *App, data []byte) bool {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Move apps
 	for _, appID := range payload.Apps {

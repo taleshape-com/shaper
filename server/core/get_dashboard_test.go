@@ -364,5 +364,20 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, 2, len(result.Sections))
 		assert.Equal(t, "hello world", result.Sections[1].Queries[0].Rows[0][0])
 	})
+
+	t.Run("Defaults unset input variable to empty string and does not flag as unset", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Enter name'::INPUT AS search_term;
+				SELECT getvariable('search_term') AS res;
+			`,
+			ID: "test-unset-input-default",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+		assert.Equal(t, "", result.Sections[1].Queries[0].Rows[0][0])
+		assert.Empty(t, result.UnsetVariables)
+	})
 }
 
