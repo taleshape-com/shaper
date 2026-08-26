@@ -144,6 +144,7 @@ function DashboardViewComponent () {
           vars: newVars,
         }),
         resetScroll: false,
+        replace: true,
       });
     },
     [navigate],

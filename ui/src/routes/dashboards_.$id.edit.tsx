@@ -251,6 +251,7 @@ function DashboardEditor () {
           vars: newVars,
         }),
         resetScroll: false,
+        replace: true,
       });
     },
     [navigate],
