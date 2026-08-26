@@ -50,7 +50,7 @@ interface ErrorDisplayProps {
   menuButton?: React.ReactNode;
 }
 
-const ErrorDisplay = function ({
+const ErrorDisplay = function({
   error,
   resetErrorBoundary,
   errResetRef,
@@ -97,7 +97,7 @@ const ErrorDisplay = function ({
   );
 };
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -345,6 +345,7 @@ const DataView = ({
                     "mt-3 mb-3": header.queries.length > 0 || header.title,
                     "mt-8": header.title && sectionIndex !== 0,
                     "my-2": header.queries.length === 0 && !header.title && sectionIndex === 0,
+                    "pb-4": sectionIndex === sections.length - 1,
                   })}
                 >
                   <div
