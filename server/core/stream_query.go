@@ -4,7 +4,6 @@ package core
 
 import (
 	"context"
-	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -525,8 +524,8 @@ func StreamQueryXLSX(
 		if err != nil {
 			return fmt.Errorf("error converting coordinates: %w", err)
 		}
-		xlsx.SetCellValue(sheetName, cell, column)
-		xlsx.SetCellStyle(sheetName, cell, cell, headerStyle)
+		_ = xlsx.SetCellValue(sheetName, cell, column)
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, headerStyle)
 		maxWidths[colIdx] = float64(len(column)) + 2 // Start with header width + padding
 	}
 
@@ -584,16 +583,16 @@ func StreamQueryXLSX(
 		}
 		// Clamp width between minimum of 6 and maximum of 100
 		width := math.Max(6, math.Min(100, maxWidths[colIdx]))
-		xlsx.SetColWidth(sheetName, colName, colName, width)
+		_ = xlsx.SetColWidth(sheetName, colName, colName, width)
 	}
 
 	// Set up autofilter
 	lastCol, _ := excelize.ColumnNumberToName(len(columns))
 	filterRange := fmt.Sprintf("A1:%s%d", lastCol, rowIdx-1)
-	xlsx.AutoFilter(sheetName, filterRange, []excelize.AutoFilterOptions{})
+	_ = xlsx.AutoFilter(sheetName, filterRange, []excelize.AutoFilterOptions{})
 
 	// Freeze the header row
-	xlsx.SetPanes(sheetName, &excelize.Panes{
+	_ = xlsx.SetPanes(sheetName, &excelize.Panes{
 		Freeze:      true,
 		Split:       false,
 		XSplit:      0,
@@ -628,25 +627,25 @@ func getDisplayWidth(value any) float64 {
 
 func handleCellValue(value any, xlsx *excelize.File, sheetName string, cell string, styles map[string]int) {
 	if value == nil {
-		xlsx.SetCellValue(sheetName, cell, "")
-		xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+		_ = xlsx.SetCellValue(sheetName, cell, "")
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
 		return
 	}
 	switch v := value.(type) {
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64,
 		float32, float64:
-		xlsx.SetCellValue(sheetName, cell, v)
-		xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
+		_ = xlsx.SetCellValue(sheetName, cell, v)
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
 	case time.Time:
-		xlsx.SetCellValue(sheetName, cell, v)
-		xlsx.SetCellStyle(sheetName, cell, cell, styles["datetime"])
+		_ = xlsx.SetCellValue(sheetName, cell, v)
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["datetime"])
 	case duckdb.Interval:
-		xlsx.SetCellFloat(sheetName, cell, intervalToDays(v), 6, 64) // 6 decimal places precision
-		xlsx.SetCellStyle(sheetName, cell, cell, styles["interval"])
+		_ = xlsx.SetCellFloat(sheetName, cell, intervalToDays(v), 6, 64) // 6 decimal places precision
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["interval"])
 	default:
-		xlsx.SetCellValue(sheetName, cell, formatValue(v))
-		xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+		_ = xlsx.SetCellValue(sheetName, cell, formatValue(v))
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
 	}
 }
 
@@ -813,8 +812,4 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 	}
 	varPrefix, varCleanup := buildVarPrefix(app, singleVars, multiVars)
 	return varPrefix, varCleanup, nil
-}
-
-func isDownloadButton(columns []*sql.ColumnType) bool {
-	return getDownloadType(columns) != ""
 }

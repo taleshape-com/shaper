@@ -270,7 +270,9 @@ func TestLogDeployChanges_Format(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatalf("failed to read buffer: %v", err)
+	}
 	out := buf.String()
 
 	expected := "create dash123: /sales.dashboard.sql\n"

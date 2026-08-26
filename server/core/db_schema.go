@@ -61,9 +61,9 @@ func initSQLite(sdb *sqlx.DB) error {
 		return fmt.Errorf("error creating apps table: %w", err)
 	}
 	// Ignore errors if column already exists
-	sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE CASCADE`)
+	_, _ = sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE CASCADE`)
 	// Ignore errors if column does not exist
-	sdb.Exec(`ALTER TABLE apps DROP COLUMN path`)
+	_, _ = sdb.Exec(`ALTER TABLE apps DROP COLUMN path`)
 
 	// Create api_keys table
 	_, err = sdb.Exec(`
@@ -83,11 +83,11 @@ func initSQLite(sdb *sqlx.DB) error {
 		return fmt.Errorf("error creating config table: %w", err)
 	}
 	// Ignore errors if column already exists
-	sdb.Exec(`ALTER TABLE api_keys ADD COLUMN permissions TEXT`)
+	_, _ = sdb.Exec(`ALTER TABLE api_keys ADD COLUMN permissions TEXT`)
 
 	// Give all permissions to legacy keys
 	allPerms, _ := json.Marshal(AllPermissions)
-	sdb.Exec(`UPDATE api_keys SET permissions = $1 WHERE permissions IS NULL OR permissions = ''`, string(allPerms))
+	_, _ = sdb.Exec(`UPDATE api_keys SET permissions = $1 WHERE permissions IS NULL OR permissions = ''`, string(allPerms))
 
 	// Create users table
 	_, err = sdb.Exec(`

@@ -167,7 +167,9 @@ func TestTokenAuth_DashboardIDRestriction(t *testing.T) {
 		var res struct {
 			JWT string `json:"jwt"`
 		}
-		json.Unmarshal(rec.Body.Bytes(), &res)
+		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
 		claims := parseJWT(res.JWT)
 
 		intExp := int64(claims["exp"].(float64))
@@ -204,7 +206,9 @@ func TestTokenAuth_DashboardIDRestriction(t *testing.T) {
 		var res struct {
 			JWT string `json:"jwt"`
 		}
-		json.Unmarshal(rec.Body.Bytes(), &res)
+		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
 		claims := parseJWT(res.JWT)
 
 		if claims["longLived"] != true {

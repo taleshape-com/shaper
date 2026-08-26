@@ -432,45 +432,6 @@ func sanitizeFileName(name string) string {
 	return name
 }
 
-// isAnyParentFolderUpdated checks if any folder in the given path (including the path itself)
-// was updated after the lastPull timestamp. It checks all parent paths.
-// For example, for path "/folder1/folder2/", it checks:
-// - "/folder1/folder2/"
-// - "/folder1/"
-// - "/"
-func isAnyParentFolderUpdated(path string, folderUpdatedAt map[string]time.Time, lastPull time.Time) bool {
-	// Normalize path to ensure it ends with /
-	normalizedPath := path
-	if normalizedPath != "/" && !strings.HasSuffix(normalizedPath, "/") {
-		normalizedPath += "/"
-	}
-
-	// Check all parent paths
-	currentPath := normalizedPath
-	for {
-		if updatedAt, exists := folderUpdatedAt[currentPath]; exists {
-			if updatedAt.After(lastPull) {
-				return true
-			}
-		}
-
-		// Move to parent path
-		if currentPath == "/" {
-			break
-		}
-		// Remove the last segment
-		currentPath = strings.TrimSuffix(currentPath, "/")
-		lastSlash := strings.LastIndex(currentPath, "/")
-		if lastSlash == -1 {
-			currentPath = "/"
-		} else {
-			currentPath = currentPath[:lastSlash+1]
-		}
-	}
-
-	return false
-}
-
 func getExpectedFilePath(baseDir string, app api.App) (string, error) {
 	// Construct path (same logic as writeAppFile)
 	dashPath := app.Path

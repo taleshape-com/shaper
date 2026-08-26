@@ -230,7 +230,7 @@ func HandleUpdateUserPassword(app *App, data []byte) bool {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Update password hash
 	_, err = tx.Exec(
@@ -412,7 +412,7 @@ func HandleDeleteUser(app *App, data []byte) bool {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Delete user's sessions first
 	_, err = tx.Exec(
@@ -652,7 +652,7 @@ func HandleClaimInvite(app *App, data []byte) bool {
 		app.Logger.Error("failed to begin transaction", slog.Any("error", err))
 		return false
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Create the user
 	_, err = tx.Exec(
