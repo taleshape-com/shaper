@@ -14,6 +14,7 @@ import { useAuth, getJwt } from "../lib/auth";
 import { Dashboard } from "../components/dashboard";
 import { isMac, varsParamSchema, cx } from "../lib/utils";
 import { editorStorage } from "../lib/editorStorage";
+import { Result } from "../lib/types";
 import { Button } from "../components/tremor/Button";
 import { useQueryApi } from "../hooks/useQueryApi";
 import { MenuProvider } from "../components/providers/MenuProvider";
@@ -163,6 +164,7 @@ function NewDashboard () {
   const [dashboardName, setDashboardName] = useState("");
   const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
   const [loadEndTime, setLoadEndTime] = useState<number | null>(null);
+  const [unsetVariables, setUnsetVariables] = useState<string[]>([]);
   const { toast } = useToast();
 
   const previewDashboard = useCallback(async () => {
@@ -252,6 +254,7 @@ function NewDashboard () {
       setPreviewId(undefined);
       setTaskData(undefined);
       setPreviewError(null);
+      setUnsetVariables([]);
 
       // Auto-run dashboard when switching to it
       if (type === "dashboard") {
@@ -343,6 +346,8 @@ function NewDashboard () {
           ...old,
           vars: newVars,
         }),
+        resetScroll: false,
+        replace: true,
       });
     },
     [navigate],
@@ -359,6 +364,7 @@ function NewDashboard () {
     setPreviewId(undefined);
     setTaskData(undefined);
     setPreviewError(null);
+    setUnsetVariables([]);
   }, [appType]);
 
   // Helper to check if content has been modified
@@ -376,9 +382,10 @@ function NewDashboard () {
     }
   }, [navigate, setIsPreviewLoading, setLoadEndTime]);
 
-  const handleDataChange = useCallback(() => {
+  const handleDataChange = useCallback((data: Result) => {
     setIsPreviewLoading(false);
     setLoadEndTime(Date.now());
+    setUnsetVariables(data.unsetVariables || []);
   }, [setIsPreviewLoading, setLoadEndTime]);
 
   const loadDuration = useMemo(() => {
@@ -419,7 +426,10 @@ function NewDashboard () {
           <div className="flex items-center px-2 border-b border-cb dark:border-none">
             <MenuTrigger className="pr-2">
               {appType === "dashboard" && (
-                <VariablesMenu onVariablesChange={previewDashboard} />
+                <VariablesMenu
+                  onVariablesChange={previewDashboard}
+                  unsetVariables={unsetVariables}
+                />
               )}
               {appType === "dashboard" && (
                 <div className="text-xs text-ctext2 dark:text-dtext2 mt-4 mx-4 opacity-85">

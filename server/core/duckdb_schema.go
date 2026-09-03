@@ -124,7 +124,7 @@ func (app *App) GetSchema(ctx context.Context, ignore []string) (*api.SchemaResp
 			var enums []struct {
 				Name string `db:"type_name"`
 			}
-			db.SelectContext(ctx, &enums, `
+			_ = db.SelectContext(ctx, &enums, `
 				SELECT type_name
 				FROM duckdb_types()
 				WHERE schema_name = ? AND logical_type = 'ENUM' AND NOT internal

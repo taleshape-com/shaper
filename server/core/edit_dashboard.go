@@ -54,7 +54,9 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 			return Dashboard{}, fmt.Errorf("failed to get dashboard: %w", err)
 		}
 		var d TmpDashboard
-		json.Unmarshal(entry.Value(), &d)
+		if err := json.Unmarshal(entry.Value(), &d); err != nil {
+			return Dashboard{}, fmt.Errorf("failed to unmarshal temporary dashboard: %w", err)
+		}
 		visibility := "private"
 		dashboard := Dashboard{
 			ID:         id,
@@ -195,7 +197,9 @@ func SaveDashboardQuery(app *App, ctx context.Context, id string, content string
 			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 		var d TmpDashboard
-		json.Unmarshal(entry.Value(), &d)
+		if err := json.Unmarshal(entry.Value(), &d); err != nil {
+			return fmt.Errorf("failed to unmarshal temporary dashboard: %w", err)
+		}
 		d.Content = content
 		j, err := json.Marshal(d)
 		if err != nil {

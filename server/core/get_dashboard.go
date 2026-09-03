@@ -1811,9 +1811,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if len(param) > util.MaxInputVariableLength {
 			return fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
 		}
-		if param != "" {
-			singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
-		}
+		singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
 	}
 	return nil
 }

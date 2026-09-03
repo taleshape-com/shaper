@@ -38,7 +38,7 @@ func TestGetSchema(t *testing.T) {
 	}
 
 	contentType := rec.Header().Get(echo.HeaderContentType)
-	if contentType != echo.MIMEApplicationJSON && contentType != echo.MIMEApplicationJSONCharsetUTF8 {
+	if contentType != echo.MIMEApplicationJSON {
 		t.Errorf("expected json content type, got %s", contentType)
 	}
 }

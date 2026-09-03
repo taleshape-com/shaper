@@ -340,8 +340,8 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 		func() string {
 			if path == "/" || path == "" {
 				return "IS NULL"
-			} else {
-				return fmt.Sprintf(`= (
+			}
+			return `= (
 					WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
 						SELECT id, parent_folder_id, name, '/' || name || '/' as path
 						FROM folders
@@ -354,8 +354,7 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 						JOIN folder_path fp ON f.parent_folder_id = fp.id
 					)
 					SELECT id FROM folder_path WHERE path = ?
-				)`)
-			}
+				)`
 		}(), orderColumn, order, paginationClause)
 
 	queryAppsOnly := fmt.Sprintf(`
