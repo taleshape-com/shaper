@@ -74,7 +74,7 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 			valuePtrs[i] = &values[i]
 		}
 		if err := rows.Scan(valuePtrs...); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("failed to scan row for duckdb table %s: %w", duckDbTable, err)
 		}
 		placeholders := ""
@@ -86,7 +86,7 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 			if values[i] != nil && table == "task_runs" && cols[i] == "last_run_duration" {
 				v, ok := values[i].(duckdb.Interval)
 				if !ok {
-					tx.Rollback()
+					_ = tx.Rollback()
 					return fmt.Errorf("failed to convert last_run_duration to time for duckdb table %s", table)
 				}
 				values[i] = formatInterval(v)
@@ -97,7 +97,7 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 			values...,
 		)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("failed to insert row into sqlite table %s: %w", table, err)
 		}
 	}

@@ -46,7 +46,9 @@ func TestValidate(t *testing.T) {
 		}
 
 		var resp ValidateResponse
-		json.Unmarshal(rec.Body.Bytes(), &resp)
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
 		if !resp.Valid {
 			t.Errorf("expected valid to be true, got false. Error: %s", resp.Error)
 		}
@@ -72,7 +74,9 @@ func TestValidate(t *testing.T) {
 		}
 
 		var resp ValidateResponse
-		json.Unmarshal(rec.Body.Bytes(), &resp)
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
 		if resp.Valid {
 			t.Errorf("expected valid to be false, got true")
 		}

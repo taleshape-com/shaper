@@ -114,7 +114,7 @@ func StreamDashboardPdf(
 			if err != nil {
 				return err
 			}
-			defer chromeio.Close(rawPdfStream).Do(ctx)
+			defer func() { _ = chromeio.Close(rawPdfStream).Do(ctx) }()
 
 			pdfReader := NewChromeReadAdapter(
 				ctx,

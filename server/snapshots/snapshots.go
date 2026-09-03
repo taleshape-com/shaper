@@ -406,11 +406,6 @@ func discoverAWSRegion() string {
 	return "us-east-1"
 }
 
-// getDefaultAWSEndpoint returns the default AWS S3 endpoint for a given region
-func getDefaultAWSEndpoint(region string) string {
-	return fmt.Sprintf("s3.%s.amazonaws.com", region)
-}
-
 // shouldUseAWSEndpoint determines if we should use AWS S3 based on the endpoint
 func shouldUseAWSEndpoint(endpoint string) bool {
 	return endpoint == "" || strings.Contains(endpoint, "amazonaws.com")
