@@ -14,6 +14,7 @@ import { Label } from "../tremor/Label";
 import { useState } from "react";
 import { cx } from "../../lib/utils";
 import { toCssId } from "../../lib/render";
+import { useToast } from "../../hooks/useToast";
 
 type ButtonProps = {
   label?: string;
@@ -24,50 +25,124 @@ type ButtonProps = {
   idPrefix: string;
 };
 
+function getFilenameFromHeader (response: Response, fallback: string): string {
+  const disposition = response.headers.get("content-disposition");
+  if (disposition) {
+    const match = disposition.match(/filename=["']?([^"';]+)["']?/i);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return fallback;
+}
+
 function DashboardButton ({
   label,
   data,
   headers,
-  baseUrl,
+  baseUrl = "",
   getJwt,
   idPrefix,
 }: ButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const relativeUrl = data[0][0] as string;
-  const extension = relativeUrl.split("?")[0].split(".").pop()?.toLowerCase();
+  const urlPath = relativeUrl.split("?")[0];
+  const defaultFilename = urlPath.split("/").pop() || "download";
+  const extension = defaultFilename.split(".").pop()?.toLowerCase();
 
   const handleDownload = async () => {
     setIsLoading(true);
+    let writableStream: WritableStream | null = null;
+
     try {
+      const isStreamableLargeFile = extension === "csv" || extension === "json";
+
+      // For large streamable files (CSV & JSON) on Chromium browsers,
+      // prompt the Save As dialog immediately during the user click gesture
+      if (isStreamableLargeFile && "showSaveFilePicker" in window) {
+        const pickerOptions: {
+          suggestedName: string;
+          types?: { description: string; accept: Record<string, string[]> }[];
+        } = {
+          suggestedName: defaultFilename,
+        };
+
+        if (extension === "csv") {
+          pickerOptions.types = [
+            {
+              description: "CSV file",
+              accept: { "text/csv": [".csv"] },
+            },
+          ];
+        } else if (extension === "json") {
+          pickerOptions.types = [
+            {
+              description: "JSON file",
+              accept: { "application/json": [".json"] },
+            },
+          ];
+        }
+
+        try {
+
+          const fileHandle = await (window as any).showSaveFilePicker(pickerOptions);
+          writableStream = await fileHandle.createWritable();
+        } catch (err: unknown) {
+          if ((err as DOMException)?.name === "AbortError") {
+            // User cancelled the file picker dialog
+            setIsLoading(false);
+            return;
+          }
+          throw err;
+        }
+      }
+
       const jwt = await getJwt();
-      const separator = relativeUrl.includes("?") ? "&" : "?";
-      const response = await fetch(`${baseUrl}${relativeUrl}${separator}mode=url`, {
+      const response = await fetch(`${baseUrl}${relativeUrl}`, {
         headers: {
-          "Content-Type": "application/json",
           Authorization: jwt,
         },
       });
-      const json = await response.json();
-      if (!response.ok) {
-        throw new Error("Download request failed: " + (json.error || response.statusText));
-      }
-      const downloadUrl = json.url;
-      const filename = downloadUrl.split("/").pop() || "download";
 
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      // TODO: Handle error (e.g., show an error message to the user)
-      //       We either have to switch to buffering in memory again or we change the server so the file is rendered and cached before the download link is returned.
-      //       The problem with that is that it defeats the purpose of streaming the file. Then we have to wait on the server side until the file is rendered,
-      //       and we probably slow things down because we have to write the file to disk on the server which I don't want to do - especially for large files.
-      //       One thing to consider is to buffer in JS, but show the user a progress bar in the app (instead of the browsers own functionality).
-      console.error("Download error:", error);
+      if (!response.ok) {
+        if (writableStream) {
+          try {
+            await writableStream.abort("Download failed on server");
+          } catch {
+            // Ignore abort error
+          }
+        }
+        const json = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(json.error || `Download failed: ${response.statusText}`);
+      }
+
+      if (writableStream && response.body) {
+        // Stream directly to disk
+        await response.body.pipeTo(writableStream);
+      } else {
+        // Buffer to Blob (PDF, XLSX, PNG, and Safari/Firefox fallback for CSV/JSON)
+        const blob = await response.blob();
+        const filename = getFilenameFromHeader(response, defaultFilename);
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(downloadUrl);
+      }
+    } catch (error: unknown) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        console.error("Download error:", error);
+        toast({
+          title: "Download failed",
+          description: (error as Error).message || "An unexpected error occurred during download.",
+          variant: "error",
+        });
+      }
     } finally {
       setTimeout(() => {
         setIsLoading(false);

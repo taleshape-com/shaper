@@ -42,7 +42,7 @@
               url.searchParams.set(key, encodeURIComponent(JSON.stringify(value)));
             }
           }
-          history.pushState(null, "", url);
+          history.replaceState(null, "", url);
         },
         onTitleChanged(newTitle) {
           document.title = newTitle;

@@ -92,7 +92,6 @@ func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string)
 		}
 	}
 
-	isInit := false
 	useTx := !anyNoTx
 	app.Logger.Debug("executeTaskOnDB", slog.Bool("anyNoTx", anyNoTx), slog.Int("queries", len(sqls)))
 
@@ -207,7 +206,6 @@ func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string)
 			} else {
 				timeVal := getScheduleTime(queryResult.ResultRows)
 				if timeVal == -1 {
-					isInit = true
 					scheduleType = "all"
 				}
 				result.NextRunAt = timeVal
@@ -223,20 +221,8 @@ func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string)
 		}
 	}
 
-	// If it was an init task, we should have run it without transaction if we knew from the start.
-	// But we only find out during execution. DuckDB doesn't allow ATTACH/etc in TX.
-	// If a task contains BOTH a schedule='init' AND an ATTACH, the ATTACH must be AFTER the schedule
-	// query for our current detection to work if we were to restart.
-	// However, we now have anyNoTx detection which handles ATTACH/INSTALL/etc upfront.
-	// The only remaining case is if 'init' itself requires no transaction.
-	// Let's re-run without transaction if we detect isInit and we were in a transaction.
-	if isInit && useTx {
-		// This is a bit complex: we already executed some queries in a transaction.
-		// If it's 'init', we should probably have detected it upfront.
-		// But since anyNoTx already covers the statements that actually BREAK transactions,
-		// maybe it's fine to stay in transaction for 'init' if it doesn't have ATTACH/etc.
-		// Actually, DuckDB doesn't mind 'init' in a transaction as long as no forbidden statements are used.
-	}
+	// If it was an init task, DuckDB doesn't mind 'init' in a transaction as long as no forbidden statements
+	// (covered upfront by anyNoTx detection) are used.
 
 	if success {
 		if useTx {

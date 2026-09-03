@@ -3,6 +3,12 @@
 import { Card } from "./tremor/Card";
 import { Table } from "./tremor/Table";
 import { Callout } from "./tremor/Callout";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./tremor/Accordion";
 import { RelativeDate } from "./RelativeDate";
 
 export interface TaskQueryResult {
@@ -107,9 +113,18 @@ export function TaskResults ({ data, loading }: TaskResultsProps) {
               </Callout>
             )}
 
-            <pre className="text-xs bg-cbgs dark:bg-dbgs p-2 rounded border border-cb dark:border-db overflow-x-auto">
-              <code>{query.sql}</code>
-            </pre>
+            <Accordion type="single" collapsible>
+              <AccordionItem value="sql" className="border-none">
+                <AccordionTrigger className="py-1 text-xs text-ctext2 dark:text-dtext2 hover:text-ctext dark:hover:text-dtext">
+                  <span>SQL</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-1">
+                  <pre className="text-xs bg-cbgs dark:bg-dbgs p-2 rounded border border-cb dark:border-db overflow-x-auto">
+                    <code>{query.sql}</code>
+                  </pre>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {query.error ? (
               <div className="p-2 bg-cerr dark:bg-derr rounded">
