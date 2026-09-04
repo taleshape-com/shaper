@@ -71,6 +71,38 @@ Shaper is 100% free and open source. Through **Taleshape**, we offer managed hos
 [**View Plans and Pricing**](https://taleshape.com/plans-and-pricing)
 
 
+## Shared Responsibility: Open Source vs. Managed Service
+
+Security and compliance follow a shared-responsibility model depending on whether you self-host Shaper or use Taleshape managed hosting:
+
+> **If you self-host Shaper**, you own your own compliance and security posture.  
+> **If you use Taleshape managed hosting**, we take on the operational, security, and compliance heavy lifting while your data remains in your infrastructure.
+
+| Responsibility Area | Self-Hosted (Open Source) | Taleshape Managed Hosting |
+| :--- | :--- | :--- |
+| **Infrastructure & Uptime** | You provision, configure, and monitor your servers | Taleshape manages infrastructure, scaling, and 24/7 uptime |
+| **Security Patches & Updates** | You track releases, test, and apply updates | Taleshape applies zero-downtime updates and security patches |
+| **Platform Hardening & TLS** | You configure firewalls, SSL/TLS, and network boundaries | Taleshape enforces secure defaults, encryption, and hardening |
+| **Compliance & Audits** | You are responsible for your own audits and certifications (SOC 2, ISO 27001, HIPAA, GDPR) | Taleshape provides audit support, compliance documentation, and platform-level controls |
+| **Data Ownership & Location** | Stored entirely within your infrastructure | Stored entirely within your infrastructure (we don't store your analytical data) |
+| **Access Control & Permissions**| You manage users, API keys, and dashboard permissions | You manage users, API keys, and dashboard permissions |
+| **Dashboards & SQL Queries** | You author and maintain queries and reports | You author queries, with optional expert support from Taleshape |
+
+### What We Take On (Taleshape Managed)
+
+- **Infrastructure & Maintenance**: Automated provisioning, continuous monitoring, and zero-downtime version upgrades.
+- **Security & Vulnerability Management**: Rapid patching, TLS/SSL configuration, network isolation, and secrets protection.
+- **Compliance & Audit Readiness**: Support with compliance documentation, security questionnaires, and audit readiness for frameworks like SOC 2, HIPAA, and GDPR.
+- **Operational Reliability**: Automated health checks, backup management, and failover support.
+
+### What You Own (Self-Hosted)
+
+- **Host & Environment Security**: Hardening the host OS, managing container environments, network firewalls, and ingress controllers.
+- **Maintenance & Patching**: Tracking releases, testing upgrades, and rolling out security fixes promptly (see [SECURITY.md](./SECURITY.md)).
+- **Compliance & Governance**: Implementing and certifying all technical, administrative, and physical controls required for your organization's compliance standards.
+- **Availability & Disaster Recovery**: Monitoring application health, managing backups, and planning disaster recovery.
+
+
 ## Get in touch
 
 Feel free to open an [issue](https://github.com/taleshape-com/shaper/issues) or start a [discussion](https://github.com/taleshape-com/shaper/discussions) if you have any questions or suggestions.
