@@ -33,6 +33,8 @@ type Config struct {
 	Nats            *nats.Conn
 	DuckDBExtDir    string
 	DuckDBSecretDir string
+	AllowedDuckDBExtensions     string
+	NoDuckDBCommunityExtensions bool
 	InitSQL         string
 	InitSQLFile     string
 	S3Bucket        string

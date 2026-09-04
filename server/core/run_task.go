@@ -58,7 +58,7 @@ func needsNoTransaction(sql string) bool {
 			return true
 		}
 	}
-	if strings.HasPrefix(upper, "INSTALL") || strings.HasPrefix(upper, "LOAD") {
+	if strings.HasPrefix(upper, "INSTALL") || strings.HasPrefix(upper, "LOAD") || strings.HasPrefix(upper, "FORCE INSTALL") {
 		return true
 	}
 	return false
@@ -116,8 +116,8 @@ func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string)
 			ResultRows:    [][]any{},
 		}
 
-		if !IsAllowedTaskStatement(sqlString) {
-			errMsg := "Statement not allowed in tasks (e.g., PRAGMA, SET configuration)"
+		if err := ValidateTaskStatement(app, sqlString); err != nil {
+			errMsg := err.Error()
 			queryResult.Error = &errMsg
 			success = false
 			result.Queries = append(result.Queries, queryResult)
