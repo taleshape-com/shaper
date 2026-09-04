@@ -158,6 +158,18 @@ func restoreDuckDBSnapshot(ctx context.Context, duckdbPath string, config Config
 		}
 	}
 
+	if config.NoDuckDBCommunityExtensions {
+		if _, err := tempDB.Exec("SET allow_community_extensions = false"); err != nil {
+			return fmt.Errorf("failed to disable DuckDB community extensions: %w", err)
+		}
+	}
+
+	if config.AllowedDuckDBExtensions != "" {
+		if _, err := tempDB.Exec("SET autoinstall_known_extensions = false"); err != nil {
+			return fmt.Errorf("failed to disable DuckDB extension autoinstall: %w", err)
+		}
+	}
+
 	if config.InitSQL != "" {
 		// Substitute environment variables in the SQL
 		sql, err := prepSQL(config.InitSQL, config.Logger)

@@ -122,6 +122,8 @@ type Config struct {
 	DuckDB                     string
 	DuckDBExtDir               string
 	DuckDBSecretDir            string
+	AllowedDuckDBExtensions    string
+	NoDuckDBCommunityExtensions bool
 	InitSQL                    string
 	InitSQLFile                string
 	SnapshotTime               string
@@ -427,6 +429,8 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	duckdb := flags.StringLong("duckdb", "", "Override duckdb DSN (default: [--dir]/shaper.duckdb)")
 	duckdbExtDir := flags.StringLong("duckdb-ext-dir", "", "Override DuckDB extension directory, by default set to /data/duckdb_extensions in docker (default: ~/.duckdb/extensions/)")
 	duckdbSecretDir := flags.StringLong("duckdb-secret-dir", "", "Override DuckDB secret directory (default: ~/.duckdb/stored_secrets/)")
+	allowedDuckDBExtensions := flags.StringLong("allowed-duckdb-extensions", "", "Comma-separated list of allowed DuckDB extensions (e.g. 'httpfs,parquet,json')")
+	noDuckDBCommunityExtensions := flags.BoolLong("no-duckdb-community-extensions", "Disable installing DuckDB community extensions")
 	deprecatedSchema := flags.StringLong("schema", "_shaper", "DEPRECATED: Was used for system state in DuckDB, not used in Sqlite after data is migrated")
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	ssoLoginURL := flags.StringLong("sso-login-url", "", "SSO Login URL to redirect users when authentication is missing or expired")
@@ -617,6 +621,8 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			DuckDB:                     *duckdb,
 			DuckDBExtDir:               *duckdbExtDir,
 			DuckDBSecretDir:            *duckdbSecretDir,
+			AllowedDuckDBExtensions:    *allowedDuckDBExtensions,
+			NoDuckDBCommunityExtensions: *noDuckDBCommunityExtensions,
 			InitSQL:                    *initSQL,
 			InitSQLFile:                initSQLFilePath,
 			SnapshotTime:               *snapshotTime,
@@ -926,10 +932,12 @@ func Run(cfg Config) func(context.Context) {
 
 	// Attempt to restore snapshots if databases don't exist and snapshots are configured
 	snapshotConfig := snapshots.Config{
-		Logger:          logger,
-		DuckDBExtDir:    cfg.DuckDBExtDir,
-		DuckDBSecretDir: cfg.DuckDBSecretDir,
-		InitSQL:         cfg.InitSQL,
+		Logger:                      logger,
+		DuckDBExtDir:                cfg.DuckDBExtDir,
+		DuckDBSecretDir:             cfg.DuckDBSecretDir,
+		AllowedDuckDBExtensions:     cfg.AllowedDuckDBExtensions,
+		NoDuckDBCommunityExtensions: cfg.NoDuckDBCommunityExtensions,
+		InitSQL:                     cfg.InitSQL,
 		InitSQLFile:     cfg.InitSQLFile,
 		S3Bucket:        cfg.SnapshotS3Bucket,
 		S3Region:        cfg.SnapshotS3Region,
@@ -989,6 +997,24 @@ func Run(cfg Config) func(context.Context) {
 		logger.Info("Set DuckDB secret directory", slog.Any("path", cfg.DuckDBSecretDir))
 	}
 
+	if cfg.NoDuckDBCommunityExtensions {
+		_, err := duckdbSqlxDb.Exec("SET allow_community_extensions = false")
+		if err != nil {
+			logger.Error("Failed to disable DuckDB community extensions", slog.Any("error", err))
+			os.Exit(1)
+		}
+		logger.Info("DuckDB community extensions disabled")
+	}
+
+	if cfg.AllowedDuckDBExtensions != "" {
+		_, err := duckdbSqlxDb.Exec("SET autoinstall_known_extensions = false")
+		if err != nil {
+			logger.Error("Failed to disable DuckDB extension autoinstall", slog.Any("error", err))
+			os.Exit(1)
+		}
+		logger.Info("DuckDB extension autoinstall disabled", slog.String("allowed", cfg.AllowedDuckDBExtensions))
+	}
+
 	initSQL := ""
 	if cfg.InitSQL != "" {
 		trimmed := strings.TrimSpace(util.StripSQLComments(cfg.InitSQL))
@@ -1041,6 +1067,8 @@ func Run(cfg Config) func(context.Context) {
 		duckDBFile,
 		cfg.DuckDBExtDir,
 		cfg.DuckDBSecretDir,
+		cfg.AllowedDuckDBExtensions,
+		cfg.NoDuckDBCommunityExtensions,
 		initSQL,
 		cfg.DeprecatedSchema,
 		logger,

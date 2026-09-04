@@ -31,6 +31,8 @@ type App struct {
 	DuckDBDSN       string
 	DuckDBExtDir    string
 	DuckDBSecretDir string
+	AllowedDuckDBExtensions     []string
+	NoDuckDBCommunityExtensions bool
 	InitSQL         string
 	Logger          *slog.Logger
 	LoginRequired   bool
@@ -86,6 +88,8 @@ func New(
 	duckDBDSN string,
 	duckDBExtDir string,
 	duckDBSecretDir string,
+	allowedDuckDBExtensions string,
+	noDuckDBCommunityExtensions bool,
 	initSQL string,
 	deprecatedSchema string,
 	logger *slog.Logger,
@@ -186,6 +190,19 @@ func New(
 	if noChromeSandbox {
 		logger.Info("Chrome sandbox disabled for PDF/PNG generation.")
 	}
+	if noDuckDBCommunityExtensions {
+		logger.Info("DuckDB community extensions disabled.")
+	}
+	var allowedExts []string
+	if allowedDuckDBExtensions != "" {
+		for _, ext := range strings.Split(allowedDuckDBExtensions, ",") {
+			trimmed := strings.ToLower(strings.TrimSpace(ext))
+			if trimmed != "" {
+				allowedExts = append(allowedExts, trimmed)
+			}
+		}
+		logger.Info("DuckDB allowed extensions configured", slog.Any("extensions", allowedExts))
+	}
 
 	app := &App{
 		Name:                       name,
@@ -196,6 +213,8 @@ func New(
 		DuckDBDSN:                  duckDBDSN,
 		DuckDBExtDir:               duckDBExtDir,
 		DuckDBSecretDir:            duckDBSecretDir,
+		AllowedDuckDBExtensions:    allowedExts,
+		NoDuckDBCommunityExtensions: noDuckDBCommunityExtensions,
 		InitSQL:                    initSQL,
 		Logger:                     logger,
 		LoginRequired:              loginRequired,
@@ -265,6 +284,20 @@ func (app *App) GetDuckDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("failed to set DuckDB extension directory: %w", err)
+		}
+	}
+
+	if app.NoDuckDBCommunityExtensions {
+		if _, err := dbx.Exec("SET allow_community_extensions = false"); err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to disable DuckDB community extensions: %w", err)
+		}
+	}
+
+	if len(app.AllowedDuckDBExtensions) > 0 {
+		if _, err := dbx.Exec("SET autoinstall_known_extensions = false"); err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("failed to disable DuckDB extension autoinstall: %w", err)
 		}
 	}
 
@@ -599,3 +632,29 @@ func buildVariablesPrefix(singleVars map[string]string, multiVars map[string][]s
 	}
 	return varPrefix.String(), varCleanup.String()
 }
+
+var builtinDuckDBExtensions = map[string]bool{
+	"autocomplete":   true,
+	"core_functions": true,
+	"icu":            true,
+	"jemalloc":       true,
+	"json":           true,
+	"parquet":        true,
+}
+
+func (app *App) IsExtensionAllowed(name string) bool {
+	if app == nil || len(app.AllowedDuckDBExtensions) == 0 {
+		return true
+	}
+	clean := strings.ToLower(strings.TrimSpace(name))
+	if builtinDuckDBExtensions[clean] {
+		return true
+	}
+	for _, allowed := range app.AllowedDuckDBExtensions {
+		if strings.ToLower(strings.TrimSpace(allowed)) == clean {
+			return true
+		}
+	}
+	return false
+}
+
