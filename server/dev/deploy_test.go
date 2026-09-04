@@ -50,6 +50,8 @@ func setupTestApp(t *testing.T) (*core.App, func()) {
 		"",
 		"",
 		"",
+		false,
+		"",
 		"_shaper",
 		logger,
 		"/",

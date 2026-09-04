@@ -4,6 +4,7 @@ package core
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -176,10 +177,118 @@ func IsAllowedStatement(app *App, sql string) bool {
 	return false
 }
 
-func IsAllowedTaskStatement(sql string) bool {
+type extensionStatementInfo struct {
+	action      string
+	name        string
+	rawName     string
+	isCommunity bool
+	repository  string
+}
+
+func parseExtensionStatement(sql string) (*extensionStatementInfo, bool) {
+	trimmed := strings.TrimSpace(sql)
+	for strings.HasSuffix(trimmed, ";") {
+		trimmed = strings.TrimSpace(strings.TrimSuffix(trimmed, ";"))
+	}
+	if trimmed == "" {
+		return nil, false
+	}
+
+	upper := strings.ToUpper(trimmed)
+	var action string
+	var remainder string
+
+	if strings.HasPrefix(upper, "FORCE") {
+		rest := strings.TrimSpace(trimmed[len("FORCE"):])
+		if strings.HasPrefix(strings.ToUpper(rest), "INSTALL") {
+			action = "INSTALL"
+			remainder = strings.TrimSpace(rest[len("INSTALL"):])
+		} else {
+			return nil, false
+		}
+	} else if strings.HasPrefix(upper, "INSTALL") {
+		action = "INSTALL"
+		remainder = strings.TrimSpace(trimmed[len("INSTALL"):])
+	} else if strings.HasPrefix(upper, "LOAD") {
+		action = "LOAD"
+		remainder = strings.TrimSpace(trimmed[len("LOAD"):])
+	} else {
+		return nil, false
+	}
+
+	if remainder == "" {
+		return nil, false
+	}
+
+	name, afterName, err := readToken(remainder)
+	if err != nil || name == "" {
+		return nil, false
+	}
+
+	cleanName := name
+	if strings.Contains(cleanName, "/") || strings.Contains(cleanName, "\\") {
+		cleanName = filepath.Base(cleanName)
+	}
+	cleanName = strings.TrimSuffix(cleanName, ".duckdb_extension")
+	cleanName = strings.ToLower(cleanName)
+
+	info := &extensionStatementInfo{
+		action:  action,
+		name:    cleanName,
+		rawName: name,
+	}
+
+	afterName = strings.TrimSpace(afterName)
+	if strings.HasPrefix(strings.ToUpper(afterName), "FROM") {
+		afterFrom := strings.TrimSpace(afterName[len("FROM"):])
+		repo, _, _ := readToken(afterFrom)
+		info.repository = repo
+		if strings.EqualFold(repo, "community") {
+			info.isCommunity = true
+		}
+	}
+
+	return info, true
+}
+
+func readToken(s string) (token string, remaining string, err error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", "", nil
+	}
+
+	if s[0] == '\'' || s[0] == '"' {
+		quote := s[0]
+		var sb strings.Builder
+		i := 1
+		for i < len(s) {
+			if s[i] == quote {
+				if i+1 < len(s) && s[i+1] == quote {
+					sb.WriteByte(quote)
+					i += 2
+					continue
+				}
+				return sb.String(), s[i+1:], nil
+			}
+			sb.WriteByte(s[i])
+			i++
+		}
+		return "", "", fmt.Errorf("unclosed quote")
+	}
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if isSpace(c) || c == ';' || c == '(' || c == ')' {
+			return s[:i], s[i:], nil
+		}
+	}
+	return s, "", nil
+}
+
+func ValidateTaskStatement(app *App, sql string) error {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
-		return true
+		return nil
 	}
 	upper := strings.ToUpper(sql)
 
@@ -187,28 +296,28 @@ func IsAllowedTaskStatement(sql string) bool {
 	if strings.HasPrefix(upper, "WITH") {
 		remaining, ctes, err := splitWithStatement(sql)
 		if err != nil {
-			return false
+			return fmt.Errorf("invalid WITH statement: %w", err)
 		}
 		for _, cte := range ctes {
-			if !IsAllowedTaskStatement(cte) {
-				return false
+			if err := ValidateTaskStatement(app, cte); err != nil {
+				return err
 			}
 		}
-		return IsAllowedTaskStatement(remaining)
+		return ValidateTaskStatement(app, remaining)
 	}
 
 	// Handle parenthesized queries like (SELECT 1)
 	if strings.HasPrefix(upper, "(") {
 		inner, remaining, err := splitParenthesized(sql)
 		if err != nil {
-			return false
+			return fmt.Errorf("invalid parenthesized statement: %w", err)
 		}
-		if !IsAllowedTaskStatement(inner) {
-			return false
+		if err := ValidateTaskStatement(app, inner); err != nil {
+			return err
 		}
 		remaining = strings.TrimSpace(remaining)
 		if remaining == "" {
-			return true
+			return nil
 		}
 		remUpper := strings.ToUpper(remaining)
 		operators := []string{"UNION", "INTERSECT", "EXCEPT"}
@@ -222,56 +331,72 @@ func IsAllowedTaskStatement(sql string) bool {
 				} else if strings.HasPrefix(restUpper, "DISTINCT") {
 					rest = strings.TrimSpace(rest[len("DISTINCT"):])
 				}
-				return IsAllowedTaskStatement(rest)
+				return ValidateTaskStatement(app, rest)
 			}
 		}
 		// Also handle ORDER BY, LIMIT etc which can follow a parenthesized query
 		if strings.HasPrefix(remUpper, "ORDER") || strings.HasPrefix(remUpper, "LIMIT") || strings.HasPrefix(remUpper, "OFFSET") || strings.HasPrefix(remUpper, "FETCH") {
-			return true
+			return nil
 		}
-		return false
+		return fmt.Errorf("unexpected tokens after parenthesized statement")
 	}
 
 	// Block specific statements
 	for _, stmt := range disallowedTaskStatements {
 		if matchesPrefix(upper, stmt) {
-			return false
+			return fmt.Errorf("Statement not allowed in tasks (%s)", stmt[0])
 		}
 	}
 
-	// Handle INSTALL/LOAD: always allowed in tasks
-	if strings.HasPrefix(upper, "INSTALL") || strings.HasPrefix(upper, "LOAD") {
-		return true
+	// Handle INSTALL/LOAD
+	if strings.HasPrefix(upper, "INSTALL") || strings.HasPrefix(upper, "LOAD") || strings.HasPrefix(upper, "FORCE INSTALL") {
+		extInfo, ok := parseExtensionStatement(sql)
+		if !ok {
+			return fmt.Errorf("invalid %s statement", strings.Fields(upper)[0])
+		}
+		if app != nil {
+			if app.NoDuckDBCommunityExtensions && extInfo.isCommunity {
+				return fmt.Errorf("community extensions are disabled: cannot install %q from community", extInfo.rawName)
+			}
+			if !app.IsExtensionAllowed(extInfo.name) {
+				return fmt.Errorf("extension %q is not allowed", extInfo.rawName)
+			}
+		}
+		return nil
 	}
 
 	// Handle ATTACH/DETACH: always allowed in tasks
 	if strings.HasPrefix(upper, "ATTACH") || strings.HasPrefix(upper, "DETACH") {
-		return true
+		return nil
 	}
 
 	// Handle CREATE SECRET: always allowed in tasks
 	if strings.HasPrefix(upper, "CREATE") && matchesPrefix(upper, []string{"CREATE", "SECRET"}) {
-		return true
+		return nil
 	}
 
 	// Handle SET config: if it's SET but not SET VARIABLE
 	if strings.HasPrefix(upper, "SET") {
 		if matchesPrefix(upper, []string{"SET", "VARIABLE"}) {
-			return true
+			return nil
 		}
 		// Other SET statements (config) are never allowed in tasks
-		return false
+		return fmt.Errorf("Statement not allowed in tasks (SET configuration)")
 	}
 	// Handle RESET config: if it's RESET but not RESET VARIABLE
 	if strings.HasPrefix(upper, "RESET") {
 		if matchesPrefix(upper, []string{"RESET", "VARIABLE"}) {
-			return true
+			return nil
 		}
 		// Other RESET statements (config) are never allowed in tasks
-		return false
+		return fmt.Errorf("Statement not allowed in tasks (RESET configuration)")
 	}
 
-	return true
+	return nil
+}
+
+func IsAllowedTaskStatement(app *App, sql string) bool {
+	return ValidateTaskStatement(app, sql) == nil
 }
 
 func splitWithStatement(sql string) (string, []string, error) {

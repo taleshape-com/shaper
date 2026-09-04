@@ -124,7 +124,7 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "Regular SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(nil, tt.sql), "Regular SQL: %s", tt.sql)
 		})
 	}
 
@@ -143,9 +143,58 @@ func TestIsAllowedTaskStatement(t *testing.T) {
 
 	for _, tt := range initTests {
 		t.Run("Init/"+tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsAllowedTaskStatement(tt.sql), "Init SQL: %s", tt.sql)
+			assert.Equal(t, tt.expected, IsAllowedTaskStatement(nil, tt.sql), "Init SQL: %s", tt.sql)
 		})
 	}
+}
+
+func TestExtensionRestrictions(t *testing.T) {
+	appNoCommunity := &App{
+		NoDuckDBCommunityExtensions: true,
+	}
+
+	assert.NoError(t, ValidateTaskStatement(appNoCommunity, "INSTALL httpfs"))
+	assert.NoError(t, ValidateTaskStatement(appNoCommunity, "INSTALL 'httpfs'"))
+	assert.NoError(t, ValidateTaskStatement(appNoCommunity, "INSTALL httpfs FROM core"))
+	assert.NoError(t, ValidateTaskStatement(appNoCommunity, "LOAD httpfs"))
+	assert.Error(t, ValidateTaskStatement(appNoCommunity, "INSTALL spatial FROM community"))
+	assert.Error(t, ValidateTaskStatement(appNoCommunity, "INSTALL 'spatial' FROM 'community'"))
+	assert.Error(t, ValidateTaskStatement(appNoCommunity, "INSTALL \"spatial\" FROM community;"))
+	assert.Error(t, ValidateTaskStatement(appNoCommunity, "FORCE INSTALL spatial FROM community"))
+
+	appAllowed := &App{
+		AllowedDuckDBExtensions: []string{"httpfs", "parquet"},
+	}
+
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "INSTALL httpfs"))
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "INSTALL 'httpfs'"))
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "INSTALL \"httpfs\""))
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "LOAD httpfs"))
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "LOAD 'httpfs'"))
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "FORCE INSTALL httpfs"))
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "INSTALL json"))     // builtin
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "LOAD parquet"))    // allowed + builtin
+	assert.NoError(t, ValidateTaskStatement(appAllowed, "INSTALL '/custom/path/httpfs.duckdb_extension'"))
+
+	assert.Error(t, ValidateTaskStatement(appAllowed, "INSTALL spatial"))
+	assert.Error(t, ValidateTaskStatement(appAllowed, "INSTALL 'spatial'"))
+	assert.Error(t, ValidateTaskStatement(appAllowed, "LOAD spatial"))
+	assert.Error(t, ValidateTaskStatement(appAllowed, "FORCE INSTALL spatial"))
+	assert.Error(t, ValidateTaskStatement(appAllowed, "INSTALL '/custom/path/spatial.duckdb_extension'"))
+
+	// Combined restrictions
+	appCombined := &App{
+		AllowedDuckDBExtensions:     []string{"httpfs", "spatial"},
+		NoDuckDBCommunityExtensions: true,
+	}
+
+	assert.NoError(t, ValidateTaskStatement(appCombined, "INSTALL httpfs"))
+	assert.Error(t, ValidateTaskStatement(appCombined, "INSTALL spatial FROM community"))
+	assert.Error(t, ValidateTaskStatement(appCombined, "INSTALL sqlite_scanner"))
+
+	// Invalid statements
+	assert.Error(t, ValidateTaskStatement(appAllowed, "INSTALL;"))
+	assert.Error(t, ValidateTaskStatement(appAllowed, "LOAD;"))
 }
 
 func TestIsAllowedStatementMemory(t *testing.T) {
