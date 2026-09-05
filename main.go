@@ -92,6 +92,7 @@ type Config struct {
 	TLSCache                   string
 	HTTPSHost                  string
 	PdfDateFormat              string
+	CORSDomains                string
 	NatsServers                string
 	NatsHost                   string
 	NatsPort                   int
@@ -418,6 +419,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
 	basePath := flags.StringLong("basepath", "/", "Base URL the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath. Can be a path starting with a slash or a full URL. If you want to use the download API with mode=url, you also have to set basepath to a full URL, otherwise URLs will be relative only. Does not apply if tls-domain set")
 	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
+	corsDomains := flags.StringLong("cors-domains", "", "Comma-separated list of domains allowed for CORS (e.g. 'example.com,app.example.com')")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")
 	natsPort := flags.Int('p', "nats-port", 0, "NATS server port. If not specified, NATS will not listen on any port.")
 	natsToken := flags.String('t', "nats-token", "", "NATS authentication token")
@@ -591,6 +593,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			TLSCache:                   tlsCacheDir,
 			HTTPSHost:                  *httpsHost,
 			PdfDateFormat:              *pdfDateFormat,
+			CORSDomains:                *corsDomains,
 			NatsServers:                *natsServers,
 			NatsHost:                   *natsHost,
 			NatsPort:                   *natsPort,
@@ -1173,6 +1176,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TLSCache,
 		cfg.HTTPSHost,
 		cfg.PdfDateFormat,
+		cfg.CORSDomains,
 	)
 
 	metrics.Init()
