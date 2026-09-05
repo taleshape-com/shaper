@@ -411,17 +411,55 @@ jobs:
         run: |
           for dir in npm-package/packages/*; do
             if [ -d "$dir" ]; then
-              echo "Publishing $dir..."
-              (cd "$dir" && npm publish --provenance --access public)
+              pkg_name=$(node -p "require('./$dir/package.json').name")
+              pkg_version=$(node -p "require('./$dir/package.json').version")
+              echo "Checking if $pkg_name@$pkg_version is already published..."
+              if npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
+                echo "$pkg_name@$pkg_version is already published, skipping."
+                continue
+              fi
+              echo "Publishing $dir ($pkg_name@$pkg_version)..."
+              for attempt in 1 2 3; do
+                echo "Attempt $attempt for $pkg_name..."
+                if (cd "$dir" && npm publish --provenance --access public); then
+                  echo "Successfully published $pkg_name"
+                  break
+                elif [ "$attempt" -eq 3 ]; then
+                  echo "Failed to publish $pkg_name after 3 attempts"
+                  exit 1
+                else
+                  echo "Publish failed. Waiting 10s before retry..."
+                  sleep 10
+                fi
+              done
+              sleep 5
             fi
           done
 
       - name: Publish main package to npm
         run: |
           cd npm-package
-          # Use --provenance for OIDC-linked builds.
-          # Note: Requires Trusted Publishing setup on npmjs.com.
-          npm publish --provenance --access public
+          pkg_name=$(node -p "require('./package.json').name")
+          pkg_version=$(node -p "require('./package.json').version")
+          echo "Checking if $pkg_name@$pkg_version is already published..."
+          if npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
+            echo "$pkg_name@$pkg_version is already published, skipping."
+          else
+            echo "Publishing $pkg_name@$pkg_version..."
+            for attempt in 1 2 3; do
+              echo "Attempt $attempt for $pkg_name..."
+              if npm publish --provenance --access public; then
+                echo "Successfully published $pkg_name"
+                break
+              elif [ "$attempt" -eq 3 ]; then
+                echo "Failed to publish $pkg_name after 3 attempts"
+                exit 1
+              else
+                echo "Publish failed. Waiting 10s before retry..."
+                sleep 10
+              fi
+            done
+          fi
 
 
   pypi-publish:
@@ -528,3 +566,4 @@ jobs:
         # No token needed since we are using Trusted Publishing
         with:
           packages-dir: pip-package/dist/
+          skip-existing: true
