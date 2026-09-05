@@ -22,7 +22,7 @@ require (
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/samber/slog-echo v1.23.0
-	github.com/shirou/gopsutil/v4 v4.26.6
+	github.com/shirou/gopsutil/v4 v4.26.8
 	github.com/stretchr/testify v1.12.0
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/xuri/excelize/v2 v2.11.0
@@ -44,7 +44,7 @@ require (
 	github.com/duckdb/duckdb-go-bindings/lib/linux-arm64 v0.10505.0 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.10505.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.10.0 // indirect
+	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260623181947-01eb4420fa68 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
