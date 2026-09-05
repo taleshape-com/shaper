@@ -38,6 +38,7 @@ func Start(
 	tlsCacheDir,
 	httpsHost string,
 	pdfDateFormat string,
+	corsDomains string,
 ) *echo.Echo {
 	// Echo instance
 	e := echo.New()
@@ -68,11 +69,14 @@ func Start(
 		HSTSMaxAge:    2592000, // 30 days
 	}))
 	// CORS restricted
+	allowOrigins := ParseCORSDomains(corsDomains)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		// TODO: Allow to restrict origins via config
-		AllowOrigins: []string{"*"},
+		AllowOrigins: allowOrigins,
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
+	if strings.TrimSpace(corsDomains) != "" && corsDomains != "*" {
+		app.Logger.Info("CORS restricted to domains", slog.String("domains", corsDomains))
+	}
 	e.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
 		StackSize: 1 << 10, // 1 KB
 		LogLevel:  log.ERROR,
@@ -157,3 +161,76 @@ func getInternalUrl(addr, tlsDomain string) string {
 	}
 	return "http://" + internalAddr
 }
+
+// ParseCORSDomains parses a comma-separated list of domains or origins into a slice of allowed CORS origins.
+// If corsDomains is empty or "*", it returns []string{"*"} allowing all origins.
+// Domains without a scheme (e.g. "example.com" or "*.example.com") are expanded to both "https://" and "http://" origins.
+func ParseCORSDomains(corsDomains string) []string {
+	trimmed := strings.TrimSpace(corsDomains)
+	if trimmed == "" || trimmed == "*" {
+		return []string{"*"}
+	}
+
+	parts := strings.Split(trimmed, ",")
+	var origins []string
+	seen := make(map[string]bool)
+
+	addOrigin := func(o string) {
+		o = strings.TrimSpace(o)
+		o = strings.TrimRight(o, "/")
+		if o == "" {
+			return
+		}
+		if !seen[o] {
+			seen[o] = true
+			origins = append(origins, o)
+		}
+	}
+
+	for _, part := range parts {
+		entry := strings.TrimSpace(part)
+		entry = strings.TrimRight(entry, "/")
+		if entry == "" {
+			continue
+		}
+		if entry == "*" {
+			return []string{"*"}
+		}
+
+		// Protocol-relative //example.com -> trim //
+		entry = strings.TrimPrefix(entry, "//")
+
+		if strings.Contains(entry, "://") {
+			idx := strings.Index(entry, "://")
+			scheme := entry[:idx+3]
+			host := entry[idx+3:]
+			if strings.HasPrefix(host, ".") {
+				apex := strings.TrimPrefix(host, ".")
+				wildcard := "*" + host
+				addOrigin(scheme + apex)
+				addOrigin(scheme + wildcard)
+			} else {
+				addOrigin(entry)
+			}
+		} else {
+			if strings.HasPrefix(entry, ".") {
+				apex := strings.TrimPrefix(entry, ".")
+				wildcard := "*" + entry
+				addOrigin("https://" + apex)
+				addOrigin("http://" + apex)
+				addOrigin("https://" + wildcard)
+				addOrigin("http://" + wildcard)
+			} else {
+				addOrigin("https://" + entry)
+				addOrigin("http://" + entry)
+			}
+		}
+	}
+
+	if len(origins) == 0 {
+		return []string{"*"}
+	}
+
+	return origins
+}
+
