@@ -2,6 +2,8 @@
 
 The Shaper team takes the security of our software and users seriously. We appreciate your efforts to responsibly disclose vulnerabilities.
 
+For an in-depth security architecture review, data flow explanation, compliance analysis, and hardening guide, consult the [Shaper Security Documentation](https://taleshape.com/shaper/docs/security).
+
 ## Supported Versions
 
 Only the latest release and the current `main` branch receive security updates.
@@ -52,3 +54,49 @@ When running Shaper in production:
 - Protect your environment variables and sensitive configuration files.
 - Ensure database credentials, JWT secret keys, and other secrets are generated securely and kept confidential.
 - Use TLS/HTTPS in front of Shaper when serving over a public network.
+
+## Verifying Release Signatures and Provenance
+
+Shaper uses cryptographically verifiable signatures and build provenance (via Sigstore and GitHub Artifact Attestations) across release channels.
+
+### Docker Hub Images
+Shaper container images are signed keylessly with Cosign and attested with GitHub Artifact Attestations. To verify an image:
+
+```sh
+cosign verify \
+  --certificate-identity-regexp "^https://github.com/taleshape-com/shaper/" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  taleshape/shaper:<tag>
+```
+
+Or using GitHub CLI:
+```sh
+gh attestation verify oci://taleshape/shaper:<tag> --owner taleshape-com
+```
+
+### GitHub Releases (Binaries)
+Release binaries and `SHA256SUMS` include a detached Sigstore Cosign signature bundle (`SHA256SUMS.cosign.bundle`) and GitHub Artifact Attestations.
+
+1. **Verify `SHA256SUMS` with Cosign:**
+   ```sh
+   cosign verify-blob \
+     --bundle SHA256SUMS.cosign.bundle \
+     --certificate-identity-regexp "^https://github.com/taleshape-com/shaper/" \
+     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+     SHA256SUMS
+   ```
+
+2. **Verify downloaded binary against checksums:**
+   ```sh
+   sha256sum -c SHA256SUMS --ignore-missing
+   ```
+
+3. **Or verify using GitHub CLI:**
+   ```sh
+   gh attestation verify <binary-file> --owner taleshape-com
+   ```
+
+### npm & PyPI
+- **npm**: Published using `--provenance` via OIDC Trusted Publishing, verifiable on [npmjs.com](https://www.npmjs.com/package/@taleshape/shaper) or via `npm audit signatures`.
+- **PyPI**: Published via OIDC Trusted Publishing with PEP 740 digital attestations and GitHub provenance attestations.
+

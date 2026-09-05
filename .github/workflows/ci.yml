@@ -220,6 +220,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
       - name: Download Linux binaries and checksums
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -232,11 +235,23 @@ jobs:
           name: darwin-binaries
           path: bin
 
+      - name: Verify checksums
+        run: |
+          cd bin
+          sha256sum -c checksums-linux.txt
+          sha256sum -c checksums-darwin.txt
+
       - name: Combine checksums
         run: |
           cd bin
           cat checksums-*.txt | sort | uniq > SHA256SUMS
           rm checksums-*.txt
+
+      - name: Sign Checksums with Cosign
+        run: |
+          cosign sign-blob --yes \
+            --bundle bin/SHA256SUMS.cosign.bundle \
+            bin/SHA256SUMS
 
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -245,6 +260,7 @@ jobs:
             bin/shaper-linux-*
             bin/shaper-darwin-*
             bin/SHA256SUMS
+            bin/SHA256SUMS.cosign.bundle
 
       - name: Create Release
         env:
@@ -254,6 +270,7 @@ jobs:
             bin/shaper-linux-* \
             bin/shaper-darwin-* \
             bin/SHA256SUMS \
+            bin/SHA256SUMS.cosign.bundle \
             --generate-notes
 
   docker:
@@ -264,11 +281,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Download Linux binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -276,11 +298,16 @@ jobs:
           name: linux-binaries
           path: bin/
 
+      - name: Verify Linux binaries checksum
+        run: |
+          cd bin
+          sha256sum -c checksums-linux.txt
+
       - name: Make binaries executable
         run: chmod +x bin/shaper-*
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Login to DockerHub
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -301,6 +328,7 @@ jobs:
           echo "MINOR=$MAJOR.$MINOR" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker images
+        id: build-push
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
@@ -318,6 +346,19 @@ jobs:
           build-args: |
             VERSION=${{ steps.version.outputs.VERSION }}
             BUILD_DATE=${{ github.event.release.published_at || github.event.head_commit.timestamp }}
+
+      - name: Sign Docker images with Cosign
+        env:
+          IMAGE_DIGEST: ${{ steps.build-push.outputs.digest }}
+        run: |
+          cosign sign --yes --recursive "taleshape/shaper@${IMAGE_DIGEST}"
+
+      - name: Attest Docker image provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: index.docker.io/taleshape/shaper
+          subject-digest: ${{ steps.build-push.outputs.digest }}
+          push-to-registry: true
 
   npm-publish:
     name: Publish to npm
@@ -347,6 +388,12 @@ jobs:
           name: darwin-binaries
           path: bin
 
+      - name: Verify checksums
+        run: |
+          cd bin
+          sha256sum -c checksums-linux.txt
+          sha256sum -c checksums-darwin.txt
+
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -364,17 +411,55 @@ jobs:
         run: |
           for dir in npm-package/packages/*; do
             if [ -d "$dir" ]; then
-              echo "Publishing $dir..."
-              (cd "$dir" && npm publish --provenance --access public)
+              pkg_name=$(node -p "require('./$dir/package.json').name")
+              pkg_version=$(node -p "require('./$dir/package.json').version")
+              echo "Checking if $pkg_name@$pkg_version is already published..."
+              if npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
+                echo "$pkg_name@$pkg_version is already published, skipping."
+                continue
+              fi
+              echo "Publishing $dir ($pkg_name@$pkg_version)..."
+              for attempt in 1 2 3; do
+                echo "Attempt $attempt for $pkg_name..."
+                if (cd "$dir" && npm publish --provenance --access public); then
+                  echo "Successfully published $pkg_name"
+                  break
+                elif [ "$attempt" -eq 3 ]; then
+                  echo "Failed to publish $pkg_name after 3 attempts"
+                  exit 1
+                else
+                  echo "Publish failed. Waiting 10s before retry..."
+                  sleep 10
+                fi
+              done
+              sleep 5
             fi
           done
 
       - name: Publish main package to npm
         run: |
           cd npm-package
-          # Use --provenance for OIDC-linked builds.
-          # Note: Requires Trusted Publishing setup on npmjs.com.
-          npm publish --provenance --access public
+          pkg_name=$(node -p "require('./package.json').name")
+          pkg_version=$(node -p "require('./package.json').version")
+          echo "Checking if $pkg_name@$pkg_version is already published..."
+          if npm view "$pkg_name@$pkg_version" version >/dev/null 2>&1; then
+            echo "$pkg_name@$pkg_version is already published, skipping."
+          else
+            echo "Publishing $pkg_name@$pkg_version..."
+            for attempt in 1 2 3; do
+              echo "Attempt $attempt for $pkg_name..."
+              if npm publish --provenance --access public; then
+                echo "Successfully published $pkg_name"
+                break
+              elif [ "$attempt" -eq 3 ]; then
+                echo "Failed to publish $pkg_name after 3 attempts"
+                exit 1
+              else
+                echo "Publish failed. Waiting 10s before retry..."
+                sleep 10
+              fi
+            done
+          fi
 
 
   pypi-publish:
@@ -386,6 +471,7 @@ jobs:
       contents: read
       # this permission is mandatory for Trusted Publishing
       id-token: write
+      attestations: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
@@ -404,6 +490,12 @@ jobs:
         with:
           name: darwin-binaries
           path: bin
+
+      - name: Verify checksums
+        run: |
+          cd bin
+          sha256sum -c checksums-linux.txt
+          sha256sum -c checksums-darwin.txt
 
       - name: Combine checksums
         run: |
@@ -464,8 +556,14 @@ jobs:
             rm shaper_pkg/bin/shaper
           done
 
+      - name: Attest Python package provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: pip-package/dist/*
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         # No token needed since we are using Trusted Publishing
         with:
           packages-dir: pip-package/dist/
+          skip-existing: true
