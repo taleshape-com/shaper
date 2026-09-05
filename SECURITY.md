@@ -2,6 +2,8 @@
 
 The Shaper team takes the security of our software and users seriously. We appreciate your efforts to responsibly disclose vulnerabilities.
 
+For an in-depth security architecture review, data flow explanation, compliance analysis, and hardening guide, consult the [Shaper Security Documentation](https://taleshape.com/shaper/docs/security).
+
 ## Supported Versions
 
 Only the latest release and the current `main` branch receive security updates.

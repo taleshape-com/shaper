@@ -120,3 +120,23 @@ func TestPreprocessArgsSubcommandFlagsBeforeSubcommand(t *testing.T) {
 		}
 	})
 }
+
+func TestCORSDomainsFlag(t *testing.T) {
+	ctx := context.Background()
+	rootCmd := buildRootCommand(ctx)
+
+	flag, ok := rootCmd.Flags.GetFlag("cors-domains")
+	if !ok {
+		t.Fatal("expected --cors-domains flag to be registered on root command")
+	}
+
+	err := rootCmd.Flags.Parse([]string{"--cors-domains", "example.com,https://app.test.com"})
+	if err != nil {
+		t.Fatalf("unexpected error parsing --cors-domains flag: %v", err)
+	}
+
+	if flag.GetDefault() != "" {
+		t.Errorf("expected default empty string, got %q", flag.GetDefault())
+	}
+}
+
