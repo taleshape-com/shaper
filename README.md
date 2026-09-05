@@ -75,7 +75,7 @@ Shaper is 100% free and open source. Through **Taleshape**, we offer managed hos
 
 Security and compliance follow a shared-responsibility model depending on whether you self-host Shaper or use Taleshape managed hosting:
 
-> **If you self-host Shaper**, you own your own compliance and security posture.  
+> **If you self-host Shaper**, you own your own compliance and security posture.
 > **If you use Taleshape managed hosting**, we take on the operational, security, and compliance heavy lifting while your data remains in your infrastructure.
 
 | Responsibility Area | Self-Hosted (Open Source) | Taleshape Managed Hosting |
@@ -98,7 +98,7 @@ Security and compliance follow a shared-responsibility model depending on whethe
 ### What You Own (Self-Hosted)
 
 - **Host & Environment Security**: Hardening the host OS, managing container environments, network firewalls, and ingress controllers.
-- **Maintenance & Patching**: Tracking releases, testing upgrades, and rolling out security fixes promptly (see [SECURITY.md](./SECURITY.md)).
+- **Maintenance & Patching**: Tracking releases, testing upgrades, and rolling out security fixes promptly (see [SECURITY.md](./SECURITY.md) and [Security Documentation](https://taleshape.com/shaper/docs/security)).
 - **Compliance & Governance**: Implementing and certifying all technical, administrative, and physical controls required for your organization's compliance standards.
 - **Availability & Disaster Recovery**: Monitoring application health, managing backups, and planning disaster recovery.
 
