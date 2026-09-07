@@ -163,3 +163,87 @@ func TestUpdateUserPasswordSubmitState(t *testing.T) {
     // This would require a more complex setup with NATS, which might be overkill for this task
     // given the existing test patterns.
 }
+
+func TestHandleCreateUser_InvariantEnforcement(t *testing.T) {
+	db, err := sqlx.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db.Close()
+
+	if err := initSQLite(db); err != nil {
+		t.Fatalf("failed to init sqlite: %v", err)
+	}
+
+	app := &App{
+		Sqlite: db,
+		Logger: nil,
+	}
+
+	now := time.Now().UTC()
+
+	// 1. First user creation should succeed
+	payload1 := CreateUserPayload{
+		ID:           "user-first",
+		Email:        "first@example.com",
+		Name:         "First Admin",
+		PasswordHash: "hash1",
+		Timestamp:    now,
+		CreatedBy:    "",
+	}
+	data1, _ := json.Marshal(payload1)
+	if !HandleCreateUser(app, data1) {
+		t.Fatalf("HandleCreateUser failed for first user")
+	}
+
+	var count int
+	if err := db.Get(&count, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 user, got %d", count)
+	}
+
+	// 2. Idempotent replay of the SAME user should succeed without error
+	if !HandleCreateUser(app, data1) {
+		t.Fatalf("HandleCreateUser failed on idempotent replay of first user")
+	}
+	if err := db.Get(&count, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected still 1 user after replay, got %d", count)
+	}
+
+	// 3. Second user creation with different ID must NOT insert a user
+	payload2 := CreateUserPayload{
+		ID:           "user-second",
+		Email:        "second@example.com",
+		Name:         "Second Admin",
+		PasswordHash: "hash2",
+		Timestamp:    now,
+		CreatedBy:    "",
+	}
+	data2, _ := json.Marshal(payload2)
+	// Must return true (to acknowledge and not block consumer stream)
+	if !HandleCreateUser(app, data2) {
+		t.Fatalf("HandleCreateUser should return true to ack stream message")
+	}
+
+	// Verify only 1 user exists in DB and user-second was NOT inserted
+	if err := db.Get(&count, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 user, invariant broken: got %d users", count)
+	}
+
+	var secondExists bool
+	if err := db.Get(&secondExists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = 'user-second')`); err != nil {
+		t.Fatal(err)
+	}
+	if secondExists {
+		t.Fatalf("second user was inserted despite active user existing")
+	}
+}
+

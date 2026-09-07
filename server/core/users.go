@@ -14,11 +14,70 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/nrednav/cuid2"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var ErrUserSetupCompleted = errors.New("user setup already completed")
+
+const setupClaimStaleTimeout = 30 * time.Second
+
+func claimSetup(app *App, ctx context.Context) (bool, error) {
+	if app.ConfigKV == nil {
+		return false, nil
+	}
+
+	claimValue := []byte(fmt.Sprintf("%d", time.Now().UnixNano()))
+	_, err := app.ConfigKV.Create(ctx, CONFIG_KEY_SETUP_CLAIM, claimValue)
+	if err == nil {
+		return true, nil
+	}
+
+	if !errors.Is(err, jetstream.ErrKeyExists) {
+		return false, fmt.Errorf("failed to claim setup: %w", err)
+	}
+
+	// Key already exists. Check if setup is already completed or if the claim is stale.
+	var userCount int
+	dbErr := app.Sqlite.GetContext(ctx, &userCount, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`)
+	if dbErr == nil && userCount > 0 {
+		return false, ErrUserSetupCompleted
+	}
+
+	entry, getErr := app.ConfigKV.Get(ctx, CONFIG_KEY_SETUP_CLAIM)
+	if getErr != nil {
+		if errors.Is(getErr, jetstream.ErrKeyNotFound) {
+			// Key was purged between Create and Get; try claiming again
+			_, retryErr := app.ConfigKV.Create(ctx, CONFIG_KEY_SETUP_CLAIM, claimValue)
+			if retryErr == nil {
+				return true, nil
+			}
+			if errors.Is(retryErr, jetstream.ErrKeyExists) {
+				return false, ErrUserSetupCompleted
+			}
+			return false, fmt.Errorf("failed to claim setup on retry: %w", retryErr)
+		}
+		return false, fmt.Errorf("failed to check setup claim: %w", getErr)
+	}
+
+	if time.Since(entry.Created()) > setupClaimStaleTimeout {
+		if app.Logger != nil {
+			app.Logger.Warn("Stale setup claim detected; purging and reclaiming", slog.Duration("age", time.Since(entry.Created())))
+		}
+		_ = app.ConfigKV.Purge(ctx, CONFIG_KEY_SETUP_CLAIM)
+		_, retryErr := app.ConfigKV.Create(ctx, CONFIG_KEY_SETUP_CLAIM, claimValue)
+		if retryErr == nil {
+			return true, nil
+		}
+		if errors.Is(retryErr, jetstream.ErrKeyExists) {
+			return false, ErrUserSetupCompleted
+		}
+		return false, fmt.Errorf("failed to reclaim setup: %w", retryErr)
+	}
+
+	return false, ErrUserSetupCompleted
+}
 
 type User struct {
 	ID           string     `db:"id" json:"id"`
@@ -59,6 +118,22 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 		return "", ErrUserSetupCompleted
 	}
 
+	claimed, err := claimSetup(app, ctx)
+	if err != nil {
+		return "", err
+	}
+
+	var success bool
+	if claimed {
+		defer func() {
+			if !success {
+				rollbackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = app.ConfigKV.Purge(rollbackCtx, CONFIG_KEY_SETUP_CLAIM)
+			}
+		}()
+	}
+
 	// Generate password hash
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -82,32 +157,87 @@ func CreateUser(app *App, ctx context.Context, email string, password string, na
 	}
 
 	err = app.SubmitState(ctx, "create_user", payload)
-	return id, err
+	if err != nil {
+		return "", err
+	}
+
+	// Verify that this user was actually created and not rejected by invariant enforcement
+	var exists bool
+	err = app.Sqlite.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL)`, id)
+	if err != nil {
+		return "", fmt.Errorf("failed to verify user creation: %w", err)
+	}
+	if !exists {
+		return "", ErrUserSetupCompleted
+	}
+
+	success = true
+	return id, nil
 }
 
 func HandleCreateUser(app *App, data []byte) bool {
 	var payload CreateUserPayload
 	err := json.Unmarshal(data, &payload)
 	if err != nil {
-		app.Logger.Error("failed to unmarshal create user payload", slog.Any("error", err))
+		if app.Logger != nil {
+			app.Logger.Error("failed to unmarshal create user payload", slog.Any("error", err))
+		}
 		return false
 	}
 
-	_, err = app.Sqlite.Exec(
+	tx, err := app.Sqlite.Begin()
+	if err != nil {
+		if app.Logger != nil {
+			app.Logger.Error("failed to begin transaction", slog.Any("error", err))
+		}
+		return false
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Ensure database invariant: only the first active user can be created via create_user
+	var existingCount int
+	err = tx.QueryRow(`SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND id != $1`, payload.ID).Scan(&existingCount)
+	if err != nil {
+		if app.Logger != nil {
+			app.Logger.Error("failed to check existing users in HandleCreateUser", slog.Any("error", err))
+		}
+		return false
+	}
+	if existingCount > 0 {
+		if app.Logger != nil {
+			app.Logger.Warn("ignoring create_user event because an active user already exists", slog.String("id", payload.ID))
+		}
+		return true
+	}
+
+	_, err = tx.Exec(
 		`INSERT OR IGNORE INTO users (
 			id, email, name, password_hash, created_at, updated_at, created_by, updated_by
 		) VALUES ($1, $2, $3, $4, $5, $5, $6, $6)`,
 		payload.ID, payload.Email, payload.Name, payload.PasswordHash, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
-		app.Logger.Error("failed to insert user into DB", slog.Any("error", err))
+		if app.Logger != nil {
+			app.Logger.Error("failed to insert user into DB", slog.Any("error", err))
+		}
 		return false
 	}
+
+	err = tx.Commit()
+	if err != nil {
+		if app.Logger != nil {
+			app.Logger.Error("failed to commit transaction", slog.Any("error", err))
+		}
+		return false
+	}
+
 	if !app.LoginRequired {
 		app.LoginRequired = true
 		err := LoadJWTSecret(app)
 		if err != nil {
-			app.Logger.Error("Failed to load JWT secret", slog.Any("error", err))
+			if app.Logger != nil {
+				app.Logger.Error("Failed to load JWT secret", slog.Any("error", err))
+			}
 			return false
 		}
 	}

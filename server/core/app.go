@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	CONFIG_KEY_JWT_SECRET = "jwt-secret"
+	CONFIG_KEY_JWT_SECRET  = "jwt-secret"
+	CONFIG_KEY_SETUP_CLAIM = "setup-claim"
 )
 
 // TODO: Rename App struct + file to Core to not confuse with apps data type

@@ -415,6 +415,9 @@ func LoadJWTSecret(app *App) error {
 		app.JWTSecret = []byte{}
 		return nil
 	}
+	if app.ConfigKV == nil {
+		return nil
+	}
 	entry, err := app.ConfigKV.Get(context.Background(), CONFIG_KEY_JWT_SECRET)
 	if err == jetstream.ErrKeyNotFound {
 		secret, err := ResetJWTSecret(app, context.Background())
