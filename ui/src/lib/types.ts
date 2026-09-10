@@ -112,6 +112,7 @@ export type Result = {
     | {
       type: "header";
       title?: string;
+      subtitle?: string;
       queries: {
         render: {
           type:
@@ -143,13 +144,15 @@ export type Result = {
           | "barchartVertical"
           | "barchartVerticalStacked"
           | "piechart"
-          | "donutchart"
+          | "donutchart";
           label?: string;
+          subtitle?: string;
           markLines: MarkLine[];
         }
         | {
           type: "gauge";
           label?: string;
+          subtitle?: string;
           gaugeCategories: GaugeCategory[];
         };
         columns: Column[];
@@ -162,8 +165,9 @@ export type Result = {
         render: {
           type: "boxplot";
           label?: string;
+          subtitle?: string;
           markLines: MarkLine[];
-        }
+        };
         columns: Column[];
         rows: (string | number | boolean | {
           min: number;

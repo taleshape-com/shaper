@@ -20,7 +20,7 @@ import DashboardBarChart from "./DashboardBarChart";
 import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
 import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
@@ -246,6 +246,18 @@ export function Dashboard ({
   );
 }
 
+const getScrollParent = (node: HTMLElement | null): HTMLElement | null => {
+  let parent = node?.parentElement;
+  while (parent && parent !== document.body && parent !== document.documentElement) {
+    const { overflowY } = window.getComputedStyle(parent);
+    if (overflowY === "auto" || overflowY === "scroll") {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return null;
+};
+
 const DataView = ({
   data,
   onVarsChanged,
@@ -256,16 +268,69 @@ const DataView = ({
   loading,
 }: (Pick<DashboardProps, "onVarsChanged" | "menuButton" | "vars" | "baseUrl" | "getJwt">) & { data: Result; loading: boolean }) => {
   const [fullscreenId, setFullscreenId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const savedScrollRef = useRef<{
+    container: HTMLElement | null;
+    scrollTop: number;
+    scrollLeft: number;
+    windowScrollY: number;
+    windowScrollX: number;
+  } | null>(null);
+
+  const handleToggleFullscreen = useCallback((id: string | null) => {
+    if (id && !fullscreenId) {
+      const container = getScrollParent(containerRef.current);
+      savedScrollRef.current = {
+        container,
+        scrollTop: container ? container.scrollTop : 0,
+        scrollLeft: container ? container.scrollLeft : 0,
+        windowScrollY: window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0,
+        windowScrollX: window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0,
+      };
+      setFullscreenId(id);
+    } else {
+      setFullscreenId(null);
+    }
+  }, [fullscreenId]);
+
+  useLayoutEffect(() => {
+    if (!fullscreenId && savedScrollRef.current) {
+      const { container, scrollTop, scrollLeft, windowScrollY, windowScrollX } = savedScrollRef.current;
+      savedScrollRef.current = null;
+
+      const restore = () => {
+        if (container && (!("isConnected" in container) || container.isConnected)) {
+          container.scrollTop = scrollTop;
+          container.scrollLeft = scrollLeft;
+        }
+        if (windowScrollY > 0 || windowScrollX > 0) {
+          window.scrollTo(windowScrollX, windowScrollY);
+          if (document.documentElement) {
+            document.documentElement.scrollTop = windowScrollY;
+            document.documentElement.scrollLeft = windowScrollX;
+          }
+          if (document.body) {
+            document.body.scrollTop = windowScrollY;
+            document.body.scrollLeft = windowScrollX;
+          }
+        }
+      };
+
+      restore();
+      const rafId = requestAnimationFrame(restore);
+      return () => cancelAnimationFrame(rafId);
+    }
+  }, [fullscreenId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && fullscreenId) {
-        setFullscreenId(null);
+        handleToggleFullscreen(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [fullscreenId]);
+  }, [fullscreenId, handleToggleFullscreen]);
 
   const sections: Result["sections"] = data.sections.length > 0 && data.sections[0].type === "header"
     ? data.sections
@@ -319,7 +384,7 @@ const DataView = ({
   });
 
   return (<ChartHoverProvider>
-    <div className={cx("relative w-full h-full shaper-scope min-h-0", { "overflow-hidden max-h-screen": !!fullscreenId })}>
+    <div ref={containerRef} className={cx("relative w-full h-full shaper-scope min-h-0", { "overflow-hidden max-h-screen": !!fullscreenId })}>
       <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
         {data.headerImage && (
           <img
@@ -342,30 +407,48 @@ const DataView = ({
                   key={sectionIndex}
                   id={toCssId(`header${sectionIndex}`)}
                   className={cx("flex flex-wrap items-center ml-2 mr-4", {
-                    "mt-3 mb-3": header.queries.length > 0 || header.title,
-                    "mt-8": header.title && sectionIndex !== 0,
-                    "my-2": header.queries.length === 0 && !header.title && sectionIndex === 0,
+                    "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle,
+                    "mt-8": (header.title || header.subtitle) && sectionIndex !== 0,
+                    "my-2": header.queries.length === 0 && !header.title && !header.subtitle && sectionIndex === 0,
                     "pb-4": sectionIndex === sections.length - 1,
                   })}
                 >
                   <div
                     className={cx("@sm:flex-grow flex items-center ml-1", {
-                      "w-full @sm:w-fit": header.title,
+                      "w-full @sm:w-fit": header.title || header.subtitle,
                     })}
                   >
                     {sectionIndex === 0 ? (
                       <>
                         {menuButton}
-                        {header.title ? (
-                          <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
-                            {header.title}
-                          </h1>
+                        {header.title || header.subtitle ? (
+                          <div className="flex flex-col ml-1">
+                            {header.title ? (
+                              <h1 className="text-2xl text-left py-1 mt-0.5 font-semibold">
+                                {header.title}
+                              </h1>
+                            ) : null}
+                            {header.subtitle ? (
+                              <p className="text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
+                                {header.subtitle}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : null}
                       </>
-                    ) : header.title ? (
-                      <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
-                        {header.title}
-                      </h2>
+                    ) : header.title || header.subtitle ? (
+                      <div className="flex flex-col ml-1">
+                        {header.title ? (
+                          <h2 className="text-xl text-left mt-0.5 font-semibold">
+                            {header.title}
+                          </h2>
+                        ) : null}
+                        {header.subtitle ? (
+                          <p className="text-sm text-ctext2 dark:text-dtext2 text-left mt-0.5 mb-1">
+                            {header.subtitle}
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   {queries.map(({ render, columns, rows }, index) => {
@@ -496,8 +579,9 @@ const DataView = ({
                       key={queryIndex}
                       id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                       className={cx(
-                        "mr-4 mb-4 bg-cbg dark:bg-dbg border-none flex flex-col group",
-                        isFullscreen ? "absolute inset-0 z-[100] m-0 rounded-none h-full w-full overflow-auto p-8" : {
+                        "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
+                        isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
+                          "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,
                           "break-inside-avoid": !singleTable,
                           "min-h-[240px]": isChartQuery,
                           "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
@@ -540,7 +624,7 @@ const DataView = ({
                       {(isChartQuery || query.render.type === "table") && totalContentQueries > 1 && (
                         <FullscreenButton
                           isFullscreen={isFullscreen}
-                          onToggle={() => setFullscreenId(isFullscreen ? null : currentId)}
+                          onToggle={() => handleToggleFullscreen(isFullscreen ? null : currentId)}
                           className={cx("right-2", isFullscreen && "top-8 right-8")}
                         />
                       )}
@@ -554,9 +638,14 @@ const DataView = ({
                       ) : (
                         <>
                           {query.render.label && (
-                            <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
+                            <h2 className={cx("text-[15px] font-semibold font-display", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
                               {query.render.label}
                             </h2>
+                          )}
+                          {query.render.subtitle && (
+                            <p className="text-sm text-ctext2 dark:text-dtext2 pb-2">
+                              {query.render.subtitle}
+                            </p>
                           )}
                           {query.render.type === "table" && (
                             <TableDownloadButton
@@ -651,6 +740,7 @@ const renderContent = (
       <DashboardLineChart
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
@@ -664,6 +754,7 @@ const renderContent = (
       <DashboardScatterplot
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
@@ -680,6 +771,7 @@ const renderContent = (
         data={query.rows}
         gaugeCategories={query.render.gaugeCategories}
         label={query.render.label}
+        subtitle={query.render.subtitle}
       />
     );
   }
@@ -693,6 +785,7 @@ const renderContent = (
       <DashboardBarChart
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         stacked={
           query.render.type === "barchartHorizontalStacked" ||
           query.render.type === "barchartVerticalStacked"
@@ -714,6 +807,7 @@ const renderContent = (
       <DashboardPieChart
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows as (string | number | boolean)[][]}
         isDonut={query.render.type === "donutchart"}
@@ -725,6 +819,7 @@ const renderContent = (
       <DashboardBoxplot
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows}
         markLines={query.render.markLines}

@@ -20,6 +20,7 @@ import { EChart } from "./EChart";
 interface BoxplotProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   label?: string;
+  subtitle?: string;
   data: [number, number, number, number, number][];
   outliers: [number, number, Record<string, string> | null | undefined][];
   xData: string[];
@@ -58,6 +59,7 @@ const Boxplot = (props: BoxplotProps) => {
     yAxisLabel,
     chartId,
     label,
+    subtitle,
     markLines,
     ...other
   } = props;
@@ -194,7 +196,15 @@ const Boxplot = (props: BoxplotProps) => {
       });
     }
 
-    const labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
+    let labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
+    if (subtitle) {
+      const subtitleLines = Math.max(1, Math.ceil(subtitle.length / (0.15 * chartWidth)));
+      if (label) {
+        labelTopOffset += 4 + subtitleLines * 16;
+      } else {
+        labelTopOffset = 25 + subtitleLines * 16;
+      }
+    }
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
@@ -212,7 +222,17 @@ const Boxplot = (props: BoxplotProps) => {
           width: chartWidth - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        left: "center",
+        subtext: subtitle,
+        subtextStyle: {
+          fontSize: 12,
+          lineHeight: 14,
+          fontFamily: chartFont,
+          color: textColorSecondary,
+          width: chartWidth - 10 - 2 * chartPadding,
+          overflow: "break",
+        },
+        itemGap: 4,
+        left: chartPadding,
         top: chartPadding,
       },
       tooltip: {
@@ -306,7 +326,7 @@ const Boxplot = (props: BoxplotProps) => {
       },
       grid: {
         left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 10 + chartPadding + (yAxisLabel ? 20 : 0),
+        right: 16 + chartPadding + (yAxisLabel ? 20 : 0),
         top: 10 + labelTopOffset + chartPadding,
         bottom: (xAxisLabel ? 32 : 8) + chartPadding,
         containLabel: true,
@@ -439,6 +459,7 @@ const Boxplot = (props: BoxplotProps) => {
     chartWidth,
     chartHeight,
     label,
+    subtitle,
     markLines,
   ]);
 

@@ -8,6 +8,7 @@ import { getNameIfSet } from "../../lib/utils";
 type LineProps = {
   chartId: string;
   label?: string;
+  subtitle?: string;
   headers: Column[];
   data: (string | number | boolean)[][];
   // TODO: These are unused. We might not even need to calculate them in the backend at all.
@@ -19,6 +20,7 @@ type LineProps = {
 const DashboardLineChart = ({
   chartId,
   label,
+  subtitle,
   headers,
   data,
   markLines,
@@ -123,6 +125,7 @@ const DashboardLineChart = ({
     <LineChart
       chartId={chartId}
       label={label}
+      subtitle={subtitle}
       data={Array.from(dataByIndexAxis.values())}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}

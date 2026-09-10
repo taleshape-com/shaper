@@ -42,6 +42,7 @@ var dbTypes = []struct {
 	{"DROPDOWN_MULTI", "UNION(\"dropdown_multi_varchar\" VARCHAR)", "string"},
 	{"HINT", "UNION(\"hint_varchar\" VARCHAR)", "string"},
 	{"SECTION", "UNION(\"section_varchar\" VARCHAR)", "string"},
+	{"SUBTITLE", "UNION(\"subtitle_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_CSV", "UNION(\"download_csv_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_XLSX", "UNION(\"download_xlsx_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_JSON", "UNION(\"download_json_varchar\" VARCHAR)", "string"},

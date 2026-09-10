@@ -10,6 +10,7 @@ import { translate } from "../../lib/translate";
 type PieProps = {
   chartId: string;
   label?: string;
+  subtitle?: string;
   headers: Column[];
   data: (string | number | boolean)[][];
   isDonut?: boolean;
@@ -18,6 +19,7 @@ type PieProps = {
 const DashboardPieChart = ({
   chartId,
   label,
+  subtitle,
   headers,
   data,
   isDonut = false,
@@ -193,6 +195,7 @@ const DashboardPieChart = ({
     <PieChart
       chartId={chartId}
       label={label}
+      subtitle={subtitle}
       data={pieData}
       extraDataByName={extraDataByName}
       valueType={valueHeader.type}
