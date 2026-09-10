@@ -8,6 +8,7 @@ import { getNameIfSet } from "../../lib/utils";
 type BoxplotProps = {
   chartId: string;
   label?: string;
+  subtitle?: string;
   headers: Column[];
   data: Result["sections"][0]["queries"][0]["rows"]
   markLines?: MarkLine[];
@@ -16,6 +17,7 @@ type BoxplotProps = {
 const DashboardBoxplot = ({
   chartId,
   label,
+  subtitle,
   headers,
   data,
   markLines,
@@ -80,6 +82,7 @@ const DashboardBoxplot = ({
     <Boxplot
       chartId={chartId}
       label={label}
+      subtitle={subtitle}
       data={boxplotData}
       outliers={outliers}
       xData={xData}

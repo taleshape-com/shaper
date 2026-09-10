@@ -14,6 +14,7 @@ type DashboardGaugeProps = {
   data: Result["sections"][0]["queries"][0]["rows"];
   gaugeCategories: GaugeCategory[];
   label?: string;
+  subtitle?: string;
 };
 
 const chartPadding = 16;
@@ -24,6 +25,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   data,
   gaugeCategories,
   label,
+  subtitle,
 }) => {
   const chartRef = useRef<ECharts | null>(null);
   const { isDarkMode } = React.useContext(DarkModeContext);
@@ -167,7 +169,17 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
           width: chartSize.width - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        left: "center",
+        subtext: subtitle,
+        subtextStyle: {
+          fontSize: 12,
+          lineHeight: 14,
+          fontFamily: chartFont,
+          color: theme.textColorSecondary,
+          width: chartSize.width - 10 - 2 * chartPadding,
+          overflow: "break",
+        },
+        itemGap: 4,
+        left: chartPadding,
         top: chartPadding,
       },
       series: [
@@ -229,6 +241,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     gaugeCategories,
     headers,
     label,
+    subtitle,
     chartSize,
   ]);
 

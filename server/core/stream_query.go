@@ -25,7 +25,7 @@ const MICROSECONDS_PER_DAY = 24.0 * 60.0 * 60.0 * 1_000_000.0
 
 const EXCEL_INTERVAL_FORMAT = "[h]:mm:ss"
 
-var excludedTypesRegex = regexp.MustCompile(`\b(LABEL|SECTION|XLINE|YLINE|DROPDOWN|DOWNLOAD_CSV|DOWNLOAD_XLSX|DOWNLOAD_JSON|DOWNLOAD_PDF|DATEPICKER|DATEPICKER_FROM|DATEPICKER_TO|PLACEHOLDER|INPUT|RELOAD|HEADER_IMAGE|FOOTER_LINK)\b`)
+var excludedTypesRegex = regexp.MustCompile(`\b(LABEL|SUBTITLE|SECTION|XLINE|YLINE|DROPDOWN|DOWNLOAD_CSV|DOWNLOAD_XLSX|DOWNLOAD_JSON|DOWNLOAD_PDF|DATEPICKER|DATEPICKER_FROM|DATEPICKER_TO|PLACEHOLDER|INPUT|RELOAD|HEADER_IMAGE|FOOTER_LINK)\b`)
 
 func resolveDownloadQueryID(app *App, sqls []string, downloadType string) (int, error) {
 	upperType := "DOWNLOAD_" + strings.ToUpper(downloadType)
@@ -791,7 +791,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, data, "", []MarkLine{})
+		rInfo := getRenderInfo(colTypes, data, "", "", []MarkLine{})
 
 		if rInfo.Download != "" {
 			nextIsDownload = true

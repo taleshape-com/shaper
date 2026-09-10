@@ -342,30 +342,48 @@ const DataView = ({
                   key={sectionIndex}
                   id={toCssId(`header${sectionIndex}`)}
                   className={cx("flex flex-wrap items-center ml-2 mr-4", {
-                    "mt-3 mb-3": header.queries.length > 0 || header.title,
-                    "mt-8": header.title && sectionIndex !== 0,
-                    "my-2": header.queries.length === 0 && !header.title && sectionIndex === 0,
+                    "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle,
+                    "mt-8": (header.title || header.subtitle) && sectionIndex !== 0,
+                    "my-2": header.queries.length === 0 && !header.title && !header.subtitle && sectionIndex === 0,
                     "pb-4": sectionIndex === sections.length - 1,
                   })}
                 >
                   <div
                     className={cx("@sm:flex-grow flex items-center ml-1", {
-                      "w-full @sm:w-fit": header.title,
+                      "w-full @sm:w-fit": header.title || header.subtitle,
                     })}
                   >
                     {sectionIndex === 0 ? (
                       <>
                         {menuButton}
-                        {header.title ? (
-                          <h1 className="text-2xl text-left ml-1 py-1 mt-0.5 font-semibold">
-                            {header.title}
-                          </h1>
+                        {header.title || header.subtitle ? (
+                          <div className="flex flex-col ml-1">
+                            {header.title ? (
+                              <h1 className="text-2xl text-left py-1 mt-0.5 font-semibold">
+                                {header.title}
+                              </h1>
+                            ) : null}
+                            {header.subtitle ? (
+                              <p className="text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
+                                {header.subtitle}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : null}
                       </>
-                    ) : header.title ? (
-                      <h2 className="text-xl text-left ml-1 mt-0.5 font-semibold">
-                        {header.title}
-                      </h2>
+                    ) : header.title || header.subtitle ? (
+                      <div className="flex flex-col ml-1">
+                        {header.title ? (
+                          <h2 className="text-xl text-left mt-0.5 font-semibold">
+                            {header.title}
+                          </h2>
+                        ) : null}
+                        {header.subtitle ? (
+                          <p className="text-sm text-ctext2 dark:text-dtext2 text-left mt-0.5 mb-1">
+                            {header.subtitle}
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   {queries.map(({ render, columns, rows }, index) => {
@@ -496,8 +514,9 @@ const DataView = ({
                       key={queryIndex}
                       id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                       className={cx(
-                        "mr-4 mb-4 bg-cbg dark:bg-dbg border-none flex flex-col group",
-                        isFullscreen ? "absolute inset-0 z-[100] m-0 rounded-none h-full w-full overflow-auto p-8" : {
+                        "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
+                        isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
+                          "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,
                           "break-inside-avoid": !singleTable,
                           "min-h-[240px]": isChartQuery,
                           "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
@@ -554,9 +573,14 @@ const DataView = ({
                       ) : (
                         <>
                           {query.render.label && (
-                            <h2 className="text-[15px] pb-2 mx-4 text-center font-semibold font-display">
+                            <h2 className={cx("text-[15px] font-semibold font-display", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
                               {query.render.label}
                             </h2>
+                          )}
+                          {query.render.subtitle && (
+                            <p className="text-sm text-ctext2 dark:text-dtext2 pb-2">
+                              {query.render.subtitle}
+                            </p>
                           )}
                           {query.render.type === "table" && (
                             <TableDownloadButton
@@ -651,6 +675,7 @@ const renderContent = (
       <DashboardLineChart
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
@@ -664,6 +689,7 @@ const renderContent = (
       <DashboardScatterplot
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows as (string | number | boolean)[][]}
         minTimeValue={minTimeValue}
@@ -680,6 +706,7 @@ const renderContent = (
         data={query.rows}
         gaugeCategories={query.render.gaugeCategories}
         label={query.render.label}
+        subtitle={query.render.subtitle}
       />
     );
   }
@@ -693,6 +720,7 @@ const renderContent = (
       <DashboardBarChart
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         stacked={
           query.render.type === "barchartHorizontalStacked" ||
           query.render.type === "barchartVerticalStacked"
@@ -714,6 +742,7 @@ const renderContent = (
       <DashboardPieChart
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows as (string | number | boolean)[][]}
         isDonut={query.render.type === "donutchart"}
@@ -725,6 +754,7 @@ const renderContent = (
       <DashboardBoxplot
         chartId={`${sectionIndex}-${queryIndex}`}
         label={query.render.label}
+        subtitle={query.render.subtitle}
         headers={query.columns}
         data={query.rows}
         markLines={query.render.markLines}

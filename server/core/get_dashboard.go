@@ -41,6 +41,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		Sections:   []Section{},
 	}
 	nextLabel := ""
+	nextSubtitle := ""
 	hideNextContentSection := false
 	nextIsDownload := false
 	nextMarkLines := []MarkLine{}
@@ -129,16 +130,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isLabel(colTypes, query.Rows) {
-			u, ok := query.Rows[0][0].(duckdb.Union)
-			if !ok {
-				nextLabel = ""
-				continue
-			}
-			l, ok := u.Value.(string)
-			if !ok {
-				l = ""
-			}
-			nextLabel = l
+			_, labelIndex := findColumnByTag(colTypes, "LABEL")
+			nextLabel = getUnionStringValue(query.Rows, labelIndex)
+			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
+			nextSubtitle = getUnionStringValue(query.Rows, subtitleIndex)
 			continue
 		}
 
@@ -155,16 +150,19 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				hideNextContentSection = true
 				continue
 			}
-			u, ok := query.Rows[0][0].(duckdb.Union)
-			if !ok {
-				lastSection.Title = nil
-				continue
-			}
-			sectionTitle, ok := u.Value.(string)
-			if !ok || sectionTitle == "" {
+			_, sectionIndex := findColumnByTag(colTypes, "SECTION")
+			sectionTitle := getUnionStringValue(query.Rows, sectionIndex)
+			if sectionTitle == "" {
 				lastSection.Title = nil
 			} else {
 				lastSection.Title = &sectionTitle
+			}
+			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
+			sectionSubtitle := getUnionStringValue(query.Rows, subtitleIndex)
+			if sectionSubtitle == "" {
+				lastSection.Subtitle = nil
+			} else {
+				lastSection.Subtitle = &sectionSubtitle
 			}
 			continue
 		}
@@ -191,10 +189,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextMarkLines)
+		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextSubtitle, nextMarkLines)
 		query.Render = Render{
 			Type:            rInfo.Type,
 			Label:           rInfo.Label,
+			Subtitle:        rInfo.Subtitle,
 			GaugeCategories: rInfo.GaugeCategories,
 			MarkLines:       rInfo.MarkLines,
 		}
@@ -374,6 +373,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		nextLabel = ""
+		nextSubtitle = ""
 		nextMarkLines = []MarkLine{}
 	}
 	if err := conn.Close(); err != nil {
@@ -418,6 +418,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 	}
 
 	nextLabel := ""
+	nextSubtitle := ""
 	nextMarkLines := []MarkLine{}
 	nextIsDownload := false
 	hideNextContentSection := false
@@ -454,7 +455,10 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 		}
 
 		if isLabel(colTypes, queryRows) {
-			nextLabel = getSingleValue(queryRows)
+			_, labelIndex := findColumnByTag(colTypes, "LABEL")
+			nextLabel = getUnionStringValue(queryRows, labelIndex)
+			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
+			nextSubtitle = getUnionStringValue(queryRows, subtitleIndex)
 			continue
 		}
 
@@ -475,7 +479,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, queryRows, nextLabel, nextMarkLines)
+		rInfo := getRenderInfo(colTypes, queryRows, nextLabel, nextSubtitle, nextMarkLines)
 
 		if rInfo.Download == "pdf" {
 			id := sourceDashboardId
@@ -512,6 +516,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 		}
 
 		nextLabel = ""
+		nextSubtitle = ""
 		nextMarkLines = []MarkLine{}
 	}
 
@@ -773,7 +778,17 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 	if col == nil {
 		return false
 	}
-	return len(rows) == 1 && len(rows[0]) == 1
+	if len(rows) != 1 {
+		return false
+	}
+	if len(columns) == 1 {
+		return true
+	}
+	if len(columns) == 2 {
+		subCol, _ := findColumnByTag(columns, "SUBTITLE")
+		return subCol != nil
+	}
+	return false
 }
 
 func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
@@ -781,7 +796,17 @@ func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
 	if col == nil {
 		return false
 	}
-	return (len(rows) == 0 || (len(rows) == 1 && len(rows[0]) == 1))
+	if len(rows) != 0 && len(rows) != 1 {
+		return false
+	}
+	if len(columns) == 1 {
+		return true
+	}
+	if len(columns) == 2 {
+		subCol, _ := findColumnByTag(columns, "SUBTITLE")
+		return subCol != nil
+	}
+	return false
 }
 
 func isPlaceholder(columns []*sql.ColumnType, rows Rows) bool {
@@ -871,10 +896,14 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	return ""
 }
 
-func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines []MarkLine) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle string, markLines []MarkLine) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
+	}
+	var subtitleValue *string
+	if subtitle != "" {
+		subtitleValue = &subtitle
 	}
 	xaxis, xaxisIndex := findColumnByTag(columns, "XAXIS")
 
@@ -895,6 +924,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		bandUpper, bandUpperIndex := findColumnByTag(columns, "BAND_UPPER")
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "linechart",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &linechartIndex,
@@ -930,6 +960,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "scatterplot",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &scatterplotIndex,
@@ -959,6 +990,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if barchart != nil && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "barchartHorizontal",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartIndex,
@@ -983,6 +1015,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if barchartStacked != nil && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "barchartHorizontalStacked",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
@@ -1001,6 +1034,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if barchart != nil && yaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "barchartVertical",
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartIndex,
@@ -1017,6 +1051,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if barchartStacked != nil && yaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "barchartVerticalStacked",
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
@@ -1036,6 +1071,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		label, labelIndex := findColumnByTag(columns, "LABEL")
 		r := renderInfo{
 			Label:      labelValue,
+			Subtitle:   subtitleValue,
 			Type:       "dropdown",
 			ValueIndex: &dropdownIndex,
 		}
@@ -1051,6 +1087,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		hint, hintIndex := findColumnByTag(columns, "HINT")
 		r := renderInfo{
 			Label:      labelValue,
+			Subtitle:   subtitleValue,
 			Type:       "dropdownMulti",
 			ValueIndex: &dropdownMultiIndex,
 		}
@@ -1067,6 +1104,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if datepicker != nil {
 		return renderInfo{
 			Label:      labelValue,
+			Subtitle:   subtitleValue,
 			Type:       "datepicker",
 			ValueIndex: &datepickerIndex,
 		}
@@ -1077,6 +1115,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if daterangeFrom != nil && daterangeTo != nil {
 		return renderInfo{
 			Label:     labelValue,
+			Subtitle:  subtitleValue,
 			Type:      "daterangePicker",
 			FromIndex: &daterangeFromIndex,
 			ToIndex:   &daterangeToIndex,
@@ -1093,6 +1132,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		return renderInfo{
 			Label:           labelValue,
+			Subtitle:        subtitleValue,
 			Type:            "button",
 			Download:        downloadType,
 			DownloadIdIndex: downloadIdIndex,
@@ -1101,8 +1141,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 
 	if isPlaceholder(columns, rows) {
 		return renderInfo{
-			Label: labelValue,
-			Type:  "placeholder",
+			Label:    labelValue,
+			Subtitle: subtitleValue,
+			Type:     "placeholder",
 		}
 	}
 
@@ -1224,6 +1265,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		r := renderInfo{
 			Label:           labelValue,
+			Subtitle:        subtitleValue,
 			Type:            "gauge",
 			ValueAxisIndex:  &gaugeIndex,
 			GaugeCategories: categories,
@@ -1263,6 +1305,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		}
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           renderType,
 			ValueAxisIndex: &piechartIndex,
 		}
@@ -1280,6 +1323,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if boxplotIndex > -1 && xaxis != nil {
 		r := renderInfo{
 			Label:          labelValue,
+			Subtitle:       subtitleValue,
 			Type:           "boxplot",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &boxplotIndex,
@@ -1295,6 +1339,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 	if inputTag != nil && len(rows) == 1 {
 		return renderInfo{
 			Label:     labelValue,
+			Subtitle:  subtitleValue,
 			Type:      "input",
 			HintIndex: &inputTagIndex,
 		}
@@ -1318,6 +1363,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		if len(firstRow) == 1 {
 			return renderInfo{
 				Label:      labelValue,
+				Subtitle:   subtitleValue,
 				Type:       "value",
 				ValueSize:  valueSize,
 				ValueIndex: valueIndex,
@@ -1327,6 +1373,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 		if compareTag != nil && len(firstRow) == 2 {
 			return renderInfo{
 				Label:        labelValue,
+				Subtitle:     subtitleValue,
 				CompareIndex: &compareTagIndex,
 				Type:         "value",
 				ValueSize:    valueSize,
@@ -1337,8 +1384,9 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, markLines
 
 	trendTagIndices := findAllColumnsByTag(columns, "TREND")
 	r := renderInfo{
-		Label: labelValue,
-		Type:  "table",
+		Label:    labelValue,
+		Subtitle: subtitleValue,
+		Type:     "table",
 	}
 	if len(trendTagIndices) > 0 {
 		r.TrendIndex = trendTagIndices
@@ -2229,25 +2277,25 @@ func isFooterLink(columns []*sql.ColumnType, rows Rows) bool {
 	return len(rows) == 1 && len(rows[0]) == 1
 }
 
-func getSingleValue(rows Rows) string {
-	if len(rows) == 0 {
+func getUnionStringValue(rows Rows, colIndex int) string {
+	if len(rows) == 0 || colIndex < 0 {
 		return ""
 	}
 	row := rows[0]
-	if len(row) == 0 {
+	if colIndex >= len(row) || row[colIndex] == nil {
 		return ""
 	}
-	val := rows[0][0]
-	if len(row) == 0 || val == nil {
-		return ""
-	}
-	if union, ok := val.(duckdb.Union); ok {
+	if union, ok := row[colIndex].(duckdb.Union); ok {
 		if str, ok := union.Value.(string); ok {
 			return str
 		}
 		return ""
 	}
 	return ""
+}
+
+func getSingleValue(rows Rows) string {
+	return getUnionStringValue(rows, 0)
 }
 
 func (app *App) getDashboardConn(ctx context.Context) (*sqlx.Conn, func(), error) {

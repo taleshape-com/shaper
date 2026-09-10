@@ -22,6 +22,7 @@ const chartPadding = 16;
 interface PieChartProps extends React.HTMLAttributes<HTMLDivElement> {
   chartId: string;
   label?: string;
+  subtitle?: string;
   data: { name: string; value: number; color?: string }[];
   extraDataByName: Record<string, Record<string, any>>;
   valueType: Column["type"];
@@ -38,6 +39,7 @@ const PieChart = (props: PieChartProps) => {
     className,
     chartId,
     label,
+    subtitle,
     isDonut = false,
     valueColumnName,
     valueType,
@@ -68,9 +70,17 @@ const PieChart = (props: PieChartProps) => {
       isDarkMode,
     );
 
-    const labelTopOffset = label
+    let labelTopOffset = label
       ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1)
       : 25;
+    if (subtitle) {
+      const subtitleLines = Math.max(1, Math.ceil(subtitle.length / (0.15 * chartWidth)));
+      if (label) {
+        labelTopOffset += 4 + subtitleLines * 16;
+      } else {
+        labelTopOffset = 25 + subtitleLines * 16;
+      }
+    }
 
     // Calculate center position to account for title
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
@@ -120,7 +130,17 @@ const PieChart = (props: PieChartProps) => {
           width: chartWidth - 10 - 2 * chartPadding,
           overflow: "break",
         },
-        left: "center",
+        subtext: subtitle,
+        subtextStyle: {
+          fontSize: 12,
+          lineHeight: 14,
+          fontFamily: chartFont,
+          color: theme.textColorSecondary,
+          width: chartWidth - 10 - 2 * chartPadding,
+          overflow: "break",
+        },
+        itemGap: 4,
+        left: chartPadding,
         top: chartPadding,
       },
     ];
@@ -244,6 +264,7 @@ const PieChart = (props: PieChartProps) => {
     chartWidth,
     chartHeight,
     label,
+    subtitle,
     valueFormatter,
     isDonut,
     extraDataByName,

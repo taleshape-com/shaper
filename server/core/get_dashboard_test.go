@@ -379,5 +379,64 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, "", result.Sections[1].Queries[0].Rows[0][0])
 		assert.Empty(t, result.UnsetVariables)
 	})
+
+	t.Run("Section and Label with Subtitle", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'My Section'::SECTION, 'This is my section'::SUBTITLE;
+				SELECT 'My Label'::LABEL, 'Explanation for chart'::SUBTITLE;
+				SELECT 1::XAXIS, 10::LINECHART;
+			`,
+			ID: "test-section-label-subtitle",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		// Check Section Title and Subtitle
+		assert.Equal(t, "header", result.Sections[0].Type)
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "My Section", *result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Subtitle)
+		assert.Equal(t, "This is my section", *result.Sections[0].Subtitle)
+
+		// Check Render Label and Subtitle on content query
+		assert.Equal(t, "content", result.Sections[1].Type)
+		assert.Equal(t, 1, len(result.Sections[1].Queries))
+		q := result.Sections[1].Queries[0]
+		assert.Equal(t, "linechart", q.Render.Type)
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "My Label", *q.Render.Label)
+		assert.NotNil(t, q.Render.Subtitle)
+		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
+	})
+
+	t.Run("Section and Label with reversed column order for Subtitle", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'This is my section'::SUBTITLE, 'My Section'::SECTION;
+				SELECT 'Explanation for chart'::SUBTITLE, 'My Label'::LABEL;
+				SELECT 42;
+			`,
+			ID: "test-subtitle-order",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		// Check Section Title and Subtitle
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "My Section", *result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Subtitle)
+		assert.Equal(t, "This is my section", *result.Sections[0].Subtitle)
+
+		// Check Render Label and Subtitle on value query
+		q := result.Sections[1].Queries[0]
+		assert.Equal(t, "value", q.Render.Type)
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "My Label", *q.Render.Label)
+		assert.NotNil(t, q.Render.Subtitle)
+		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
+	})
 }
 

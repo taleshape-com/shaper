@@ -8,6 +8,7 @@ import { getNameIfSet } from "../../lib/utils";
 type ScatterProps = {
   chartId: string;
   label?: string;
+  subtitle?: string;
   headers: Column[];
   data: (string | number | boolean)[][];
   minTimeValue: number;
@@ -18,6 +19,7 @@ type ScatterProps = {
 const DashboardScatterplot = ({
   chartId,
   label,
+  subtitle,
   headers,
   data,
   markLines,
@@ -107,6 +109,7 @@ const DashboardScatterplot = ({
     <Scatterplot
       chartId={chartId}
       label={label}
+      subtitle={subtitle}
       data={Array.from(dataByIndexAxis.values())}
       extraDataByIndexAxis={extraDataByIndexAxis}
       index={indexAxisHeader.name}
