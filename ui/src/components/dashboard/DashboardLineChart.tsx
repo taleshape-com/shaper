@@ -40,6 +40,7 @@ const DashboardLineChart = ({
 
   const categories = new Set<string>();
   const colorsByCategory = {} as Record<string, string>;
+  const nonCategoryColors = new Set<string>();
   if (categoryIndex === -1) {
     categories.add(valueAxisName);
   }
@@ -78,7 +79,8 @@ const DashboardLineChart = ({
         const color = (cell ?? "").toString();
         if (color.length > 0) {
           if (categoryIndex === -1) {
-            colorsByCategory[valueAxisName] = color;
+            v._color = color;
+            nonCategoryColors.add(color);
           } else {
             const category = (row[categoryIndex] ?? "").toString();
             colorsByCategory[category] = color;
@@ -119,6 +121,9 @@ const DashboardLineChart = ({
     });
     return dataByIndexAxis;
   });
+  if (categoryIndex === -1 && nonCategoryColors.size === 1) {
+    colorsByCategory[valueAxisName] = nonCategoryColors.values().next().value!;
+  }
   const indexType = indexAxisHeader.type;
 
   return (

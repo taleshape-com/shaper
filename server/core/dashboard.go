@@ -33,6 +33,7 @@ type GetResult struct {
 	ReloadAt       int64     `json:"reloadAt"`
 	HeaderImage    *string   `json:"headerImage,omitempty"`
 	FooterLink     *string   `json:"footerLink,omitempty"`
+	FooterLinkText *string   `json:"footerLinkText,omitempty"`
 	UnsetVariables []string  `json:"unsetVariables,omitempty"`
 }
 

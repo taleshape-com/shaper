@@ -137,8 +137,18 @@ const LineChart = (props: LineChartProps) => {
         id: category,
         type: "line" as const,
         data: isContinuousData
-          ? data.map((item) => [item[index], item[category]])
-          : data.map((item) => item[category]),
+          ? data.map((item) => {
+            const sc = safeColor(item._color);
+            return sc && item[category] != null
+              ? { value: [item[index], item[category]], itemStyle: { color: sc } }
+              : [item[index], item[category]];
+          })
+          : data.map((item) => {
+            const sc = safeColor(item._color);
+            return sc && item[category] != null
+              ? { value: item[category], itemStyle: { color: sc } }
+              : item[category];
+          }),
         connectNulls: true,
         symbol: "circle",
         symbolSize: data.length > 1 ? 8 : 10,

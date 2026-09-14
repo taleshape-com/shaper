@@ -438,5 +438,101 @@ func TestQueryDashboard(t *testing.T) {
 		assert.NotNil(t, q.Render.Subtitle)
 		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
 	})
+
+	t.Run("Footer link without custom text", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT 'https://example.com'::FOOTER_LINK`,
+			ID:      "test-footer-link-default",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.FooterLink)
+		assert.Equal(t, "https://example.com", *result.FooterLink)
+		assert.Nil(t, result.FooterLinkText)
+	})
+
+	t.Run("Footer link with custom text using AS alias", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT 'https://example.com'::FOOTER_LINK AS "my custom text"`,
+			ID:      "test-footer-link-custom-text",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.FooterLink)
+		assert.Equal(t, "https://example.com", *result.FooterLink)
+		assert.NotNil(t, result.FooterLinkText)
+		assert.Equal(t, "my custom text", *result.FooterLinkText)
+	})
+
+	t.Run("Charts with COLOR and no CATEGORY using VALUES", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'Fruit Sales'::LABEL;
+SELECT
+  fruit::XAXIS,
+  sales::BARCHART,
+  color::COLOR
+FROM (VALUES
+  ('Apples', 45, '#ef4444'),
+  ('Bananas', 80, '#eab308'),
+  ('Blueberries', 30, '#3b82f6'),
+  ('Kiwis', 55, '#22c55e')
+) AS t(fruit, sales, color);
+
+SELECT 'Project Velocity'::LABEL;
+SELECT
+  x::XAXIS,
+  y::SCATTERPLOT,
+  color::COLOR
+FROM (VALUES
+  (10, 25, '#ef4444'),
+  (20, 45, '#eab308'),
+  (30, 15, '#3b82f6'),
+  (40, 60, '#22c55e')
+) AS t(x, y, color);
+
+SELECT 'Server Latency'::LABEL;
+SELECT
+  time_val::XAXIS,
+  latency::LINECHART,
+  color::COLOR
+FROM (VALUES
+  ('2026-01-01'::DATE, 10, '#ef4444'),
+  ('2026-01-02'::DATE, 25, '#eab308'),
+  ('2026-01-03'::DATE, 18, '#3b82f6'),
+  ('2026-01-04'::DATE, 30, '#22c55e')
+) AS t(time_val, latency, color);
+`,
+			ID: "test-charts-color",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 3, len(result.Sections[0].Queries))
+
+		// Bar chart
+		qBar := result.Sections[0].Queries[0]
+		assert.Equal(t, "barchartHorizontal", qBar.Render.Type)
+		assert.Equal(t, "index", qBar.Columns[0].Tag)
+		assert.Equal(t, "value", qBar.Columns[1].Tag)
+		assert.Equal(t, "color", qBar.Columns[2].Tag)
+		assert.Equal(t, 4, len(qBar.Rows))
+
+		// Scatter plot
+		qScatter := result.Sections[0].Queries[1]
+		assert.Equal(t, "scatterplot", qScatter.Render.Type)
+		assert.Equal(t, "index", qScatter.Columns[0].Tag)
+		assert.Equal(t, "value", qScatter.Columns[1].Tag)
+		assert.Equal(t, "color", qScatter.Columns[2].Tag)
+		assert.Equal(t, 4, len(qScatter.Rows))
+
+		// Line chart
+		qLine := result.Sections[0].Queries[2]
+		assert.Equal(t, "linechart", qLine.Render.Type)
+		assert.Equal(t, "index", qLine.Columns[0].Tag)
+		assert.Equal(t, "value", qLine.Columns[1].Tag)
+		assert.Equal(t, "color", qLine.Columns[2].Tag)
+		assert.Equal(t, 4, len(qLine.Rows))
+	})
 }
 

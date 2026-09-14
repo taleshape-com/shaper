@@ -544,7 +544,10 @@ const DataView = ({
                 className={cx("grid grid-cols-1 ml-4", {
                   "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
                   "@sm:grid-cols-3 print:grid-cols-3":
-                    numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
+                    numQueriesInSection === 3 &&
+                    section.queries.every(
+                      q => q.render.type === "value" || (q.render.type === "table" && q.rows.length === 1),
+                    ),
                   "@lg:grid-cols-2 print:grid-cols-2":
                     numQueriesInSection === 2 ||
                     (numContentSections === 1 && numQueriesInSection === 4),
@@ -570,7 +573,8 @@ const DataView = ({
                   const isFullscreen = fullscreenId === currentId;
                   const isBigChartQuery = query.render.type === "linechart" || query.render.type === "scatterplot" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
                   const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
-                  const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+                  const isSingleRowTable = query.render.type === "table" && query.rows.length === 1;
+                  const singleTable = numQueriesInSection === 1 && query.render.type === "table" && !isSingleRowTable;
                   const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
                   const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
                   const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
@@ -581,15 +585,16 @@ const DataView = ({
                       className={cx(
                         "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
                         isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
-                          "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,
+                          "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle && !isSingleRowTable,
                           "break-inside-avoid": !singleTable,
                           "min-h-[240px]": isChartQuery,
-                          "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
-                          "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                          "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table" && q.rows.length > 1)),
+                          "h-[360px]": getRenderMode() !== "pdf" && (isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table" && query.rows.length > 1)),
+                          "max-h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && isSingleRowTable,
                           "h-[240px]": isChartQuery && !isBigChartQuery,
                           "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
                           // single table
-                          "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
+                          "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && (singleTable || isSingleRowTable),
                           // pdf
                           "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
                           // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
@@ -699,7 +704,7 @@ const DataView = ({
             href={data.footerLink}
             target="_blank"
             className="no-underline text-ctext2 dark:text-dtext2 text-xs"
-          >{data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
+          >{data.footerLinkText || data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
         )}
       </div>
       {loading && (

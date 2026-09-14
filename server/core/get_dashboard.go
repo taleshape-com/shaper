@@ -23,9 +23,19 @@ import (
 const QUERY_MAX_ROWS = 3000
 
 var (
-	getVariableRegex = regexp.MustCompile(`(?i)getvariable\s*\(\s*'([^']+)'\s*\)`)
-	setVariableRegex = regexp.MustCompile(`(?i)SET\s+VARIABLE\s+([a-zA-Z0-9_]+)`)
+	getVariableRegex        = regexp.MustCompile(`(?i)getvariable\s*\(\s*'([^']+)'\s*\)`)
+	setVariableRegex        = regexp.MustCompile(`(?i)SET\s+VARIABLE\s+([a-zA-Z0-9_]+)`)
+	castRegex               = regexp.MustCompile(`(?is)^CAST\(.+ AS .+\)$`)
+	singleQuoteEscapedRegex = regexp.MustCompile(`(?s)^'(?:[^']|'')*'$`)
+	boxplotRegex            = regexp.MustCompile(`(?is)^boxplot\(.+\)$`)
 )
+
+func getNameIfSet(name string) string {
+	if castRegex.MatchString(name) || singleQuoteEscapedRegex.MatchString(name) || boxplotRegex.MatchString(name) {
+		return ""
+	}
+	return name
+}
 
 type DashboardQuery struct {
 	Content    string
@@ -73,6 +83,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	var maxTimeValue int64
 	headerImage := ""
 	footerLink := ""
+	footerLinkText := ""
 
 	conn, cleanup, err := app.getDashboardConn(ctx)
 	if err != nil {
@@ -181,6 +192,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 		if isFooterLink(colTypes, query.Rows) {
 			footerLink = getSingleValue(query.Rows)
+			if col, _ := findColumnByTag(colTypes, "FOOTER_LINK"); col != nil {
+				footerLinkText = getNameIfSet(col.Name())
+			}
 			continue
 		}
 
@@ -392,6 +406,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 	if footerLink != "" {
 		result.FooterLink = &footerLink
+		if footerLinkText != "" {
+			result.FooterLinkText = &footerLinkText
+		}
 	}
 	if len(unsetVariables) > 0 {
 		result.UnsetVariables = unsetVariables
