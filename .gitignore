@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: MPL-2.0
 
-bin
-dist
+/bin
+/dist
+npm-package/packages/*/bin
+pip-package/shaper_pkg/bin/*
+!pip-package/shaper_pkg/bin/.gitkeep
+pip-package/build
+pip-package/dist
+pip-package/*.egg-info
 node_modules
 .vite-stats
 .tanstack
