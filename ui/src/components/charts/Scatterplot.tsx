@@ -102,8 +102,18 @@ const Scatterplot = (props: ScatterplotProps) => {
         id: category,
         type: "scatter" as const,
         data: isContinuousData
-          ? data.map((item) => [item[index], item[category]])
-          : data.map((item) => item[category]),
+          ? data.map((item) => {
+            const sc = safeColor(item._color);
+            return sc && item[category] != null
+              ? { value: [item[index], item[category]], itemStyle: { color: sc } }
+              : [item[index], item[category]];
+          })
+          : data.map((item) => {
+            const sc = safeColor(item._color);
+            return sc && item[category] != null
+              ? { value: item[category], itemStyle: { color: sc } }
+              : item[category];
+          }),
         symbol: "circle",
         symbolSize: data.length > 1 ? 10 : 12,
         cursor: "crosshair",

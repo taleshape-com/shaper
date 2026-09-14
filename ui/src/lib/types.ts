@@ -107,6 +107,7 @@ export type Result = {
   reloadAt: number;
   headerImage?: string;
   footerLink?: string;
+  footerLinkText?: string;
   unsetVariables?: string[];
   sections: (
     | {

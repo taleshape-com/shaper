@@ -120,8 +120,18 @@ const BarChart = (props: BarChartProps) => {
       stack: type === "stacked" ? "stack" : category,
       cursor: "crosshair",
       data: isContinuousData && layout === "horizontal"
-        ? dataCopy.map((item) => [item[index], item[category]])
-        : dataCopy.map((item) => item[category]),
+        ? dataCopy.map((item) => {
+          const sc = safeColor(item._color);
+          return sc && item[category] != null
+            ? { value: [item[index], item[category]], itemStyle: { color: sc } }
+            : [item[index], item[category]];
+        })
+        : dataCopy.map((item) => {
+          const sc = safeColor(item._color);
+          return sc && item[category] != null
+            ? { value: item[category], itemStyle: { color: sc } }
+            : item[category];
+        }),
       itemStyle: {
         color: categoryColors.get(category),
       },
