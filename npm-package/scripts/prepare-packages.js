@@ -41,6 +41,16 @@ function main() {
 
   console.log(`Preparing npm packages for version ${version}...`);
 
+  const mainBinDir = path.join(npmPackageDir, 'bin');
+  const requiredMainFiles = ['shaper.js', 'get-binary.js'];
+  for (const file of requiredMainFiles) {
+    const filePath = path.join(mainBinDir, file);
+    if (!fs.existsSync(filePath)) {
+      console.error(`Error: Required binary script missing at ${filePath}`);
+      process.exit(1);
+    }
+  }
+
   // Update main package.json
   const mainPkg = JSON.parse(fs.readFileSync(mainPkgPath, 'utf8'));
   mainPkg.version = version;
@@ -93,7 +103,8 @@ function main() {
         fs.chmodSync(destBinary, 0o755);
         console.log(`Copied ${srcBinary} -> ${destBinary}`);
       } else {
-        console.warn(`Warning: Binary source ${srcBinary} not found!`);
+        console.error(`Error: Binary source ${srcBinary} not found!`);
+        process.exit(1);
       }
     }
 
