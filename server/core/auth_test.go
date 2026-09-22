@@ -52,6 +52,43 @@ func TestActorHasPermission(t *testing.T) {
 	if keyActor.HasPermission(ctx, db, PermissionDeploy) {
 		t.Errorf("API Key should NOT have PermissionDeploy")
 	}
+	if keyActor.HasPermission(ctx, db, PermissionDeployDryRun) {
+		t.Errorf("API Key should NOT have PermissionDeployDryRun")
+	}
+
+	// 2a. Test API Key with PermissionDeploy (can deploy AND dry-run deploy)
+	deployKeyID := "key-deploy"
+	deployPermsJSON, _ := json.Marshal([]string{PermissionDeploy})
+	_, err = db.Exec(`INSERT INTO api_keys (id, hash, salt, name, permissions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		deployKeyID, "hash", "salt", "Deploy Key", string(deployPermsJSON), now, now)
+	if err != nil {
+		t.Fatalf("failed to insert deploy api key: %v", err)
+	}
+
+	deployKeyActor := Actor{Type: ActorAPIKey, ID: deployKeyID}
+	if !deployKeyActor.HasPermission(ctx, db, PermissionDeploy) {
+		t.Errorf("Deploy API Key should have PermissionDeploy")
+	}
+	if !deployKeyActor.HasPermission(ctx, db, PermissionDeployDryRun) {
+		t.Errorf("Deploy API Key should have PermissionDeployDryRun (deploy permission allows dry-run)")
+	}
+
+	// 2b. Test API Key with PermissionDeployDryRun (can dry-run deploy, but NOT actual deploy)
+	dryRunKeyID := "key-dry-run"
+	dryRunPermsJSON, _ := json.Marshal([]string{PermissionDeployDryRun})
+	_, err = db.Exec(`INSERT INTO api_keys (id, hash, salt, name, permissions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		dryRunKeyID, "hash", "salt", "Dry Run Key", string(dryRunPermsJSON), now, now)
+	if err != nil {
+		t.Fatalf("failed to insert dry run api key: %v", err)
+	}
+
+	dryRunKeyActor := Actor{Type: ActorAPIKey, ID: dryRunKeyID}
+	if !dryRunKeyActor.HasPermission(ctx, db, PermissionDeployDryRun) {
+		t.Errorf("Dry-run API Key should have PermissionDeployDryRun")
+	}
+	if dryRunKeyActor.HasPermission(ctx, db, PermissionDeploy) {
+		t.Errorf("Dry-run API Key should NOT have PermissionDeploy")
+	}
 
 	// 3. Test API Key with NO permissions (empty array)
 	emptyKeyID := "key-empty"

@@ -64,6 +64,9 @@ func (a Actor) HasPermission(ctx context.Context, db *sqlx.DB, permission string
 		if p == permission {
 			return true
 		}
+		if permission == PermissionDeployDryRun && p == PermissionDeploy {
+			return true
+		}
 	}
 	return false
 }
