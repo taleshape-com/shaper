@@ -56,6 +56,7 @@ interface APIKey {
 const PERMISSIONS = [
   { label: "Generate JWT", value: "jwt" },
   { label: "Deploy", value: "deploy" },
+  { label: "Dry-Run Deploy", value: "deploy:dry-run" },
   { label: "Query Data", value: "data:query" },
   { label: "Ingest Data", value: "data:ingest" },
   { label: "Read Metrics", value: "metrics" },

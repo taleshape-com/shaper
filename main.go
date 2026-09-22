@@ -767,7 +767,7 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	usage := `Deploy dashboards from files using API key or user auth. Set SHAPER_DEPLOY_API_KEY to authenticate or log in.`
 	deployCmd := &ff.Command{
 		Name:      "deploy",
-		Usage:     "shaper deploy [--config path] [--url url] [--auth-file path]",
+		Usage:     "shaper deploy [--config path] [--url url] [--auth-file path] [--validate-only]",
 		ShortHelp: usage,
 		Flags:     deployFlags,
 		Exec: func(ctx context.Context, args []string) error {
