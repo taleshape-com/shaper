@@ -163,6 +163,14 @@ func New(
 				return nil, fmt.Errorf("failed to execute init-sql: %w", err)
 			}
 		}
+
+		if _, err := duckDbx.Exec("SET lock_configuration = true"); err != nil {
+			return nil, fmt.Errorf("failed to lock DuckDB configuration: %w", err)
+		}
+	} else if duckDbx != nil {
+		if _, err := duckDbx.Exec("SET lock_configuration = true"); err != nil {
+			return nil, fmt.Errorf("failed to lock DuckDB configuration: %w", err)
+		}
 	}
 
 	loginRequired, err := isLoginRequired(sqliteDbx)
