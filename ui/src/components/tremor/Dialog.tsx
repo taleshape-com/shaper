@@ -47,18 +47,41 @@ const DialogOverlay = React.forwardRef<
 
 DialogOverlay.displayName = "DialogOverlay";
 
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitives.Content> {
+  container?: HTMLElement | null;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitives.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitives.Content>
->(({ className, ...props }, forwardedRef) => {
+  DialogContentProps
+>(({ className, container: customContainer, ...props }, forwardedRef) => {
+  const isEmbedded =
+    typeof document !== "undefined" &&
+    Boolean(
+      document.querySelector(".shaper-scope") &&
+      document.querySelector(".shaper-scope") !== document.querySelector("html"),
+    );
+  const container =
+    customContainer !== undefined
+      ? customContainer
+      : isEmbedded
+        ? (document.querySelector(".shaper-scope") as HTMLElement)
+        : (typeof document !== "undefined" ? document.body : undefined);
+  const isScoped =
+    isEmbedded ||
+    (container != null &&
+      container !== (typeof document !== "undefined" ? document.body : null));
+
   return (
-    <DialogPortal container={document.querySelector(".shaper-scope") === document.querySelector("html") ? document.body : document.querySelector(".shaper-scope")}>
-      <DialogOverlay className="absolute">
+    <DialogPortal container={container}>
+      <DialogOverlay className={isScoped ? "absolute" : undefined}>
         <DialogPrimitives.Content
           ref={forwardedRef}
           className={cx(
             // base
-            "absolute left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md p-6 space-y-4",
+            isScoped ? "absolute" : "fixed",
+            "left-1/2 top-1/2 z-50 w-[95vw] max-w-lg max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md p-6 space-y-4",
             // background color
             "bg-cbg dark:bg-dbg",
             // transition
