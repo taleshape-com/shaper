@@ -63,3 +63,16 @@ describe("formatValue with numbers", () => {
     expect(formatValue(1e21, columnType, shouldFormat)).toBe("1e+21");
   });
 });
+
+describe("formatValue with timestamp", () => {
+  it("should include hour and minute when shortFormat is true", () => {
+    const formatted = formatValue("2024-01-15T08:30:00Z", "timestamp", true, true);
+    expect(formatted).toContain("08:30");
+    expect(formatted).not.toContain(":00");
+  });
+
+  it("should include seconds when shortFormat is false", () => {
+    const formatted = formatValue("2024-01-15T08:30:45Z", "timestamp", true, false);
+    expect(formatted).toContain("08:30:45");
+  });
+});

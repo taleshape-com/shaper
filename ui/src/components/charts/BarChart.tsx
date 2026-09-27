@@ -219,10 +219,18 @@ const BarChart = (props: BarChartProps) => {
     }
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = layout === "horizontal" && !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
+    const customValues = layout === "horizontal" && isContinuousData
+      ? Array.from(new Set(dataCopy.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
+        const numA = typeof a === "number" ? a : new Date(a).getTime();
+        const numB = typeof b === "number" ? b : new Date(b).getTime();
+        return numA - numB;
+      })
+      : undefined;
+    const xValues = layout === "horizontal" ? (isContinuousData ? customValues : xData) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
-    const shortenLabel = layout === "horizontal" ? xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true : false;
+    const shortenLabel = layout === "horizontal" ? xValues && xValues.length > 0 ? (xSpace / xValues.length) * (0.10 + (0.00004 * xSpace)) : true : false;
     let maxLabelLen = 0;
-    (xData ?? []).forEach(x => {
+    (xValues ?? []).forEach(x => {
       const v = layout === "horizontal" ? indexFormatter(indexType === "duration" || indexType === "time" ? new Date(x).getTime() : x, shortenLabel) : valueFormatter(x, true);
       if (v.length > maxLabelLen) {
         maxLabelLen = v.length;
@@ -494,6 +502,9 @@ const BarChart = (props: BarChartProps) => {
         scale: layout === "horizontal" && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
+          customValues,
+          showMinLabel: true,
+          showMaxLabel: true,
           formatter: (value: any) => {
             if (layout === "horizontal") {
               return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
@@ -538,6 +549,7 @@ const BarChart = (props: BarChartProps) => {
         },
         axisTick: {
           show: false,
+          customValues,
         },
         splitLine: layout === "vertical" ? {
           show: dataCopy.length > 1,
