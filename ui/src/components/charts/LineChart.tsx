@@ -289,8 +289,25 @@ const LineChart = (props: LineChartProps) => {
     }
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
+    const customValues = isContinuousData
+      ? Array.from(new Set(data.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
+        const numA = typeof a === "number" ? a : new Date(a).getTime();
+        const numB = typeof b === "number" ? b : new Date(b).getTime();
+        return numA - numB;
+      })
+      : undefined;
+    const xValues = isContinuousData ? customValues : xData;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
-    const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    const shortenLabel = xValues && xValues.length > 0 ? (xSpace / xValues.length) * (0.10 + (0.00004 * xSpace)) : true;
+
+    let maxLabelLen = 0;
+    (xValues ?? []).forEach(x => {
+      const v = indexFormatter(indexType === "duration" || indexType === "time" ? new Date(x).getTime() : x, shortenLabel);
+      if (v.length > maxLabelLen) {
+        maxLabelLen = v.length;
+      }
+    });
+    const shouldRotateXLabel = !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12;
 
     return {
       title: {
@@ -574,13 +591,17 @@ const LineChart = (props: LineChartProps) => {
         scale: isNumericData ? true : undefined,
         axisLabel: {
           show: true,
+          customValues,
+          showMinLabel: true,
+          showMaxLabel: true,
           formatter: (value: any) => {
             return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
           },
           color: textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
-          rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
+          interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
+          rotate: shouldRotateXLabel ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
         },
@@ -609,6 +630,7 @@ const LineChart = (props: LineChartProps) => {
         },
         axisTick: {
           show: false,
+          customValues,
         },
         splitLine: {
           show: false,
