@@ -34,6 +34,66 @@ export const localStorageTokenKey = "shaper-session-token";
 export const localStorageJwtKey = "shaper-jwt";
 export const localStorageVariablesKey = "shaper-variables";
 
+/**
+ * Extracts authentication token from URL hash fragment (#token=...) or search query (?token=...).
+ * Passing tokens via hash fragment is more secure as fragments are never sent to the server,
+ * preventing tokens from appearing in server access logs, reverse proxy logs, or Referer headers.
+ *
+ * Supports:
+ * - #token=...
+ * - #?token=...
+ * - Raw compact JWT in hash (#ey...)
+ * - ?token=... (legacy fallback)
+ *
+ * Returns the extracted token (if any) and the clean URL with token removed from both search and hash.
+ */
+export function extractAndClearTokenFromUrl (
+  search = typeof window !== "undefined" ? window.location.search : "",
+  hash = typeof window !== "undefined" ? window.location.hash : "",
+  pathname = typeof window !== "undefined" ? window.location.pathname : "",
+): { token: string | null; cleanUrl: string } {
+  const urlParams = new URLSearchParams(search);
+
+  let rawHash = hash.startsWith("#") ? hash.slice(1) : hash;
+  const startsWithQuestion = rawHash.startsWith("?");
+  if (startsWithQuestion) {
+    rawHash = rawHash.slice(1);
+  }
+
+  const isDirectJwt =
+    rawHash.startsWith("ey") && rawHash.split(".").length === 3;
+  const hashParams = new URLSearchParams(rawHash);
+
+  const tokenFromHash = isDirectJwt ? rawHash : hashParams.get("token");
+  const tokenFromSearch = urlParams.get("token");
+
+  // Prefer hash token (secure) over search query param (legacy)
+  const token = tokenFromHash || tokenFromSearch || null;
+
+  let newHash = hash;
+  if (tokenFromHash) {
+    if (isDirectJwt) {
+      newHash = "";
+    } else {
+      hashParams.delete("token");
+      const remainingHash = hashParams.toString();
+      newHash = remainingHash
+        ? (startsWithQuestion ? "#?" + remainingHash : "#" + remainingHash)
+        : "";
+    }
+  }
+
+  if (tokenFromSearch) {
+    urlParams.delete("token");
+  }
+
+  const newSearch = urlParams.toString();
+  const cleanSearch = newSearch ? "?" + newSearch : "";
+  const cleanUrl = pathname + cleanSearch + newHash;
+
+  return { token, cleanUrl };
+}
+
 export const AuthContext = React.createContext<IAuthContext | null>(null);
 
 export function useAuth () {
