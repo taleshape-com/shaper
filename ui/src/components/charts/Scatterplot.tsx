@@ -207,6 +207,8 @@ const Scatterplot = (props: ScatterplotProps) => {
     const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
+    const shouldRotateXLabel = !isContinuousData && !xAxisLabel && hasManyLabels;
 
     return {
       title: {
@@ -463,7 +465,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           color: textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
-          rotate: !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12 ? 45 : 0,
+          rotate: shouldRotateXLabel ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
         },

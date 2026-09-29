@@ -219,14 +219,14 @@ const BarChart = (props: BarChartProps) => {
     }
     const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
     const xData = layout === "horizontal" && !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
-    const customValues = layout === "horizontal" && isContinuousData
+    const rawCustomValues = layout === "horizontal" && isContinuousData
       ? Array.from(new Set(dataCopy.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
         const numA = typeof a === "number" ? a : new Date(a).getTime();
         const numB = typeof b === "number" ? b : new Date(b).getTime();
         return numA - numB;
       })
       : undefined;
-    const xValues = layout === "horizontal" ? (isContinuousData ? customValues : xData) : undefined;
+    const xValues = layout === "horizontal" ? (isContinuousData ? rawCustomValues : xData) : undefined;
     const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
     const shortenLabel = layout === "horizontal" ? xValues && xValues.length > 0 ? (xSpace / xValues.length) * (0.10 + (0.00004 * xSpace)) : true : false;
     let maxLabelLen = 0;
@@ -236,7 +236,9 @@ const BarChart = (props: BarChartProps) => {
         maxLabelLen = v.length;
       }
     });
-    const shouldRotateXLabel = !xAxisLabel && typeof shortenLabel === "number" && shortenLabel <= 12;
+    const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
+    const shouldRotateXLabel = !isContinuousData && !xAxisLabel && hasManyLabels;
+    const customValues = hasManyLabels ? undefined : rawCustomValues;
 
     return {
       title: {
