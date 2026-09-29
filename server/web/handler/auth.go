@@ -3,6 +3,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -84,13 +85,30 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
-			Token       string         `json:"token"`
-			DashboardID string         `json:"dashboardId"`
-			Variables   map[string]any `json:"variables"`
-			LongLived   bool           `json:"longLived"`
+			Token       string          `json:"token"`
+			DashboardID string          `json:"dashboardId"`
+			Variables   json.RawMessage `json:"variables"`
+			LongLived   bool            `json:"longLived"`
 		}
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		}
+
+		var varsMap map[string]any
+		hasVariablesField := loginRequest.Variables != nil
+		if hasVariablesField {
+			trimmed := strings.TrimSpace(string(loginRequest.Variables))
+			if trimmed != "null" && trimmed != "" {
+				if err := json.Unmarshal(loginRequest.Variables, &varsMap); err != nil {
+					return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid variables format: " + err.Error()})
+				}
+				if err := validateVariables(varsMap); err != nil {
+					return c.JSON(http.StatusBadRequest, map[string]any{
+						"error":     "Invalid variables format: " + err.Error(),
+						"variables": varsMap,
+					})
+				}
+			}
 		}
 
 		// Check if the request is already authenticated via a valid JWT for a user and refresh if it is
@@ -147,8 +165,12 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 					if loginRequest.DashboardID != "" {
 						newClaims["dashboardId"] = loginRequest.DashboardID
 					}
-					if len(loginRequest.Variables) > 0 {
-						newClaims["variables"] = loginRequest.Variables
+					if hasVariablesField {
+						if len(varsMap) > 0 {
+							newClaims["variables"] = varsMap
+						} else {
+							delete(newClaims, "variables")
+						}
 					}
 					newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
 					newTokenString, err := newToken.SignedString(app.JWTSecret)
@@ -209,15 +231,8 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 		} else {
 			claims["dashboardId"] = loginRequest.DashboardID
 		}
-		if len(loginRequest.Variables) > 0 {
-			err := validateVariables(loginRequest.Variables)
-			if err != nil {
-				return c.JSON(http.StatusBadRequest, map[string]any{
-					"error":     "Invalid variables format: " + err.Error(),
-					"variables": loginRequest.Variables,
-				})
-			}
-			claims["variables"] = loginRequest.Variables
+		if hasVariablesField && len(varsMap) > 0 {
+			claims["variables"] = varsMap
 		}
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

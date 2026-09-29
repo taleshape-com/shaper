@@ -121,7 +121,25 @@ export async function logout () {
 }
 
 export const getVariablesString = () => {
-  return localStorage.getItem(localStorageVariablesKey) ?? "{}";
+  if (typeof window === "undefined") {
+    return "{}";
+  }
+  const stored = localStorage.getItem(localStorageVariablesKey);
+  if (stored != null) {
+    return stored;
+  }
+  const jwt = localStorage.getItem(localStorageJwtKey);
+  if (jwt) {
+    try {
+      const claims = parseJwt(jwt);
+      if (claims && claims.variables && typeof claims.variables === "object") {
+        return JSON.stringify(claims.variables);
+      }
+    } catch {
+      // Ignore invalid JWT format
+    }
+  }
+  return "{}";
 };
 export const getVariables = (s: string): Variables => {
   return zVariables.parse(JSON.parse(s));
@@ -149,7 +167,7 @@ export const refreshJwt = async (token: string, vars: Variables) => {
     headers,
     body: JSON.stringify({
       token: token === "" ? undefined : token,
-      variables: Object.keys(vars).length > 0 ? vars : undefined,
+      variables: vars ?? {},
     }),
   }).then(async (response) => {
     if (response.status !== 200) {

@@ -178,6 +178,124 @@ func TestTokenAuth_DashboardIDRestriction(t *testing.T) {
 		}
 	})
 
+	t.Run("standard JWT refresh clears variables when empty variables object is passed", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId":    "user-123",
+			"exp":       time.Now().Add(30 * time.Minute).Unix(),
+			"variables": map[string]any{"city": "Berlin"},
+		})
+
+		body, _ := json.Marshal(map[string]any{
+			"variables": map[string]any{},
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := TokenAuth(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var res struct {
+			JWT string `json:"jwt"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
+		claims := parseJWT(res.JWT)
+
+		if vars, exists := claims["variables"]; exists && vars != nil {
+			t.Errorf("expected variables claim to be deleted, got %v", vars)
+		}
+	})
+
+	t.Run("standard JWT refresh clears variables when variables is null", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId":    "user-123",
+			"exp":       time.Now().Add(30 * time.Minute).Unix(),
+			"variables": map[string]any{"city": "Berlin"},
+		})
+
+		body := []byte(`{"variables": null}`)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := TokenAuth(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var res struct {
+			JWT string `json:"jwt"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
+		claims := parseJWT(res.JWT)
+
+		if vars, exists := claims["variables"]; exists && vars != nil {
+			t.Errorf("expected variables claim to be deleted, got %v", vars)
+		}
+	})
+
+	t.Run("standard JWT refresh preserves variables when variables field is omitted", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId":    "user-123",
+			"exp":       time.Now().Add(30 * time.Minute).Unix(),
+			"variables": map[string]any{"city": "Berlin"},
+		})
+
+		body, _ := json.Marshal(map[string]any{})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := TokenAuth(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var res struct {
+			JWT string `json:"jwt"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+			t.Fatalf("failed to unmarshal json: %v", err)
+		}
+		claims := parseJWT(res.JWT)
+
+		vars, exists := claims["variables"]
+		if !exists {
+			t.Fatalf("expected variables claim to be preserved")
+		}
+		varsMap, ok := vars.(map[string]any)
+		if !ok || varsMap["city"] != "Berlin" {
+			t.Errorf("expected variables city=Berlin preserved, got %v", vars)
+		}
+	})
+
 	t.Run("short-lived JWT can generate long-lived token", func(t *testing.T) {
 		tokenStr := createJWT(jwt.MapClaims{
 			"userId": "user-123",

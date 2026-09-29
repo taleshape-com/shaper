@@ -12,7 +12,7 @@ import { App } from "./App";
 import { routeTree } from "./routeTree.gen";
 import { ErrorComponent } from "./components/ErrorComponent";
 import { loadSystemConfig } from "./lib/system";
-import { localStorageJwtKey, extractAndClearTokenFromUrl } from "./lib/auth";
+import { localStorageJwtKey, localStorageVariablesKey, extractAndClearTokenFromUrl } from "./lib/auth";
 import "./lib/globals";
 
 // Polyfill container queries
@@ -54,6 +54,7 @@ declare module "@tanstack/react-router" {
       const { token, cleanUrl } = extractAndClearTokenFromUrl();
       if (token) {
         localStorage.setItem(localStorageJwtKey, token);
+        localStorage.removeItem(localStorageVariablesKey);
         window.history.replaceState({}, "", cleanUrl);
       }
     }
