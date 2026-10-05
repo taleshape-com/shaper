@@ -76,3 +76,12 @@ describe("formatValue with timestamp", () => {
     expect(formatted).toContain("08:30:45");
   });
 });
+
+describe("formatValue with struct, map, object", () => {
+  it("should stringify struct object value", () => {
+    const val = { name: "Alice", age: 30 };
+    expect(formatValue(val, "struct")).toBe(JSON.stringify(val));
+    expect(formatValue(val, "map")).toBe(JSON.stringify(val));
+    expect(formatValue(val, "object")).toBe(JSON.stringify(val));
+  });
+});

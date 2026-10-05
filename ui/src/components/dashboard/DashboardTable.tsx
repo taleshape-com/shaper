@@ -18,8 +18,75 @@ import TextWithLinks from "../TextWithLinks";
 
 type TableProps = {
   headers: Column[];
-  data: (string | number | boolean)[][];
+  data: (string | number | boolean | Record<string, any>)[][];
 };
+
+export function PivotedTable ({ entries }: { entries: [string, any][] }) {
+  const isSmall = useMemo(() => {
+    return entries.some(([key, item]) => {
+      const fieldType: Column["type"] =
+        typeof item === "number"
+          ? "number"
+          : typeof item === "boolean"
+            ? "boolean"
+            : typeof item === "object" && item !== null
+              ? "object"
+              : "string";
+      return isCellLong(item, {
+        name: key,
+        type: fieldType,
+        nullable: true,
+        tag: "",
+      });
+    });
+  }, [entries]);
+
+  return (
+    <TableRoot className="h-full overflow-auto">
+      <Table className={cx(isSmall && "text-xs")}>
+        <TableBody>
+          {entries.map(([key, item]) => {
+            const fieldType: Column["type"] =
+              typeof item === "number"
+                ? "number"
+                : typeof item === "boolean"
+                  ? "boolean"
+                  : typeof item === "object" && item !== null
+                    ? "object"
+                    : "string";
+            const header: Column = {
+              name: key,
+              type: fieldType,
+              nullable: true,
+              tag: "",
+            };
+            return (
+              <TableRow key={key}>
+                <TableHeaderCell
+                  scope="row"
+                  className={cx(
+                    "text-ctext dark:text-dtext py-2.5 font-medium font-display whitespace-nowrap w-px pr-6 font-semibold",
+                    { "text-xs": isSmall },
+                  )}
+                >
+                  {key}
+                </TableHeaderCell>
+                <TableCell
+                  className={cx(
+                    "text-ctext dark:text-dtext py-2.5 whitespace-normal",
+                    { "text-xs": isSmall },
+                  )}
+                >
+                  {renderCellContent(header, item, true, isSmall)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableRoot>
+  );
+}
 
 function DashboardTable ({ headers, data }: TableProps) {
   const isSmall = useMemo(() => {
@@ -27,42 +94,6 @@ function DashboardTable ({ headers, data }: TableProps) {
       row?.some((item, index) => isCellLong(item, headers[index])),
     );
   }, [data, headers]);
-
-  if (data.length === 1) {
-    const row = data[0];
-    return (
-      <TableRoot className="h-full overflow-auto">
-        <Table className={cx(isSmall && "text-xs")}>
-          <TableBody>
-            {headers.map((header, index) => {
-              const item = row?.[index];
-              return (
-                <TableRow key={header.name}>
-                  <TableHeaderCell
-                    scope="row"
-                    className={cx(
-                      "text-ctext dark:text-dtext py-2.5 font-medium font-display whitespace-nowrap w-px pr-6 font-semibold",
-                      { "text-xs": isSmall },
-                    )}
-                  >
-                    {header.name}
-                  </TableHeaderCell>
-                  <TableCell
-                    className={cx(
-                      "text-ctext dark:text-dtext py-2.5 whitespace-normal",
-                      { "text-xs": isSmall },
-                    )}
-                  >
-                    {renderCellContent(header, item, true, isSmall)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableRoot>
-    );
-  }
 
   return (
     <TableRoot className="h-full overflow-auto">
@@ -108,7 +139,7 @@ function DashboardTable ({ headers, data }: TableProps) {
 }
 
 const isCellLong = (
-  item: string | number | boolean | null | undefined,
+  item: string | number | boolean | null | undefined | Record<string, any>,
   header?: Column,
 ) => {
   if (!header) return false;
@@ -121,7 +152,7 @@ const isCellLong = (
 
 const renderCellContent = (
   header: Column,
-  item: string | number | boolean,
+  item: string | number | boolean | null | undefined | Record<string, any>,
   isPivoted?: boolean,
   isSmall?: boolean,
 ) => {

@@ -9,9 +9,11 @@ import { isDatableType } from "../../lib/types";
 import { cx, getNameIfSet } from "../../lib/utils";
 import TextWithLinks from "../TextWithLinks";
 
+import { PivotedTable } from "./DashboardTable";
+
 type ValueProps = {
   headers: Column[];
-  data: (string | number | boolean)[][];
+  data: (string | number | boolean | Record<string, any>)[][];
 };
 
 const calcFontSize = (width: number, text: string, max: number) => {
@@ -28,8 +30,8 @@ const calcFontSize = (width: number, text: string, max: number) => {
 };
 
 const getComparePercent = (
-  value: number | string | boolean | undefined,
-  compareValue: number | string | boolean | undefined,
+  value: number | string | boolean | undefined | Record<string, any>,
+  compareValue: number | string | boolean | undefined | Record<string, any>,
 ) => {
   if (typeof value !== "number" || typeof compareValue !== "number" || compareValue === value || compareValue === 0) {
     return undefined;
@@ -47,7 +49,7 @@ const getComparePercent = (
   return Math.round(percent);
 };
 
-function DashboardValue ({ headers, data }: ValueProps) {
+function DashboardStandardValue ({ headers, data }: ValueProps) {
   const valueIndex = headers.findIndex(header => header.tag === "value" || header.tag === "small" || header.tag === "medium" || header.tag === "large");
   const valueHeader = headers[valueIndex];
   const value = data[0][valueIndex];
@@ -141,6 +143,31 @@ function DashboardValue ({ headers, data }: ValueProps) {
       }
     </div>
   );
+}
+
+function DashboardValue ({ headers, data }: ValueProps) {
+  if (headers.length === 1 && data.length === 1) {
+    const headerType = headers[0].type;
+    if (headerType === "struct" || headerType === "map" || headerType === "object") {
+      let value = data[0]?.[0];
+      if (typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            value = parsed;
+          }
+        } catch {
+          // Keep as string
+        }
+      }
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        const entries = Object.entries(value);
+        return <PivotedTable entries={entries} />;
+      }
+    }
+  }
+
+  return <DashboardStandardValue headers={headers} data={data} />;
 }
 
 export default DashboardValue;
