@@ -1,0 +1,5 @@
+# https://google.github.io/osv-scanner/configuration/
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+reason = "Stack-exhaustion DoS through deeply nested patterns in braces is not a concern for our application, and no non-breaking fix is currently available."
