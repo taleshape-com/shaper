@@ -361,7 +361,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 						row[i] = d.Float64()
 					}
 				}
-				if colType == "object" {
+				if colType == "object" || colType == "struct" || colType == "map" {
 					row[i] = duckMapToMap(cell)
 				}
 			}
@@ -677,6 +677,18 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 	case "TIME":
 		return "time", nil
 	case "JSON":
+		cell := getFirstNonEmptyCell(rows, index)
+		if cell != nil {
+			if _, ok := cell.([]any); ok {
+				return "array", nil
+			}
+			if s, ok := cell.(string); ok {
+				trimmed := strings.TrimSpace(s)
+				if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+					return "array", nil
+				}
+			}
+		}
 		return "object", nil
 	case "UUID":
 		return "string", nil
@@ -704,13 +716,15 @@ func mapDBType(dbType string, index int, rows Rows) (string, error) {
 		return "string", nil
 	case "VARCHAR[]":
 		return "stringArray", nil
-	case "MAP(VARCHAR, VARCHAR)":
-		return "object", nil
 	}
 	if matchDecimal.MatchString(t) {
 		return "number", nil
 	}
-	if strings.HasPrefix(t, "STRUCT(\"") {
+	trimmedUpper := strings.ToUpper(strings.TrimSpace(t))
+	if strings.HasPrefix(trimmedUpper, "STRUCT(") {
+		return "struct", nil
+	}
+	if strings.HasPrefix(trimmedUpper, "MAP(") {
 		return "object", nil
 	}
 	return "", fmt.Errorf("unsupported type: %s", t)
@@ -2443,6 +2457,19 @@ func duckMapToMap(value any) any {
 		return v.Float64()
 	case duckdb.Interval:
 		return formatInterval(v)
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
+			var m map[string]any
+			if err := json.Unmarshal([]byte(trimmed), &m); err == nil {
+				return duckMapToMap(m)
+			}
+		} else if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			var arr []any
+			if err := json.Unmarshal([]byte(trimmed), &arr); err == nil {
+				return duckMapToMap(arr)
+			}
+		}
 	}
 
 	return value

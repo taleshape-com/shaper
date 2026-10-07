@@ -24,11 +24,11 @@ export function formatFractionPart (str: string): string {
   return parts.join("\u2009");
 }
 
-export const formatValue = (value: string | number | boolean | null | undefined, columnType: Column["type"], shouldFormatNumbers?: boolean, shortFormat?: boolean | number) => {
+export const formatValue = (value: string | number | boolean | null | undefined | Record<string, any>, columnType: Column["type"], shouldFormatNumbers?: boolean, shortFormat?: boolean | number): string | number => {
   if (value === null || value === undefined) {
     return "";
   }
-  if (columnType === "array" || columnType === "object") {
+  if (columnType === "array" || columnType === "object" || columnType === "struct" || columnType === "map" || typeof value === "object") {
     return JSON.stringify(value);
   }
   if (typeof value === "boolean") {
@@ -135,18 +135,21 @@ export const formatValue = (value: string | number | boolean | null | undefined,
   return value;
 };
 
-export const formatCellValue = (value: string | number | boolean | null | undefined) => {
+export const formatCellValue = (value: string | number | boolean | null | undefined | Record<string, any>): string | number => {
   if (value === null || value === undefined) {
     return "";
   }
   if (typeof value === "boolean") {
     return value ? 0 : 1;
   }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
   return value;
 };
 
 export const isJSONType = (columnType: Column["type"]) => {
-  return columnType === "array" || columnType === "object";
+  return columnType === "array" || columnType === "object" || columnType === "struct" || columnType === "map";
 };
 
 export const echartsEncode = (v: string | number) => {

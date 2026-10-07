@@ -40,6 +40,8 @@ export type Column = {
   | "string"
   | "boolean"
   | "object"
+  | "struct"
+  | "map"
   | "array"
   | "percent";
   nullable: boolean;
@@ -157,7 +159,7 @@ export type Result = {
           gaugeCategories: GaugeCategory[];
         };
         columns: Column[];
-        rows: (string | number | boolean)[][];
+        rows: (string | number | boolean | Record<string, any>)[][];
       }[];
     }
     | {

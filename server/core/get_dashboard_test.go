@@ -439,6 +439,64 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
 	})
 
+	t.Run("Struct column type", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT {'name': 'Alice', 'age': 30, 'created': '2026-01-01'::DATE, 'active': true} AS user_info;`,
+			ID:      "test-struct",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "struct", q.Columns[0].Type)
+		assert.Equal(t, "value", q.Render.Type)
+		t.Logf("Query columns: %+v", q.Columns)
+		t.Logf("Query rows: %+v", q.Rows)
+	})
+
+	t.Run("Map column type", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT map(['k1', 'k2'], [10, 20]) AS my_map;`,
+			ID:      "test-map",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "object", q.Columns[0].Type)
+		assert.Equal(t, "value", q.Render.Type)
+		assert.Equal(t, map[string]any{"k1": int32(10), "k2": int32(20)}, q.Rows[0][0])
+	})
+
+	t.Run("JSON object column type", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT '{"name": "Bob", "count": 5}'::JSON AS my_json;`,
+			ID:      "test-json",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "object", q.Columns[0].Type)
+		assert.Equal(t, "value", q.Render.Type)
+		assert.Equal(t, "Bob", q.Rows[0][0].(map[string]any)["name"])
+	})
+
+	t.Run("JSON array column type", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT '[1, 2, 3]'::JSON AS my_json_arr;`,
+			ID:      "test-json-arr",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "array", q.Columns[0].Type)
+		assert.Equal(t, "value", q.Render.Type)
+		assert.Equal(t, []any{float64(1), float64(2), float64(3)}, q.Rows[0][0])
+	})
+
+
 	t.Run("Footer link without custom text", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: `SELECT 'https://example.com'::FOOTER_LINK`,

@@ -52,7 +52,7 @@ const DashboardBoxplot = ({
       if (typeof cell === "object") {
         if (i === valueAxisIndex) {
           boxplotData.push([cell.min, cell.q1, cell.q2, cell.q3, cell.max]);
-          cell.outliers.forEach(outlier => {
+          cell.outliers.forEach((outlier: any) => {
             outliers.push([rowI, outlier.value, outlier.info]);
           });
         }
