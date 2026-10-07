@@ -84,15 +84,33 @@ jobs:
       - name: Run go test
         run: go test ./...
 
+  base-image:
+    name: Read base image from Dockerfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.read.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read first FROM line
+        id: read
+        run: |
+          IMAGE=$(awk '/^FROM /{print $2; exit}' Dockerfile)
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
   build-linux:
     name: Build Linux Binaries
-    needs: [go-verify, frontend-build]
+    needs: [go-verify, frontend-build, base-image]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
-    # Keep in sync with Dockerfile
-    container: debian:13.6-slim@sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258
+    container: ${{ needs.base-image.outputs.image }} # zizmor: ignore[unpinned-images]
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -203,9 +221,45 @@ jobs:
             bin/checksums-darwin.txt
           retention-days: 1
 
+  docker-scan:
+    name: Trivy Vulnerability Scan
+    needs: [build-linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Linux binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: linux-binaries
+          path: bin/
+
+      - name: Make binaries executable
+        run: chmod +x bin/shaper-*
+
+      - name: Build Docker image
+        run: |
+          docker build --build-arg TARGETARCH=amd64 -t shaper:scan .
+
+      - name: Run Trivy vulnerability scanner (blocking gate)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: "shaper:scan"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+
   release:
     name: Create Release
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, docker-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/')
@@ -277,12 +331,13 @@ jobs:
     name: Docker
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [build-linux]
+    needs: [build-linux, docker-scan]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       id-token: write
       attestations: write
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -347,6 +402,26 @@ jobs:
             VERSION=${{ steps.version.outputs.VERSION }}
             BUILD_DATE=${{ github.event.release.published_at || github.event.head_commit.timestamp }}
 
+      - name: Generate Trivy SARIF report for release (unfixed CRITICAL vulnerabilities - not including HIGH)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TRIVY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          image-ref: "taleshape/shaper@${{ steps.build-push.outputs.digest }}"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: "os,library"
+          severity: "CRITICAL"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: "trivy-results.sarif"
+          category: "trivy-docker"
+
       - name: Sign Docker images with Cosign
         env:
           IMAGE_DIGEST: ${{ steps.build-push.outputs.digest }}
@@ -362,7 +437,7 @@ jobs:
 
   npm-publish:
     name: Publish to npm
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, docker-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -464,7 +539,7 @@ jobs:
 
   pypi-publish:
     name: Publish to PyPI
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, docker-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
