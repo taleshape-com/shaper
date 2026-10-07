@@ -84,15 +84,33 @@ jobs:
       - name: Run go test
         run: go test ./...
 
+  base-image:
+    name: Read base image from Dockerfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.read.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read first FROM line
+        id: read
+        run: |
+          IMAGE=$(awk '/^FROM /{print $2; exit}' Dockerfile)
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
   build-linux:
     name: Build Linux Binaries
-    needs: [go-verify, frontend-build]
+    needs: [go-verify, frontend-build, base-image]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
-    # Keep in sync with Dockerfile
-    container: debian:13.6-slim@sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258
+    container: ${{ needs.base-image.outputs.image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
