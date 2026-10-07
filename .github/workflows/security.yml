@@ -12,6 +12,7 @@ on:
   schedule:
     # Run weekly security scan on main (every Sunday at 03:00 UTC)
     - cron: "0 3 * * 0"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -171,3 +172,29 @@ jobs:
       - name: Run OSV-Scanner
         run: |
           osv-scanner -r .
+
+  trivy-docker:
+    name: Docker Image Security (Trivy)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Run Trivy on published release image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: "taleshape/shaper:latest"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: "os,library"
+          severity: "CRITICAL"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: "trivy-results.sarif"
+          category: "trivy-docker"
