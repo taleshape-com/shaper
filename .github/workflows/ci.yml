@@ -317,7 +317,7 @@ jobs:
         run: |
           docker build --build-arg TARGETARCH=amd64 -t shaper:scan .
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (blocking gate)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: "shaper:scan"
@@ -337,6 +337,7 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -400,6 +401,26 @@ jobs:
           build-args: |
             VERSION=${{ steps.version.outputs.VERSION }}
             BUILD_DATE=${{ github.event.release.published_at || github.event.head_commit.timestamp }}
+
+      - name: Generate Trivy SARIF report for release (unfixed vulnerabilities)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TRIVY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          image-ref: "taleshape/shaper@${{ steps.build-push.outputs.digest }}"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: "trivy-results.sarif"
+          category: "trivy-docker"
 
       - name: Sign Docker images with Cosign
         env:
