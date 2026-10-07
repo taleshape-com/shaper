@@ -221,9 +221,45 @@ jobs:
             bin/checksums-darwin.txt
           retention-days: 1
 
+  docker-scan:
+    name: Trivy Vulnerability Scan
+    needs: [build-linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Linux binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: linux-binaries
+          path: bin/
+
+      - name: Make binaries executable
+        run: chmod +x bin/shaper-*
+
+      - name: Build Docker image
+        run: |
+          docker build --build-arg TARGETARCH=amd64 -t shaper:scan .
+
+      - name: Run Trivy vulnerability scanner (blocking gate)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: "shaper:scan"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+
   release:
     name: Create Release
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, docker-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/')
@@ -290,42 +326,6 @@ jobs:
             bin/SHA256SUMS \
             bin/SHA256SUMS.cosign.bundle \
             --generate-notes
-
-  docker-scan:
-    name: Trivy Vulnerability Scan
-    needs: [build-linux]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Download Linux binaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: linux-binaries
-          path: bin/
-
-      - name: Make binaries executable
-        run: chmod +x bin/shaper-*
-
-      - name: Build Docker image
-        run: |
-          docker build --build-arg TARGETARCH=amd64 -t shaper:scan .
-
-      - name: Run Trivy vulnerability scanner (blocking gate)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: "shaper:scan"
-          format: "table"
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          severity: "CRITICAL,HIGH"
 
   docker:
     name: Docker
@@ -437,7 +437,7 @@ jobs:
 
   npm-publish:
     name: Publish to npm
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, docker-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -539,7 +539,7 @@ jobs:
 
   pypi-publish:
     name: Publish to PyPI
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, docker-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
