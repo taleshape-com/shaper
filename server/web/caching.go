@@ -13,10 +13,12 @@ import (
 
 // CacheConfig holds cache configuration
 type CacheConfig struct {
-	MaxAge     time.Duration
-	Public     bool
-	Immutable  bool
-	MustRevali bool
+	MaxAge         time.Duration
+	Public         bool
+	Immutable      bool
+	MustRevali     bool
+	MustRevalidate bool
+	NoCache        bool
 }
 
 // CacheControl middleware adds cache headers based on configuration
@@ -25,17 +27,26 @@ func CacheControl(config CacheConfig) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			// Set Cache-Control
 			var cacheControl strings.Builder
-			if config.Public {
-				cacheControl.WriteString("public, ")
+			mustRevalidate := config.MustRevali || config.MustRevalidate
+
+			if config.NoCache {
+				cacheControl.WriteString("no-cache")
+				if mustRevalidate {
+					cacheControl.WriteString(", must-revalidate")
+				}
 			} else {
-				cacheControl.WriteString("private, ")
-			}
-			cacheControl.WriteString(fmt.Sprintf("max-age=%d", int(config.MaxAge.Seconds())))
-			if config.Immutable {
-				cacheControl.WriteString(", immutable")
-			}
-			if config.MustRevali {
-				cacheControl.WriteString(", must-revalidate")
+				if config.Public {
+					cacheControl.WriteString("public, ")
+				} else {
+					cacheControl.WriteString("private, ")
+				}
+				cacheControl.WriteString(fmt.Sprintf("max-age=%d", int(config.MaxAge.Seconds())))
+				if config.Immutable {
+					cacheControl.WriteString(", immutable")
+				}
+				if mustRevalidate {
+					cacheControl.WriteString(", must-revalidate")
+				}
 			}
 
 			// Set cache headers

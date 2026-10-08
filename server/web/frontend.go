@@ -4,7 +4,9 @@ package web
 
 import (
 	"bytes"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,7 +14,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"shaper/server/web/webutil"
 	"strings"
 	"time"
 
@@ -58,12 +59,42 @@ func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.Hand
 	}
 }
 
-func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.HandlerFunc {
+func serveCustomCSS(customCSS string, modTime time.Time) echo.HandlerFunc {
+	cssBytes := []byte(customCSS)
+	etag := generateContentETag(cssBytes)
+	lastModified := modTime.UTC().Format(http.TimeFormat)
+
+	return func(c echo.Context) error {
+		c.Response().Header().Set("ETag", `"`+etag+`"`)
+		c.Response().Header().Set("Last-Modified", lastModified)
+
+		if match := c.Request().Header.Get("If-None-Match"); match != "" {
+			if strings.Contains(match, etag) {
+				return c.NoContent(http.StatusNotModified)
+			}
+		}
+
+		if ifModifiedSince := c.Request().Header.Get("If-Modified-Since"); ifModifiedSince != "" {
+			if m, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+				if modTime.Unix() <= m.Unix() {
+					return c.NoContent(http.StatusNotModified)
+				}
+			}
+		}
+
+		http.ServeContent(c.Response(), c.Request(), "custom.css", modTime, bytes.NewReader(cssBytes))
+		return nil
+	}
+}
+
+func serveEmbedJS(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		fmt.Printf("Error creating embed JS filesystem: %v\n", err)
 		os.Exit(1)
 	}
+	lastModified := modTime.UTC().Format(http.TimeFormat)
+
 	return func(c echo.Context) error {
 		filename := path.Base(c.Request().URL.Path)
 		if filename != "shaper.js" && filename != "shaper.js.map" {
@@ -76,34 +107,81 @@ func serveEmbedJS(frontendFS fs.FS, modTime time.Time, customCSS string) echo.Ha
 		}
 		defer file.Close()
 
-		if filename == "shaper.js" {
-			content, err := io.ReadAll(file)
-			if err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, "Error reading file")
-			}
-
-			defaultBaseUrl := strings.TrimSuffix(webutil.GetRequestURL(c.Request()).String(), "/embed/shaper.js")
-			// Inject default base URL and custom CSS
-			content = fmt.Appendf(content, "\nshaper.defaultBaseUrl = %q;\nshaper.customCSS = %q;\n", defaultBaseUrl, customCSS)
-
-			http.ServeContent(c.Response(), c.Request(), filename, modTime, bytes.NewReader(content))
-		} else {
-			http.ServeContent(c.Response(), c.Request(), filename, modTime, file.(io.ReadSeeker))
+		stat, err := file.Stat()
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Error reading file stat")
 		}
 
+		etag := generateETag(modTime, stat.Size())
+		c.Response().Header().Set("ETag", `"`+etag+`"`)
+		c.Response().Header().Set("Last-Modified", lastModified)
+
+		if match := c.Request().Header.Get("If-None-Match"); match != "" {
+			if strings.Contains(match, etag) {
+				return c.NoContent(http.StatusNotModified)
+			}
+		}
+
+		if ifModifiedSince := c.Request().Header.Get("If-Modified-Since"); ifModifiedSince != "" {
+			if m, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+				if modTime.Unix() <= m.Unix() {
+					return c.NoContent(http.StatusNotModified)
+				}
+			}
+		}
+
+		http.ServeContent(c.Response(), c.Request(), filename, modTime, file.(io.ReadSeeker))
 		return nil
 	}
 }
 
 func serveViewHTML(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
+	etag := generateETag(modTime, int64(len(viewHTML)))
+	lastModified := modTime.UTC().Format(http.TimeFormat)
 	return func(c echo.Context) error {
+		c.Response().Header().Set("ETag", `"`+etag+`"`)
+		c.Response().Header().Set("Last-Modified", lastModified)
+
+		if match := c.Request().Header.Get("If-None-Match"); match != "" {
+			if strings.Contains(match, etag) {
+				return c.NoContent(http.StatusNotModified)
+			}
+		}
+
+		if ifModifiedSince := c.Request().Header.Get("If-Modified-Since"); ifModifiedSince != "" {
+			if m, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+				if modTime.Unix() <= m.Unix() {
+					return c.NoContent(http.StatusNotModified)
+				}
+			}
+		}
+
 		http.ServeContent(c.Response(), c.Request(), "view.html", modTime, bytes.NewReader(viewHTML))
 		return nil
 	}
 }
 
 func servePdfViewHTML(frontendFS fs.FS, modTime time.Time) echo.HandlerFunc {
+	etag := generateETag(modTime, int64(len(pdfViewHTML)))
+	lastModified := modTime.UTC().Format(http.TimeFormat)
 	return func(c echo.Context) error {
+		c.Response().Header().Set("ETag", `"`+etag+`"`)
+		c.Response().Header().Set("Last-Modified", lastModified)
+
+		if match := c.Request().Header.Get("If-None-Match"); match != "" {
+			if strings.Contains(match, etag) {
+				return c.NoContent(http.StatusNotModified)
+			}
+		}
+
+		if ifModifiedSince := c.Request().Header.Get("If-Modified-Since"); ifModifiedSince != "" {
+			if m, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+				if modTime.Unix() <= m.Unix() {
+					return c.NoContent(http.StatusNotModified)
+				}
+			}
+		}
+
 		http.ServeContent(c.Response(), c.Request(), "pdfview.html", modTime, bytes.NewReader(pdfViewHTML))
 		return nil
 	}
@@ -157,8 +235,20 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, b
 		html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\"/favicon.ico\"")
 	}
 	html = strings.Replace(html, "<script>window.shaper = { defaultBaseUrl: '/' }</script>", fmt.Sprintf("<script>window.shaper = { defaultBaseUrl: %q };</script>", basePath), 1)
-	// Inject custom CSS
-	html = strings.Replace(html, "<style></style>", "<style>"+customCSS+"</style>", 1)
+	// Ensure custom CSS stylesheet link is present and configured for basePath
+	html = strings.ReplaceAll(html, "\"/embed/custom.css\"", "\""+basePath+"embed/custom.css\"")
+	html = strings.ReplaceAll(html, "\"./embed/custom.css\"", "\""+basePath+"embed/custom.css\"")
+	if !strings.Contains(html, "custom.css") {
+		linkTag := fmt.Sprintf("<link id=\"shaper-custom-css\" rel=\"stylesheet\" href=\"%sembed/custom.css\" />", basePath)
+		if strings.Contains(html, "<style></style>") {
+			html = strings.Replace(html, "<style></style>", linkTag, 1)
+		} else if strings.Contains(html, "</head>") {
+			html = strings.Replace(html, "</head>", linkTag+"\n</head>", 1)
+		}
+	}
+	if strings.Contains(html, "<style></style>") {
+		html = strings.Replace(html, "<style></style>", "", 1)
+	}
 
 	return func(c echo.Context) error {
 		// Add cache headers for index.html
@@ -191,4 +281,10 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, b
 // generateETag creates a simple ETag based on modification time and size
 func generateETag(modTime time.Time, size int64) string {
 	return fmt.Sprintf("%x", modTime.UnixNano())
+}
+
+// generateContentETag creates an ETag based on SHA-256 hash of content
+func generateContentETag(content []byte) string {
+	h := sha256.Sum256(content)
+	return hex.EncodeToString(h[:8])
 }
