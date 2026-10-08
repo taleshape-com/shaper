@@ -239,7 +239,7 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, b
 	html = strings.ReplaceAll(html, "\"/embed/custom.css\"", "\""+basePath+"embed/custom.css\"")
 	html = strings.ReplaceAll(html, "\"./embed/custom.css\"", "\""+basePath+"embed/custom.css\"")
 	if !strings.Contains(html, "custom.css") {
-		linkTag := fmt.Sprintf("<link rel=\"stylesheet\" href=\"%sembed/custom.css\" />", basePath)
+		linkTag := fmt.Sprintf("<link id=\"shaper-custom-css\" rel=\"stylesheet\" href=\"%sembed/custom.css\" />", basePath)
 		if strings.Contains(html, "<style></style>") {
 			html = strings.Replace(html, "<style></style>", linkTag, 1)
 		} else if strings.Contains(html, "</head>") {
