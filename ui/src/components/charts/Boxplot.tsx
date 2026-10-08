@@ -7,7 +7,7 @@ import type {
   ScatterSeriesOption,
   LineSeriesOption,
 } from "echarts/charts";
-import { getThemeColors, getChartFont, getDisplayFont } from "../../lib/chartUtils";
+import { getThemeColors, getChartFont, getDisplayFont, toSingleLine } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
@@ -93,6 +93,9 @@ const Boxplot = (props: BoxplotProps) => {
     const { primaryColor, borderColor, backgroundColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
+    const cleanXAxisLabel = toSingleLine(xAxisLabel);
+    const cleanYAxisLabel = toSingleLine(yAxisLabel);
+    const cleanXData = xData.map(toSingleLine);
 
     // Set up chart options
     const series: (BoxplotSeriesOption | ScatterSeriesOption | LineSeriesOption)[] = [
@@ -208,14 +211,14 @@ const Boxplot = (props: BoxplotProps) => {
     const isTimestampData = isDatableType(indexType);
     const isNumericData = indexType === "number" || indexType === "percent";
     const isContinuousData = isTimestampData || isNumericData;
-    const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
-    const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
-    const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
+    const xSpace = (chartWidth - 2 * chartPadding + (cleanYAxisLabel ? 50 : 30));
+    const shortenLabel = cleanXData ? (xSpace / cleanXData.length) * (0.10 + (0.00004 * xSpace)) : true;
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
-    const shouldRotateXLabel = !isContinuousData && !xAxisLabel && hasManyLabels;
+    const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
 
     return {
-      color: xData.map((_, i) => colorByIndex.get(i) || primaryColor),
+      color: cleanXData.map((_, i) => colorByIndex.get(i) || primaryColor),
       title: {
         text: label,
         textStyle: {
@@ -330,20 +333,20 @@ const Boxplot = (props: BoxplotProps) => {
         show: false,
       },
       grid: {
-        left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 16 + chartPadding + (yAxisLabel ? 20 : 0),
+        left: (cleanYAxisLabel ? 45 : 15) + chartPadding,
+        right: 16 + chartPadding + (cleanYAxisLabel ? 20 : 0),
         top: 10 + labelTopOffset + chartPadding,
-        bottom: (xAxisLabel ? 32 : 8) + chartPadding,
+        bottom: (cleanXAxisLabel ? 32 : 8) + chartPadding,
         containLabel: true,
       },
       xAxis: {
         type: "category",
-        data: xData,
+        data: cleanXData,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: string) => {
-            return indexFormatter(decodeIndexValue(value, indexType), shortenLabel);
+            return toSingleLine(indexFormatter(decodeIndexValue(value, indexType), shortenLabel));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -364,7 +367,7 @@ const Boxplot = (props: BoxplotProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(decodeIndexValue(params.value, indexType), xSpace / 5.8);
+              return toSingleLine(indexFormatter(decodeIndexValue(params.value, indexType), xSpace / 5.8));
             },
             fontFamily: chartFont,
             margin: 5,
@@ -379,7 +382,7 @@ const Boxplot = (props: BoxplotProps) => {
         splitLine: {
           show: false,
         },
-        name: xAxisLabel,
+        name: cleanXAxisLabel,
         nameLocation: "middle",
         nameGap: 36,
         nameTextStyle: {
@@ -388,7 +391,7 @@ const Boxplot = (props: BoxplotProps) => {
           fontWeight: 500,
           fontSize: 12,
         },
-        jitter: chartWidth / xData.length * 0.8,
+        jitter: chartWidth / cleanXData.length * 0.8,
       },
       yAxis: {
         type: "value" as const,
@@ -396,7 +399,7 @@ const Boxplot = (props: BoxplotProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return valueFormatter(value, true);
+            return toSingleLine(valueFormatter(value, true));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -411,7 +414,7 @@ const Boxplot = (props: BoxplotProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return valueFormatter(params.value > 1 ? Math.round(params.value) : params.value, true);
+              return toSingleLine(valueFormatter(params.value > 1 ? Math.round(params.value) : params.value, true));
             },
             fontFamily: chartFont,
             margin: 10,
@@ -440,7 +443,7 @@ const Boxplot = (props: BoxplotProps) => {
         x: 5 + chartPadding,
         cursor: "default",
         style: {
-          text: yAxisLabel,
+          text: cleanYAxisLabel,
           font: `500 12px ${chartFont}`,
           fill: textColor,
           width: chartHeight,

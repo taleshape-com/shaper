@@ -8,6 +8,7 @@ import {
   getThemeColors,
   getChartFont,
   getDisplayFont,
+  toSingleLine,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -93,7 +94,10 @@ const BarChart = (props: BarChartProps) => {
     const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
-    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
+    const cleanXAxisLabel = toSingleLine(xAxisLabel);
+    const cleanYAxisLabel = toSingleLine(yAxisLabel);
+    const cleanCategories = categories.map(toSingleLine);
+    const categoryColors = constructCategoryColors(cleanCategories, colorsByCategory, isDarkMode);
     const isTimestampData = isDatableType(indexType);
     const isNumericData = indexType === "number" || indexType === "percent";
     const isContinuousData = isTimestampData || isNumericData;
@@ -111,36 +115,41 @@ const BarChart = (props: BarChartProps) => {
     }
 
     // Set up chart options
-    const series: BarSeriesOption[] = categories.map((category) => ({
-      name: category,
-      id: category,
-      type: "bar" as const,
-      barGap: "3%",
-      barMaxWidth: dataCopy.length === 1 ? layout == "horizontal" ? "50%" : "25%" : undefined,
-      stack: type === "stacked" ? "stack" : category,
-      cursor: "crosshair",
-      data: isContinuousData && layout === "horizontal"
-        ? dataCopy.map((item) => {
-          const sc = safeColor(item._color);
-          return sc && item[category] != null
-            ? { value: [item[index], item[category]], itemStyle: { color: sc } }
-            : [item[index], item[category]];
-        })
-        : dataCopy.map((item) => {
-          const sc = safeColor(item._color);
-          return sc && item[category] != null
-            ? { value: item[category], itemStyle: { color: sc } }
-            : item[category];
-        }),
-      itemStyle: {
-        color: categoryColors.get(category),
-      },
-      emphasis: {
-        focus: "series",
-      },
-      animationDelay: 100,
-      animationDelayUpdate: 100,
-    }));
+    const series: BarSeriesOption[] = cleanCategories.map((category, catIndex) => {
+      const origCategory = categories[catIndex] ?? category;
+      return {
+        name: category,
+        id: category,
+        type: "bar" as const,
+        barGap: "3%",
+        barMaxWidth: dataCopy.length === 1 ? layout == "horizontal" ? "50%" : "25%" : undefined,
+        stack: type === "stacked" ? "stack" : category,
+        cursor: "crosshair",
+        data: isContinuousData && layout === "horizontal"
+          ? dataCopy.map((item) => {
+            const sc = safeColor(item._color);
+            const val = item[category] ?? item[origCategory];
+            return sc && val != null
+              ? { value: [item[index], val], itemStyle: { color: sc } }
+              : [item[index], val];
+          })
+          : dataCopy.map((item) => {
+            const sc = safeColor(item._color);
+            const val = item[category] ?? item[origCategory];
+            return sc && val != null
+              ? { value: val, itemStyle: { color: sc } }
+              : val;
+          }),
+        itemStyle: {
+          color: categoryColors.get(category),
+        },
+        emphasis: {
+          focus: "series",
+        },
+        animationDelay: 100,
+        animationDelayUpdate: 100,
+      };
+    });
 
     if (markLines) {
       let foundEventLine = false;
@@ -195,8 +204,8 @@ const BarChart = (props: BarChartProps) => {
       });
     }
 
-    const numLegendItems = categories.filter(c => c.length > 0).length;
-    const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const numLegendItems = cleanCategories.filter(c => c.length > 0).length;
+    const avgLegendCharCount = cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
     const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
@@ -217,7 +226,7 @@ const BarChart = (props: BarChartProps) => {
         labelTopOffset = 25 + subtitleLines * 16;
       }
     }
-    const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
+    const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
     const xData = layout === "horizontal" && !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
     const rawCustomValues = layout === "horizontal" && isContinuousData
       ? Array.from(new Set(dataCopy.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
@@ -227,7 +236,7 @@ const BarChart = (props: BarChartProps) => {
       })
       : undefined;
     const xValues = layout === "horizontal" ? (isContinuousData ? rawCustomValues : xData) : undefined;
-    const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+    const xSpace = (chartWidth - 2 * chartPadding + (cleanYAxisLabel ? 50 : 30));
     const shortenLabel = layout === "horizontal" ? xValues && xValues.length > 0 ? (xSpace / xValues.length) * (0.10 + (0.00004 * xSpace)) : true : false;
     let maxLabelLen = 0;
     (xValues ?? []).forEach(x => {
@@ -237,7 +246,7 @@ const BarChart = (props: BarChartProps) => {
       }
     });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
-    const shouldRotateXLabel = !isContinuousData && !xAxisLabel && hasManyLabels;
+    const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
     const customValues = hasManyLabels ? undefined : rawCustomValues;
 
     return {
@@ -319,9 +328,9 @@ const BarChart = (props: BarChartProps) => {
             if (!extraData) return null;
             const firstVal = Object.values(extraData)[0];
             if (firstVal && typeof firstVal === "object" && !Array.isArray(firstVal)) {
-              return extraData[categoryName];
+              return extraData[categoryName] ?? extraData[categories[cleanCategories.indexOf(categoryName)]];
             }
-            if (categoryName === "" || categories.length <= 1) {
+            if (categoryName === "" || cleanCategories.length <= 1) {
               return extraData;
             }
             return null;
@@ -425,7 +434,7 @@ const BarChart = (props: BarChartProps) => {
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(param.color)}"></span>
-                ${categories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
+                ${cleanCategories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
@@ -490,10 +499,10 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       grid: {
-        left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 16 + chartPadding + (yAxisLabel ? 20 : 0),
+        left: (cleanYAxisLabel ? 45 : 15) + chartPadding,
+        right: 16 + chartPadding + (cleanYAxisLabel ? 20 : 0),
         top: 10 + legendTopOffset + labelTopOffset + chartPadding,
-        bottom: (xAxisLabel ? 32 : 8) + chartPadding,
+        bottom: (cleanXAxisLabel ? 32 : 8) + chartPadding,
         outerBoundsMode: "same",
         outerBoundsContain: "axisLabel",
       },
@@ -509,9 +518,9 @@ const BarChart = (props: BarChartProps) => {
           showMaxLabel: true,
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
+              return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
             }
-            return valueFormatter(value, true);
+            return toSingleLine(valueFormatter(value, true));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -536,9 +545,9 @@ const BarChart = (props: BarChartProps) => {
             show: data.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
-                return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
+                return toSingleLine(indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8));
               }
-              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value, true);
+              return toSingleLine(valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value, true));
             },
             fontFamily: chartFont,
             margin: 5,
@@ -559,7 +568,7 @@ const BarChart = (props: BarChartProps) => {
             color: borderColor,
           },
         } : undefined,
-        name: xAxisLabel,
+        name: cleanXAxisLabel,
         nameLocation: "middle",
         nameGap: 36,
         nameTextStyle: {
@@ -577,9 +586,9 @@ const BarChart = (props: BarChartProps) => {
           show: true, // Always show labels
           formatter: (value: any) => {
             if (layout === "horizontal") {
-              return valueFormatter(value, true);
+              return toSingleLine(valueFormatter(value, true));
             }
-            return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, xSpace / 30);
+            return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, xSpace / 30));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -603,9 +612,9 @@ const BarChart = (props: BarChartProps) => {
             show: layout === "horizontal" || dataCopy.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
-                return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+                return toSingleLine(valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value));
               }
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
+              return toSingleLine(indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8));
             },
             fontFamily: chartFont,
             margin: 10,
@@ -637,7 +646,7 @@ const BarChart = (props: BarChartProps) => {
         x: 5 + chartPadding,
         cursor: "default",
         style: {
-          text: yAxisLabel,
+          text: cleanYAxisLabel,
           font: `500 12px ${chartFont}`,
           fill: textColor,
           width: chartHeight,

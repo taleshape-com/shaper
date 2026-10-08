@@ -4,7 +4,7 @@ import React, { useCallback, useRef } from "react";
 import { Column, GaugeCategory, Result } from "../../lib/types";
 import { EChart } from "../charts/EChart";
 import type { ECharts } from "echarts/core";
-import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor, getDisplayFont } from "../../lib/chartUtils";
+import { getThemeColors, getChartFont, AvailableEChartsColors, getEChartsColor, getDisplayFont, toSingleLine } from "../../lib/chartUtils";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
 import { formatValue } from "../../lib/render";
 
@@ -42,14 +42,17 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     const value = data[0][valueIndex];
 
     const gaugeCategoriesWithColor = gaugeCategories.map((cat, i) => {
-      if (cat.color) return cat;
-      let color = theme.borderColor;
-      if (i > 0) {
-        const colorKey = AvailableEChartsColors[i + 1 % AvailableEChartsColors.length];
-        color = getEChartsColor(colorKey, isDarkMode);
+      let color = cat.color;
+      if (!color) {
+        color = theme.borderColor;
+        if (i > 0) {
+          const colorKey = AvailableEChartsColors[i + 1 % AvailableEChartsColors.length];
+          color = getEChartsColor(colorKey, isDarkMode);
+        }
       }
       return {
         ...cat,
+        label: toSingleLine(cat.label),
         color,
       };
     });
@@ -77,7 +80,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
 
     // axisLabel formatter: only show value at boundaries
     function valueLabelFormatter (v: number) {
-      return isBoundary(v) ? formatValue(v, valueHeader.type, true).toString() : "";
+      return isBoundary(v) ? toSingleLine(formatValue(v, valueHeader.type, true).toString()) : "";
     }
 
     // Helper to calculate GCD

@@ -4,6 +4,7 @@ import { Column, isDatableType, MarkLine, Result } from "../../lib/types";
 import { Boxplot } from "../charts/Boxplot";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
+import { toSingleLine } from "../../lib/chartUtils";
 
 type BoxplotProps = {
   chartId: string;
@@ -40,7 +41,7 @@ const DashboardBoxplot = ({
   data.forEach((row, rowI) => {
     let key = isDatableType(indexAxisHeader.type)
       ? new Date(row[indexAxisIndex] as number).toUTCString()
-      : row[indexAxisIndex].toString();
+      : toSingleLine(row[indexAxisIndex].toString());
     if (key === null) {
       if (isDatableType(indexAxisHeader.type) || indexAxisHeader.type === "number") {
         return;
@@ -93,10 +94,10 @@ const DashboardBoxplot = ({
         return formatValue(n, "number", true, shortFormat).toString();
       }}
       indexFormatter={(n: number | string, shortFormat?: boolean | number) => {
-        return formatValue(n, indexType, true, shortFormat).toString();
+        return toSingleLine(formatValue(n, indexType, true, shortFormat).toString());
       }}
-      xAxisLabel={getNameIfSet(indexAxisHeader.name)}
-      yAxisLabel={getNameIfSet(valueAxisName)}
+      xAxisLabel={toSingleLine(getNameIfSet(indexAxisHeader.name))}
+      yAxisLabel={toSingleLine(getNameIfSet(valueAxisName))}
       markLines={markLines}
     />
   );
