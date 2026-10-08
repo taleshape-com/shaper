@@ -3,7 +3,7 @@ set -e
 
 # If the first argument looks like a flag (starts with -), prepend the binary
 # Also prepend the binary if it's a known subcommand
-if [ "${1#-}" != "$1" ] || [ "$1" = 'dev' ] || [ "$1" = 'pull' ] || [ "$1" = 'deploy' ]; then
+if [ "${1#-}" != "$1" ] || [ "$1" = 'dev' ] || [ "$1" = 'pull' ] || [ "$1" = 'deploy' ] || [ "$1" = 'healthcheck' ]; then
 	set -- /usr/local/bin/shaper "$@"
 fi
 
