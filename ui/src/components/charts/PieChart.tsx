@@ -8,6 +8,7 @@ import {
   getThemeColors,
   getChartFont,
   getDisplayFont,
+  toSingleLine,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
@@ -59,9 +60,16 @@ const PieChart = (props: PieChartProps) => {
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
 
-    const categories = data.map((d) => d.name);
+    const cleanData = data.map((d) => ({
+      ...d,
+      name: toSingleLine(d.name),
+    }));
+    const cleanValueColumnName = toSingleLine(valueColumnName);
+    const cleanOtherLabel = toSingleLine(otherLabel);
+
+    const categories = cleanData.map((d) => d.name);
     const colorsByCategory: Record<string, string> = {};
-    data.forEach((d) => {
+    cleanData.forEach((d) => {
       if (d.color) colorsByCategory[d.name] = d.color;
     });
     const categoryColors = constructCategoryColors(
@@ -86,13 +94,13 @@ const PieChart = (props: PieChartProps) => {
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
     const centerY = labelTopOffset + chartPadding + availableHeight * 0.50;
     const radius = Math.min(Math.min(chartWidth, availableHeight), 800) * 0.40;
-    const totalValue = data.reduce((acc, d) => acc + d.value, 0);
+    const totalValue = cleanData.reduce((acc, d) => acc + d.value, 0);
 
     const series: PieSeriesOption = {
       type: "pie",
       radius: isDonut ? [radius * 0.66, radius] : radius,
       center: ["50%", centerY],
-      data: data.map((d) => ({
+      data: cleanData.map((d) => ({
         name: d.name,
         value: d.value,
         itemStyle: {
@@ -100,11 +108,12 @@ const PieChart = (props: PieChartProps) => {
         },
       })),
       label: {
-        show: chartWidth > 350 && data.length <= 10,
+        show: chartWidth > 350 && cleanData.length <= 10,
         fontFamily: chartFont,
         color: theme.textColorSecondary,
         fontSize: 12,
         fontWeight: 400,
+        formatter: (params: any) => toSingleLine(params.name),
       },
       itemStyle: {
         borderRadius: 2,
@@ -149,7 +158,7 @@ const PieChart = (props: PieChartProps) => {
       const formattedTotal = valueFormatter(totalValue);
       if (formattedTotal.length < 10 && !(isPercent && totalValue === 1)) {
         titles.push({
-          text: `{val|${formattedTotal}}${data.length > 1 ? `\n{label|${translate("TOTAL")}}` : ""}`,
+          text: `{val|${formattedTotal}}${cleanData.length > 1 ? `\n{label|${translate("TOTAL")}}` : ""}`,
           left: "center",
           top: centerY * 0.96,
           textStyle: {
@@ -189,16 +198,17 @@ const PieChart = (props: PieChartProps) => {
         },
         formatter: (params: any) => {
           const percentage = params.percent.toFixed(1);
+          const cleanParamName = toSingleLine(params.name);
           let tooltipContent = `<div class="text-sm">
             <div class="flex items-center space-x-2">
               <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(params.color)}"></span>
-              <span class="font-medium">${echartsEncode(params.name)}</span>
+              <span class="font-medium">${echartsEncode(cleanParamName)}</span>
             </div>`;
 
           // Show value with its column name if available
           const formattedValue = echartsEncode(valueFormatter(params.value));
-          if (valueColumnName) {
-            const v = data.length < 2 ? "" : echartsEncode(valueColumnName);
+          if (cleanValueColumnName) {
+            const v = cleanData.length < 2 ? "" : echartsEncode(cleanValueColumnName);
             tooltipContent += `<div class="mt-1 flex justify-between space-x-2">
               <span class="font-medium">${v}</span>
               <span>${formattedValue} ${isPercent ? "" : `(${percentage}%)`}</span>
@@ -208,8 +218,8 @@ const PieChart = (props: PieChartProps) => {
           }
 
           // Handle "Other" category specially - show individual values
-          if (params.name === otherLabel) {
-            const otherData = extraDataByName[params.name];
+          if (cleanParamName === cleanOtherLabel || params.name === otherLabel) {
+            const otherData = extraDataByName[cleanParamName] ?? extraDataByName[params.name];
             if (otherData) {
               tooltipContent += "<div class=\"mt-2\">";
               tooltipContent += `<div class="font-medium mb-1">${echartsEncode(breakdownLabel)}:</div>`;
@@ -231,7 +241,7 @@ const PieChart = (props: PieChartProps) => {
             }
           } else {
             // Add extra data for non-"Other" categories
-            const extraData = extraDataByName[params.name];
+            const extraData = extraDataByName[cleanParamName] ?? extraDataByName[params.name] ?? extraDataByName[data.find(d => toSingleLine(d.name) === cleanParamName)?.name ?? ""];
             if (extraData) {
               tooltipContent += "<div class=\"mt-2\">";
               Object.entries(extraData).forEach(([key, valueData]) => {

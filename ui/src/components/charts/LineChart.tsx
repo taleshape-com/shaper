@@ -8,6 +8,7 @@ import {
   getThemeColors,
   getChartFont,
   getDisplayFont,
+  toSingleLine,
 } from "../../lib/chartUtils";
 import { cx, getNameIfSet } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -116,21 +117,28 @@ const LineChart = (props: LineChartProps) => {
     const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
-    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
+    const cleanXAxisLabel = toSingleLine(xAxisLabel);
+    const cleanYAxisLabel = toSingleLine(yAxisLabel);
+    const cleanCategories = categories.map(toSingleLine);
+    const categoryColors = constructCategoryColors(cleanCategories, colorsByCategory, isDarkMode);
 
     const isTimestampData = isDatableType(indexType);
     const isNumericData = indexType === "number" || indexType === "percent";
     const isContinuousData = isTimestampData || isNumericData;
     // show dots when there are not too many data points per category
-    const showDots = data.length / chartWidth / categories.length > 0.02;
+    const showDots = data.length / chartWidth / cleanCategories.length > 0.02;
 
-    const hasBand = (category: string) => {
-      return data.some(item => item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== "");
+    const hasBand = (category: string, origCategory: string) => {
+      return data.some(item => (
+        (item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== "") ||
+        (item[origCategory + "_band_lower"] !== undefined && item[origCategory + "_band_lower"] !== null && item[origCategory + "_band_lower"] !== "")
+      ));
     };
 
     // Set up chart options
     const series: LineSeriesOption[] = [];
-    categories.forEach((category) => {
+    cleanCategories.forEach((category, catIndex) => {
+      const origCategory = categories[catIndex] ?? category;
       const col = categoryColors.get(category) || "#333";
       series.push({
         name: category,
@@ -139,15 +147,17 @@ const LineChart = (props: LineChartProps) => {
         data: isContinuousData
           ? data.map((item) => {
             const sc = safeColor(item._color);
-            return sc && item[category] != null
-              ? { value: [item[index], item[category]], itemStyle: { color: sc } }
-              : [item[index], item[category]];
+            const val = item[category] ?? item[origCategory];
+            return sc && val != null
+              ? { value: [item[index], val], itemStyle: { color: sc } }
+              : [item[index], val];
           })
           : data.map((item) => {
             const sc = safeColor(item._color);
-            return sc && item[category] != null
-              ? { value: item[category], itemStyle: { color: sc } }
-              : item[category];
+            const val = item[category] ?? item[origCategory];
+            return sc && val != null
+              ? { value: val, itemStyle: { color: sc } }
+              : val;
           }),
         connectNulls: true,
         symbol: "circle",
@@ -171,14 +181,14 @@ const LineChart = (props: LineChartProps) => {
         },
       });
 
-      if (hasBand(category)) {
+      if (hasBand(category, origCategory)) {
         series.push({
           name: category + "_band_lower",
           id: category + "_band_lower",
           type: "line" as const,
           data: isContinuousData
-            ? data.map((item) => [item[index], item[category + "_band_lower"]])
-            : data.map((item) => item[category + "_band_lower"]),
+            ? data.map((item) => [item[index], item[category + "_band_lower"] ?? item[origCategory + "_band_lower"]])
+            : data.map((item) => item[category + "_band_lower"] ?? item[origCategory + "_band_lower"]),
           lineStyle: {
             opacity: 0,
           },
@@ -193,13 +203,17 @@ const LineChart = (props: LineChartProps) => {
           type: "line" as const,
           data: isContinuousData
             ? data.map((item) => {
-              const lower = item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== "" ? Number(item[category + "_band_lower"]) : null;
-              const upper = item[category + "_band_upper"] !== null && item[category + "_band_upper"] !== undefined && item[category + "_band_upper"] !== "" ? Number(item[category + "_band_upper"]) : null;
+              const rawLower = item[category + "_band_lower"] ?? item[origCategory + "_band_lower"];
+              const rawUpper = item[category + "_band_upper"] ?? item[origCategory + "_band_upper"];
+              const lower = rawLower !== null && rawLower !== undefined && rawLower !== "" ? Number(rawLower) : null;
+              const upper = rawUpper !== null && rawUpper !== undefined && rawUpper !== "" ? Number(rawUpper) : null;
               return [item[index], (lower !== null && upper !== null && !isNaN(lower) && !isNaN(upper)) ? upper - lower : null];
             })
             : data.map((item) => {
-              const lower = item[category + "_band_lower"] !== null && item[category + "_band_lower"] !== undefined && item[category + "_band_lower"] !== "" ? Number(item[category + "_band_lower"]) : null;
-              const upper = item[category + "_band_upper"] !== null && item[category + "_band_upper"] !== undefined && item[category + "_band_upper"] !== "" ? Number(item[category + "_band_upper"]) : null;
+              const rawLower = item[category + "_band_lower"] ?? item[origCategory + "_band_lower"];
+              const rawUpper = item[category + "_band_upper"] ?? item[origCategory + "_band_upper"];
+              const lower = rawLower !== null && rawLower !== undefined && rawLower !== "" ? Number(rawLower) : null;
+              const upper = rawUpper !== null && rawUpper !== undefined && rawUpper !== "" ? Number(rawUpper) : null;
               return (lower !== null && upper !== null && !isNaN(lower) && !isNaN(upper)) ? upper - lower : null;
             }),
           lineStyle: {
@@ -265,8 +279,8 @@ const LineChart = (props: LineChartProps) => {
       });
     }
 
-    const numLegendItems = categories.filter(c => c.length > 0).length;
-    const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const numLegendItems = cleanCategories.filter(c => c.length > 0).length;
+    const avgLegendCharCount = cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
     const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
@@ -287,7 +301,7 @@ const LineChart = (props: LineChartProps) => {
         labelTopOffset = 25 + subtitleLines * 16;
       }
     }
-    const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
+    const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
     const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
     const rawCustomValues = isContinuousData
       ? Array.from(new Set(data.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
@@ -297,7 +311,7 @@ const LineChart = (props: LineChartProps) => {
       })
       : undefined;
     const xValues = isContinuousData ? rawCustomValues : xData;
-    const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+    const xSpace = (chartWidth - 2 * chartPadding + (cleanYAxisLabel ? 50 : 30));
     const shortenLabel = xValues && xValues.length > 0 ? (xSpace / xValues.length) * (0.10 + (0.00004 * xSpace)) : true;
 
     let maxLabelLen = 0;
@@ -308,7 +322,7 @@ const LineChart = (props: LineChartProps) => {
       }
     });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
-    const shouldRotateXLabel = !isContinuousData && !xAxisLabel && hasManyLabels;
+    const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
     const customValues = hasManyLabels ? undefined : rawCustomValues;
 
     return {
@@ -366,9 +380,9 @@ const LineChart = (props: LineChartProps) => {
             if (!extraData) return null;
             const firstVal = Object.values(extraData)[0];
             if (firstVal && typeof firstVal === "object" && !Array.isArray(firstVal)) {
-              return extraData[categoryName];
+              return extraData[categoryName] ?? extraData[categories[cleanCategories.indexOf(categoryName)]];
             }
-            if (categoryName === "" || categories.length <= 1) {
+            if (categoryName === "" || cleanCategories.length <= 1) {
               return extraData;
             }
             return null;
@@ -480,15 +494,16 @@ const LineChart = (props: LineChartProps) => {
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(param.color)}"></span>
-                ${categories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
+                ${cleanCategories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
 
             // Display confidence band if available
             const item = dataByIndex[indexValue];
-            const lowerVal = item ? item[param.seriesName + "_band_lower"] : undefined;
-            const upperVal = item ? item[param.seriesName + "_band_upper"] : undefined;
+            const origCat = categories[cleanCategories.indexOf(param.seriesName)] ?? param.seriesName;
+            const lowerVal = item ? (item[param.seriesName + "_band_lower"] ?? item[origCat + "_band_lower"]) : undefined;
+            const upperVal = item ? (item[param.seriesName + "_band_upper"] ?? item[origCat + "_band_upper"]) : undefined;
             if (lowerVal !== undefined && lowerVal !== null && lowerVal !== "" && upperVal !== undefined && upperVal !== null && upperVal !== "") {
               const formattedLower = valueFormatter(Number(lowerVal));
               const formattedUpper = valueFormatter(Number(upperVal));
@@ -537,7 +552,7 @@ const LineChart = (props: LineChartProps) => {
       },
       legend: {
         show: showLegend,
-        data: categories,
+        data: cleanCategories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
         orient: "horizontal",
@@ -576,13 +591,13 @@ const LineChart = (props: LineChartProps) => {
         },
         // Enable multi-row layout
         width: "auto",
-        height: categories.length > 4 ? 40 : 20, // Allow more height for multi-row
+        height: cleanCategories.length > 4 ? 40 : 20, // Allow more height for multi-row
       },
       grid: {
-        left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 16 + chartPadding + (yAxisLabel ? 20 : 0),
+        left: (cleanYAxisLabel ? 45 : 15) + chartPadding,
+        right: 16 + chartPadding + (cleanYAxisLabel ? 20 : 0),
         top: 10 + legendTopOffset + labelTopOffset + chartPadding,
-        bottom: (xAxisLabel ? 32 : 8) + chartPadding,
+        bottom: (cleanXAxisLabel ? 32 : 8) + chartPadding,
         outerBoundsMode: "same",
         outerBoundsContain: "axisLabel",
       },
@@ -597,7 +612,7 @@ const LineChart = (props: LineChartProps) => {
           showMinLabel: true,
           showMaxLabel: true,
           formatter: (value: any) => {
-            return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
+            return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -619,7 +634,7 @@ const LineChart = (props: LineChartProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
+              return toSingleLine(indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8));
             },
             fontFamily: chartFont,
             margin: 5,
@@ -637,7 +652,7 @@ const LineChart = (props: LineChartProps) => {
         splitLine: {
           show: false,
         },
-        name: xAxisLabel,
+        name: cleanXAxisLabel,
         nameLocation: "middle",
         nameGap: 36,
         nameTextStyle: {
@@ -653,7 +668,7 @@ const LineChart = (props: LineChartProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return valueFormatter(value, true);
+            return toSingleLine(valueFormatter(value, true));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -668,7 +683,7 @@ const LineChart = (props: LineChartProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              return toSingleLine(valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value));
             },
             fontFamily: chartFont,
             margin: 10,
@@ -704,7 +719,7 @@ const LineChart = (props: LineChartProps) => {
         x: 5 + chartPadding,
         cursor: "default",
         style: {
-          text: yAxisLabel,
+          text: cleanYAxisLabel,
           font: `500 12px ${chartFont}`,
           fill: textColor,
           width: chartHeight,
