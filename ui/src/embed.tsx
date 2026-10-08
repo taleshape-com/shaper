@@ -8,8 +8,48 @@ import "./lib/globals";
 
 (RemoveScroll.defaultProps ?? {}).enabled = false;
 
+// Function to auto-detect base URL from document.currentScript or matching script tags
+function getScriptBaseUrl (): string {
+  if (window.shaper?.defaultBaseUrl) {
+    return window.shaper.defaultBaseUrl;
+  }
+  if (typeof document !== "undefined") {
+    if (document.currentScript) {
+      const src = (document.currentScript as HTMLScriptElement).src;
+      if (src) {
+        return src.replace(/\/embed\/[^/]+$/, "");
+      }
+    }
+    const scripts = document.getElementsByTagName("script");
+    for (let i = scripts.length - 1; i >= 0; i--) {
+      const src = scripts[i].src;
+      if (src && src.includes("/embed/shaper")) {
+        return src.replace(/\/embed\/[^/]+$/, "");
+      }
+    }
+  }
+  return "/";
+}
+
+function ensureTrailingSlash (url: string): string {
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
 // Function to inject custom CSS
-function injectCustomCSS () {
+function injectCustomCSS (baseUrl?: string) {
+  if (typeof document === "undefined") return;
+
+  const linkId = "shaper-custom-css";
+  if (!document.getElementById(linkId)) {
+    const base = ensureTrailingSlash(baseUrl ?? window.shaper?.defaultBaseUrl ?? getScriptBaseUrl());
+    const linkElement = document.createElement("link");
+    linkElement.id = linkId;
+    linkElement.rel = "stylesheet";
+    linkElement.href = `${base}embed/custom.css`;
+    document.head.appendChild(linkElement);
+  }
+
+  // Backward compatibility: inject window.shaper.customCSS if set
   if (window.shaper?.customCSS) {
     const existingStyles = document.head.getElementsByTagName("style");
     for (const style of existingStyles) {
@@ -22,6 +62,14 @@ function injectCustomCSS () {
     styleElement.textContent = window.shaper.customCSS;
     document.head.appendChild(styleElement);
   }
+}
+
+if (typeof window !== "undefined") {
+  window.shaper = window.shaper || {};
+  if (!window.shaper.defaultBaseUrl) {
+    window.shaper.defaultBaseUrl = getScriptBaseUrl();
+  }
+  injectCustomCSS(window.shaper.defaultBaseUrl);
 }
 
 type EmbedArgs = EmbedProps & {
@@ -67,7 +115,7 @@ function checkIsDynamicHeight (container: HTMLElement): boolean {
 }
 
 export function dashboard ({ container, ...initialProps }: EmbedArgs) {
-  injectCustomCSS();
+  injectCustomCSS(initialProps.baseUrl);
   container.classList.add("shaper-scope");
 
   if (typeof window !== "undefined") {

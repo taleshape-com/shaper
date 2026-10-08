@@ -310,23 +310,17 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}))
 	assetsGroup.GET("/*", frontend(frontendFS))
 
-	e.GET("/embed/*", serveEmbedJS(frontendFS, modTime, customCSS), CacheControl(CacheConfig{
-		MaxAge: 24 * time.Hour, // 1 day
-		Public: true,
-		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
-	}))
+	// Unversioned entrypoints - cached with revalidation (ETags)
+	revalidateCache := CacheControl(CacheConfig{
+		MaxAge:         0,
+		Public:         true,
+		MustRevalidate: true,
+	})
 
-	e.GET("/view/:id", serveViewHTML(frontendFS, modTime), CacheControl(CacheConfig{
-		MaxAge: 24 * time.Hour, // 1 day
-		Public: true,
-		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
-	}))
-
-	e.GET("/_internal/pdfview/:id", servePdfViewHTML(frontendFS, modTime), CacheControl(CacheConfig{
-		MaxAge: 24 * time.Hour, // 1 day
-		Public: true,
-		// TODO: Once we version this file properly can set Immutable: true, and cache for a year
-	}))
+	e.GET("/embed/custom.css", serveCustomCSS(customCSS, modTime), revalidateCache)
+	e.GET("/embed/*", serveEmbedJS(frontendFS, modTime), revalidateCache)
+	e.GET("/view/:id", serveViewHTML(frontendFS, modTime), revalidateCache)
+	e.GET("/_internal/pdfview/:id", servePdfViewHTML(frontendFS, modTime), revalidateCache)
 
 	// Icon - moderate caching
 	if IsBasePathSet(app.BasePath) && favicon == "" {
