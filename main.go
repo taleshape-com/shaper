@@ -397,7 +397,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	dataDir := flags.String('d', "dir", path.Join(homeDir, ".shaper"), "directory to store data, by default set to /data in docker container)")
 	customCSS := flags.StringLong("css", "", "CSS string to inject into the frontend")
 	customCSSFile := flags.StringLong("css-file", "", "Path to CSS file to inject into the frontend")
-	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico")
+	favicon := flags.StringLong("favicon", "", "path to override favicon. Must end .svg or .ico. When not set and basepath is set, the top-level /favicon.ico is used")
 	initSQL := flags.StringLong("init-sql", "", "Execute SQL on startup. Supports environment variables in the format $VAR or ${VAR}")
 	initSQLFile := flags.StringLong("init-sql-file", "", "Same as init-sql but read SQL from file. Docker by default tries to read /var/lib/shaper/init.sql (default: [--dir]/init.sql)")
 	snapshotS3Bucket := flags.StringLong("snapshot-s3-bucket", "", "S3 bucket for snapshots (required for snapshots)")
@@ -894,6 +894,8 @@ func Run(cfg Config) func(context.Context) {
 
 	if cfg.Favicon != "" {
 		logger.Info("Custom favicon: " + cfg.Favicon)
+	} else if web.IsBasePathSet(cfg.BasePath) {
+		logger.Info("Using top-level favicon")
 	}
 	if cfg.CustomCSSFile != "" {
 		logger.Info("Loading custom CSS file", slog.Any("path", cfg.CustomCSSFile))
