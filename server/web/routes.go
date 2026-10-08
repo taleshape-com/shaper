@@ -329,13 +329,19 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}))
 
 	// Icon - moderate caching
-	e.GET("/favicon.ico", serveFavicon(frontendFS, favicon, modTime), CacheControl(CacheConfig{
-		MaxAge: 24 * time.Hour, // 1 day
-		Public: true,
-	}))
+	if IsBasePathSet(app.BasePath) && favicon == "" {
+		e.GET("/favicon.ico", func(c echo.Context) error {
+			return c.String(http.StatusNotFound, "Not Found")
+		})
+	} else {
+		e.GET("/favicon.ico", serveFavicon(frontendFS, favicon, modTime), CacheControl(CacheConfig{
+			MaxAge: 24 * time.Hour, // 1 day
+			Public: true,
+		}))
+	}
 
 	// Index HTML - light caching with revalidation
-	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, app.BasePath))
+	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, app.BasePath, favicon))
 }
 
 func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, setActorMid echo.MiddlewareFunc, keyAuthMiddleware echo.MiddlewareFunc, apiKeyActorMid echo.MiddlewareFunc) echo.MiddlewareFunc {
