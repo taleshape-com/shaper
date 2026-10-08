@@ -8,7 +8,14 @@
 # Keep in sync with .github/workflows/ci.yml
 FROM debian:13.7-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
 
-# install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root
+# install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root.
+# Note on vulnerability management and base packages:
+# - glibc (libc6) is required by the dynamically linked shaper/DuckDB binary and headless-shell.
+# - libsqlite3-0 is required by headless-shell: libnss3 (libsoftokn3) links against it for certificate/key DBs;
+#   removing it causes headless-shell to crash fatally on launch (nss_error=-5925).
+# - perl-base and gzip are Debian essentials (Essential: yes). While scanners may flag unfixable CVEs in them,
+#   they are not invoked by shaper or headless-shell, posing no practical attack surface. We deliberately keep them
+#   so downstream images built on top of this one can safely run `apt-get install` without breaking debconf/dpkg.
 RUN export DEBIAN_FRONTEND=noninteractive \
   && apt-get update \
   && apt-get upgrade -y \
