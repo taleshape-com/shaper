@@ -4,6 +4,7 @@ import { Column, isTimeType, MarkLine } from "../../lib/types";
 import { Scatterplot } from "../charts/Scatterplot";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
+import { toSingleLine } from "../../lib/chartUtils";
 
 type ScatterProps = {
   chartId: string;
@@ -36,8 +37,9 @@ const DashboardScatterplot = ({
   const categories = new Set<string>();
   const colorsByCategory = {} as Record<string, string>;
   const nonCategoryColors = new Set<string>();
+  const defaultCategory = toSingleLine(valueAxisName);
   if (categoryIndex === -1) {
-    categories.add(valueAxisName);
+    categories.add(defaultCategory);
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
@@ -76,7 +78,7 @@ const DashboardScatterplot = ({
             v._color = color;
             nonCategoryColors.add(color);
           } else {
-            const category = (row[categoryIndex] ?? "").toString();
+            const category = toSingleLine((row[categoryIndex] ?? "").toString());
             colorsByCategory[category] = color;
           }
         }
@@ -85,15 +87,15 @@ const DashboardScatterplot = ({
       const c = formatCellValue(cell);
       if (i === valueAxisIndex) {
         if (categoryIndex === -1) {
-          v[valueAxisName] = c;
+          v[defaultCategory] = c;
           return;
         }
-        const category = (row[categoryIndex] ?? "").toString();
+        const category = toSingleLine((row[categoryIndex] ?? "").toString());
         categories.add(category);
         v[category] = c;
         return;
       }
-      const category = categoryIndex === -1 ? "" : (row[categoryIndex] ?? "").toString();
+      const category = categoryIndex === -1 ? "" : toSingleLine((row[categoryIndex] ?? "").toString());
       if (!extraDataByIndexAxis[key]) {
         extraDataByIndexAxis[key] = {};
       }
@@ -106,7 +108,7 @@ const DashboardScatterplot = ({
     return dataByIndexAxis;
   });
   if (categoryIndex === -1 && nonCategoryColors.size === 1) {
-    colorsByCategory[valueAxisName] = nonCategoryColors.values().next().value!;
+    colorsByCategory[defaultCategory] = nonCategoryColors.values().next().value!;
   }
   const indexType = indexAxisHeader.type;
 
@@ -126,10 +128,10 @@ const DashboardScatterplot = ({
         return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
       indexFormatter={(n: number | string, shortFormat?: boolean | number) => {
-        return formatValue(n, indexType, true, shortFormat).toString();
+        return toSingleLine(formatValue(n, indexType, true, shortFormat).toString());
       }}
-      xAxisLabel={getNameIfSet(indexAxisHeader.name)}
-      yAxisLabel={getNameIfSet(valueAxisName)}
+      xAxisLabel={toSingleLine(getNameIfSet(indexAxisHeader.name))}
+      yAxisLabel={toSingleLine(getNameIfSet(valueAxisName))}
       showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
       markLines={markLines}
     />

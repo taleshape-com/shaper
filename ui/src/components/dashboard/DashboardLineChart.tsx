@@ -4,6 +4,7 @@ import { Column, isTimeType, MarkLine } from "../../lib/types";
 import { LineChart } from "../charts/LineChart";
 import { formatValue, formatCellValue } from "../../lib/render";
 import { getNameIfSet } from "../../lib/utils";
+import { toSingleLine } from "../../lib/chartUtils";
 
 type LineProps = {
   chartId: string;
@@ -41,8 +42,9 @@ const DashboardLineChart = ({
   const categories = new Set<string>();
   const colorsByCategory = {} as Record<string, string>;
   const nonCategoryColors = new Set<string>();
+  const defaultCategory = toSingleLine(valueAxisName);
   if (categoryIndex === -1) {
-    categories.add(valueAxisName);
+    categories.add(defaultCategory);
   }
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
   const indexAxisHeader = headers[indexAxisIndex];
@@ -82,7 +84,7 @@ const DashboardLineChart = ({
             v._color = color;
             nonCategoryColors.add(color);
           } else {
-            const category = (row[categoryIndex] ?? "").toString();
+            const category = toSingleLine((row[categoryIndex] ?? "").toString());
             colorsByCategory[category] = color;
           }
         }
@@ -91,25 +93,25 @@ const DashboardLineChart = ({
       const c = formatCellValue(cell);
       if (i === valueAxisIndex) {
         if (categoryIndex === -1) {
-          v[valueAxisName] = c;
+          v[defaultCategory] = c;
           return;
         }
-        const category = (row[categoryIndex] ?? "").toString();
+        const category = toSingleLine((row[categoryIndex] ?? "").toString());
         categories.add(category);
         v[category] = c;
         return;
       }
       if (i === bandLowerIndex) {
-        const category = categoryIndex === -1 ? valueAxisName : (row[categoryIndex] ?? "").toString();
+        const category = categoryIndex === -1 ? defaultCategory : toSingleLine((row[categoryIndex] ?? "").toString());
         v[category + "_band_lower"] = c;
         return;
       }
       if (i === bandUpperIndex) {
-        const category = categoryIndex === -1 ? valueAxisName : (row[categoryIndex] ?? "").toString();
+        const category = categoryIndex === -1 ? defaultCategory : toSingleLine((row[categoryIndex] ?? "").toString());
         v[category + "_band_upper"] = c;
         return;
       }
-      const category = categoryIndex === -1 ? "" : (row[categoryIndex] ?? "").toString();
+      const category = categoryIndex === -1 ? "" : toSingleLine((row[categoryIndex] ?? "").toString());
       if (!extraDataByIndexAxis[key]) {
         extraDataByIndexAxis[key] = {};
       }
@@ -122,7 +124,7 @@ const DashboardLineChart = ({
     return dataByIndexAxis;
   });
   if (categoryIndex === -1 && nonCategoryColors.size === 1) {
-    colorsByCategory[valueAxisName] = nonCategoryColors.values().next().value!;
+    colorsByCategory[defaultCategory] = nonCategoryColors.values().next().value!;
   }
   const indexType = indexAxisHeader.type;
 
@@ -142,10 +144,10 @@ const DashboardLineChart = ({
         return formatValue(n, valueAxisHeader.type, true, shortFormat).toString();
       }}
       indexFormatter={(n: number | string, shortFormat?: boolean | number) => {
-        return formatValue(n, indexType, true, shortFormat).toString();
+        return toSingleLine(formatValue(n, indexType, true, shortFormat).toString());
       }}
-      xAxisLabel={getNameIfSet(indexAxisHeader.name)}
-      yAxisLabel={getNameIfSet(valueAxisName)}
+      xAxisLabel={toSingleLine(getNameIfSet(indexAxisHeader.name))}
+      yAxisLabel={toSingleLine(getNameIfSet(valueAxisName))}
       showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
       markLines={markLines}
       bandLowerName={bandLowerHeader?.name}
