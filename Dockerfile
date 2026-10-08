@@ -2,14 +2,15 @@
 
 # Using slim instead of a from scratch image because:
 # 1. We are dynamically linking DuckDB since some extensions have issues with static linking
-# 2. We need wget to run the healthcheck
-# 3. Having a shell is useful for debugging
+# 2. Having a shell is useful for debugging
 # Using Debian over Alpine since Debian uses glibc and DuckDB has issues with musl.
 # Keep in sync with .github/workflows/ci.yml
 FROM debian:13.7-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
 
-# install wget for healthchecks and dependencies for headless-shell and gosu for stepping down from root.
+# install dependencies for headless-shell and gosu for stepping down from root, as well as wget.
 # Note on vulnerability management and base packages:
+# - wget: Previously used for healthchecks (now handled by `shaper healthcheck`).
+#   We keep wget in the image to avoid breaking downstream images or user workflows that rely on it.
 # - glibc (libc6) is required by the dynamically linked shaper/DuckDB binary and headless-shell.
 # - libsqlite3-0 is required by headless-shell: libnss3 (libsoftokn3) links against it for certificate/key DBs;
 #   removing it causes headless-shell to crash fatally on launch (nss_error=-5925).
@@ -66,7 +67,7 @@ ENV SHAPER_NO_CHROME_SANDBOX=true
 ENV SHAPER_NO_OPEN=true
 
 EXPOSE 5454
-HEALTHCHECK --interval=5s --timeout=3s --retries=3 --start-period=60s CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5454/health"]
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 --start-period=60s CMD ["/usr/local/bin/shaper", "healthcheck"]
 
 # Create a non-root user and setup directories
 RUN groupadd -r shaper && useradd -r -g shaper shaper \

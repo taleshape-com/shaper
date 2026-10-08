@@ -480,6 +480,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 		addValidateSubcommand(rootCmd),
 		addSchemaSubcommand(rootCmd),
 		addLoginSubcommand(rootCmd),
+		addHealthcheckSubcommand(rootCmd),
 	)
 
 	// Set up the root command execution
@@ -490,7 +491,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			fmt.Printf("%s\n", ffhelp.Flags(flags, usage))
 			fmt.Println("\nSUBCOMMANDS:")
 			for _, cmd := range subcommands {
-				fmt.Printf("  %-10s %s\n", cmd.Name, cmd.ShortHelp)
+				fmt.Printf("  %-12s %s\n", cmd.Name, cmd.ShortHelp)
 			}
 			return nil
 		}
@@ -863,6 +864,37 @@ func addLoginSubcommand(rootCmd *ff.Command) *ff.Command {
 	}
 	rootCmd.Subcommands = append(rootCmd.Subcommands, loginCmd)
 	return loginCmd
+}
+
+func addHealthcheckSubcommand(rootCmd *ff.Command) *ff.Command {
+	healthcheckFlags := ff.NewFlagSet("healthcheck")
+	help := healthcheckFlags.Bool('h', "help", "show help")
+	healthcheckURL := healthcheckFlags.StringLong("url", "", "Server URL to check (e.g. http://localhost:5454)")
+	healthcheckAddr := healthcheckFlags.StringLong("addr", "localhost:5454", "Server address to check")
+	tlsDomain := healthcheckFlags.StringLong("tls-domain", "", "Domain name for TLS")
+	timeout := healthcheckFlags.DurationLong("timeout", 3*time.Second, "Request timeout")
+	quiet := healthcheckFlags.Bool('q', "quiet", "Do not print output on success")
+
+	usage := "check the health of a shaper server"
+	healthcheckCmd := &ff.Command{
+		Name:      "healthcheck",
+		Usage:     "shaper healthcheck [url] [--url url] [--addr addr] [--tls-domain domain] [--timeout duration] [--quiet]",
+		ShortHelp: usage,
+		Flags:     healthcheckFlags,
+		Exec: func(ctx context.Context, args []string) error {
+			if *help {
+				fmt.Printf("%s\n", ffhelp.Flags(healthcheckFlags, usage))
+				return nil
+			}
+			urlVal := *healthcheckURL
+			if urlVal == "" && len(args) > 0 {
+				urlVal = args[0]
+			}
+			return dev.RunHealthcheckCommand(ctx, urlVal, *healthcheckAddr, *tlsDomain, *timeout, *quiet)
+		},
+	}
+	rootCmd.Subcommands = append(rootCmd.Subcommands, healthcheckCmd)
+	return healthcheckCmd
 }
 
 func Run(cfg Config) func(context.Context) {

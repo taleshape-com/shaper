@@ -140,3 +140,33 @@ func TestCORSDomainsFlag(t *testing.T) {
 	}
 }
 
+func TestHealthcheckSubcommand(t *testing.T) {
+	ctx := context.Background()
+	rootCmd := buildRootCommand(ctx)
+
+	var healthcheckCmd *ff.Command
+	for _, sc := range rootCmd.Subcommands {
+		if sc.Name == "healthcheck" {
+			healthcheckCmd = sc
+			break
+		}
+	}
+	if healthcheckCmd == nil {
+		t.Fatal("expected healthcheck subcommand to be registered")
+	}
+
+	for _, flagName := range []string{"url", "addr", "tls-domain", "timeout", "quiet"} {
+		if _, ok := healthcheckCmd.Flags.GetFlag(flagName); !ok {
+			t.Errorf("expected --%s flag on healthcheck subcommand", flagName)
+		}
+	}
+
+	t.Run("preprocessArgs with healthcheck", func(t *testing.T) {
+		inputArgs := []string{"--url", "http://localhost:5454", "healthcheck"}
+		processedArgs := preprocessArgs(rootCmd, inputArgs)
+		if len(processedArgs) < 2 || processedArgs[0] != "healthcheck" {
+			t.Errorf("expected healthcheck subcommand first after preprocessing, got: %v", processedArgs)
+		}
+	})
+}
+
