@@ -6,6 +6,7 @@ import { PieChart } from "../charts/PieChart";
 import { useCallback, useMemo } from "react";
 import { getNameIfSet } from "../../lib/utils";
 import { translate } from "../../lib/translate";
+import { toSingleLine } from "../../lib/chartUtils";
 
 type PieProps = {
   chartId: string;
@@ -40,10 +41,11 @@ const DashboardPieChart = ({
     // Calculate all original data first
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
-      const name =
+      const name = toSingleLine(
         categoryIndex !== -1
           ? (row[categoryIndex] ?? "").toString()
-          : (getNameIfSet(valueHeader.name) ?? "");
+          : (getNameIfSet(valueHeader.name) ?? ""),
+      );
 
       return {
         name,
@@ -60,10 +62,11 @@ const DashboardPieChart = ({
 
     // Process original data to create extra data for significant items
     data.forEach((row) => {
-      const name =
+      const name = toSingleLine(
         categoryIndex !== -1
           ? (row[categoryIndex] ?? "").toString()
-          : (getNameIfSet(valueHeader.name) ?? "");
+          : (getNameIfSet(valueHeader.name) ?? ""),
+      );
 
       // Only add extra data for significant items (not for "Other")
       const isSignificant = significantItems.some(item => item.name === name);
@@ -99,14 +102,15 @@ const DashboardPieChart = ({
         otherExtraData[item.name] = [item.value, valueHeader.type];
       });
 
-      extraData[translate("Other")] = otherExtraData;
+      extraData[toSingleLine(translate("Other"))] = otherExtraData;
     } else if (smallItems.length === 1) {
       // For single small items, add normal extra data like other significant items
       data.forEach((row) => {
-        const name =
+        const name = toSingleLine(
           categoryIndex !== -1
             ? (row[categoryIndex] ?? "").toString()
-            : (getNameIfSet(valueHeader.name) ?? "");
+            : (getNameIfSet(valueHeader.name) ?? ""),
+        );
 
         // Add extra data for the single small item
         const isSmall = smallItems.some(item => item.name === name);
@@ -139,10 +143,11 @@ const DashboardPieChart = ({
     // First, calculate all values to determine percentages
     const allData = data.map(row => {
       const value = formatCellValue(row[valueIndex]) as number;
-      const name =
+      const name = toSingleLine(
         categoryIndex !== -1
           ? (row[categoryIndex] ?? "").toString()
-          : (getNameIfSet(valueHeader.name) ?? "");
+          : (getNameIfSet(valueHeader.name) ?? ""),
+      );
       const color =
         colorIndex !== -1 ? (row[colorIndex] ?? "").toString() : undefined;
 
@@ -177,7 +182,7 @@ const DashboardPieChart = ({
     // Use the color from the first small item if available, otherwise use undefined
     const firstSmallItemWithColor = smallItems.find(item => item.color && item.color.length > 0);
     const otherItem = {
-      name: translate("Other"),
+      name: toSingleLine(translate("Other")),
       value: otherValue,
       color: firstSmallItemWithColor?.color, // Use first available color from small items, or default if none
     };
@@ -199,7 +204,7 @@ const DashboardPieChart = ({
       data={pieData}
       extraDataByName={extraDataByName}
       valueType={valueHeader.type}
-      valueColumnName={getNameIfSet(valueHeader.name)}
+      valueColumnName={toSingleLine(getNameIfSet(valueHeader.name))}
       valueFormatter={valueFormatter}
       isDonut={isDonut}
     />

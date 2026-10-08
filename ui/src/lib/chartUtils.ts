@@ -5,6 +5,7 @@ import * as echarts from "echarts/core";
 
 // Helper function to get computed CSS value
 export const getComputedCssValue = (cssVar: string): string => {
+  if (typeof document === "undefined") return `var(${cssVar})`;
   const root = document.documentElement;
   const computedValue = getComputedStyle(root).getPropertyValue(cssVar).trim();
   return computedValue || `var(${cssVar})`;
@@ -263,6 +264,11 @@ export const AvailableEChartsColors: EChartsColorKey[] = Object.keys(
   echartsColors,
 ) as Array<EChartsColorKey>;
 
+export const toSingleLine = <T extends string | number | null | undefined>(text: T): T => {
+  if (typeof text !== "string") return text;
+  return text.replace(/\r?\n|\r/g, " ") as T;
+};
+
 export const constructCategoryColors = (
   categories: string[],
   colorsByCategory: Record<string, string>,
@@ -271,7 +277,8 @@ export const constructCategoryColors = (
   const categoryColors = new Map<string, string>();
   let customColorCount = 0;
   categories.forEach((category, index) => {
-    let color = colorsByCategory[category];
+    const cleanCategory = toSingleLine(category);
+    let color = colorsByCategory[category] ?? colorsByCategory[cleanCategory];
     if (!color) {
       const echartsKey =
         echartsColors[
@@ -282,6 +289,7 @@ export const constructCategoryColors = (
     } else {
       customColorCount += 1;
     }
+    categoryColors.set(cleanCategory, color);
     categoryColors.set(category, color);
   });
   return categoryColors;

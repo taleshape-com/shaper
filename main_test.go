@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/peterbourgon/ff/v4"
@@ -168,5 +169,20 @@ func TestHealthcheckSubcommand(t *testing.T) {
 			t.Errorf("expected healthcheck subcommand first after preprocessing, got: %v", processedArgs)
 		}
 	})
+}
+
+func TestTLSFlagsDeprecated(t *testing.T) {
+	ctx := context.Background()
+	rootCmd := buildRootCommand(ctx)
+
+	for _, flagName := range []string{"tls-domain", "tls-email", "tls-cache", "https-port"} {
+		flag, ok := rootCmd.Flags.GetFlag(flagName)
+		if !ok {
+			t.Fatalf("expected --%s flag to be registered on root command", flagName)
+		}
+		if !strings.HasPrefix(flag.GetUsage(), "DEPRECATED:") {
+			t.Errorf("expected --%s usage to start with 'DEPRECATED:', got %q", flagName, flag.GetUsage())
+		}
+	}
 }
 

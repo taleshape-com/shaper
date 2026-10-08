@@ -8,6 +8,7 @@ import {
   getThemeColors,
   getChartFont,
   getDisplayFont,
+  toSingleLine,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -87,7 +88,10 @@ const Scatterplot = (props: ScatterplotProps) => {
     const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode);
     const chartFont = getChartFont();
     const displayFont = getDisplayFont();
-    const categoryColors = constructCategoryColors(categories, colorsByCategory, isDarkMode);
+    const cleanXAxisLabel = toSingleLine(xAxisLabel);
+    const cleanYAxisLabel = toSingleLine(yAxisLabel);
+    const cleanCategories = categories.map(toSingleLine);
+    const categoryColors = constructCategoryColors(cleanCategories, colorsByCategory, isDarkMode);
 
     const isTimestampData = isDatableType(indexType);
     const isNumericData = indexType === "number" || indexType === "percent";
@@ -95,7 +99,8 @@ const Scatterplot = (props: ScatterplotProps) => {
 
     // Set up chart options
     const series: ScatterSeriesOption[] = [];
-    categories.forEach((category) => {
+    cleanCategories.forEach((category, catIndex) => {
+      const origCategory = categories[catIndex] ?? category;
       const col = categoryColors.get(category) || "#333";
       series.push({
         name: category,
@@ -104,15 +109,17 @@ const Scatterplot = (props: ScatterplotProps) => {
         data: isContinuousData
           ? data.map((item) => {
             const sc = safeColor(item._color);
-            return sc && item[category] != null
-              ? { value: [item[index], item[category]], itemStyle: { color: sc } }
-              : [item[index], item[category]];
+            const val = item[category] ?? item[origCategory];
+            return sc && val != null
+              ? { value: [item[index], val], itemStyle: { color: sc } }
+              : [item[index], val];
           })
           : data.map((item) => {
             const sc = safeColor(item._color);
-            return sc && item[category] != null
-              ? { value: item[category], itemStyle: { color: sc } }
-              : item[category];
+            const val = item[category] ?? item[origCategory];
+            return sc && val != null
+              ? { value: val, itemStyle: { color: sc } }
+              : val;
           }),
         symbol: "circle",
         symbolSize: data.length > 1 ? 10 : 12,
@@ -181,8 +188,8 @@ const Scatterplot = (props: ScatterplotProps) => {
       } as any);
     }
 
-    const numLegendItems = categories.filter(c => c.length > 0).length;
-    const avgLegendCharCount = categories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const numLegendItems = cleanCategories.filter(c => c.length > 0).length;
+    const avgLegendCharCount = cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
     const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
@@ -203,12 +210,12 @@ const Scatterplot = (props: ScatterplotProps) => {
         labelTopOffset = 25 + subtitleLines * 16;
       }
     }
-    const spaceForXaxisLabel = 10 + (xAxisLabel ? 25 : 0);
+    const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
     const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
-    const xSpace = (chartWidth - 2 * chartPadding + (yAxisLabel ? 50 : 30));
+    const xSpace = (chartWidth - 2 * chartPadding + (cleanYAxisLabel ? 50 : 30));
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
-    const shouldRotateXLabel = !isContinuousData && !xAxisLabel && hasManyLabels;
+    const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
 
     return {
       title: {
@@ -265,9 +272,9 @@ const Scatterplot = (props: ScatterplotProps) => {
             if (!extraData) return null;
             const firstVal = Object.values(extraData)[0];
             if (firstVal && typeof firstVal === "object" && !Array.isArray(firstVal)) {
-              return extraData[categoryName];
+              return extraData[categoryName] ?? extraData[categories[cleanCategories.indexOf(categoryName)]];
             }
-            if (categoryName === "" || categories.length <= 1) {
+            if (categoryName === "" || cleanCategories.length <= 1) {
               return extraData;
             }
             return null;
@@ -373,7 +380,7 @@ const Scatterplot = (props: ScatterplotProps) => {
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(param.color)}"></span>
-                ${categories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
+                ${cleanCategories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
@@ -404,7 +411,7 @@ const Scatterplot = (props: ScatterplotProps) => {
       },
       legend: {
         show: showLegend,
-        data: categories,
+        data: cleanCategories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
         orient: "horizontal",
@@ -442,13 +449,13 @@ const Scatterplot = (props: ScatterplotProps) => {
           fontSize: 1,
         },
         width: "auto",
-        height: categories.length > 4 ? 40 : 20,
+        height: cleanCategories.length > 4 ? 40 : 20,
       },
       grid: {
-        left: (yAxisLabel ? 45 : 15) + chartPadding,
-        right: 16 + chartPadding + (yAxisLabel ? 20 : 0),
+        left: (cleanYAxisLabel ? 45 : 15) + chartPadding,
+        right: 16 + chartPadding + (cleanYAxisLabel ? 20 : 0),
         top: 10 + legendTopOffset + labelTopOffset + chartPadding,
-        bottom: (xAxisLabel ? 32 : 8) + chartPadding,
+        bottom: (cleanXAxisLabel ? 32 : 8) + chartPadding,
         outerBoundsMode: "same",
         outerBoundsContain: "axisLabel",
       },
@@ -460,7 +467,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel);
+            return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -481,7 +488,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8);
+              return toSingleLine(indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8));
             },
             fontFamily: chartFont,
             margin: 5,
@@ -498,7 +505,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         splitLine: {
           show: false,
         },
-        name: xAxisLabel,
+        name: cleanXAxisLabel,
         nameLocation: "middle",
         nameGap: 36,
         nameTextStyle: {
@@ -514,7 +521,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            return valueFormatter(value, true);
+            return toSingleLine(valueFormatter(value, true));
           },
           color: textColorSecondary,
           fontFamily: chartFont,
@@ -529,7 +536,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           label: {
             show: true,
             formatter: (params: any) => {
-              return valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value);
+              return toSingleLine(valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value));
             },
             fontFamily: chartFont,
             margin: 10,
@@ -562,7 +569,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         x: 5 + chartPadding,
         cursor: "default",
         style: {
-          text: yAxisLabel,
+          text: cleanYAxisLabel,
           font: `500 12px ${chartFont}`,
           fill: textColor,
           width: chartHeight,

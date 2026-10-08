@@ -413,10 +413,10 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
 	noEdit := flags.BoolLong("no-edit", "Disable editing dashboards via the UI")
-	tlsDomain := flags.StringLong("tls-domain", "", "Domain name for TLS certificate")
-	tlsEmail := flags.StringLong("tls-email", "", "Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
-	tlsCache := flags.StringLong("tls-cache", "", "Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
-	httpsHost := flags.StringLong("https-port", "", "Overwrite https hostname to not listen on all interfaces")
+	tlsDomain := flags.StringLong("tls-domain", "", "DEPRECATED: Domain name for TLS certificate")
+	tlsEmail := flags.StringLong("tls-email", "", "DEPRECATED: Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
+	tlsCache := flags.StringLong("tls-cache", "", "DEPRECATED: Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
+	httpsHost := flags.StringLong("https-port", "", "DEPRECATED: Overwrite https hostname to not listen on all interfaces")
 	basePath := flags.StringLong("basepath", "/", "Base URL the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath. Can be a path starting with a slash or a full URL. If you want to use the download API with mode=url, you also have to set basepath to a full URL, otherwise URLs will be relative only. Does not apply if tls-domain set")
 	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
 	corsDomains := flags.StringLong("cors-domains", "", "Comma-separated list of domains allowed for CORS (e.g. 'example.com,app.example.com')")
@@ -871,7 +871,7 @@ func addHealthcheckSubcommand(rootCmd *ff.Command) *ff.Command {
 	help := healthcheckFlags.Bool('h', "help", "show help")
 	healthcheckURL := healthcheckFlags.StringLong("url", "", "Server URL to check (e.g. http://localhost:5454)")
 	healthcheckAddr := healthcheckFlags.StringLong("addr", "localhost:5454", "Server address to check")
-	tlsDomain := healthcheckFlags.StringLong("tls-domain", "", "Domain name for TLS")
+	tlsDomain := healthcheckFlags.StringLong("tls-domain", "", "DEPRECATED: Domain name for TLS")
 	timeout := healthcheckFlags.DurationLong("timeout", 3*time.Second, "Request timeout")
 	quiet := healthcheckFlags.Bool('q', "quiet", "Do not print output on success")
 
@@ -921,6 +921,10 @@ func Run(cfg Config) func(context.Context) {
 
 	logger.Info("Starting Shaper", slog.String("version", Version))
 	logger.Info("For configuration options see --help or visit https://taleshape.com/shaper/docs for more")
+
+	if cfg.TLSDomain != "" {
+		logger.Warn("Built-in TLS support (--tls-domain) is deprecated and will be removed in a future release. Please use a reverse proxy instead.")
+	}
 
 
 
