@@ -31,7 +31,7 @@ func Start(
 	app *core.App,
 	frontendFS fs.FS,
 	modTime time.Time,
-	customCSS,
+	customCSS any,
 	favicon,
 	tlsDomain,
 	tlsEmail,

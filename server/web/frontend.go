@@ -59,12 +59,20 @@ func serveFavicon(frontendFS fs.FS, favicon string, modTime time.Time) echo.Hand
 	}
 }
 
-func serveCustomCSS(customCSS string, modTime time.Time) echo.HandlerFunc {
-	cssBytes := []byte(customCSS)
-	etag := generateContentETag(cssBytes)
-	lastModified := modTime.UTC().Format(http.TimeFormat)
+func serveCustomCSS(customCSS any, modTime time.Time) echo.HandlerFunc {
+	var store *CustomCSSStore
+	switch v := customCSS.(type) {
+	case *CustomCSSStore:
+		store = v
+	case string:
+		store = NewCustomCSSStore("", "", v, modTime, nil)
+	default:
+		store = NewCustomCSSStore("", "", "", modTime, nil)
+	}
 
 	return func(c echo.Context) error {
+		content, etag, currentModTime, lastModified := store.Get()
+
 		c.Response().Header().Set("ETag", `"`+etag+`"`)
 		c.Response().Header().Set("Last-Modified", lastModified)
 
@@ -76,13 +84,13 @@ func serveCustomCSS(customCSS string, modTime time.Time) echo.HandlerFunc {
 
 		if ifModifiedSince := c.Request().Header.Get("If-Modified-Since"); ifModifiedSince != "" {
 			if m, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
-				if modTime.Unix() <= m.Unix() {
+				if currentModTime.Unix() <= m.Unix() {
 					return c.NoContent(http.StatusNotModified)
 				}
 			}
 		}
 
-		http.ServeContent(c.Response(), c.Request(), "custom.css", modTime, bytes.NewReader(cssBytes))
+		http.ServeContent(c.Response(), c.Request(), "custom.css", currentModTime, bytes.NewReader(content))
 		return nil
 	}
 }
@@ -199,7 +207,7 @@ func IsBasePathSet(basePath string) bool {
 	return basePath != "/"
 }
 
-func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS string, basePath string, favicon string) echo.HandlerFunc {
+func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS any, basePath string, favicon string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		fmt.Printf("Error creating index HTML filesystem: %v\n", err)

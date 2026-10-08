@@ -194,7 +194,7 @@ func DownloadRateLimiterWithConfig(r rate.Limit, burst int, expiresIn time.Durat
 	return createRateLimiter(r, burst, expiresIn, "Too many download requests, please try again later")
 }
 
-func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS string, favicon string, internalUrl string, pdfDateFormat string) {
+func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS any, favicon string, internalUrl string, pdfDateFormat string) {
 	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
 		TokenLookup: "header:Authorization",
 		// Custom token parsing to handle with and without bearer prefix to support outdated shaper cli clients that don't send bearer prefix
