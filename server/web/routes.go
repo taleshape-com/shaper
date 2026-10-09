@@ -5,10 +5,10 @@ package web
 import (
 	"fmt"
 	"io/fs"
-	"net"
 	"net/http"
 	"shaper/server/core"
 	"shaper/server/web/handler"
+	"shaper/server/web/webutil"
 	"strings"
 	"time"
 
@@ -113,8 +113,8 @@ func RequirePermission(app *core.App, permissions ...string) echo.MiddlewareFunc
 	}
 }
 
-// createRateLimiter creates an Echo rate limiter middleware with common client IP extraction and JSON error formatting.
-func createRateLimiter(r rate.Limit, burst int, expiresIn time.Duration, errorMessage string) echo.MiddlewareFunc {
+// createRateLimiterWithIdentifier creates an Echo rate limiter middleware with a custom identifier extractor.
+func createRateLimiterWithIdentifier(r rate.Limit, burst int, expiresIn time.Duration, errorMessage string, extractor func(ctx echo.Context) (string, error)) echo.MiddlewareFunc {
 	return middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
 		Skipper: middleware.DefaultSkipper,
 		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
@@ -124,18 +124,7 @@ func createRateLimiter(r rate.Limit, burst int, expiresIn time.Duration, errorMe
 				ExpiresIn: expiresIn,
 			},
 		),
-		IdentifierExtractor: func(ctx echo.Context) (string, error) {
-			id := ctx.RealIP()
-			if id == "" {
-				host, _, err := net.SplitHostPort(ctx.Request().RemoteAddr)
-				if err == nil {
-					id = host
-				} else {
-					id = ctx.Request().RemoteAddr
-				}
-			}
-			return id, nil
-		},
+		IdentifierExtractor: extractor,
 		ErrorHandler: func(c echo.Context, err error) error {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
@@ -150,10 +139,32 @@ func createRateLimiter(r rate.Limit, burst int, expiresIn time.Duration, errorMe
 	})
 }
 
-// LoginRateLimiter returns an Echo middleware that rate limits login attempts per IP address.
-// By default, it allows up to 5 requests per minute with a burst of 5 requests.
+// createRateLimiter creates an Echo rate limiter middleware with common client IP extraction and JSON error formatting.
+func createRateLimiter(r rate.Limit, burst int, expiresIn time.Duration, errorMessage string) echo.MiddlewareFunc {
+	return createRateLimiterWithIdentifier(r, burst, expiresIn, errorMessage, func(ctx echo.Context) (string, error) {
+		return webutil.ExtractClientIP(ctx), nil
+	})
+}
+
+// LoginAccountRateLimiterStore returns a new RateLimiterMemoryStore configured for per-account login attempts.
+// By default, it allows up to 5 requests per minute with a burst of 5 requests per IP+email.
+func LoginAccountRateLimiterStore() middleware.RateLimiterStore {
+	return LoginAccountRateLimiterStoreWithConfig(5.0/60.0, 5, 3*time.Minute)
+}
+
+// LoginAccountRateLimiterStoreWithConfig returns a RateLimiterMemoryStore with custom login rate limit settings.
+func LoginAccountRateLimiterStoreWithConfig(r rate.Limit, burst int, expiresIn time.Duration) middleware.RateLimiterStore {
+	return middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
+		Rate:      r,
+		Burst:     burst,
+		ExpiresIn: expiresIn,
+	})
+}
+
+// LoginRateLimiter returns an Echo middleware that protects the login route against broad brute-force and credential stuffing.
+// By default, it allows up to 60 requests per minute with a burst of 30 requests per IP address, accommodating shared corporate networks.
 func LoginRateLimiter() echo.MiddlewareFunc {
-	return LoginRateLimiterWithConfig(5.0/60.0, 5, 3*time.Minute)
+	return LoginRateLimiterWithConfig(60.0/60.0, 30, 3*time.Minute)
 }
 
 // LoginRateLimiterWithConfig returns a login rate limiting middleware with custom rate limit settings.
@@ -161,10 +172,25 @@ func LoginRateLimiterWithConfig(r rate.Limit, burst int, expiresIn time.Duration
 	return createRateLimiter(r, burst, expiresIn, "Too many login attempts, please try again later")
 }
 
+// PublicAuthRateLimiterStore returns a new RateLimiterMemoryStore configured for password-protected dashboard auth attempts.
+// By default, it allows up to 20 requests per minute with a burst of 25 requests per IP+dashboard.
+func PublicAuthRateLimiterStore() middleware.RateLimiterStore {
+	return PublicAuthRateLimiterStoreWithConfig(20.0/60.0, 25, 3*time.Minute)
+}
+
+// PublicAuthRateLimiterStoreWithConfig returns a RateLimiterMemoryStore with custom rate limit settings.
+func PublicAuthRateLimiterStoreWithConfig(r rate.Limit, burst int, expiresIn time.Duration) middleware.RateLimiterStore {
+	return middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
+		Rate:      r,
+		Burst:     burst,
+		ExpiresIn: expiresIn,
+	})
+}
+
 // PublicAuthRateLimiter returns an Echo middleware that rate limits public and password-protected dashboard auth attempts.
-// By default, it allows up to 20 requests per minute with a burst of 10 requests.
+// By default, it allows up to 20 requests per minute with a burst of 25 requests.
 func PublicAuthRateLimiter() echo.MiddlewareFunc {
-	return PublicAuthRateLimiterWithConfig(20.0/60.0, 10, 3*time.Minute)
+	return PublicAuthRateLimiterWithConfig(20.0/60.0, 25, 3*time.Minute)
 }
 
 // PublicAuthRateLimiterWithConfig returns a public auth rate limiting middleware with custom rate limit settings.
@@ -173,25 +199,41 @@ func PublicAuthRateLimiterWithConfig(r rate.Limit, burst int, expiresIn time.Dur
 }
 
 // InviteRateLimiter returns an Echo middleware that rate limits invite code queries and claims.
-// By default, it allows up to 10 requests per minute with a burst of 5 requests.
+// It limits per IP + invite code to prevent brute forcing an invite code while allowing multiple invitees on the same network.
+// By default, it allows up to 20 requests per minute with a burst of 15 requests.
 func InviteRateLimiter() echo.MiddlewareFunc {
-	return InviteRateLimiterWithConfig(10.0/60.0, 5, 3*time.Minute)
+	return InviteRateLimiterWithConfig(20.0/60.0, 15, 3*time.Minute)
 }
 
 // InviteRateLimiterWithConfig returns an invite rate limiting middleware with custom rate limit settings.
 func InviteRateLimiterWithConfig(r rate.Limit, burst int, expiresIn time.Duration) echo.MiddlewareFunc {
-	return createRateLimiter(r, burst, expiresIn, "Too many invite requests, please try again later")
+	return createRateLimiterWithIdentifier(r, burst, expiresIn, "Too many invite requests, please try again later", func(ctx echo.Context) (string, error) {
+		code := ctx.Param("code")
+		ip := webutil.ExtractClientIP(ctx)
+		if code != "" {
+			return ip + ":" + code, nil
+		}
+		return ip, nil
+	})
 }
 
 // DownloadRateLimiter returns an Echo middleware that rate limits file/report downloads and Chromium renders.
-// By default, it allows up to 10 requests per minute with a burst of 5 requests.
+// For authenticated requests, it limits per user or API key actor ID so users on shared networks don't interfere with each other.
+// For unauthenticated requests (such as downloads via key), it falls back to client IP.
+// By default, it allows up to 10 requests per minute with a burst of 10 requests.
 func DownloadRateLimiter() echo.MiddlewareFunc {
-	return DownloadRateLimiterWithConfig(10.0/60.0, 5, 3*time.Minute)
+	return DownloadRateLimiterWithConfig(10.0/60.0, 10, 3*time.Minute)
 }
 
 // DownloadRateLimiterWithConfig returns a download rate limiting middleware with custom rate limit settings.
 func DownloadRateLimiterWithConfig(r rate.Limit, burst int, expiresIn time.Duration) echo.MiddlewareFunc {
-	return createRateLimiter(r, burst, expiresIn, "Too many download requests, please try again later")
+	return createRateLimiterWithIdentifier(r, burst, expiresIn, "Too many download requests, please try again later", func(ctx echo.Context) (string, error) {
+		actor := core.ActorFromContext(ctx.Request().Context())
+		if actor != nil && actor.ID != "" {
+			return "actor:" + actor.ID, nil
+		}
+		return "ip:" + webutil.ExtractClientIP(ctx), nil
+	})
 }
 
 func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, customCSS any, favicon string, internalUrl string, pdfDateFormat string) {
@@ -247,12 +289,15 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	inviteLimiter := InviteRateLimiter()
 	downloadLimiter := DownloadRateLimiter()
+	publicAuthLimiter := PublicAuthRateLimiterStore()
+	loginLimiter := LoginRateLimiter()
+	loginAccountLimiter := LoginAccountRateLimiterStore()
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))
-	e.POST("/api/login", handler.Login(app), LoginRateLimiter())
+	e.POST("/api/login", handler.Login(app, loginAccountLimiter), loginLimiter)
 	e.POST("/api/auth/token", handler.TokenAuth(app))
-	e.POST("/api/auth/public", handler.PublicAuth(app), PublicAuthRateLimiter())
+	e.POST("/api/auth/public", handler.PublicAuth(app, publicAuthLimiter))
 	e.POST("/api/auth/setup", handler.Setup(app))
 	e.GET("/api/invites/:code", handler.GetInvite(app), inviteLimiter)
 	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app), inviteLimiter)
