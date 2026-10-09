@@ -9,11 +9,13 @@ import (
 	"log/slog"
 	"net/http"
 	"shaper/server/core"
+	"shaper/server/web/webutil"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 const LONG_LIVED_TOKEN_DURATION = 30 * 24 * time.Hour
@@ -40,7 +42,17 @@ func Logout(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func Login(app *core.App) echo.HandlerFunc {
+func Login(app *core.App, rateLimiter ...middleware.RateLimiterStore) echo.HandlerFunc {
+	var store middleware.RateLimiterStore
+	if len(rateLimiter) > 0 {
+		store = rateLimiter[0]
+	} else {
+		store = middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
+			Rate:      5.0 / 60.0,
+			Burst:     5,
+			ExpiresIn: 3 * time.Minute,
+		})
+	}
 	return func(c echo.Context) error {
 		// Parse the request body
 		var loginRequest struct {
@@ -50,6 +62,23 @@ func Login(app *core.App) echo.HandlerFunc {
 		if err := c.Bind(&loginRequest); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		}
+
+		if store != nil {
+			ip := webutil.ExtractClientIP(c)
+			email := strings.ToLower(strings.TrimSpace(loginRequest.Email))
+			identifier := ip
+			if email != "" {
+				identifier = ip + ":" + email
+			}
+			allow, err := store.Allow(identifier)
+			if err != nil || !allow {
+				c.Response().Header().Set("Retry-After", "60")
+				return c.JSONPretty(http.StatusTooManyRequests, struct {
+					Error string `json:"error"`
+				}{Error: "Too many login attempts, please try again later"}, "  ")
+			}
+		}
+
 		// If a token is provided, validate it
 		sessionToken, err := core.Login(app, c.Request().Context(), loginRequest.Email, loginRequest.Password)
 		if err != nil {
@@ -245,7 +274,17 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 	}
 }
 
-func PublicAuth(app *core.App) echo.HandlerFunc {
+func PublicAuth(app *core.App, rateLimiter ...middleware.RateLimiterStore) echo.HandlerFunc {
+	var store middleware.RateLimiterStore
+	if len(rateLimiter) > 0 {
+		store = rateLimiter[0]
+	} else {
+		store = middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
+			Rate:      20.0 / 60.0,
+			Burst:     10,
+			ExpiresIn: 3 * time.Minute,
+		})
+	}
 	return func(c echo.Context) error {
 		var loginRequest struct {
 			DashboardID string `json:"dashboardId"`
@@ -276,6 +315,18 @@ func PublicAuth(app *core.App) echo.HandlerFunc {
 
 		// If dashboard is password-protected, verify the password
 		if *dashboard.Visibility == "password-protected" {
+			if store != nil {
+				ip := webutil.ExtractClientIP(c)
+				identifier := ip + ":" + loginRequest.DashboardID
+				allow, err := store.Allow(identifier)
+				if err != nil || !allow {
+					c.Response().Header().Set("Retry-After", "60")
+					return c.JSONPretty(http.StatusTooManyRequests, struct {
+						Error string `json:"error"`
+					}{Error: "Too many requests, please try again later"}, "  ")
+				}
+			}
+
 			if loginRequest.Password == "" {
 				return c.JSONPretty(http.StatusUnauthorized, struct {
 					Error string `json:"error"`

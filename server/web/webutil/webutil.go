@@ -1,9 +1,26 @@
 package webutil
 
 import (
+	"net"
 	"net/http"
 	"net/url"
+
+	"github.com/labstack/echo/v4"
 )
+
+// ExtractClientIP extracts the client IP address from echo.Context, handling reverse proxy headers with fallback to RemoteAddr.
+func ExtractClientIP(ctx echo.Context) string {
+	id := ctx.RealIP()
+	if id == "" {
+		host, _, err := net.SplitHostPort(ctx.Request().RemoteAddr)
+		if err == nil {
+			id = host
+		} else {
+			id = ctx.Request().RemoteAddr
+		}
+	}
+	return id
+}
 
 // GetRequestURL reconstructs the full URL, handling reverse proxy scenarios
 func GetRequestURL(r *http.Request) *url.URL {
