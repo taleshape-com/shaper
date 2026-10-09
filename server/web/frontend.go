@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -207,7 +208,7 @@ func IsBasePathSet(basePath string) bool {
 	return basePath != "/"
 }
 
-func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS any, basePath string, favicon string) echo.HandlerFunc {
+func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, basePath string, favicon string) echo.HandlerFunc {
 	fsys, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		fmt.Printf("Error creating index HTML filesystem: %v\n", err)
@@ -243,19 +244,16 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, customCSS any, base
 		html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\"/favicon.ico\"")
 	}
 	html = strings.Replace(html, "<script>window.shaper = { defaultBaseUrl: '/' }</script>", fmt.Sprintf("<script>window.shaper = { defaultBaseUrl: %q };</script>", basePath), 1)
-	// Ensure custom CSS stylesheet link is present and configured for basePath
-	html = strings.ReplaceAll(html, "\"/embed/custom.css\"", "\""+basePath+"embed/custom.css\"")
-	html = strings.ReplaceAll(html, "\"./embed/custom.css\"", "\""+basePath+"embed/custom.css\"")
-	if !strings.Contains(html, "custom.css") {
-		linkTag := fmt.Sprintf("<link id=\"shaper-custom-css\" rel=\"stylesheet\" href=\"%sembed/custom.css\" />", basePath)
-		if strings.Contains(html, "<style></style>") {
-			html = strings.Replace(html, "<style></style>", linkTag, 1)
-		} else if strings.Contains(html, "</head>") {
-			html = strings.Replace(html, "</head>", linkTag+"\n</head>", 1)
-		}
-	}
-	if strings.Contains(html, "<style></style>") {
-		html = strings.Replace(html, "<style></style>", "", 1)
+	// Remove any existing custom.css link so we can place it at the very end of <head>,
+	// ensuring custom CSS overrides Shaper's default index.css in the CSS cascade.
+	re := regexp.MustCompile(`(?i)[ \t]*<link[^>]*id=["']shaper-custom-css["'][^>]*>\s*|[ \t]*<link[^>]*href=["'][^"']*custom\.css["'][^>]*>\s*`)
+	html = re.ReplaceAllString(html, "")
+
+	linkTag := fmt.Sprintf("<link id=\"shaper-custom-css\" rel=\"stylesheet\" href=\"%sembed/custom.css\" />", basePath)
+	if strings.Contains(html, "</head>") {
+		html = strings.Replace(html, "</head>", "    "+linkTag+"\n  </head>", 1)
+	} else {
+		html += "\n" + linkTag
 	}
 
 	return func(c echo.Context) error {
