@@ -18,7 +18,7 @@ require (
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/nats-io/nats-server/v2 v2.15.0
 	github.com/nats-io/nats.go v1.54.0
-	github.com/nrednav/cuid2 v1.1.0
+	github.com/nrednav/cuid2 v1.1.1
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/samber/slog-echo v1.23.0
