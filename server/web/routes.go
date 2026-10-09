@@ -164,7 +164,7 @@ func LoginAccountRateLimiterStoreWithConfig(r rate.Limit, burst int, expiresIn t
 // LoginRateLimiter returns an Echo middleware that protects the login route against broad brute-force and credential stuffing.
 // By default, it allows up to 60 requests per minute with a burst of 30 requests per IP address, accommodating shared corporate networks.
 func LoginRateLimiter() echo.MiddlewareFunc {
-	return LoginRateLimiterWithConfig(60.0/60.0, 30, 3*time.Minute)
+	return LoginRateLimiterWithConfig(1.0, 30, 3*time.Minute)
 }
 
 // LoginRateLimiterWithConfig returns a login rate limiting middleware with custom rate limit settings.
