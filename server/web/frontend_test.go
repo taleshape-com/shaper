@@ -5,6 +5,7 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -82,7 +83,6 @@ func TestIndexHTMLWithCache_Favicon(t *testing.T) {
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="stylesheet" href="/assets/main.css" />
   <script>window.shaper = { defaultBaseUrl: '/' }</script>
-  <style></style>
 </head>
 <body></body>
 </html>`
@@ -148,7 +148,7 @@ func TestIndexHTMLWithCache_Favicon(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
-			handler := indexHTMLWithCache(mockFS, time.Now(), "", tt.basePath, tt.favicon)
+			handler := indexHTMLWithCache(mockFS, time.Now(), tt.basePath, tt.favicon)
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
@@ -163,6 +163,43 @@ func TestIndexHTMLWithCache_Favicon(t *testing.T) {
 			assert.Contains(t, body, tt.expectedAssetsHref)
 		})
 	}
+
+	t.Run("custom.css is placed after bundled css to win the cascade", func(t *testing.T) {
+		mockHTMLWithEarlyCustomCSS := `<!doctype html>
+<html>
+<head>
+  <link id="shaper-custom-css" rel="stylesheet" href="/embed/custom.css" />
+  <link rel="stylesheet" href="/assets/index-123.css" />
+</head>
+<body></body>
+</html>`
+
+		mockFS := fstest.MapFS{
+			"dist/index.html": &fstest.MapFile{
+				Data:    []byte(mockHTMLWithEarlyCustomCSS),
+				ModTime: time.Now(),
+			},
+		}
+
+		e := echo.New()
+		handler := indexHTMLWithCache(mockFS, time.Now(), "/", "")
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler(c)
+		require.NoError(t, err)
+		body := rec.Body.String()
+
+		indexCSSPos := strings.Index(body, "/assets/index-123.css")
+		customCSSPos := strings.Index(body, "/embed/custom.css")
+		assert.Greater(t, indexCSSPos, -1)
+		assert.Greater(t, customCSSPos, -1)
+		// custom.css must appear AFTER index-123.css so that custom styles override default styles
+		assert.Greater(t, customCSSPos, indexCSSPos, "custom.css should appear after index.css")
+		// It should only appear once
+		assert.Equal(t, 1, strings.Count(body, "custom.css"))
+	})
 }
 
 func TestFaviconRoute(t *testing.T) {

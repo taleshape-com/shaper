@@ -380,7 +380,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	}
 
 	// Index HTML - light caching with revalidation
-	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, customCSS, app.BasePath, favicon))
+	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, app.BasePath, favicon))
 }
 
 func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, setActorMid echo.MiddlewareFunc, keyAuthMiddleware echo.MiddlewareFunc, apiKeyActorMid echo.MiddlewareFunc) echo.MiddlewareFunc {

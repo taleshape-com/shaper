@@ -40,7 +40,10 @@ function injectCustomCSS (baseUrl?: string) {
   if (typeof document === "undefined") return;
 
   const linkId = "shaper-custom-css";
-  if (!document.getElementById(linkId)) {
+  const existing = document.getElementById(linkId);
+  if (existing) {
+    document.head.appendChild(existing);
+  } else {
     const base = ensureTrailingSlash(baseUrl ?? window.shaper?.defaultBaseUrl ?? getScriptBaseUrl());
     const linkElement = document.createElement("link");
     linkElement.id = linkId;
