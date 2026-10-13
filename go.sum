@@ -88,8 +88,8 @@ github.com/labstack/echo-contrib v0.50.1 h1:W9cZZ9viA4TDdFtm8cuA+XGFwOcnfbjJpl7V
 github.com/labstack/echo-contrib v0.50.1/go.mod h1:8r/++U/Fw/QniApFnzunLanKaviPfBX7fX7/2QX0qOk=
 github.com/labstack/echo-jwt/v4 v4.4.0 h1:nrXaEnJupfc2R4XChcLRDyghhMZup77F8nIzHnBK19U=
 github.com/labstack/echo-jwt/v4 v4.4.0/go.mod h1:kYXWgWms9iFqI3ldR+HAEj/Zfg5rZtR7ePOgktG4Hjg=
-github.com/labstack/echo/v4 v4.15.4 h1:DL45vVYa+BWE+XuW+zZNd9H0YEdZ80UAWJGcTVW4EVs=
-github.com/labstack/echo/v4 v4.15.4/go.mod h1:CuMetKIRwsuO/qlAgMq+KTAalwGoB/h4tC+yPdrTj1g=
+github.com/labstack/echo/v4 v4.16.0 h1:cFqqpqVNmSVyn4nvsXHp5rU4aVLYG3hx4fGWc3FngBk=
+github.com/labstack/echo/v4 v4.16.0/go.mod h1:VHAohjgM63iiTVI6EahEDjtRhQNXCMXFp0TMeIsFuW0=
 github.com/labstack/gommon v0.5.0 h1:6VSQ2NOzsnEJ5W6+84E0RbcaDDmgB6NIAzWCczTEe6c=
 github.com/labstack/gommon v0.5.0/go.mod h1:Rzlg7HHy1maLfzBYGg9NZcVuz1sA68HHhLjhcEllYE0=
 github.com/ledongthuc/pdf v0.0.0-20220302134840-0c2507a12d80 h1:6Yzfa6GP0rIo/kULo2bwGEkFvCePZ3qHDDTC3/J9Swo=
