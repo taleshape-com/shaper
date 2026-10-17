@@ -4,11 +4,11 @@ package pdf
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 
 	chromeio "github.com/chromedp/cdproto/io"
+	"github.com/chromedp/chromedp"
 )
 
 var _ io.Reader = &ChromeReadAdapter{} // Static type check
@@ -43,24 +43,18 @@ func NewChromeReadAdapter(
 
 func (adapter *ChromeReadAdapter) Read(output []byte) (int, error) {
 	if !adapter.eofReached && adapter.buffer.Len() < adapter.batchSize {
-		base64Batch, isEof, err := chromeio.
-			Read(adapter.handle).
-			WithSize(int64(adapter.batchSize)).
-			Do(adapter.ctx)
+		res, err := chromedp.Call(adapter.ctx, chromeio.Read, chromeio.ReadParams{
+			Handle: adapter.handle,
+			Size:   int64(adapter.batchSize),
+		})
 		if err != nil {
 			return 0, fmt.Errorf("read chrome stream: %w", err)
 		}
-		if isEof {
+		if res.EOF {
 			adapter.eofReached = true
 		}
 
-		// Each batch is it's own base64 sequence
-		batchBytes, err := base64.StdEncoding.DecodeString(base64Batch)
-		if err != nil {
-			return 0, fmt.Errorf("decode base64 chrome stream: %w", err)
-		}
-
-		adapter.buffer.Write(batchBytes)
+		adapter.buffer.Write(res.Data)
 	}
 
 	return adapter.buffer.Read(output)

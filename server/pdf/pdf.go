@@ -61,20 +61,18 @@ func StreamDashboardPdf(
 	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
 	headerImage := ""
 	footerLink := ""
-	errorMessage := ""
-	err = chromedp.Run(ctx, chromedp.Tasks{
+	err = chromedp.Do(ctx,
 		chromedp.Navigate(urlstr),
 		// Wait for either the dashboard to load or an error to appear
 		chromedp.WaitReady(`.shaper-scope .shaper-custom-dashboard-header, #shaper-error-message`),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			// Check if error message is present
-			var nodes []*cdp.Node
-			err := chromedp.Nodes("#shaper-error-message", &nodes, chromedp.AtLeast(0)).Do(ctx)
+			nodes, err := chromedp.Nodes("#shaper-error-message", chromedp.AtLeast(0))(ctx, t)
 			if err != nil {
 				return err
 			}
 			if len(nodes) > 0 {
-				err = chromedp.Text("#shaper-error-message", &errorMessage).Do(ctx)
+				errorMessage, err := chromedp.Text("#shaper-error-message")(ctx, t)
 				if err != nil {
 					return err
 				}
@@ -83,38 +81,53 @@ func StreamDashboardPdf(
 			return nil
 		}),
 		// Get header image and footer link from dashboard
-		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-header`, "data-header-image", &headerImage, nil),
-		chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-footer`, "data-footer-link", &footerLink, nil),
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
+			headerRes, err := chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-header`, "data-header-image")(ctx, t)
+			if err != nil {
+				return err
+			}
+			headerImage = headerRes.Value
+
+			footerRes, err := chromedp.AttributeValue(`.shaper-scope .shaper-custom-dashboard-footer`, "data-footer-link")(ctx, t)
+			if err != nil {
+				return err
+			}
+			footerLink = footerRes.Value
+			return nil
+		}),
 		// Set margin-top if header image is set to avoid overlap
 		// Also remove header and footer elements as we use PDF header+footer
-		chromedp.Evaluate(`
+		chromedp.Evaluate[chromedp.Void](`
 			const el = document.querySelector('.shaper-scope .shaper-custom-dashboard-header');
-			if (el.getAttribute('data-header-image')) {
+			if (el && el.getAttribute('data-header-image')) {
 				const style = document.createElement('style');
 				style.textContent = '@page { margin-top: 20mm; }';
 				document.head.appendChild(style);
 			}
-			document.querySelector('.shaper-scope .shaper-custom-dashboard-header').remove();
-			document.querySelector('.shaper-scope .shaper-custom-dashboard-footer').remove();
-		`, nil),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+			const header = document.querySelector('.shaper-scope .shaper-custom-dashboard-header');
+			if (header) header.remove();
+			const footer = document.querySelector('.shaper-scope .shaper-custom-dashboard-footer');
+			if (footer) footer.remove();
+		`),
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			h, err := header(headerImage)
 			if err != nil {
 				logger.Warn("failed to load header image for pdf", slog.String("image", headerImage), slog.String("dashboard", dashboardId), slog.Any("error", err))
 			}
-			_, rawPdfStream, err := page.PrintToPDF().
-				WithPrintBackground(true).
-				WithPreferCSSPageSize(true).
-				WithScale(PDF_SCALE).
-				WithDisplayHeaderFooter(true).
-				WithHeaderTemplate(h).
-				WithFooterTemplate(footer(time.Now().Format(pdfDateFormat), footerLink)).
-				WithTransferMode(page.PrintToPDFTransferModeReturnAsStream).
-				Do(ctx)
+			res, err := cdp.Call(ctx, t, page.PrintToPDF, page.PrintToPDFParams{
+				PrintBackground:     ptr(true),
+				PreferCSSPageSize:   ptr(true),
+				Scale:               PDF_SCALE,
+				DisplayHeaderFooter: ptr(true),
+				HeaderTemplate:      h,
+				FooterTemplate:      footer(time.Now().Format(pdfDateFormat), footerLink),
+				TransferMode:        page.PrintToPDFTransferModeReturnAsStream,
+			})
 			if err != nil {
 				return err
 			}
-			defer func() { _ = chromeio.Close(rawPdfStream).Do(ctx) }()
+			rawPdfStream := res.Stream
+			defer func() { _, _ = cdp.Call(ctx, t, chromeio.Close, chromeio.CloseParams{Handle: rawPdfStream}) }()
 
 			pdfReader := NewChromeReadAdapter(
 				ctx,
@@ -124,7 +137,7 @@ func StreamDashboardPdf(
 			_, err = io.Copy(writer, pdfReader)
 			return err
 		}),
-	})
+	)
 	if err != nil {
 		return fmt.Errorf("failed to generate pdf: %w", err)
 	}
@@ -159,21 +172,19 @@ func StreamDashboardPng(
 		return fmt.Errorf("failed to json marshal params: %w", err)
 	}
 	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
-	errorMessage := ""
 	pngData := ""
-	err = chromedp.Run(ctx, chromedp.Tasks{
+	err = chromedp.Do(ctx,
 		chromedp.Navigate(urlstr),
 		// Wait for either the dashboard to load or an error to appear
 		chromedp.WaitReady(`.shaper-scope .shaper-custom-dashboard-header, #shaper-error-message`),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			// Check if error message is present
-			var nodes []*cdp.Node
-			err := chromedp.Nodes("#shaper-error-message", &nodes, chromedp.AtLeast(0)).Do(ctx)
+			nodes, err := chromedp.Nodes("#shaper-error-message", chromedp.AtLeast(0))(ctx, t)
 			if err != nil {
 				return err
 			}
 			if len(nodes) > 0 {
-				err = chromedp.Text("#shaper-error-message", &errorMessage).Do(ctx)
+				errorMessage, err := chromedp.Text("#shaper-error-message")(ctx, t)
 				if err != nil {
 					return err
 				}
@@ -181,10 +192,9 @@ func StreamDashboardPng(
 			}
 			return nil
 		}),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			// Assert that exactly 1 download button is present
-			var nodes []*cdp.Node
-			err := chromedp.Nodes(".shaper-chart-download-button", &nodes, chromedp.AtLeast(0)).Do(ctx)
+			nodes, err := chromedp.Nodes(".shaper-chart-download-button", chromedp.AtLeast(0))(ctx, t)
 			if err != nil {
 				return err
 			}
@@ -197,7 +207,7 @@ func StreamDashboardPng(
 			return nil
 		}),
 		// Monkey-patch download behavior
-		chromedp.Evaluate(`
+		chromedp.Evaluate[chromedp.Void](`
 			window.shaper_captured_png = null;
 			const originalClick = HTMLAnchorElement.prototype.click;
 			HTMLAnchorElement.prototype.click = function() {
@@ -207,19 +217,18 @@ func StreamDashboardPng(
 				}
 				originalClick.apply(this, arguments);
 			};
-		`, nil),
+		`),
 		// Trigger the click
 		chromedp.Click(".shaper-chart-download-button"),
 		// Poll for the captured png
-		chromedp.ActionFunc(func(ctx context.Context) error {
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			ticker := time.NewTicker(100 * time.Millisecond)
 			defer ticker.Stop()
 			timeout := time.After(10 * time.Second)
 			for {
 				select {
 				case <-ticker.C:
-					var captured string
-					err := chromedp.Evaluate(`window.shaper_captured_png`, &captured).Do(ctx)
+					captured, err := chromedp.Evaluate[string](`window.shaper_captured_png || ""`)(ctx, t)
 					if err != nil {
 						return err
 					}
@@ -234,7 +243,7 @@ func StreamDashboardPng(
 				}
 			}
 		}),
-	})
+	)
 	if err != nil {
 		return fmt.Errorf("failed to generate png: %w", err)
 	}
@@ -339,4 +348,8 @@ func footer(formattedDate string, footerLink string) string {
 		<span class="totalPages"></span>
 	</span>
 </div>`
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

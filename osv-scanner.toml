@@ -3,3 +3,7 @@
 [[IgnoredVulns]]
 id = "GHSA-vfj7-8cjw-p6xm"
 reason = "Stack-exhaustion DoS through deeply nested patterns in braces is not a concern for our application, and no non-breaking fix is currently available."
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = "Affects unmaintained golang.org/x/crypto/openpgp subpackage which will not be fixed. We only use x/crypto/bcrypt and x/crypto/acme/autocert."
