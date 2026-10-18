@@ -160,6 +160,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			})
 			if err == nil && token.Valid {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					// Double check: dashboard-scoped JWTs cannot be used to exchange for new tokens.
 					if _, hasId := claims["dashboardId"]; hasId {
 						return c.JSONPretty(http.StatusUnauthorized, struct {
 							Error string `json:"error"`
@@ -407,6 +408,7 @@ func Setup(app *core.App) echo.HandlerFunc {
 func ResetJWTSecret(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`

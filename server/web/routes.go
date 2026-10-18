@@ -20,10 +20,10 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// isAllowedPublicRoute returns true only for routes that public dashboard tokens may access:
+// isAllowedDashboardRoute returns true only for routes that dashboard-scoped tokens may access:
 // - GET /api/dashboards/:id
 // - GET /api/dashboards/:id/download/:filename
-func isAllowedPublicRoute(c echo.Context) bool {
+func isAllowedDashboardRoute(c echo.Context) bool {
 	if c.Request().Method != http.MethodGet {
 		return false
 	}
@@ -97,8 +97,17 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 
 			c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
 
+			// Reject any dashboard-scoped JWTs on routes other than the allowed dashboard routes.
+			if _, hasDashboardID := claims["dashboardId"]; hasDashboardID {
+				if !isAllowedDashboardRoute(c) {
+					return c.JSONPretty(http.StatusUnauthorized, struct {
+						Error string `json:"error"`
+					}{Error: "Unauthorized"}, "  ")
+				}
+			}
+
 			if actor.Type == core.ActorPublic {
-				if !isAllowedPublicRoute(c) {
+				if !isAllowedDashboardRoute(c) {
 					return c.JSONPretty(http.StatusUnauthorized, struct {
 						Error string `json:"error"`
 					}{Error: "Unauthorized"}, "  ")

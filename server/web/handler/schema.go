@@ -15,6 +15,7 @@ func GetSchema(app *core.App) echo.HandlerFunc {
 		ctxUser := c.Get("user")
 		if ctxUser != nil {
 			claims := ctxUser.(*jwt.Token).Claims.(jwt.MapClaims)
+			// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 			if _, hasId := claims["dashboardId"]; hasId {
 				return c.JSONPretty(http.StatusUnauthorized, struct {
 					Error string `json:"error"`

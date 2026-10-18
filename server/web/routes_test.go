@@ -753,6 +753,34 @@ func TestRoutes_PublicActorRestrictions(t *testing.T) {
 		})
 	}
 
+	dashboardScopedUserToken := createJWT(jwt.MapClaims{
+		"userId":      "user-123",
+		"dashboardId": "test-dash-id",
+		"exp":         time.Now().Add(time.Hour).Unix(),
+	})
+
+	t.Run("dashboard-scoped user JWT rejected on forbidden routes", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/apps", nil)
+		req.Header.Set("Authorization", "Bearer "+dashboardScopedUserToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+
+	t.Run("dashboard-scoped user JWT allowed on GET /dashboards/:id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/dashboards/test-dash-id", nil)
+		req.Header.Set("Authorization", "Bearer "+dashboardScopedUserToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
 	t.Run("regular user JWT is allowed on general routes", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
 		req.Header.Set("Authorization", "Bearer "+userToken)

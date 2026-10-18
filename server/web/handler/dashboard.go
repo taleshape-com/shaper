@@ -45,6 +45,7 @@ func CreateDashboard(app *core.App) echo.HandlerFunc {
 
 		if userToken, ok := c.Get("user").(*jwt.Token); ok {
 			claims := userToken.Claims.(jwt.MapClaims)
+			// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 			if _, hasId := claims["dashboardId"]; hasId {
 				return c.JSONPretty(http.StatusUnauthorized,
 					struct {
@@ -121,6 +122,7 @@ func GetDashboardInfo(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		// Embedding JWTs that are fixed to a dashboardId are not allowed to edit the board
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -147,6 +149,7 @@ func GetDashboardInfo(app *core.App) echo.HandlerFunc {
 func SaveDashboardName(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -193,6 +196,7 @@ func SaveDashboardName(app *core.App) echo.HandlerFunc {
 func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -233,6 +237,7 @@ func SaveDashboardVisibility(app *core.App) echo.HandlerFunc {
 func SaveDashboardPassword(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -280,6 +285,7 @@ func SaveDashboardQuery(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		// Embedding JWTs that are fixed to a dashboardId are not allowed to edit the board
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -358,6 +364,7 @@ func GetDashboard(app *core.App) echo.HandlerFunc {
 func DeleteDashboard(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {
