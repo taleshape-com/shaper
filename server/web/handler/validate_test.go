@@ -125,3 +125,52 @@ func TestValidate(t *testing.T) {
 		}
 	})
 }
+
+func TestValidate_DashboardIDRestriction(t *testing.T) {
+	e := echo.New()
+	app := setupTestApp(t)
+
+	t.Run("jwt with dashboardId is rejected with 401", func(t *testing.T) {
+		token := createDashboardScopedToken("dash-456")
+		reqBody, _ := json.Marshal(ValidateRequest{
+			Type: "dashboard",
+			SQL:  "SELECT 1",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/validate", bytes.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := newContextWithUser(e, req, rec, token)
+
+		h := Validate(app)
+		if err := h(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected status 401, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("jwt without dashboardId is not rejected with 401", func(t *testing.T) {
+		token := createUserToken()
+		reqBody, _ := json.Marshal(ValidateRequest{
+			Type: "dashboard",
+			SQL:  "SELECT 1",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/validate", bytes.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := newContextWithUser(e, req, rec, token)
+
+		h := Validate(app)
+		if err := h(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+		if rec.Code == http.StatusUnauthorized {
+			t.Errorf("expected non-401 status, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+}
+

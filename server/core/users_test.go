@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "modernc.org/sqlite"
 	"golang.org/x/crypto/bcrypt"
+	_ "modernc.org/sqlite"
 )
 
 func TestHandleUpdateUserPassword(t *testing.T) {
@@ -19,7 +19,7 @@ func TestHandleUpdateUserPassword(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := initSQLite(db); err != nil {
+	if err := InitSQLite(db); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -113,7 +113,7 @@ func TestHandleUpdateUserName(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := initSQLite(db); err != nil {
+	if err := InitSQLite(db); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -160,8 +160,8 @@ func TestHandleUpdateUserName(t *testing.T) {
 }
 
 func TestUpdateUserPasswordSubmitState(t *testing.T) {
-    // This would require a more complex setup with NATS, which might be overkill for this task
-    // given the existing test patterns.
+	// This would require a more complex setup with NATS, which might be overkill for this task
+	// given the existing test patterns.
 }
 
 func TestHandleCreateUser_InvariantEnforcement(t *testing.T) {
@@ -171,7 +171,7 @@ func TestHandleCreateUser_InvariantEnforcement(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := initSQLite(db); err != nil {
+	if err := InitSQLite(db); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -246,4 +246,3 @@ func TestHandleCreateUser_InvariantEnforcement(t *testing.T) {
 		t.Fatalf("second user was inserted despite active user existing")
 	}
 }
-

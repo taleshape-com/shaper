@@ -22,7 +22,7 @@ func TestValidateDashboardDownload(t *testing.T) {
 	}
 	defer sdb.Close()
 
-	if err := initSQLite(sdb); err != nil {
+	if err := InitSQLite(sdb); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -77,7 +77,7 @@ func TestQueryDashboard(t *testing.T) {
 	}
 	defer sdb.Close()
 
-	if err := initSQLite(sdb); err != nil {
+	if err := InitSQLite(sdb); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -121,7 +121,7 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, 1, len(result.Sections[0].Queries))
 		q := result.Sections[0].Queries[0]
 		assert.Equal(t, "linechart", q.Render.Type)
-		
+
 		// Verify tags are correct
 		assert.Equal(t, "index", q.Columns[0].Tag)
 		assert.Equal(t, "value", q.Columns[1].Tag)
@@ -146,7 +146,7 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, 1, len(result.Sections[0].Queries))
 		q := result.Sections[0].Queries[0]
 		assert.Equal(t, "scatterplot", q.Render.Type)
-		
+
 		// Verify tags are correct
 		assert.Equal(t, "index", q.Columns[0].Tag)
 		assert.Equal(t, "value", q.Columns[1].Tag)
@@ -496,7 +496,6 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, []any{float64(1), float64(2), float64(3)}, q.Rows[0][0])
 	})
 
-
 	t.Run("Footer link without custom text", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: `SELECT 'https://example.com'::FOOTER_LINK`,
@@ -593,4 +592,3 @@ FROM (VALUES
 		assert.Equal(t, 4, len(qLine.Rows))
 	})
 }
-

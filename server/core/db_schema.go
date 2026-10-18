@@ -10,7 +10,7 @@ import (
 )
 
 // TODO: The DB init costs us ~12ms on startup. Does it make sense to not do this every time?
-func initSQLite(sdb *sqlx.DB) error {
+func InitSQLite(sdb *sqlx.DB) error {
 	// Settings
 	_, err := sdb.Exec(`
 		PRAGMA journal_mode = WAL;

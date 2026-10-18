@@ -19,7 +19,7 @@ func TestActorHasPermission(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := initSQLite(db); err != nil {
+	if err := InitSQLite(db); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -105,7 +105,7 @@ func TestActorHasPermission(t *testing.T) {
 	}
 
 	// 4. Test API Key with null/empty string permissions (Legacy)
-	// We manually insert them without using initSQLite again to see if HasPermission handles it correctly (it should return false now)
+	// We manually insert them without using InitSQLite again to see if HasPermission handles it correctly (it should return false now)
 	legacyKeyID := "key-legacy"
 	_, err = db.Exec(`INSERT INTO api_keys (id, hash, salt, name, permissions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		legacyKeyID, "hash", "salt", "Legacy Key", nil, now, now)
@@ -115,12 +115,12 @@ func TestActorHasPermission(t *testing.T) {
 
 	legacyKeyActor := Actor{Type: ActorAPIKey, ID: legacyKeyID}
 	if legacyKeyActor.HasPermission(ctx, db, PermissionReadMetrics) {
-		t.Errorf("Legacy API Key (null) should NOT have permissions in HasPermission directly (it should be migrated by initSQLite)")
+		t.Errorf("Legacy API Key (null) should NOT have permissions in HasPermission directly (it should be migrated by InitSQLite)")
 	}
 
-	// 5. Test Migration in initSQLite
-	// Re-run initSQLite to trigger migration
-	if err := initSQLite(db); err != nil {
+	// 5. Test Migration in InitSQLite
+	// Re-run InitSQLite to trigger migration
+	if err := InitSQLite(db); err != nil {
 		t.Fatalf("failed to re-init sqlite: %v", err)
 	}
 
@@ -141,7 +141,7 @@ func TestListAPIKeysLegacyMigration(t *testing.T) {
 	defer db.Close()
 
 	// Initial init
-	if err := initSQLite(db); err != nil {
+	if err := InitSQLite(db); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -171,8 +171,8 @@ func TestListAPIKeysLegacyMigration(t *testing.T) {
 	}
 
 	// Run migration
-	if err := initSQLite(db); err != nil {
-		t.Fatalf("initSQLite failed: %v", err)
+	if err := InitSQLite(db); err != nil {
+		t.Fatalf("InitSQLite failed: %v", err)
 	}
 
 	// List keys after migration

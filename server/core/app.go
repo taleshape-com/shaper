@@ -24,23 +24,23 @@ const (
 
 // TODO: Rename App struct + file to Core to not confuse with apps data type
 type App struct {
-	Name            string
-	NodeID          string
-	Version         string
-	Sqlite          *sqlx.DB
-	DuckDB          *sqlx.DB
-	DuckDBDSN       string
-	DuckDBExtDir    string
-	DuckDBSecretDir string
+	Name                        string
+	NodeID                      string
+	Version                     string
+	Sqlite                      *sqlx.DB
+	DuckDB                      *sqlx.DB
+	DuckDBDSN                   string
+	DuckDBExtDir                string
+	DuckDBSecretDir             string
 	AllowedDuckDBExtensions     []string
 	NoDuckDBCommunityExtensions bool
-	InitSQL         string
-	Logger          *slog.Logger
-	LoginRequired   bool
-	BasePath        string
-	SSOLoginURL     string
-	JWTSecret       []byte
-	JWTSecretStatic bool
+	InitSQL                     string
+	Logger                      *slog.Logger
+	LoginRequired               bool
+	BasePath                    string
+	SSOLoginURL                 string
+	JWTSecret                   []byte
+	JWTSecretStatic             bool
 
 	JWTExp                     time.Duration
 	SessionExp                 time.Duration
@@ -123,7 +123,7 @@ func New(
 	jwtSecret string,
 ) (*App, error) {
 	logger.Info("Setting up SQLite")
-	if err := initSQLite(sqliteDbx); err != nil {
+	if err := InitSQLite(sqliteDbx); err != nil {
 		return nil, err
 	}
 
@@ -214,49 +214,49 @@ func New(
 	}
 
 	app := &App{
-		Name:                       name,
-		NodeID:                     nodeID,
-		Version:                    version,
-		Sqlite:                     sqliteDbx,
-		DuckDB:                     duckDbx,
-		DuckDBDSN:                  duckDBDSN,
-		DuckDBExtDir:               duckDBExtDir,
-		DuckDBSecretDir:            duckDBSecretDir,
-		AllowedDuckDBExtensions:    allowedExts,
+		Name:                        name,
+		NodeID:                      nodeID,
+		Version:                     version,
+		Sqlite:                      sqliteDbx,
+		DuckDB:                      duckDbx,
+		DuckDBDSN:                   duckDBDSN,
+		DuckDBExtDir:                duckDBExtDir,
+		DuckDBSecretDir:             duckDBSecretDir,
+		AllowedDuckDBExtensions:     allowedExts,
 		NoDuckDBCommunityExtensions: noDuckDBCommunityExtensions,
-		InitSQL:                    initSQL,
-		Logger:                     logger,
-		LoginRequired:              loginRequired,
-		BasePath:                   baseURL,
-		SSOLoginURL:                ssoLoginURL,
-		JWTSecret:                  []byte(jwtSecret),
-		JWTSecretStatic:            jwtSecret != "",
-		JWTExp:                     jwtExp,
-		SessionExp:                 sessionExp,
-		InviteExp:                  inviteExp,
-		NoPublicSharing:            noPublicSharing,
-		NoPasswordProtectedSharing: noPasswordProtectedSharing,
-		NoTasks:                    noTasks,
-		NoEdit:                     noEdit,
-		NoChromeSandbox:            noChromeSandbox,
-		IngestSubjectPrefix:        ingestSubjectPrefix,
-		StateSubjectPrefix:         stateSubjectPrefix,
-		StateStreamName:            stateStreamName,
-		StateStreamMaxAge:          stateStreamMaxAge,
-		ConfigKVBucketName:         configKVBucketName,
-		TmpDashboardsKVBucketName:  tmpDashboardsKVBucketName,
-		TmpDashboardsTTL:           tmpDashboardsTTL,
-		DownloadsKVBucketName:      downloadsKVBucketName,
-		DownloadsTTL:               downloadsTTL,
-		TasksStreamName:            tasksStreamName,
-		TasksSubjectPrefix:         tasksSubjectPrefix,
-		TaskQueueConsumerName:      taskQueueConsumerName,
-		TaskResultsStreamName:      taskResultsStreamName,
-		TaskResultsSubjectPrefix:   taskResultsSubjectPrefix,
-		TaskResultsStreamMaxAge:    taskResultsStreamMaxAge,
-		TaskBroadcastSubject:       taskBroadcastSubject,
-		TaskTimers:                 make(map[string]*time.Timer),
-		InternalDBName:             internalDBName,
+		InitSQL:                     initSQL,
+		Logger:                      logger,
+		LoginRequired:               loginRequired,
+		BasePath:                    baseURL,
+		SSOLoginURL:                 ssoLoginURL,
+		JWTSecret:                   []byte(jwtSecret),
+		JWTSecretStatic:             jwtSecret != "",
+		JWTExp:                      jwtExp,
+		SessionExp:                  sessionExp,
+		InviteExp:                   inviteExp,
+		NoPublicSharing:             noPublicSharing,
+		NoPasswordProtectedSharing:  noPasswordProtectedSharing,
+		NoTasks:                     noTasks,
+		NoEdit:                      noEdit,
+		NoChromeSandbox:             noChromeSandbox,
+		IngestSubjectPrefix:         ingestSubjectPrefix,
+		StateSubjectPrefix:          stateSubjectPrefix,
+		StateStreamName:             stateStreamName,
+		StateStreamMaxAge:           stateStreamMaxAge,
+		ConfigKVBucketName:          configKVBucketName,
+		TmpDashboardsKVBucketName:   tmpDashboardsKVBucketName,
+		TmpDashboardsTTL:            tmpDashboardsTTL,
+		DownloadsKVBucketName:       downloadsKVBucketName,
+		DownloadsTTL:                downloadsTTL,
+		TasksStreamName:             tasksStreamName,
+		TasksSubjectPrefix:          tasksSubjectPrefix,
+		TaskQueueConsumerName:       taskQueueConsumerName,
+		TaskResultsStreamName:       taskResultsStreamName,
+		TaskResultsSubjectPrefix:    taskResultsSubjectPrefix,
+		TaskResultsStreamMaxAge:     taskResultsStreamMaxAge,
+		TaskBroadcastSubject:        taskBroadcastSubject,
+		TaskTimers:                  make(map[string]*time.Timer),
+		InternalDBName:              internalDBName,
 	}
 	return app, nil
 }
@@ -666,4 +666,3 @@ func (app *App) IsExtensionAllowed(name string) bool {
 	}
 	return false
 }
-
