@@ -13,6 +13,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/nats-io/nats.go/jetstream"
@@ -569,5 +570,68 @@ func TestRoutes_DownloadRateLimiterIntegration(t *testing.T) {
 	err := json.Unmarshal(rec.Body.Bytes(), &res)
 	assert.NoError(t, err)
 	assert.Equal(t, "Too many download requests, please try again later", res["error"])
+}
+
+func TestRoutes_DeployDashboardIDRestriction(t *testing.T) {
+	e := echo.New()
+	secret := []byte("test-secret-key-32-bytes-long!")
+	app := &core.App{
+		LoginRequired: true,
+		NoTasks:       true,
+		JWTSecret:     secret,
+		JWTExp:        time.Hour,
+	}
+
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	createJWT := func(claims jwt.MapClaims) string {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, err := token.SignedString(secret)
+		require.NoError(t, err)
+		return signed
+	}
+
+	t.Run("jwt with dashboardId is rejected with 401", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId":      "user-123",
+			"dashboardId": "dash-456",
+			"exp":         time.Now().Add(time.Hour).Unix(),
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/deploy", strings.NewReader(`{"apps":[]}`))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+
+	t.Run("jwt without dashboardId is not rejected with 401", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId": "user-123",
+			"exp":    time.Now().Add(time.Hour).Unix(),
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/deploy", strings.NewReader(`{"apps":[]}`))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var res map[string]string
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "apps array is required", res["error"])
+	})
 }
 
