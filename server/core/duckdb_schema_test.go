@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
-	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 func TestGetSchema(t *testing.T) {
@@ -27,7 +27,7 @@ func TestGetSchema(t *testing.T) {
 	assert.NoError(t, err)
 	defer sqliteDbx.Close()
 
-	err = initSQLite(sqliteDbx)
+	err = InitSQLite(sqliteDbx)
 	assert.NoError(t, err)
 
 	duckdbDbx, err := sqlx.Connect("duckdb", duckdbPath)
@@ -78,19 +78,19 @@ func TestGetSchema(t *testing.T) {
 			for _, s := range db.Schemas {
 				if s.Name == "main" {
 					foundDefault = true
-					
+
 					// Check Tables
 					assert.Len(t, s.Tables, 2)
-					var usersTable *struct{Name string}
+					var usersTable *struct{ Name string }
 					for _, table := range s.Tables {
 						if table.Name == "users" {
-							usersTable = &struct{Name string}{Name: table.Name}
+							usersTable = &struct{ Name string }{Name: table.Name}
 							assert.Equal(t, "A table of users", table.Comment)
 							assert.Len(t, table.Columns, 4)
 							assert.Equal(t, "id", table.Columns[0].Name)
 							assert.Equal(t, "name", table.Columns[1].Name)
 							assert.Equal(t, "The user's full name", table.Columns[1].Comment)
-							
+
 							// Check Constraints
 							assert.NotEmpty(t, table.Constraints)
 						}

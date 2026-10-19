@@ -86,3 +86,42 @@ func TestGetSchema_WithIgnore(t *testing.T) {
 
 	// Verify the table is ignored in the response body would be good but for now we just check it doesn't crash
 }
+
+func TestGetSchema_DashboardIDRestriction(t *testing.T) {
+	e := echo.New()
+	app := setupTestApp(t)
+
+	t.Run("jwt with dashboardId is rejected with 401", func(t *testing.T) {
+		token := createDashboardScopedToken("dash-456")
+		req := httptest.NewRequest(http.MethodGet, "/api/schema", nil)
+		rec := httptest.NewRecorder()
+		c := newContextWithUser(e, req, rec, token)
+
+		h := GetSchema(app)
+		if err := h(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected status 401, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("jwt without dashboardId is not rejected with 401", func(t *testing.T) {
+		token := createUserToken()
+		req := httptest.NewRequest(http.MethodGet, "/api/schema", nil)
+		rec := httptest.NewRecorder()
+		c := newContextWithUser(e, req, rec, token)
+
+		h := GetSchema(app)
+		if err := h(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+		if rec.Code == http.StatusUnauthorized {
+			t.Errorf("expected non-401 status, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+}
+

@@ -15,6 +15,7 @@ import (
 func ListUsers(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -36,6 +37,7 @@ func ListUsers(app *core.App) echo.HandlerFunc {
 func DeleteUser(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {
@@ -66,6 +68,7 @@ type UpdatePasswordRequest struct {
 func UpdatePassword(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -128,6 +131,7 @@ type UpdateNameRequest struct {
 func UpdateName(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -182,6 +186,7 @@ type CreateInviteRequest struct {
 func CreateInvite(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -295,6 +300,7 @@ func ClaimInvite(app *core.App) echo.HandlerFunc {
 func DeleteInvite(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`

@@ -20,12 +20,53 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// isAllowedDashboardRoute returns true only for routes that dashboard-scoped tokens may access:
+// - GET /api/dashboards/:id
+// - GET /api/dashboards/:id/download/:filename
+func isAllowedDashboardRoute(c echo.Context) bool {
+	if c.Request().Method != http.MethodGet {
+		return false
+	}
+	path := strings.TrimSuffix(c.Path(), "/")
+	if path == "/api/dashboards/:id" || path == "/api/dashboards/:id/download/:filename" {
+		return true
+	}
+	if path == "" {
+		reqPath := strings.TrimSuffix(c.Request().URL.Path, "/")
+		parts := strings.Split(strings.Trim(reqPath, "/"), "/")
+		if len(parts) == 3 && parts[0] == "api" && parts[1] == "dashboards" {
+			return true
+		}
+		if len(parts) == 5 && parts[0] == "api" && parts[1] == "dashboards" && parts[3] == "download" {
+			return true
+		}
+	}
+	return false
+}
+
 // Actor is either a user or an API key.
 // This is useful for audit logging and saving that context to the database.
 func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+			rawUser := c.Get("user")
+			if rawUser == nil {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+			token, ok := rawUser.(*jwt.Token)
+			if !ok {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if !ok {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
 
 			var actor *core.Actor
 			if userID, ok := claims["userId"].(string); ok {
@@ -38,7 +79,7 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 					Type: core.ActorAPIKey,
 					ID:   apiKeyID,
 				}
-			} else if _, ok := claims["public"].(string); ok {
+			} else if _, ok := claims["public"]; ok {
 				actor = &core.Actor{
 					Type: core.ActorPublic,
 				}
@@ -48,8 +89,29 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 				}
 			}
 
-			if actor != nil {
-				c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
+			if actor == nil {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+
+			c.SetRequest(c.Request().WithContext(core.ContextWithActor(c.Request().Context(), actor)))
+
+			// Reject any dashboard-scoped JWTs on routes other than the allowed dashboard routes.
+			if _, hasDashboardID := claims["dashboardId"]; hasDashboardID {
+				if !isAllowedDashboardRoute(c) {
+					return c.JSONPretty(http.StatusUnauthorized, struct {
+						Error string `json:"error"`
+					}{Error: "Unauthorized"}, "  ")
+				}
+			}
+
+			if actor.Type == core.ActorPublic {
+				if !isAllowedDashboardRoute(c) {
+					return c.JSONPretty(http.StatusUnauthorized, struct {
+						Error string `json:"error"`
+					}{Error: "Unauthorized"}, "  ")
+				}
 			}
 
 			return next(c)

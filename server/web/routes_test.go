@@ -13,6 +13,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/nats-io/nats.go/jetstream"
@@ -570,4 +571,293 @@ func TestRoutes_DownloadRateLimiterIntegration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "Too many download requests, please try again later", res["error"])
 }
+
+func TestRoutes_DeployDashboardIDRestriction(t *testing.T) {
+	e := echo.New()
+	secret := []byte("test-secret-key-32-bytes-long!")
+	app := &core.App{
+		LoginRequired: true,
+		NoTasks:       true,
+		JWTSecret:     secret,
+		JWTExp:        time.Hour,
+	}
+
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	createJWT := func(claims jwt.MapClaims) string {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, err := token.SignedString(secret)
+		require.NoError(t, err)
+		return signed
+	}
+
+	t.Run("jwt with dashboardId is rejected with 401", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId":      "user-123",
+			"dashboardId": "dash-456",
+			"exp":         time.Now().Add(time.Hour).Unix(),
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/deploy", strings.NewReader(`{"apps":[]}`))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+
+	t.Run("jwt without dashboardId is not rejected with 401", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId": "user-123",
+			"exp":    time.Now().Add(time.Hour).Unix(),
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/deploy", strings.NewReader(`{"apps":[]}`))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var res map[string]string
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "apps array is required", res["error"])
+	})
+}
+
+func TestRoutes_PublicActorRestrictions(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer sdb.Close()
+	require.NoError(t, core.InitSQLite(sdb))
+
+	ddb, err := sqlx.Open("duckdb", "")
+	require.NoError(t, err)
+	defer ddb.Close()
+
+	_, err = sdb.Exec(`
+		INSERT INTO apps (id, name, content, created_at, updated_at, visibility, type)
+		VALUES ('test-dash-id', 'Test Dashboard', 'SELECT 1;', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'public', 'dashboard');
+	`)
+	require.NoError(t, err)
+
+	e := echo.New()
+	secret := []byte("test-secret-key-32-bytes-long!")
+	app := &core.App{
+		LoginRequired: true,
+		NoTasks:       false,
+		JWTSecret:     secret,
+		JWTExp:        time.Hour,
+		Sqlite:        sdb,
+		DuckDB:        ddb,
+	}
+
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	createJWT := func(claims jwt.MapClaims) string {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, err := token.SignedString(secret)
+		require.NoError(t, err)
+		return signed
+	}
+
+	publicToken := createJWT(jwt.MapClaims{
+		"dashboardId": "test-dash-id",
+		"public":      "public",
+		"exp":         time.Now().Add(time.Hour).Unix(),
+	})
+
+	userToken := createJWT(jwt.MapClaims{
+		"userId": "user-123",
+		"exp":    time.Now().Add(time.Hour).Unix(),
+	})
+
+	t.Run("allowed route GET /dashboards/:id with public actor JWT", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/dashboards/test-dash-id", nil)
+		req.Header.Set("Authorization", "Bearer "+publicToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("allowed route GET /api/dashboards/:id/download/:filename with public actor JWT", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/dashboards/test-dash-id/download/export.csv", nil)
+		req.Header.Set("Authorization", "Bearer "+publicToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		// Must not be rejected with 401 Unauthorized by public actor route check
+		assert.NotEqual(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	forbiddenEndpoints := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{"GET /api/dashboards/:id/info", http.MethodGet, "/api/dashboards/test-dash-id/info", ""},
+		{"POST /api/dashboards/:id/query", http.MethodPost, "/api/dashboards/test-dash-id/query", `{"query":"SELECT 1"}`},
+		{"POST /api/dashboards/:id/name", http.MethodPost, "/api/dashboards/test-dash-id/name", `{"name":"New Name"}`},
+		{"POST /api/dashboards/:id/visibility", http.MethodPost, "/api/dashboards/test-dash-id/visibility", `{"visibility":"private"}`},
+		{"POST /api/dashboards/:id/password", http.MethodPost, "/api/dashboards/test-dash-id/password", `{"password":"secret"}`},
+		{"DELETE /api/dashboards/:id", http.MethodDelete, "/api/dashboards/test-dash-id", ""},
+		{"GET /api/apps", http.MethodGet, "/api/apps", ""},
+		{"POST /api/deploy", http.MethodPost, "/api/deploy", `{"apps":[]}`},
+		{"POST /api/validate", http.MethodPost, "/api/validate", `{"apps":[]}`},
+		{"GET /api/schema", http.MethodGet, "/api/schema", ""},
+		{"POST /api/dashboards", http.MethodPost, "/api/dashboards", `{"name":"Test"}`},
+		{"GET /api/users", http.MethodGet, "/api/users", ""},
+		{"GET /api/version", http.MethodGet, "/api/version", ""},
+		{"GET /api/keys", http.MethodGet, "/api/keys", ""},
+		{"POST /api/folders", http.MethodPost, "/api/folders", `{"name":"Folder"}`},
+		{"POST /api/admin/reset-jwt-secret", http.MethodPost, "/api/admin/reset-jwt-secret", ""},
+	}
+
+	for _, tc := range forbiddenEndpoints {
+		t.Run("public actor JWT rejected on "+tc.name, func(t *testing.T) {
+			var bodyReader *strings.Reader
+			if tc.body != "" {
+				bodyReader = strings.NewReader(tc.body)
+			} else {
+				bodyReader = strings.NewReader("")
+			}
+			req := httptest.NewRequest(tc.method, tc.path, bodyReader)
+			req.Header.Set("Authorization", "Bearer "+publicToken)
+			if tc.body != "" {
+				req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			}
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			var res map[string]string
+			err := json.Unmarshal(rec.Body.Bytes(), &res)
+			assert.NoError(t, err)
+			assert.Equal(t, "Unauthorized", res["error"])
+		})
+	}
+
+	dashboardScopedUserToken := createJWT(jwt.MapClaims{
+		"userId":      "user-123",
+		"dashboardId": "test-dash-id",
+		"exp":         time.Now().Add(time.Hour).Unix(),
+	})
+
+	t.Run("dashboard-scoped user JWT rejected on forbidden routes", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/apps", nil)
+		req.Header.Set("Authorization", "Bearer "+dashboardScopedUserToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+
+	t.Run("dashboard-scoped user JWT allowed on GET /dashboards/:id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/dashboards/test-dash-id", nil)
+		req.Header.Set("Authorization", "Bearer "+dashboardScopedUserToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("regular user JWT is allowed on general routes", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestSetActor_InvalidOrMissingJWT(t *testing.T) {
+	app := &core.App{
+		LoginRequired: true,
+	}
+
+	nextCalled := false
+	dummyNext := func(c echo.Context) error {
+		nextCalled = true
+		return c.NoContent(http.StatusOK)
+	}
+
+	t.Run("missing user in context returns 401", func(t *testing.T) {
+		nextCalled = false
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := SetActor(app)(dummyNext)(c)
+		assert.NoError(t, err)
+		assert.False(t, nextCalled)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err = json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+
+	t.Run("user is not *jwt.Token returns 401", func(t *testing.T) {
+		nextCalled = false
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user", "not-a-token")
+
+		err := SetActor(app)(dummyNext)(c)
+		assert.NoError(t, err)
+		assert.False(t, nextCalled)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err = json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+
+	t.Run("token with no actor claims returns 401", func(t *testing.T) {
+		nextCalled = false
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		token := &jwt.Token{
+			Claims: jwt.MapClaims{"foo": "bar"},
+		}
+		c.Set("user", token)
+
+		err := SetActor(app)(dummyNext)(c)
+		assert.NoError(t, err)
+		assert.False(t, nextCalled)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var res map[string]string
+		err = json.Unmarshal(rec.Body.Bytes(), &res)
+		assert.NoError(t, err)
+		assert.Equal(t, "Unauthorized", res["error"])
+	})
+}
+
+
 

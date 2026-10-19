@@ -13,6 +13,7 @@ import (
 	"shaper/server/api"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
@@ -25,6 +26,17 @@ type DeployResult struct {
 
 func Deploy(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		ctxUser := c.Get("user")
+		if ctxUser != nil {
+			claims := ctxUser.(*jwt.Token).Claims.(jwt.MapClaims)
+			// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
+			if _, hasId := claims["dashboardId"]; hasId {
+				return c.JSONPretty(http.StatusUnauthorized, struct {
+					Error string `json:"error"`
+				}{Error: "Unauthorized"}, "  ")
+			}
+		}
+
 		var req api.Request
 		if err := c.Bind(&req); err != nil {
 			return c.JSONPretty(http.StatusBadRequest, struct {

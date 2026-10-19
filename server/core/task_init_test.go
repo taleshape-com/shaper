@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nrednav/cuid2"
 	"github.com/stretchr/testify/assert"
-	_ "github.com/duckdb/duckdb-go/v2"
 	_ "modernc.org/sqlite"
 )
 
@@ -25,7 +25,7 @@ func setupTestApp(t *testing.T) (*App, func()) {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
 
-	if err := initSQLite(sdb); err != nil {
+	if err := InitSQLite(sdb); err != nil {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
@@ -349,4 +349,3 @@ func TestGetDuckDBMemoryModeFolderFiltering(t *testing.T) {
 		assert.True(t, checkTableExists(db, "sales_table"))
 	})
 }
-

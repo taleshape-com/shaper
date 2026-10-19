@@ -21,6 +21,7 @@ func RunTask(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -44,6 +45,7 @@ func GetTask(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
 		idParam := c.Param("id")
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -69,6 +71,7 @@ func CreateTask(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {
@@ -130,6 +133,7 @@ func SaveTaskContent(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -163,6 +167,7 @@ func SaveTaskName(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -201,6 +206,7 @@ func DeleteTask(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {

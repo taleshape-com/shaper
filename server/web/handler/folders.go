@@ -21,6 +21,7 @@ func CreateFolder(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -76,6 +77,7 @@ func DeleteFolder(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -112,6 +114,7 @@ func MoveItems(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -162,6 +165,7 @@ func RenameFolder(app *core.App) echo.HandlerFunc {
 		}
 
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`

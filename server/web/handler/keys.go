@@ -14,6 +14,7 @@ import (
 func ListAPIKeys(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -33,6 +34,7 @@ func ListAPIKeys(app *core.App) echo.HandlerFunc {
 func CreateAPIKey(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {
@@ -81,6 +83,7 @@ func CreateAPIKey(app *core.App) echo.HandlerFunc {
 func UpdateAPIKeyPermissions(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {
@@ -116,6 +119,7 @@ func UpdateAPIKeyPermissions(app *core.App) echo.HandlerFunc {
 func DeleteAPIKey(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		claims := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)
+		// Double check: dashboard-scoped JWTs are also rejected centrally in routes.go middleware.
 		if _, hasId := claims["dashboardId"]; hasId {
 			return c.JSONPretty(http.StatusUnauthorized,
 				struct {
