@@ -62,7 +62,7 @@ export function SearchBar () {
 
   useEffect(() => {
     if (!query) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setSearchResults([]);
       setIsLoading(false);
       setShowEmptyState(false);
@@ -191,7 +191,7 @@ export function SearchBar () {
   // Keep selectedIndex in sync with the first item when items change
   useEffect(() => {
     if (!isActive) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setSelectedIndex(-1);
       return;
     }

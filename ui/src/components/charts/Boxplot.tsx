@@ -220,7 +220,7 @@ const Boxplot = (props: BoxplotProps) => {
       (d) =>
         Array.isArray(d) &&
         d.length >= 5 &&
-        d.some((v) => typeof v === "number" && !isNaN(v))
+        d.some((v) => typeof v === "number" && !isNaN(v)),
     );
     const isEmpty = !hasValidData;
 
@@ -494,7 +494,7 @@ const Boxplot = (props: BoxplotProps) => {
       (d) =>
         Array.isArray(d) &&
         d.length >= 5 &&
-        d.some((v) => typeof v === "number" && !isNaN(v))
+        d.some((v) => typeof v === "number" && !isNaN(v)),
     );
     if (!chart || !hasValidData) {
       return;
@@ -519,7 +519,7 @@ const Boxplot = (props: BoxplotProps) => {
       },
     }];
     chart.setOption({ series }, { lazyUpdate: true });
-  }, [data.length, indexType, isDarkMode, isHovering]);
+  }, [data, indexType, isDarkMode, isHovering]);
 
   // Event handlers for the EChart component
   const chartEvents = React.useMemo(() => {

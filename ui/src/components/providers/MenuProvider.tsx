@@ -97,7 +97,7 @@ export function MenuProvider ({
   useEffect(() => {
     if (isDev) {
       // In dev mode, force closed
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setIsMenuOpen(false);
     } else {
       // When not in dev mode, restore from localStorage or use default
