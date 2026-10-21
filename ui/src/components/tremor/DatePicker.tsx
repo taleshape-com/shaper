@@ -1,4 +1,5 @@
 // Tremor Date Picker [v1.0.4]
+/* eslint-disable react-hooks/set-state-in-effect */
 
 "use client";
 
