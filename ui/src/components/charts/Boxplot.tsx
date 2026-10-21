@@ -216,7 +216,13 @@ const Boxplot = (props: BoxplotProps) => {
     const shortenLabel = cleanXData ? (xSpace / cleanXData.length) * (0.10 + (0.00004 * xSpace)) : true;
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
-    const isEmpty = data.length === 0;
+    const hasValidData = data.some(
+      (d) =>
+        Array.isArray(d) &&
+        d.length >= 5 &&
+        d.some((v) => typeof v === "number" && !isNaN(v))
+    );
+    const isEmpty = !hasValidData;
 
     return {
       color: cleanXData.map((_, i) => colorByIndex.get(i) || primaryColor),
@@ -338,7 +344,8 @@ const Boxplot = (props: BoxplotProps) => {
         right: 16 + chartPadding + (cleanYAxisLabel ? 20 : 0),
         top: 10 + labelTopOffset + chartPadding,
         bottom: (cleanXAxisLabel ? 32 : 8) + chartPadding,
-        containLabel: true,
+        outerBoundsMode: "same",
+        outerBoundsContain: "axisLabel",
       },
       xAxis: {
         type: "category",
@@ -483,7 +490,13 @@ const Boxplot = (props: BoxplotProps) => {
 
   useEffect(() => {
     const chart = chartRef.current;
-    if (!chart || data.length === 0) {
+    const hasValidData = data.some(
+      (d) =>
+        Array.isArray(d) &&
+        d.length >= 5 &&
+        d.some((v) => typeof v === "number" && !isNaN(v))
+    );
+    if (!chart || !hasValidData) {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);

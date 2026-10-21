@@ -30,7 +30,7 @@ const DashboardBoxplot = ({
   const valueAxisHeader = headers[valueAxisIndex];
   const valueAxisName = valueAxisHeader.name;
   const indexAxisIndex = headers.findIndex((c) => c.tag === "index");
-  const indexAxisHeader = headers[indexAxisIndex];
+  const indexAxisHeader = indexAxisIndex !== -1 ? headers[indexAxisIndex] : undefined;
   const colorIndex = headers.findIndex((c) => c.tag === "color");
   // TODO: With ECharts there should be a nicer way to show extra columns in the tooltip without aggregating them before.
   const extraDataByIndexAxis: Record<string, Record<string, [any, Column["type"]]>> = {};
@@ -39,23 +39,33 @@ const DashboardBoxplot = ({
   const xData: string[] = [];
   const colorByIndex = new Map<number, string>();
   data.forEach((row, rowI) => {
-    let key = isDatableType(indexAxisHeader.type)
-      ? new Date(row[indexAxisIndex] as number).toUTCString()
-      : toSingleLine(row[indexAxisIndex].toString());
+    const rawIndexValue = indexAxisIndex !== -1 ? row[indexAxisIndex] : null;
+    let key: string | null = null;
+    if (rawIndexValue !== null && rawIndexValue !== undefined) {
+      key = indexAxisHeader && isDatableType(indexAxisHeader.type)
+        ? new Date(rawIndexValue as number).toUTCString()
+        : toSingleLine(rawIndexValue.toString());
+    }
     if (key === null) {
-      if (isDatableType(indexAxisHeader.type) || indexAxisHeader.type === "number") {
+      if (!indexAxisHeader || isDatableType(indexAxisHeader.type) || indexAxisHeader.type === "number") {
         return;
       }
       key = "";
     }
     xData.push(key);
     row.forEach((cell, i) => {
-      if (typeof cell === "object") {
-        if (i === valueAxisIndex) {
-          boxplotData.push([cell.min, cell.q1, cell.q2, cell.q3, cell.max]);
-          cell.outliers.forEach((outlier: any) => {
-            outliers.push([rowI, outlier.value, outlier.info]);
-          });
+      if (i === valueAxisIndex) {
+        if (typeof cell === "object" && cell !== null) {
+          if (cell.min !== null && cell.min !== undefined && cell.max !== null && cell.max !== undefined) {
+            boxplotData.push([cell.min, cell.q1, cell.q2, cell.q3, cell.max]);
+            cell.outliers?.forEach((outlier: any) => {
+              outliers.push([rowI, outlier.value, outlier.info]);
+            });
+          } else {
+            boxplotData.push([null as any, null as any, null as any, null as any, null as any]);
+          }
+        } else {
+          boxplotData.push([null as any, null as any, null as any, null as any, null as any]);
         }
         return;
       }
@@ -77,7 +87,7 @@ const DashboardBoxplot = ({
       }
     });
   });
-  const indexType = indexAxisHeader.type;
+  const indexType = indexAxisHeader?.type ?? "string";
 
   return (
     <Boxplot
@@ -96,7 +106,7 @@ const DashboardBoxplot = ({
       indexFormatter={(n: number | string, shortFormat?: boolean | number) => {
         return toSingleLine(formatValue(n, indexType, true, shortFormat).toString());
       }}
-      xAxisLabel={toSingleLine(getNameIfSet(indexAxisHeader.name))}
+      xAxisLabel={indexAxisHeader ? toSingleLine(getNameIfSet(indexAxisHeader.name)) : ""}
       yAxisLabel={toSingleLine(getNameIfSet(valueAxisName))}
       markLines={markLines}
     />
