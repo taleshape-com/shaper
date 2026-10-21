@@ -280,18 +280,18 @@ const LineChart = (props: LineChartProps) => {
     }
 
     const numLegendItems = cleanCategories.filter(c => c.length > 0).length;
-    const avgLegendCharCount = cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const avgLegendCharCount = numLegendItems > 0 ? cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems : 0;
     const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
     const legendItemGap = 10;
     const legendWidth = chartWidth - legendPaddingLeft - legendPaddingRight;
-    const halfLegendItems = Math.ceil(numLegendItems / 2);
-    const legendItemWidth = numLegendItems === 1
+    const halfLegendItems = Math.max(1, Math.ceil(numLegendItems / 2));
+    const legendItemWidth = numLegendItems <= 1
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
-    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
+    const legendTopOffset = (showLegend ? (numLegendItems === 0 || legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
     let labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     if (subtitle) {
       const subtitleLines = Math.max(1, Math.ceil(subtitle.length / (0.15 * chartWidth)));
@@ -323,7 +323,8 @@ const LineChart = (props: LineChartProps) => {
     });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
-    const customValues = hasManyLabels ? undefined : rawCustomValues;
+    const isEmpty = data.length === 0;
+    const customValues = hasManyLabels || isEmpty ? undefined : rawCustomValues;
 
     return {
       title: {
@@ -351,7 +352,7 @@ const LineChart = (props: LineChartProps) => {
         top: chartPadding,
       },
       tooltip: {
-        show: true,
+        show: !isEmpty,
         trigger: "axis",
         triggerOn: "mousemove",
         enterable: false,
@@ -494,7 +495,7 @@ const LineChart = (props: LineChartProps) => {
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(param.color)}"></span>
-                ${cleanCategories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
+                ${(showLegend || cleanCategories.length > 1) ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
@@ -551,7 +552,7 @@ const LineChart = (props: LineChartProps) => {
         },
       },
       legend: {
-        show: showLegend,
+        show: !isEmpty && showLegend,
         data: cleanCategories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
@@ -602,19 +603,28 @@ const LineChart = (props: LineChartProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: isTimestampData ? "time" as const : isNumericData ? "value" as const : "category" as const,
-        data: xData,
+        type: isEmpty
+          ? ("category" as const)
+          : isTimestampData
+            ? ("time" as const)
+            : isNumericData
+              ? ("value" as const)
+              : ("category" as const),
+        data: isEmpty ? ["", "", "", "", ""] : xData,
         show: true,
-        scale: isNumericData ? true : undefined,
+        scale: !isEmpty && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           customValues,
           showMinLabel: true,
           showMaxLabel: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return " ";
+            }
             return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
@@ -624,7 +634,7 @@ const LineChart = (props: LineChartProps) => {
         },
         axisPointer: {
           type: "line",
-          show: true,
+          show: !isEmpty,
           triggerOn: "mousemove",
           lineStyle: {
             color: referenceLineColor,
@@ -664,20 +674,26 @@ const LineChart = (props: LineChartProps) => {
       },
       yAxis: {
         type: "value" as const,
+        min: isEmpty ? 0 : undefined,
+        max: isEmpty ? 4 : undefined,
+        interval: isEmpty ? 1 : undefined,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return "000";
+            }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
         },
         axisPointer: {
-          type: data.length > 1 ? "line" : "none",
-          show: data.length > 1,
+          type: !isEmpty && data.length > 1 ? "line" : "none",
+          show: !isEmpty && data.length > 1,
           triggerOn: "mousemove",
           triggerEmphasis: false,
           label: {
@@ -726,7 +742,7 @@ const LineChart = (props: LineChartProps) => {
           textAlign: "center",
         },
       },
-      series,
+      series: isEmpty ? [] : series,
     };
   }, [
     data,
@@ -754,7 +770,7 @@ const LineChart = (props: LineChartProps) => {
 
   useEffect(() => {
     const chart = chartRef.current;
-    if (!chart) {
+    if (!chart || data.length === 0) {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);

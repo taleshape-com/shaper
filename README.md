@@ -58,7 +58,7 @@ Then open http://localhost:5454/new in your browser.
 
 For more, checkout the [Getting Started Guide](https://taleshape.com/shaper/docs/getting-started/).
 
-To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/).
+To run Shaper in production, see the [Deployment Guide](https://taleshape.com/shaper/docs/deploy-to-production/). There you'll find information not only on how to deploy to production, but also how to do so securely and lock down your system.
 
 
 ## Managed Hosting and Expert Support
@@ -97,7 +97,7 @@ Security and compliance follow a shared-responsibility model depending on whethe
 
 ### What You Own (Self-Hosted)
 
-- **Host & Environment Security**: Hardening the host OS, managing container environments, network firewalls, and ingress controllers.
+- **Host & Environment Security**: Hardening the host OS, managing container environments, network firewalls, and ingress controllers (see [Production Hardening](https://taleshape.com/shaper/docs/deploy-to-production/#hardening-secure-your-shaper-instance)).
 - **Maintenance & Patching**: Tracking releases, testing upgrades, and rolling out security fixes promptly (see [SECURITY.md](./SECURITY.md) and [Security Documentation](https://taleshape.com/shaper/docs/security)).
 - **Compliance & Governance**: Implementing and certifying all technical, administrative, and physical controls required for your organization's compliance standards.
 - **Availability & Disaster Recovery**: Monitoring application health, managing backups, and planning disaster recovery.

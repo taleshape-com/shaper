@@ -21,7 +21,7 @@ import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
-import { RiBarChartFill, RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
+import { RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
@@ -720,21 +720,6 @@ const renderContent = (
   minTimeValue: number,
   maxTimeValue: number,
 ) => {
-  if (query.rows.length === 0) {
-    return (
-      <div className="h-full py-1 px-3 mb-1 flex items-center justify-center text-ctext2 dark:text-ctext2">
-        <div className="text-center">
-          <RiBarChartFill
-            className="mx-auto size-9"
-            aria-hidden={true}
-          />
-          <p className="mt-2 font-medium">
-            {translate("No Data")}
-          </p>
-        </div>
-      </div>
-    );
-  }
   if (query.render.type === "linechart") {
     return (
       <DashboardLineChart
