@@ -189,18 +189,18 @@ const Scatterplot = (props: ScatterplotProps) => {
     }
 
     const numLegendItems = cleanCategories.filter(c => c.length > 0).length;
-    const avgLegendCharCount = cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems;
+    const avgLegendCharCount = numLegendItems > 0 ? cleanCategories.reduce((acc, c) => acc + c.length, 0) / numLegendItems : 0;
     const minLegendItemWidth = Math.max(avgLegendCharCount * 8, 50);
     const legendPaddingLeft = 5;
     const legendPaddingRight = 5;
     const legendItemGap = 10;
     const legendWidth = chartWidth - legendPaddingLeft - legendPaddingRight;
-    const halfLegendItems = Math.ceil(numLegendItems / 2);
-    const legendItemWidth = numLegendItems === 1
+    const halfLegendItems = Math.max(1, Math.ceil(numLegendItems / 2));
+    const legendItemWidth = numLegendItems <= 1
       ? legendWidth
       : (legendWidth - (legendItemGap * (halfLegendItems - 1))) / halfLegendItems;
     const canFitLegendItems = legendItemWidth >= minLegendItemWidth;
-    const legendTopOffset = (showLegend ? (legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
+    const legendTopOffset = (showLegend ? (numLegendItems === 0 || legendWidth / numLegendItems >= minLegendItemWidth ? 40 : 58) : 0);
     let labelTopOffset = label ? 40 + 15 * (Math.ceil(label.length / (0.125 * chartWidth)) - 1) : 10;
     if (subtitle) {
       const subtitleLines = Math.max(1, Math.ceil(subtitle.length / (0.15 * chartWidth)));

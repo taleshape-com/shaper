@@ -483,7 +483,7 @@ const Boxplot = (props: BoxplotProps) => {
 
   useEffect(() => {
     const chart = chartRef.current;
-    if (!chart) {
+    if (!chart || data.length === 0) {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
@@ -506,7 +506,7 @@ const Boxplot = (props: BoxplotProps) => {
       },
     }];
     chart.setOption({ series }, { lazyUpdate: true });
-  }, [indexType, isDarkMode, isHovering]);
+  }, [data.length, indexType, isDarkMode, isHovering]);
 
   // Event handlers for the EChart component
   const chartEvents = React.useMemo(() => {

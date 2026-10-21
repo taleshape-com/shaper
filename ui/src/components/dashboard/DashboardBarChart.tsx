@@ -139,7 +139,7 @@ const DashboardBarChart = ({
       }}
       xAxisLabel={toSingleLine(getNameIfSet(vertical ? valueAxisName : indexAxisHeader.name))}
       yAxisLabel={toSingleLine(getNameIfSet(vertical ? indexAxisHeader.name : valueAxisName))}
-      showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 0}
+      showLegend={categoryIndex !== -1}
       markLines={markLines}
     />
   );
