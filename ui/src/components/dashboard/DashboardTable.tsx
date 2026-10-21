@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { useMemo } from "react";
-import { RiArrowRightUpLine, RiArrowRightDownLine } from "@remixicon/react";
+import { RiArrowRightUpLine, RiArrowRightDownLine, RiBarChartFill } from "@remixicon/react";
 import { Column } from "../../lib/types";
 import { formatValue, isJSONType } from "../../lib/render";
+import { translate } from "../../lib/translate";
 import {
   Table,
   TableBody,
@@ -96,7 +97,7 @@ function DashboardTable ({ headers, data }: TableProps) {
   }, [data, headers]);
 
   return (
-    <TableRoot className="h-full overflow-auto">
+    <TableRoot className="h-full overflow-auto flex flex-col">
       <Table className={cx(isSmall && "text-xs")}>
         <TableHead className="z-10">
           <TableRow>
@@ -111,29 +112,44 @@ function DashboardTable ({ headers, data }: TableProps) {
             ))}
           </TableRow>
         </TableHead>
-        <TableBody>
-          {
-            data.map((items, index) => (
-              <TableRow key={index}>
-                {items.map((item, index) => {
-                  const header = headers[index];
-                  return (
-                    <TableCell
-                      key={index}
-                      className={cx("text-ctext dark:text-dtext", {
-                        "text-right": alignRight(header),
-                        "text-xs": isSmall,
-                      })}
-                    >
-                      {renderCellContent(header, item, false, isSmall)}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            ))
-          }
-        </TableBody>
+        {data.length > 0 && (
+          <TableBody>
+            {
+              data.map((items, index) => (
+                <TableRow key={index}>
+                  {items.map((item, index) => {
+                    const header = headers[index];
+                    return (
+                      <TableCell
+                        key={index}
+                        className={cx("text-ctext dark:text-dtext", {
+                          "text-right": alignRight(header),
+                          "text-xs": isSmall,
+                        })}
+                      >
+                        {renderCellContent(header, item, false, isSmall)}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            }
+          </TableBody>
+        )}
       </Table>
+      {data.length === 0 && (
+        <div className="sticky left-0 flex-1 min-h-[140px] flex items-center justify-center p-4 text-ctext2 dark:text-ctext2">
+          <div className="text-center">
+            <RiBarChartFill
+              className="mx-auto size-9"
+              aria-hidden={true}
+            />
+            <p className="mt-2 font-medium">
+              {translate("No Data")}
+            </p>
+          </div>
+        </div>
+      )}
     </TableRoot>
   );
 }

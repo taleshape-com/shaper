@@ -247,7 +247,8 @@ const BarChart = (props: BarChartProps) => {
     });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
-    const customValues = hasManyLabels ? undefined : rawCustomValues;
+    const isEmpty = dataCopy.length === 0;
+    const customValues = hasManyLabels || isEmpty ? undefined : rawCustomValues;
 
     return {
       title: {
@@ -275,7 +276,7 @@ const BarChart = (props: BarChartProps) => {
         top: chartPadding,
       },
       tooltip: {
-        show: true,
+        show: !isEmpty,
         trigger: "axis",
         triggerOn: "mousemove",
         enterable: false,
@@ -464,7 +465,7 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       legend: {
-        show: showLegend,
+        show: !isEmpty && showLegend,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
         orient: "horizontal",
@@ -507,22 +508,32 @@ const BarChart = (props: BarChartProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: layout === "vertical" ? "value" as const : (isTimestampData ? "time" as const : isNumericData ? "value" as const : "category" as const),
-        data: xData,
+        type: isEmpty
+          ? (layout === "vertical" ? ("value" as const) : ("category" as const))
+          : layout === "vertical"
+            ? ("value" as const)
+            : (isTimestampData ? ("time" as const) : isNumericData ? ("value" as const) : ("category" as const)),
+        data: isEmpty ? (layout === "vertical" ? undefined : ["", "", "", "", ""]) : xData,
+        min: isEmpty && layout === "vertical" ? 0 : undefined,
+        max: isEmpty && layout === "vertical" ? 4 : undefined,
+        interval: isEmpty && layout === "vertical" ? 1 : undefined,
         show: true,
-        scale: layout === "horizontal" && isNumericData ? true : undefined,
+        scale: !isEmpty && layout === "horizontal" && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           customValues,
           showMinLabel: true,
           showMaxLabel: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return layout === "vertical" ? "000" : " ";
+            }
             if (layout === "horizontal") {
               return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
             }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
@@ -532,7 +543,7 @@ const BarChart = (props: BarChartProps) => {
         },
         axisPointer: {
           type: "line",
-          show: layout === "horizontal" || dataCopy.length > 1,
+          show: !isEmpty && (layout === "horizontal" || dataCopy.length > 1),
           triggerEmphasis: layout === "horizontal",
           triggerOn: "mousemove",
           triggerTooltip: layout === "horizontal",
@@ -542,7 +553,7 @@ const BarChart = (props: BarChartProps) => {
             width: 0.65,
           },
           label: {
-            show: data.length > 1,
+            show: !isEmpty && data.length > 1,
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return toSingleLine(indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" || indexType === "time" ? new Date(params.value).getTime() : params.value, xSpace / 5.8));
@@ -562,12 +573,12 @@ const BarChart = (props: BarChartProps) => {
           show: false,
           customValues,
         },
-        splitLine: layout === "vertical" ? {
-          show: dataCopy.length > 1,
+        splitLine: {
+          show: layout === "vertical" ? (isEmpty || dataCopy.length > 1) : false,
           lineStyle: {
             color: borderColor,
           },
-        } : undefined,
+        },
         name: cleanXAxisLabel,
         nameLocation: "middle",
         nameGap: 36,
@@ -579,18 +590,28 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       yAxis: {
-        type: layout === "horizontal" ? "value" as const : ("category" as const),
-        data: layout === "vertical" ? dataCopy.map((item) => item[index]) : undefined,
+        type: isEmpty
+          ? (layout === "horizontal" ? ("value" as const) : ("category" as const))
+          : layout === "horizontal"
+            ? ("value" as const)
+            : ("category" as const),
+        data: isEmpty ? (layout === "vertical" ? ["", "", "", "", ""] : undefined) : (layout === "vertical" ? dataCopy.map((item) => item[index]) : undefined),
+        min: isEmpty && layout === "horizontal" ? 0 : undefined,
+        max: isEmpty && layout === "horizontal" ? 4 : undefined,
+        interval: isEmpty && layout === "horizontal" ? 1 : undefined,
         show: true,
         axisLabel: {
-          show: true, // Always show labels
+          show: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return layout === "horizontal" ? "000" : " ";
+            }
             if (layout === "horizontal") {
               return toSingleLine(valueFormatter(value, true));
             }
             return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, xSpace / 30));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           showMinLabel: true,
@@ -600,7 +621,7 @@ const BarChart = (props: BarChartProps) => {
         },
         axisPointer: {
           type: "line",
-          show: layout === "vertical" || dataCopy.length > 1,
+          show: !isEmpty && (layout === "vertical" || dataCopy.length > 1),
           triggerEmphasis: layout === "vertical",
           triggerOn: "mousemove",
           lineStyle: {
@@ -609,7 +630,7 @@ const BarChart = (props: BarChartProps) => {
             width: 0.65,
           },
           label: {
-            show: layout === "horizontal" || dataCopy.length > 1,
+            show: !isEmpty && (layout === "horizontal" || dataCopy.length > 1),
             formatter: (params: any) => {
               if (layout === "horizontal") {
                 return toSingleLine(valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value));
@@ -628,14 +649,14 @@ const BarChart = (props: BarChartProps) => {
         axisTick: {
           show: false,
         },
-        splitLine: layout === "horizontal" ? {
-          show: dataCopy.length > 1,
+        splitLine: {
+          show: layout === "horizontal" ? (isEmpty || dataCopy.length > 1) : false,
           lineStyle: {
             color: borderColor,
           },
-        } : undefined,
+        },
       },
-      series,
+      series: isEmpty ? [] : series,
       // We use a graphic element to display the y-axis label instead of the axis name
       // since the name can overlap with the axis labels.
       // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567
@@ -679,7 +700,7 @@ const BarChart = (props: BarChartProps) => {
 
   useEffect(() => {
     const chart = chartRef.current;
-    if (!chart) {
+    if (!chart || data.length === 0) {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);

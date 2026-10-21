@@ -39,7 +39,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     // Find the value column
     const valueIndex = headers.findIndex(h => h.tag === "value");
     const valueHeader = headers[valueIndex];
-    const value = data[0][valueIndex];
+    const value = data.length > 0 ? data[0][valueIndex] : 0;
 
     const gaugeCategoriesWithColor = gaugeCategories.map((cat, i) => {
       let color = cat.color;

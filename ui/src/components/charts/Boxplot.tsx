@@ -216,6 +216,7 @@ const Boxplot = (props: BoxplotProps) => {
     const shortenLabel = cleanXData ? (xSpace / cleanXData.length) * (0.10 + (0.00004 * xSpace)) : true;
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
+    const isEmpty = data.length === 0;
 
     return {
       color: cleanXData.map((_, i) => colorByIndex.get(i) || primaryColor),
@@ -244,7 +245,7 @@ const Boxplot = (props: BoxplotProps) => {
         top: chartPadding,
       },
       tooltip: {
-        show: true,
+        show: !isEmpty,
         trigger: "item",
         enterable: false,
         confine: true,
@@ -341,14 +342,17 @@ const Boxplot = (props: BoxplotProps) => {
       },
       xAxis: {
         type: "category",
-        data: cleanXData,
+        data: isEmpty ? ["", "", "", "", ""] : cleanXData,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: string) => {
+            if (isEmpty) {
+              return " ";
+            }
             return toSingleLine(indexFormatter(decodeIndexValue(value, indexType), shortenLabel));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           rotate: shouldRotateXLabel ? 45 : 0,
@@ -357,7 +361,7 @@ const Boxplot = (props: BoxplotProps) => {
         },
         axisPointer: {
           type: "shadow",
-          show: true,
+          show: !isEmpty,
           triggerOn: "mousemove",
           triggerEmphasis: false,
           shadowStyle: {
@@ -365,7 +369,7 @@ const Boxplot = (props: BoxplotProps) => {
             opacity: 0.1,
           },
           label: {
-            show: true,
+            show: !isEmpty && data.length > 1,
             formatter: (params: any) => {
               return toSingleLine(indexFormatter(decodeIndexValue(params.value, indexType), xSpace / 5.8));
             },
@@ -391,28 +395,34 @@ const Boxplot = (props: BoxplotProps) => {
           fontWeight: 500,
           fontSize: 12,
         },
-        jitter: chartWidth / cleanXData.length * 0.8,
+        jitter: !isEmpty && cleanXData.length > 0 ? (chartWidth / cleanXData.length * 0.8) : undefined,
       },
       yAxis: {
         type: "value" as const,
+        min: isEmpty ? 0 : undefined,
+        max: isEmpty ? 4 : undefined,
+        interval: isEmpty ? 1 : undefined,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return "000";
+            }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
         },
         axisPointer: {
           type: "none",
-          show: data.length > 1,
+          show: !isEmpty && data.length > 1,
           triggerOn: "mousemove",
           triggerEmphasis: false,
           label: {
-            show: true,
+            show: !isEmpty && data.length > 1,
             formatter: (params: any) => {
               return toSingleLine(valueFormatter(params.value > 1 ? Math.round(params.value) : params.value, true));
             },
@@ -450,7 +460,7 @@ const Boxplot = (props: BoxplotProps) => {
           textAlign: "center",
         },
       },
-      series,
+      series: isEmpty ? [] : series,
     };
   }, [
     data,

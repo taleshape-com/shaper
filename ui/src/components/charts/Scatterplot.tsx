@@ -216,6 +216,7 @@ const Scatterplot = (props: ScatterplotProps) => {
     const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
+    const isEmpty = data.length === 0;
 
     return {
       title: {
@@ -243,7 +244,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         top: chartPadding,
       },
       tooltip: {
-        show: true,
+        show: !isEmpty,
         trigger: "axis",
         triggerOn: "mousemove",
         enterable: false,
@@ -410,7 +411,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         },
       },
       legend: {
-        show: showLegend,
+        show: !isEmpty && showLegend,
         data: cleanCategories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
@@ -460,16 +461,25 @@ const Scatterplot = (props: ScatterplotProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: isTimestampData ? "time" as const : isNumericData ? "value" as const : "category" as const,
-        data: xData,
+        type: isEmpty
+          ? ("category" as const)
+          : isTimestampData
+            ? ("time" as const)
+            : isNumericData
+              ? ("value" as const)
+              : ("category" as const),
+        data: isEmpty ? ["", "", "", "", ""] : xData,
         show: true,
-        scale: isNumericData ? true : undefined,
+        scale: !isEmpty && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return " ";
+            }
             return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           rotate: shouldRotateXLabel ? 45 : 0,
@@ -478,7 +488,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         },
         axisPointer: {
           type: "line",
-          show: true,
+          show: !isEmpty,
           triggerOn: "mousemove",
           lineStyle: {
             color: referenceLineColor,
@@ -486,7 +496,7 @@ const Scatterplot = (props: ScatterplotProps) => {
             width: 0.65,
           },
           label: {
-            show: true,
+            show: !isEmpty && data.length > 1,
             formatter: (params: any) => {
               return toSingleLine(indexFormatter(indexType === "number" && params.value > 1 ? Math.round(params.value) : indexType === "duration" ? new Date(params.value).getTime() : params.value, xSpace / 5.8));
             },
@@ -517,24 +527,30 @@ const Scatterplot = (props: ScatterplotProps) => {
       },
       yAxis: {
         type: "value" as const,
+        min: isEmpty ? 0 : undefined,
+        max: isEmpty ? 4 : undefined,
+        interval: isEmpty ? 1 : undefined,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
+            if (isEmpty) {
+              return "000";
+            }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: textColorSecondary,
+          color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
         },
         axisPointer: {
-          type: data.length > 1 ? "line" : "none",
-          show: data.length > 1,
+          type: !isEmpty && data.length > 1 ? "line" : "none",
+          show: !isEmpty && data.length > 1,
           triggerOn: "mousemove",
           triggerEmphasis: false,
           label: {
-            show: true,
+            show: !isEmpty && data.length > 1,
             formatter: (params: any) => {
               return toSingleLine(valueFormatter(valueType === "number" && params.value > 1 ? Math.round(params.value) : params.value));
             },
@@ -576,7 +592,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           textAlign: "center",
         },
       },
-      series,
+      series: isEmpty ? [] : series,
     };
   }, [
     data,
@@ -601,7 +617,7 @@ const Scatterplot = (props: ScatterplotProps) => {
 
   useEffect(() => {
     const chart = chartRef.current;
-    if (!chart) {
+    if (!chart || data.length === 0) {
       return;
     }
     const { referenceLineColor } = getThemeColors(isDarkMode);
