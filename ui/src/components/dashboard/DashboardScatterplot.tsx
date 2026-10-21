@@ -132,7 +132,7 @@ const DashboardScatterplot = ({
       }}
       xAxisLabel={toSingleLine(getNameIfSet(indexAxisHeader.name))}
       yAxisLabel={toSingleLine(getNameIfSet(valueAxisName))}
-      showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 1}
+      showLegend={categoryIndex !== -1 && Array.from(categories).filter(c => c.length > 0).length > 0}
       markLines={markLines}
     />
   );

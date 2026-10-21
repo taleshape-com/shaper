@@ -435,7 +435,7 @@ const BarChart = (props: BarChartProps) => {
             tooltipContent += `<div class="flex items-center justify-between space-x-2">
               <div class="flex items-center space-x-2">
                 <span class="inline-block size-2 rounded-sm" style="background-color: ${safeColor(param.color)}"></span>
-                ${cleanCategories.length > 1 ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
+                ${(showLegend || cleanCategories.length > 1) ? `<span>${echartsEncode(param.seriesName)}</span>` : ""}
               </div>
               <span class="font-medium">${echartsEncode(formattedValue)}</span>
             </div>`;
@@ -465,7 +465,7 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       legend: {
-        show: !isEmpty && showLegend,
+        show: showLegend,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
         orient: "horizontal",
