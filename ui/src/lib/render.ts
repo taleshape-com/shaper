@@ -6,16 +6,16 @@ import * as echarts from "echarts/core";
 // We interpret the dates as local time to disaply them the same way no matter which timezone a user is in.
 // Two people in the same company should be looking at the same timestamps, no matter where they are right now.
 // The backend returns dates as unix timestamp integers in milliseconds, but this function works for strings as well
-function parseLocalDate (d: string | number) {
+function parseLocalDate(d: string | number) {
   return new Date(d);
 }
 
-export function formatIntegerPart (str: string): string {
+export function formatIntegerPart(str: string): string {
   if (str.length < 5) return str;
   return str.replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
 }
 
-export function formatFractionPart (str: string): string {
+export function formatFractionPart(str: string): string {
   if (str.length < 5) return str;
   const parts: string[] = [];
   for (let i = 0; i < str.length; i += 3) {
@@ -156,7 +156,7 @@ export const echartsEncode = (v: string | number) => {
   return echarts.format.encodeHTML(v.toString());
 };
 
-export function toCssId (v: string | number) {
+export function toCssId(v: string | number) {
   return "shaper-" + (v.toString()
     // Replace spaces and special characters with hyphens
     .replace(/[^a-zA-Z0-9_-]/g, "-")
@@ -166,4 +166,9 @@ export function toCssId (v: string | number) {
     .replace(/^-+|-+$/g, "")
     // Handle empty string case
     || Math.random().toString(36).substring(2, 10)).toLowerCase();
+}
+
+export function queryTypeToCardCssClass(queryType: string) {
+  const t = queryType.startsWith('barchart') ? 'barchart' : queryType;
+  return `shaper-${t}`;
 }

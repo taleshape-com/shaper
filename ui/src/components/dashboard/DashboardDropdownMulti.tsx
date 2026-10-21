@@ -23,7 +23,7 @@ type DropdownProps = {
   idPrefix: string;
 };
 
-function DashboardDropdownMulti ({
+function DashboardDropdownMulti({
   label,
   data,
   headers,
@@ -54,7 +54,7 @@ function DashboardDropdownMulti ({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="ml-2 select-none print:hidden">
+    <div className="shaper-dropdownmulti ml-2 select-none print:hidden">
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button

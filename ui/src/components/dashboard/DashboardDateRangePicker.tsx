@@ -16,7 +16,7 @@ type PickerProps = {
   idPrefix: string;
 };
 
-function DashboardDateRangePicker ({
+function DashboardDateRangePicker({
   label,
   data,
   headers,
@@ -97,7 +97,7 @@ function DashboardDateRangePicker ({
   ];
 
   return (
-    <div className="flex items-center print:hidden">
+    <div className="shaper-daterangepicker flex items-center print:hidden">
       {label && <Label htmlFor={label} className="ml-3 pr-1 shrink-0">{label}:</Label>}
       <div className={cx("select-none", { ["ml-2"]: !label })}>
         <DateRangePicker

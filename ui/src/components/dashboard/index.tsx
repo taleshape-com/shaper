@@ -2,7 +2,7 @@
 
 import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
-import { toCssId } from "../../lib/render";
+import { queryTypeToCardCssClass, toCssId } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema, getRenderMode, copyToClipboard } from "../../lib/utils";
 import { fetchWithRetry } from "../../lib/fetchWithRetry";
@@ -50,7 +50,7 @@ interface ErrorDisplayProps {
   menuButton?: React.ReactNode;
 }
 
-const ErrorDisplay = function ({
+const ErrorDisplay = function({
   error,
   resetErrorBoundary,
   errResetRef,
@@ -97,7 +97,7 @@ const ErrorDisplay = function ({
   );
 };
 
-export function Dashboard ({
+export function Dashboard({
   id,
   vars,
   getJwt,
@@ -395,7 +395,7 @@ const DataView = ({
         )}
       </div>
       {groupedSections.map((group, groupIndex) => (
-        <section key={groupIndex} className="break-inside-avoid">
+        <section key={groupIndex} className="shaper-section break-inside-avoid">
           {group.sections.map(({ section, index: sectionIndex }) => {
             if (section.type === "header") {
               const header = section as HeaderSection;
@@ -406,7 +406,7 @@ const DataView = ({
                 <div
                   key={sectionIndex}
                   id={toCssId(`header${sectionIndex}`)}
-                  className={cx("flex flex-wrap items-center ml-2 mr-4", {
+                  className={cx("shaper-section-header flex flex-wrap items-center ml-2 mr-4", {
                     "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle,
                     "mt-8": (header.title || header.subtitle) && sectionIndex !== 0,
                     "my-2": header.queries.length === 0 && !header.title && !header.subtitle && sectionIndex === 0,
@@ -424,12 +424,12 @@ const DataView = ({
                         {header.title || header.subtitle ? (
                           <div className="flex flex-col ml-1">
                             {header.title ? (
-                              <h1 className="text-2xl text-left py-1 mt-0.5 font-semibold">
+                              <h1 className="shaper-section-title text-2xl text-left py-1 mt-0.5 font-semibold">
                                 {header.title}
                               </h1>
                             ) : null}
                             {header.subtitle ? (
-                              <p className="text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
+                              <p className="shaper-section-subtitle text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
                                 {header.subtitle}
                               </p>
                             ) : null}
@@ -541,7 +541,7 @@ const DataView = ({
               <div
                 key={sectionIndex}
                 id={toCssId(`content${sectionIndex}`)}
-                className={cx("grid grid-cols-1 ml-4", {
+                className={cx("shaper-section-content grid grid-cols-1 ml-4", {
                   "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
                   "@sm:grid-cols-3 print:grid-cols-3":
                     numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
@@ -564,7 +564,7 @@ const DataView = ({
               >
                 {section.queries.map((query, queryIndex) => {
                   if (query.render.type === "placeholder") {
-                    return <div key={queryIndex}></div>;
+                    return <div key={queryIndex} className="shaper-placeholder"></div>;
                   }
                   const currentId = `${sectionIndex}-${queryIndex}`;
                   const isFullscreen = fullscreenId === currentId;
@@ -579,6 +579,8 @@ const DataView = ({
                       key={queryIndex}
                       id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                       className={cx(
+                        "shaper-card",
+                        queryTypeToCardCssClass(query.render.type),
                         "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
                         isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
                           "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,

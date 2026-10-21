@@ -23,7 +23,7 @@ type DropdownProps = {
   idPrefix: string;
 };
 
-function DashboardDropdown ({
+function DashboardDropdown({
   label,
   data,
   headers,
@@ -38,7 +38,7 @@ function DashboardDropdown ({
   const selectedValue = Array.isArray(varField) ? varField[0] : varField;
 
   return (
-    <div className="flex items-center print:hidden">
+    <div className="shaper-dropdown flex items-center print:hidden">
       {label && (
         <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:

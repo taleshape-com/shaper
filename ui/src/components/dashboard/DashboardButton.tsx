@@ -25,7 +25,7 @@ type ButtonProps = {
   idPrefix: string;
 };
 
-function getFilenameFromHeader (response: Response, fallback: string): string {
+function getFilenameFromHeader(response: Response, fallback: string): string {
   const disposition = response.headers.get("content-disposition");
   if (disposition) {
     const match = disposition.match(/filename=["']?([^"';]+)["']?/i);
@@ -36,7 +36,7 @@ function getFilenameFromHeader (response: Response, fallback: string): string {
   return fallback;
 }
 
-function DashboardButton ({
+function DashboardButton({
   label,
   data,
   headers,
@@ -151,7 +151,7 @@ function DashboardButton ({
   };
 
   return (
-    <div className="flex items-center print:hidden">
+    <div className="shaper-downloadbutton flex items-center print:hidden">
       {label && (
         <Label className="ml-3 pr-1 shrink-0">
           {label}:
