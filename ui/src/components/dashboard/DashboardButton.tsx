@@ -151,7 +151,7 @@ function DashboardButton ({
   };
 
   return (
-    <div className="flex items-center print:hidden">
+    <div className="shaper-downloadbutton flex items-center print:hidden">
       {label && (
         <Label className="ml-3 pr-1 shrink-0">
           {label}:

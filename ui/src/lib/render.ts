@@ -167,3 +167,44 @@ export function toCssId (v: string | number) {
     // Handle empty string case
     || Math.random().toString(36).substring(2, 10)).toLowerCase();
 }
+
+export function queryTypeToCardCssClass (queryType: string) {
+  const t = queryType.startsWith("barchart") ? "barchart" : queryType;
+  return `shaper-${t}`;
+}
+
+export function scopeDashboardCSS (rawCSS: string, scopeClass: string): string {
+  if (!rawCSS) return "";
+
+  // 1. Separate @import rules (CSS specification requires @import rules to precede all other rules)
+  const importRules: string[] = [];
+  const withoutImports = rawCSS.replace(/@import\s+[^;]+;/g, (match) => {
+    importRules.push(match);
+    return "";
+  });
+
+  // 2. Map body, html, :root to :scope so authors writing e.g. "body { background: ... }" target the dashboard root container
+  const scopedBody = withoutImports.replace(
+    /(^|[\s,{}])(body|html|:root)(?=[\s,{]|$)/g,
+    "$1:scope",
+  );
+
+  // 3. For nesting fallback, map body, html, :root to & (the nesting parent selector)
+  const nestingBody = withoutImports.replace(
+    /(^|[\s,{}])(body|html|:root)(?=[\s,{]|$)/g,
+    "$1&",
+  );
+
+  const imports = importRules.length > 0 ? importRules.join("\n") + "\n" : "";
+
+  return `${imports}@supports (@scope (div) {}) {
+  @scope (.${scopeClass}) {
+${scopedBody}
+  }
+}
+@supports not (@scope (div) {}) {
+  .${scopeClass} {
+${nestingBody}
+  }
+}`;
+}

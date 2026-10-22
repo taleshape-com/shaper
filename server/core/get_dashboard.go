@@ -28,6 +28,8 @@ var (
 	castRegex               = regexp.MustCompile(`(?is)^CAST\(.+ AS .+\)$`)
 	singleQuoteEscapedRegex = regexp.MustCompile(`(?s)^'(?:[^']|'')*'$`)
 	boxplotRegex            = regexp.MustCompile(`(?is)^boxplot\(.+\)$`)
+	closeStyleTagRegex      = regexp.MustCompile(`(?i)<\s*/\s*style`)
+	isCSSRegex              = regexp.MustCompile(`(?i)(::\s*CSS\b|\bAS\s+CSS\b)`)
 )
 
 func getNameIfSet(name string) string {
@@ -84,6 +86,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	headerImage := ""
 	footerLink := ""
 	footerLinkText := ""
+	var customCSS []string
 
 	conn, cleanup, err := app.getDashboardConn(ctx)
 	if err != nil {
@@ -125,7 +128,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			nextIsDownload = false
 			continue
 		}
-		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
+		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) && !isCSSQuery(sqlString) {
 			continue
 		}
 
@@ -194,6 +197,20 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			footerLink = getSingleValue(query.Rows)
 			if col, _ := findColumnByTag(colTypes, "FOOTER_LINK"); col != nil {
 				footerLinkText = getNameIfSet(col.Name())
+			}
+			continue
+		}
+
+		if isCSS(colTypes) {
+			cssIndices := findAllColumnsByTag(colTypes, "CSS")
+			for _, row := range query.Rows {
+				for _, colIdx := range cssIndices {
+					if colIdx < len(row) {
+						if str := getUnionOrString(row[colIdx]); str != "" {
+							customCSS = append(customCSS, sanitizeCSS(str))
+						}
+					}
+				}
 			}
 			continue
 		}
@@ -413,6 +430,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	if len(unsetVariables) > 0 {
 		result.UnsetVariables = unsetVariables
 	}
+	if len(customCSS) > 0 {
+		joined := strings.Join(customCSS, "\n")
+		result.CSS = &joined
+	}
 	return result, err
 }
 
@@ -458,7 +479,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			nextIsDownload = false
 			continue
 		}
-		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) {
+		if hideNextContentSection && !isSideEffect(app, sqlString) && !canStartSection(sqlString) && !isCSSQuery(sqlString) {
 			continue
 		}
 
@@ -487,7 +508,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			continue
 		}
 
-		if isReload(colTypes, queryRows) || isHeaderImage(colTypes, queryRows) || isFooterLink(colTypes, queryRows) {
+		if isReload(colTypes, queryRows) || isHeaderImage(colTypes, queryRows) || isFooterLink(colTypes, queryRows) || isCSS(colTypes) {
 			continue
 		}
 
@@ -2306,6 +2327,45 @@ func isFooterLink(columns []*sql.ColumnType, rows Rows) bool {
 		return false
 	}
 	return len(rows) == 1 && len(rows[0]) == 1
+}
+
+func isCSS(columns []*sql.ColumnType) bool {
+	if len(columns) == 0 {
+		return false
+	}
+	cssCols := findAllColumnsByTag(columns, "CSS")
+	return len(cssCols) == len(columns)
+}
+
+func isCSSQuery(sqlString string) bool {
+	return isCSSRegex.MatchString(sqlString)
+}
+
+// sanitizeCSS escapes closing style tags to prevent HTML parser breakout / XSS
+// (e.g., "</style><script>..."). In modern browsers, content within an inline <style>
+// tag cannot execute JavaScript unless the tag is terminated early. Escaping "</style"
+// to "<\/style" neutralizes tag breakout while preserving valid CSS syntax.
+func sanitizeCSS(css string) string {
+	return closeStyleTagRegex.ReplaceAllString(css, `<\/style`)
+}
+
+func getUnionOrString(v any) string {
+	if v == nil {
+		return ""
+	}
+	if union, ok := v.(duckdb.Union); ok {
+		if union.Value == nil {
+			return ""
+		}
+		if str, ok := union.Value.(string); ok {
+			return str
+		}
+		return fmt.Sprintf("%v", union.Value)
+	}
+	if str, ok := v.(string); ok {
+		return str
+	}
+	return ""
 }
 
 func getUnionStringValue(rows Rows, colIndex int) string {

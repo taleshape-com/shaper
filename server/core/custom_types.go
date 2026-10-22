@@ -76,6 +76,7 @@ var dbTypes = []struct {
 	{"SCATTERPLOT_COLOR", "UNION(\"scatterplot_color_varchar\" VARCHAR)", "string"},
 	{"HEADER_IMAGE", "UNION(\"header_image_varchar\" VARCHAR)", "string"},
 	{"FOOTER_LINK", "UNION(\"footer_link_varchar\" VARCHAR)", "string"},
+	{"CSS", "UNION(\"css_varchar\" VARCHAR)", "string"},
 	{"ID", "UNION(\"id_varchar\" VARCHAR)", "string"},
 	{"TEXT_SMALL", "UNION(\"text_small_varchar\" VARCHAR)", "string"},
 	{"TEXT_MEDIUM", "UNION(\"text_medium_varchar\" VARCHAR)", "string"},

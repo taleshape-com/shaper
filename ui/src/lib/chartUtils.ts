@@ -4,50 +4,79 @@ import type { ECharts } from "echarts/core";
 import * as echarts from "echarts/core";
 
 // Helper function to get computed CSS value
-export const getComputedCssValue = (cssVar: string): string => {
+export const getComputedCssValue = (
+  cssVar: string,
+  target?: Element | string | null,
+): string => {
   if (typeof document === "undefined") return `var(${cssVar})`;
-  const root = document.documentElement;
-  const computedValue = getComputedStyle(root).getPropertyValue(cssVar).trim();
-  return computedValue || `var(${cssVar})`;
+
+  let el: Element | null = null;
+  if (typeof target === "string") {
+    el =
+      document.querySelector(`[data-chart-id="${target}"]`) ??
+      document.querySelector(target);
+  } else if (target) {
+    el = target;
+  }
+
+  // Find the closest dashboard container, or fallback to the first .shaper-scope, or documentElement
+  const scopedEl =
+    el?.closest?.(".shaper-scope") ??
+    el ??
+    document.querySelector(".shaper-scope") ??
+    document.documentElement;
+
+  const computedValue = getComputedStyle(scopedEl).getPropertyValue(cssVar).trim();
+  if (computedValue) return computedValue;
+
+  // Fallback to documentElement if scoped element did not define it and did not inherit
+  if (scopedEl !== document.documentElement) {
+    const rootValue = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+    if (rootValue) return rootValue;
+  }
+
+  return `var(${cssVar})`;
 };
 
-export const getChartFont = (): string => {
+export const getChartFont = (target?: Element | string | null): string => {
   if (typeof window === "undefined") return "sans-serif";
-  return getComputedCssValue("--shaper-font") || "sans-serif";
+  const font = getComputedCssValue("--shaper-font", target);
+  return font && !font.startsWith("var(--") ? font : "sans-serif";
 };
 
-export const getDisplayFont = (): string => {
+export const getDisplayFont = (target?: Element | string | null): string => {
   if (typeof window === "undefined") return "sans-serif";
-  return getComputedCssValue("--shaper-display-font") || "sans-serif";
+  const font = getComputedCssValue("--shaper-display-font", target);
+  return font && !font.startsWith("var(--") ? font : "sans-serif";
 };
 
 // Function to get theme-appropriate colors
-export const getThemeColors = (isDark: boolean) => {
+export const getThemeColors = (isDark: boolean, target?: Element | string | null) => {
   if (isDark) {
     return {
-      primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color-alternate"),
-      backgroundColor: getComputedCssValue("--shaper-dark-mode-background-color"),
-      backgroundColorSecondary: getComputedCssValue("--shaper-dark-mode-background-color-secondary"),
-      backgroundColorInverted: getComputedCssValue("--shaper-dark-mode-background-color-invert"),
-      backgroundColorAlternate: getComputedCssValue("--shaper-dark-mode-background-color-alternate"),
-      borderColor: getComputedCssValue("--shaper-dark-mode-border-color"),
-      textColor: getComputedCssValue("--shaper-dark-mode-text-color"),
-      textColorSecondary: getComputedCssValue("--shaper-dark-mode-text-color-secondary"),
-      textColorInverted: getComputedCssValue("--shaper-dark-mode-text-color-invert"),
-      referenceLineColor: getComputedCssValue("--shaper-reference-line-color"),
+      primaryColor: getComputedCssValue("--shaper-dark-mode-primary-color-alternate", target),
+      backgroundColor: getComputedCssValue("--shaper-dark-mode-background-color", target),
+      backgroundColorSecondary: getComputedCssValue("--shaper-dark-mode-background-color-secondary", target),
+      backgroundColorInverted: getComputedCssValue("--shaper-dark-mode-background-color-invert", target),
+      backgroundColorAlternate: getComputedCssValue("--shaper-dark-mode-background-color-alternate", target),
+      borderColor: getComputedCssValue("--shaper-dark-mode-border-color", target),
+      textColor: getComputedCssValue("--shaper-dark-mode-text-color", target),
+      textColorSecondary: getComputedCssValue("--shaper-dark-mode-text-color-secondary", target),
+      textColorInverted: getComputedCssValue("--shaper-dark-mode-text-color-invert", target),
+      referenceLineColor: getComputedCssValue("--shaper-reference-line-color", target),
     };
   } else {
     return {
-      primaryColor: getComputedCssValue("--shaper-primary-color-alternate"),
-      backgroundColor: getComputedCssValue("--shaper-background-color"),
-      backgroundColorSecondary: getComputedCssValue("--shaper-background-color-secondary"),
-      backgroundColorInverted: getComputedCssValue("--shaper-background-color-invert"),
-      backgroundColorAlternate: getComputedCssValue("--shaper-background-color-alternate"),
-      borderColor: getComputedCssValue("--shaper-border-color"),
-      textColor: getComputedCssValue("--shaper-text-color"),
-      textColorSecondary: getComputedCssValue("--shaper-text-color-secondary"),
-      textColorInverted: getComputedCssValue("--shaper-text-color-invert"),
-      referenceLineColor: getComputedCssValue("--shaper-reference-line-color"),
+      primaryColor: getComputedCssValue("--shaper-primary-color-alternate", target),
+      backgroundColor: getComputedCssValue("--shaper-background-color", target),
+      backgroundColorSecondary: getComputedCssValue("--shaper-background-color-secondary", target),
+      backgroundColorInverted: getComputedCssValue("--shaper-background-color-invert", target),
+      backgroundColorAlternate: getComputedCssValue("--shaper-background-color-alternate", target),
+      borderColor: getComputedCssValue("--shaper-border-color", target),
+      textColor: getComputedCssValue("--shaper-text-color", target),
+      textColorSecondary: getComputedCssValue("--shaper-text-color-secondary", target),
+      textColorInverted: getComputedCssValue("--shaper-text-color-invert", target),
+      referenceLineColor: getComputedCssValue("--shaper-reference-line-color", target),
     };
   }
 };
@@ -66,7 +95,7 @@ export const downloadChartAsImage = async (
   chartOptions.animation = false;
 
   // Check for watermark URL in CSS variables
-  const watermarkUrlRaw = getComputedCssValue("--shaper-watermark-url");
+  const watermarkUrlRaw = getComputedCssValue("--shaper-watermark-url", chartDom);
   let watermarkUrl = "";
   if (
     watermarkUrlRaw &&
@@ -199,7 +228,7 @@ export const downloadChartAsImage = async (
     const url = tempChart.getDataURL({
       type: "png",
       pixelRatio: 2,
-      backgroundColor: getThemeColors(isDarkMode).backgroundColorSecondary,
+      backgroundColor: getThemeColors(isDarkMode, chartDom).backgroundColorSecondary,
     });
 
     const link = document.createElement("a");
@@ -273,6 +302,7 @@ export const constructCategoryColors = (
   categories: string[],
   colorsByCategory: Record<string, string>,
   isDark: boolean,
+  target?: Element | string | null,
 ): Map<string, string> => {
   const categoryColors = new Map<string, string>();
   let customColorCount = 0;
@@ -285,7 +315,7 @@ export const constructCategoryColors = (
           echartsColorKeys[(index - customColorCount) % echartsColorKeys.length]
         ];
       const cssVar = echartsKey[isDark ? "dark" : "light"];
-      color = getComputedCssValue(cssVar.replace("var(", "").replace(")", ""));
+      color = getComputedCssValue(cssVar.replace("var(", "").replace(")", ""), target);
     } else {
       customColorCount += 1;
     }
@@ -298,18 +328,19 @@ export const constructCategoryColors = (
 export const getEChartsColor = (
   colorKey: EChartsColorKey,
   isDark: boolean = false,
+  target?: Element | string | null,
 ): string => {
   const color = echartsColors[colorKey];
   if (!color) {
     const fallbackVar = isDark
       ? "--shaper-dark-mode-primary-color-alternate"
       : "--shaper-primary-color-alternate";
-    return getComputedCssValue(fallbackVar);
+    return getComputedCssValue(fallbackVar, target);
   }
 
   const cssVar = isDark ? color.dark : color.light;
   // Extract the CSS variable name from the var() function
   const varName = cssVar.replace("var(", "").replace(")", "");
 
-  return getComputedCssValue(varName);
+  return getComputedCssValue(varName, target);
 };

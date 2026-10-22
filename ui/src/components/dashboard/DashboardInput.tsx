@@ -51,7 +51,7 @@ function DashboardInput ({
   }, 500);
 
   return (
-    <div className="flex items-center print:hidden">
+    <div className="shaper-input flex items-center print:hidden">
       {label && (
         <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:

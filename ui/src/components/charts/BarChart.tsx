@@ -91,13 +91,13 @@ const BarChart = (props: BarChartProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode);
-    const chartFont = getChartFont();
-    const displayFont = getDisplayFont();
+    const { borderColor, textColor, textColorSecondary, referenceLineColor, backgroundColorSecondary, textColorInverted, backgroundColorInverted } = getThemeColors(isDarkMode, chartId);
+    const chartFont = getChartFont(chartId);
+    const displayFont = getDisplayFont(chartId);
     const cleanXAxisLabel = toSingleLine(xAxisLabel);
     const cleanYAxisLabel = toSingleLine(yAxisLabel);
     const cleanCategories = categories.map(toSingleLine);
-    const categoryColors = constructCategoryColors(cleanCategories, colorsByCategory, isDarkMode);
+    const categoryColors = constructCategoryColors(cleanCategories, colorsByCategory, isDarkMode, chartId);
     const isTimestampData = isDatableType(indexType);
     const isNumericData = indexType === "number" || indexType === "percent";
     const isContinuousData = isTimestampData || isNumericData;
@@ -696,6 +696,7 @@ const BarChart = (props: BarChartProps) => {
     label,
     subtitle,
     markLines,
+    chartId,
   ]);
 
   useEffect(() => {
@@ -703,7 +704,7 @@ const BarChart = (props: BarChartProps) => {
     if (!chart || data.length === 0) {
       return;
     }
-    const { referenceLineColor } = getThemeColors(isDarkMode);
+    const { referenceLineColor } = getThemeColors(isDarkMode, chartId);
     const isTimestampData = isDatableType(indexType);
     const series: BarSeriesOption[] = [{
       id: "shaper-hover-reference-line",
@@ -738,6 +739,7 @@ const BarChart = (props: BarChartProps) => {
     layout,
     type,
     isHovering,
+    chartId,
   ]);
 
   // Event handlers for the EChart component
