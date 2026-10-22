@@ -23,6 +23,7 @@ type ButtonProps = {
   baseUrl?: string;
   getJwt: () => Promise<string>;
   idPrefix: string;
+  className?: string;
 };
 
 function getFilenameFromHeader (response: Response, fallback: string): string {
@@ -43,6 +44,7 @@ function DashboardButton ({
   baseUrl = "",
   getJwt,
   idPrefix,
+  className,
 }: ButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -151,7 +153,7 @@ function DashboardButton ({
   };
 
   return (
-    <div className="shaper-downloadbutton flex items-center print:hidden">
+    <div className={cx("shaper-downloadbutton flex items-center print:hidden", className)}>
       {label && (
         <Label className="ml-3 pr-1 shrink-0">
           {label}:

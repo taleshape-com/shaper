@@ -14,6 +14,7 @@ type PickerProps = {
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
   idPrefix: string;
+  className?: string;
 };
 
 function DashboardDateRangePicker ({
@@ -23,6 +24,7 @@ function DashboardDateRangePicker ({
   onChange,
   vars,
   idPrefix,
+  className,
 }: PickerProps) {
   const defaultFromValue = headers.findIndex((header) => header.tag === "defaultFrom");
   if (defaultFromValue === -1) {
@@ -97,7 +99,7 @@ function DashboardDateRangePicker ({
   ];
 
   return (
-    <div className="shaper-daterangepicker flex items-center print:hidden">
+    <div className={cx("shaper-daterangepicker flex items-center print:hidden", className)}>
       {label && <Label htmlFor={label} className="ml-3 pr-1 shrink-0">{label}:</Label>}
       <div className={cx("select-none", { ["ml-2"]: !label })}>
         <DateRangePicker

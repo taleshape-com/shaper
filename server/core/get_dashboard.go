@@ -54,6 +54,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 	nextLabel := ""
 	nextSubtitle := ""
+	nextClass := ""
 	hideNextContentSection := false
 	nextIsDownload := false
 	nextMarkLines := []MarkLine{}
@@ -148,11 +149,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			nextLabel = getUnionStringValue(query.Rows, labelIndex)
 			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
 			nextSubtitle = getUnionStringValue(query.Rows, subtitleIndex)
+			_, classIndex := findColumnByTag(colTypes, "CLASS")
+			nextClass = formatClasses(getUnionStringValue(query.Rows, classIndex))
 			continue
 		}
 
 		if isSectionTitle(colTypes, query.Rows) {
-			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil {
+			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil || result.Sections[sLen-1].Subtitle != nil || result.Sections[sLen-1].Class != nil {
 				result.Sections = append(result.Sections, Section{
 					Type:    "header",
 					Queries: []Query{},
@@ -177,6 +180,13 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				lastSection.Subtitle = nil
 			} else {
 				lastSection.Subtitle = &sectionSubtitle
+			}
+			_, classIndex := findColumnByTag(colTypes, "CLASS")
+			sectionClass := formatClasses(getUnionStringValue(query.Rows, classIndex))
+			if sectionClass == "" {
+				lastSection.Class = nil
+			} else {
+				lastSection.Class = &sectionClass
 			}
 			continue
 		}
@@ -221,10 +231,16 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextSubtitle, nextMarkLines)
+		var classValue *string
+		if nextClass != "" {
+			c := nextClass
+			classValue = &c
+		}
 		query.Render = Render{
 			Type:            rInfo.Type,
 			Label:           rInfo.Label,
 			Subtitle:        rInfo.Subtitle,
+			Class:           classValue,
 			GaugeCategories: rInfo.GaugeCategories,
 			MarkLines:       rInfo.MarkLines,
 		}
@@ -405,6 +421,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 		nextLabel = ""
 		nextSubtitle = ""
+		nextClass = ""
 		nextMarkLines = []MarkLine{}
 	}
 	if err := conn.Close(); err != nil {
@@ -825,40 +842,83 @@ func canStartSection(sqlString string) bool {
 		strings.Contains(upper, "INPUT")
 }
 
-func isLabel(columns []*sql.ColumnType, rows Rows) bool {
-	col, _ := findColumnByTag(columns, "LABEL")
-	if col == nil {
-		return false
-	}
-	if len(rows) != 1 {
-		return false
-	}
-	if len(columns) == 1 {
-		return true
-	}
-	if len(columns) == 2 {
-		subCol, _ := findColumnByTag(columns, "SUBTITLE")
-		return subCol != nil
+func isTag(c *sql.ColumnType, tag string) bool {
+	for _, dbType := range dbTypes {
+		if dbType.Name == tag {
+			return c.DatabaseTypeName() == dbType.Definition
+		}
 	}
 	return false
 }
 
-func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
-	col, _ := findColumnByTag(columns, "SECTION")
-	if col == nil {
+func formatClasses(raw string) string {
+	parts := strings.Split(raw, ",")
+	classes := make([]string, 0, len(parts))
+	for _, p := range parts {
+		fields := strings.Fields(p)
+		classes = append(classes, fields...)
+	}
+	return strings.Join(classes, " ")
+}
+
+func isLabel(columns []*sql.ColumnType, rows Rows) bool {
+	if len(rows) != 1 {
 		return false
 	}
+	hasLabel := false
+	hasSubtitle := false
+	hasClass := false
+	for _, c := range columns {
+		if isTag(c, "LABEL") {
+			if hasLabel {
+				return false
+			}
+			hasLabel = true
+		} else if isTag(c, "SUBTITLE") {
+			if hasSubtitle {
+				return false
+			}
+			hasSubtitle = true
+		} else if isTag(c, "CLASS") {
+			if hasClass {
+				return false
+			}
+			hasClass = true
+		} else {
+			return false
+		}
+	}
+	return hasLabel
+}
+
+func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
 	if len(rows) != 0 && len(rows) != 1 {
 		return false
 	}
-	if len(columns) == 1 {
-		return true
+	hasSection := false
+	hasSubtitle := false
+	hasClass := false
+	for _, c := range columns {
+		if isTag(c, "SECTION") {
+			if hasSection {
+				return false
+			}
+			hasSection = true
+		} else if isTag(c, "SUBTITLE") {
+			if hasSubtitle {
+				return false
+			}
+			hasSubtitle = true
+		} else if isTag(c, "CLASS") {
+			if hasClass {
+				return false
+			}
+			hasClass = true
+		} else {
+			return false
+		}
 	}
-	if len(columns) == 2 {
-		subCol, _ := findColumnByTag(columns, "SUBTITLE")
-		return subCol != nil
-	}
-	return false
+	return hasSection
 }
 
 func isPlaceholder(columns []*sql.ColumnType, rows Rows) bool {

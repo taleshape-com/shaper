@@ -15,6 +15,7 @@ type InputProps = {
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
   idPrefix: string;
+  className?: string;
 };
 
 function DashboardInput ({
@@ -24,6 +25,7 @@ function DashboardInput ({
   onChange,
   vars,
   idPrefix,
+  className,
 }: InputProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "hint");
   const varName = headers[valueIndex].name;
@@ -51,7 +53,7 @@ function DashboardInput ({
   }, 500);
 
   return (
-    <div className="shaper-input flex items-center print:hidden">
+    <div className={cx("shaper-input flex items-center print:hidden", className)}>
       {label && (
         <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:

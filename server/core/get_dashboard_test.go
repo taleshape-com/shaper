@@ -439,6 +439,102 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
 	})
 
+	t.Run("Section and Label with Class", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'My Section'::SECTION, 'my-section-class'::CLASS;
+				SELECT 'My Label'::LABEL, 'featured-card,  highlighted-card '::CLASS;
+				SELECT 42;
+			`,
+			ID: "test-section-label-class",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		// Check Section Title and Class
+		assert.Equal(t, "header", result.Sections[0].Type)
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "My Section", *result.Sections[0].Title)
+		assert.Nil(t, result.Sections[0].Subtitle)
+		assert.NotNil(t, result.Sections[0].Class)
+		assert.Equal(t, "my-section-class", *result.Sections[0].Class)
+
+		// Check Render Label and Class on value query
+		q := result.Sections[1].Queries[0]
+		assert.Equal(t, "value", q.Render.Type)
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "My Label", *q.Render.Label)
+		assert.Nil(t, q.Render.Subtitle)
+		assert.NotNil(t, q.Render.Class)
+		assert.Equal(t, "featured-card highlighted-card", *q.Render.Class)
+	})
+
+	t.Run("Section and Label with Subtitle and Class in arbitrary column order", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'custom-sec-1, custom-sec-2'::CLASS, 'Sec Sub'::SUBTITLE, 'Sec Title'::SECTION;
+				SELECT 'card-c1, card-c2'::CLASS, 'Card Title'::LABEL, 'Card Sub'::SUBTITLE;
+				SELECT 100;
+			`,
+			ID: "test-arbitrary-column-order-class",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		// Check Section
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "Sec Title", *result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Subtitle)
+		assert.Equal(t, "Sec Sub", *result.Sections[0].Subtitle)
+		assert.NotNil(t, result.Sections[0].Class)
+		assert.Equal(t, "custom-sec-1 custom-sec-2", *result.Sections[0].Class)
+
+		// Check Render
+		q := result.Sections[1].Queries[0]
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "Card Title", *q.Render.Label)
+		assert.NotNil(t, q.Render.Subtitle)
+		assert.Equal(t, "Card Sub", *q.Render.Subtitle)
+		assert.NotNil(t, q.Render.Class)
+		assert.Equal(t, "card-c1 card-c2", *q.Render.Class)
+	})
+
+	t.Run("Empty Section Title with Class", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT ''::SECTION, 'empty-title-sec'::CLASS;
+				SELECT 1;
+			`,
+			ID: "test-empty-section-class",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		assert.Nil(t, result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Class)
+		assert.Equal(t, "empty-title-sec", *result.Sections[0].Class)
+	})
+
+	t.Run("Whitespace-only Class results in nil Class", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Title'::SECTION, '   ,   '::CLASS;
+				SELECT 'Label'::LABEL, '   '::CLASS;
+				SELECT 1;
+			`,
+			ID: "test-whitespace-class",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		assert.Nil(t, result.Sections[0].Class)
+		assert.Nil(t, result.Sections[1].Queries[0].Render.Class)
+	})
+
 	t.Run("Struct column type", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: `SELECT {'name': 'Alice', 'age': 30, 'created': '2026-01-01'::DATE, 'active': true} AS user_info;`,
