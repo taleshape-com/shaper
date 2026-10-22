@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect } from "vitest";
-import { formatValue } from "./render";
+import { formatValue, scopeDashboardCSS } from "./render";
 
 describe("formatValue with numbers", () => {
   const columnType = "number";
@@ -83,5 +83,40 @@ describe("formatValue with struct, map, object", () => {
     expect(formatValue(val, "struct")).toBe(JSON.stringify(val));
     expect(formatValue(val, "map")).toBe(JSON.stringify(val));
     expect(formatValue(val, "object")).toBe(JSON.stringify(val));
+  });
+});
+
+describe("scopeDashboardCSS", () => {
+  it("should return empty string for empty input", () => {
+    expect(scopeDashboardCSS("", "shaper-instance-123")).toBe("");
+  });
+
+  it("should scope rules to the specific instance class", () => {
+    const css = ".card { padding: 16px; }\nh1 { color: red; }";
+    const scoped = scopeDashboardCSS(css, "shaper-instance-123");
+    expect(scoped).toContain("@scope (.shaper-instance-123)");
+    expect(scoped).toContain(".shaper-instance-123 {");
+    expect(scoped).toContain(".card { padding: 16px; }");
+    expect(scoped).toContain("h1 { color: red; }");
+  });
+
+  it("should hoist @import rules above @scope block", () => {
+    const css = "@import url(\"https://fonts.googleapis.com/css?family=Inter\");\n.card { border-radius: 4px; }";
+    const scoped = scopeDashboardCSS(css, "shaper-instance-abc");
+    expect(scoped.startsWith("@import url(\"https://fonts.googleapis.com/css?family=Inter\");\n@supports")).toBe(true);
+    expect(scoped).toContain("@scope (.shaper-instance-abc)");
+  });
+
+  it("should map body, html, :root to :scope in @scope block and & in nesting block", () => {
+    const css = "body { background: #121212; }\nhtml { font-size: 16px; }\n:root { --accent: blue; }";
+    const scoped = scopeDashboardCSS(css, "shaper-instance-xyz");
+    // Under @scope block
+    expect(scoped).toContain(":scope { background: #121212; }");
+    expect(scoped).toContain(":scope { font-size: 16px; }");
+    expect(scoped).toContain(":scope { --accent: blue; }");
+    // Under nesting fallback block
+    expect(scoped).toContain("& { background: #121212; }");
+    expect(scoped).toContain("& { font-size: 16px; }");
+    expect(scoped).toContain("& { --accent: blue; }");
   });
 });

@@ -56,9 +56,9 @@ const PieChart = (props: PieChartProps) => {
   const breakdownLabel = translate("Breakdown");
 
   const chartOptions = React.useMemo(() => {
-    const theme = getThemeColors(isDarkMode);
-    const chartFont = getChartFont();
-    const displayFont = getDisplayFont();
+    const theme = getThemeColors(isDarkMode, chartId);
+    const chartFont = getChartFont(chartId);
+    const displayFont = getDisplayFont(chartId);
 
     const cleanData = data.map((d) => ({
       ...d,
@@ -282,6 +282,7 @@ const PieChart = (props: PieChartProps) => {
     otherLabel,
     breakdownLabel,
     isPercent,
+    chartId,
   ]);
 
   const handleChartReady = useCallback((chart: ECharts) => {

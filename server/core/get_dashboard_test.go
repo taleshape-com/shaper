@@ -591,4 +591,121 @@ FROM (VALUES
 		assert.Equal(t, "color", qLine.Columns[2].Tag)
 		assert.Equal(t, 4, len(qLine.Rows))
 	})
+
+	t.Run("Single CSS query", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT 'body { background-color: #fafafa; }'::CSS;`,
+			ID:      "test-css-single",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.CSS)
+		assert.Equal(t, "body { background-color: #fafafa; }", *result.CSS)
+		assert.Equal(t, 0, len(result.Sections))
+	})
+
+	t.Run("Multiple CSS queries in order", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'body { color: red; }'::CSS;
+SELECT 'h1 { color: blue; }'::CSS;
+SELECT 'body { color: green; }'::CSS;
+`,
+			ID: "test-css-multiple",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.CSS)
+		expected := "body { color: red; }\nh1 { color: blue; }\nbody { color: green; }"
+		assert.Equal(t, expected, *result.CSS)
+		assert.Equal(t, 0, len(result.Sections))
+	})
+
+	t.Run("CSS queries anywhere in dashboard SQL", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'body { margin: 0; }'::CSS;
+
+SELECT 'Overview'::SECTION;
+
+SELECT 'Total'::LABEL;
+SELECT '.card { padding: 16px; }'::CSS;
+SELECT 42 AS count;
+
+SELECT '.footer { opacity: 0.8; }'::CSS;
+`,
+			ID: "test-css-anywhere",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.CSS)
+		expected := "body { margin: 0; }\n.card { padding: 16px; }\n.footer { opacity: 0.8; }"
+		assert.Equal(t, expected, *result.CSS)
+
+		// Assert section and queries are intact and LABEL is not consumed by intermediate CSS query
+		assert.Equal(t, 2, len(result.Sections))
+		assert.Equal(t, "Overview", *result.Sections[0].Title)
+		assert.Equal(t, 1, len(result.Sections[1].Queries))
+		q := result.Sections[1].Queries[0]
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "Total", *q.Render.Label)
+		assert.Equal(t, int32(42), q.Rows[0][0])
+	})
+
+	t.Run("CSS with UNION ALL multiple rows", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'div { color: red; }'::CSS
+UNION ALL
+SELECT 'div { color: blue; }'::CSS;
+`,
+			ID: "test-css-union",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.CSS)
+		expected := "div { color: red; }\ndiv { color: blue; }"
+		assert.Equal(t, expected, *result.CSS)
+	})
+
+	t.Run("CSS query with 0 rows does not set result.CSS", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT 'body { color: red; }'::CSS WHERE false;`,
+			ID:      "test-css-empty",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Nil(t, result.CSS)
+		assert.Equal(t, 0, len(result.Sections))
+	})
+
+	t.Run("CSS in conditionally hidden section still applies", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'Hidden'::SECTION WHERE false;
+SELECT 'body { color: purple; }'::CSS;
+SELECT 100 AS val;
+`,
+			ID: "test-css-hidden-section",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.CSS)
+		assert.Equal(t, "body { color: purple; }", *result.CSS)
+		// Section should remain hidden
+		if len(result.Sections) > 0 {
+			assert.Equal(t, 0, len(result.Sections[0].Queries))
+		}
+	})
+
+	t.Run("CSS sanitizes closing style tags for security", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `SELECT '</style><script>alert(1)</script>'::CSS;`,
+			ID:      "test-css-sanitization",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result.CSS)
+		assert.Equal(t, `<\/style><script>alert(1)</script>`, *result.CSS)
+	})
 }

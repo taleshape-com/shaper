@@ -25,7 +25,7 @@ type ButtonProps = {
   idPrefix: string;
 };
 
-function getFilenameFromHeader(response: Response, fallback: string): string {
+function getFilenameFromHeader (response: Response, fallback: string): string {
   const disposition = response.headers.get("content-disposition");
   if (disposition) {
     const match = disposition.match(/filename=["']?([^"';]+)["']?/i);
@@ -36,7 +36,7 @@ function getFilenameFromHeader(response: Response, fallback: string): string {
   return fallback;
 }
 
-function DashboardButton({
+function DashboardButton ({
   label,
   data,
   headers,

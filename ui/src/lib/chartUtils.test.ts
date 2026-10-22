@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { describe, it, expect } from "vitest";
-import { toSingleLine, constructCategoryColors } from "./chartUtils";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import {
+  toSingleLine,
+  constructCategoryColors,
+  getComputedCssValue,
+  getChartFont,
+  getDisplayFont,
+  getThemeColors,
+} from "./chartUtils";
 
 describe("toSingleLine", () => {
   it("should return single-line string unchanged", () => {
@@ -58,5 +65,87 @@ describe("constructCategoryColors", () => {
     expect(categoryColors.get("South\r\nAmerica")).toBe("#00ff00");
 
     expect(categoryColors.has("Europe")).toBe(true);
+  });
+});
+
+describe("getComputedCssValue and theme utilities", () => {
+  it("should return fallback var when document is undefined", () => {
+    expect(getComputedCssValue("--shaper-primary-color")).toBe("var(--shaper-primary-color)");
+    expect(getChartFont()).toBe("sans-serif");
+  });
+
+  describe("with mock DOM", () => {
+    let originalDoc: any;
+    let originalWin: any;
+    let originalGetComputedStyle: any;
+
+    beforeEach(() => {
+      originalDoc = (global as any).document;
+      originalWin = (global as any).window;
+      originalGetComputedStyle = (global as any).getComputedStyle;
+    });
+
+    afterEach(() => {
+      (global as any).document = originalDoc;
+      (global as any).window = originalWin;
+      (global as any).getComputedStyle = originalGetComputedStyle;
+    });
+
+    it("should resolve scoped css values from target element or chart id", () => {
+      const scopedStyle = {
+        getPropertyValue: (prop: string) => {
+          if (prop === "--shaper-font") return "CustomFont, sans-serif";
+          if (prop === "--shaper-primary-color-alternate") return "#ff00ff";
+          return "";
+        },
+      };
+
+      const rootStyle = {
+        getPropertyValue: (prop: string) => {
+          if (prop === "--shaper-font") return "RootFont";
+          if (prop === "--shaper-background-color") return "#ffffff";
+          return "";
+        },
+      };
+
+      const mockScopeEl = {
+        closest: () => mockScopeEl,
+      };
+
+      const mockChartEl = {
+        closest: (sel: string) => (sel === ".shaper-scope" ? mockScopeEl : null),
+      };
+
+      const mockDoc = {
+        documentElement: {},
+        querySelector: (sel: string) => {
+          if (sel === "[data-chart-id=\"test-chart\"]") return mockChartEl;
+          if (sel === ".shaper-scope") return mockScopeEl;
+          return null;
+        },
+      };
+
+      (global as any).document = mockDoc;
+      (global as any).window = {};
+      (global as any).getComputedStyle = (el: any) => {
+        if (el === mockScopeEl) return scopedStyle;
+        return rootStyle;
+      };
+
+      // 1. Target chartId resolves closest .shaper-scope
+      expect(getComputedCssValue("--shaper-font", "test-chart")).toBe("CustomFont, sans-serif");
+      expect(getChartFont("test-chart")).toBe("CustomFont, sans-serif");
+      expect(getDisplayFont("test-chart")).toBe("sans-serif"); // fallback when empty
+      expect(getThemeColors(false, "test-chart").primaryColor).toBe("#ff00ff");
+
+      // 2. Falls back to documentElement when variable is not defined on scoped element
+      expect(getComputedCssValue("--shaper-background-color", "test-chart")).toBe("#ffffff");
+
+      // 3. Falls back to var() when not defined anywhere
+      expect(getComputedCssValue("--undefined-var", "test-chart")).toBe("var(--undefined-var)");
+
+      // 4. Works with direct element passed
+      expect(getComputedCssValue("--shaper-font", mockChartEl as any)).toBe("CustomFont, sans-serif");
+    });
   });
 });

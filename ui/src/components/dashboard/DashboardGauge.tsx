@@ -32,9 +32,9 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
   const [chartSize, setChartSize] = React.useState<{ width: number, height: number }>({ width: 0, height: 0 });
 
   const chartOptions = React.useMemo(() => {
-    const theme = getThemeColors(isDarkMode);
-    const chartFont = getChartFont();
-    const displayFont = getDisplayFont();
+    const theme = getThemeColors(isDarkMode, chartId);
+    const chartFont = getChartFont(chartId);
+    const displayFont = getDisplayFont(chartId);
 
     // Find the value column
     const valueIndex = headers.findIndex(h => h.tag === "value");
@@ -246,6 +246,7 @@ const DashboardGauge: React.FC<DashboardGaugeProps> = ({
     label,
     subtitle,
     chartSize,
+    chartId,
   ]);
 
   const handleChartReady = useCallback((chart: ECharts) => {

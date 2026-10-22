@@ -111,6 +111,7 @@ export type Result = {
   footerLink?: string;
   footerLinkText?: string;
   unsetVariables?: string[];
+  css?: string;
   sections: (
     | {
       type: "header";

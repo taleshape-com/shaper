@@ -23,7 +23,7 @@ type DropdownProps = {
   idPrefix: string;
 };
 
-function DashboardDropdown({
+function DashboardDropdown ({
   label,
   data,
   headers,

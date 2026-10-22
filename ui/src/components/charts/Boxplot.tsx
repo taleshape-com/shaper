@@ -90,9 +90,9 @@ const Boxplot = (props: BoxplotProps) => {
   // Memoize the chart options to prevent unnecessary re-renders
   const chartOptions = React.useMemo(() => {
     // Get computed colors for theme
-    const { primaryColor, borderColor, backgroundColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode);
-    const chartFont = getChartFont();
-    const displayFont = getDisplayFont();
+    const { primaryColor, borderColor, backgroundColor, textColor, textColorSecondary, referenceLineColor } = getThemeColors(isDarkMode, chartId);
+    const chartFont = getChartFont(chartId);
+    const displayFont = getDisplayFont(chartId);
     const cleanXAxisLabel = toSingleLine(xAxisLabel);
     const cleanYAxisLabel = toSingleLine(yAxisLabel);
     const cleanXData = xData.map(toSingleLine);
@@ -486,6 +486,7 @@ const Boxplot = (props: BoxplotProps) => {
     label,
     subtitle,
     markLines,
+    chartId,
   ]);
 
   useEffect(() => {
@@ -499,7 +500,7 @@ const Boxplot = (props: BoxplotProps) => {
     if (!chart || !hasValidData) {
       return;
     }
-    const { referenceLineColor } = getThemeColors(isDarkMode);
+    const { referenceLineColor } = getThemeColors(isDarkMode, chartId);
     const series: LineSeriesOption[] = [{
       id: "shaper-hover-reference-line",
       type: "line" as const,
@@ -519,7 +520,7 @@ const Boxplot = (props: BoxplotProps) => {
       },
     }];
     chart.setOption({ series }, { lazyUpdate: true });
-  }, [data, indexType, isDarkMode, isHovering]);
+  }, [data, indexType, isDarkMode, isHovering, chartId]);
 
   // Event handlers for the EChart component
   const chartEvents = React.useMemo(() => {

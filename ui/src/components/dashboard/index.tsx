@@ -2,7 +2,7 @@
 
 import { ErrorBoundary } from "react-error-boundary";
 import { Result } from "../../lib/types";
-import { queryTypeToCardCssClass, toCssId } from "../../lib/render";
+import { queryTypeToCardCssClass, toCssId, scopeDashboardCSS } from "../../lib/render";
 import { ChartHoverProvider } from "../providers/ChartHoverProvider";
 import { cx, getSearchParamString, VarsParamSchema, getRenderMode, copyToClipboard } from "../../lib/utils";
 import { fetchWithRetry } from "../../lib/fetchWithRetry";
@@ -20,7 +20,7 @@ import DashboardBarChart from "./DashboardBarChart";
 import DashboardBoxplot from "./DashboardBoxplot";
 import DashboardValue from "./DashboardValue";
 import DashboardTable from "./DashboardTable";
-import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo, useId } from "react";
 import { RiCheckLine, RiFileCopyLine, RiLayoutFill, RiLoader3Fill } from "@remixicon/react";
 import DashboardGauge from "./DashboardGauge";
 import DashboardPieChart from "./DashboardPieChart";
@@ -50,7 +50,7 @@ interface ErrorDisplayProps {
   menuButton?: React.ReactNode;
 }
 
-const ErrorDisplay = function({
+const ErrorDisplay = function ({
   error,
   resetErrorBoundary,
   errResetRef,
@@ -97,7 +97,7 @@ const ErrorDisplay = function({
   );
 };
 
-export function Dashboard({
+export function Dashboard ({
   id,
   vars,
   getJwt,
@@ -383,8 +383,32 @@ const DataView = ({
     }
   });
 
+  const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const scopeClass = `shaper-instance-${instanceId}`;
+
+  // Security & Code Injection Rationale:
+  // 1. Trust Model: Dashboard SQL queries are authored by authorized dashboard creators/admins
+  //    (the same trusted persona defining queries, custom labels, and schema).
+  // 2. JavaScript Execution Impossibility in Modern CSS: In modern standards-compliant browsers,
+  //    CSS style sheets cannot execute JavaScript (legacy vectors like expression() or -moz-binding
+  //    are deprecated and absent).
+  // 3. HTML Parser Breakout Mitigation: The sole viable XSS vector from an inline <style> block is
+  //    prematurely closing the tag (e.g., `</style><script>...`). Both backend and frontend sanitize
+  //    closing style tags (`</style` -> `<\/style`), preventing DOM tag breakout.
+  // 4. Scope Isolation: `scopeDashboardCSS` encapsulates rules inside a unique `.shaper-instance-*`
+  //    container via `@scope` (with CSS nesting fallback) and remaps `body`/`html`/`:root` to `:scope`,
+  //    preventing style hijacking or layout distortion in embedding host applications.
+  const safeCSS = useMemo(() => {
+    if (!data.css) return null;
+    const sanitized = data.css.replace(/<\s*\/\s*style/gi, "<\\/style");
+    return scopeDashboardCSS(sanitized, scopeClass);
+  }, [data.css, scopeClass]);
+
   return (<ChartHoverProvider>
-    <div ref={containerRef} className={cx("relative w-full h-full shaper-scope min-h-0", { "overflow-hidden max-h-screen": !!fullscreenId })}>
+    <div ref={containerRef} className={cx("relative w-full h-full shaper-scope min-h-0", scopeClass, { "overflow-hidden max-h-screen": !!fullscreenId })}>
+      {safeCSS && (
+        <style dangerouslySetInnerHTML={{ __html: safeCSS }} />
+      )}
       <div className={cx("shaper-custom-dashboard-header", { "mx-4 mt-6 mb-6": !!data.headerImage })} data-header-image={data.headerImage}>
         {data.headerImage && (
           <img

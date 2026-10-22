@@ -16,7 +16,7 @@ type PickerProps = {
   idPrefix: string;
 };
 
-function DashboardDatePicker({
+function DashboardDatePicker ({
   label,
   data,
   headers,

@@ -35,6 +35,7 @@ type GetResult struct {
 	FooterLink     *string   `json:"footerLink,omitempty"`
 	FooterLinkText *string   `json:"footerLinkText,omitempty"`
 	UnsetVariables []string  `json:"unsetVariables,omitempty"`
+	CSS            *string   `json:"css,omitempty"`
 }
 
 type Section struct {
