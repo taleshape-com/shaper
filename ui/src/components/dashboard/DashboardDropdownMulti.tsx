@@ -13,6 +13,7 @@ import {
 } from "../tremor/DropdownMenu";
 import { formatValue, toCssId } from "../../lib/render";
 import { translate } from "../../lib/translate";
+import { cx } from "../../lib/utils";
 
 type DropdownProps = {
   label?: string;
@@ -21,6 +22,7 @@ type DropdownProps = {
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
   idPrefix: string;
+  className?: string;
 };
 
 function DashboardDropdownMulti ({
@@ -30,6 +32,7 @@ function DashboardDropdownMulti ({
   onChange,
   vars,
   idPrefix,
+  className,
 }: DropdownProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
@@ -54,7 +57,7 @@ function DashboardDropdownMulti ({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="shaper-dropdownmulti ml-2 select-none print:hidden">
+    <div className={cx("shaper-dropdownmulti ml-2 select-none print:hidden", className)}>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button

@@ -147,5 +147,57 @@ describe("getComputedCssValue and theme utilities", () => {
       // 4. Works with direct element passed
       expect(getComputedCssValue("--shaper-font", mockChartEl as any)).toBe("CustomFont, sans-serif");
     });
+
+    it("should handle numeric chart IDs like '3-1' safely even when querySelector throws", () => {
+      const scopedStyle = {
+        getPropertyValue: (prop: string) => {
+          if (prop === "--shaper-font") return "ScopedChartFont";
+          return "";
+        },
+      };
+
+      const mockScopeEl = {
+        closest: () => mockScopeEl,
+      };
+
+      const mockChartEl = {
+        closest: (sel: string) => (sel === ".shaper-scope" ? mockScopeEl : null),
+      };
+
+      const mockDoc = {
+        documentElement: {},
+        querySelector: (sel: string) => {
+          if (sel === "[data-chart-id=\"3-1\"]") return mockChartEl;
+          if (sel === ".shaper-scope") return mockScopeEl;
+          if (sel === "3-1") {
+            throw new Error("Failed to execute 'querySelector' on 'Document': '3-1' is not a valid selector.");
+          }
+          return null;
+        },
+        getElementById: () => null,
+      };
+
+      (global as any).document = mockDoc;
+      (global as any).window = {};
+      (global as any).getComputedStyle = (el: any) => {
+        if (el === mockScopeEl) return scopedStyle;
+        return { getPropertyValue: () => "" };
+      };
+
+      // 1. Mounted chart id '3-1' resolves properly
+      expect(getComputedCssValue("--shaper-font", "3-1")).toBe("ScopedChartFont");
+
+      // 2. Unmounted chart id '3-2' where querySelector throws on fallback '3-2' does not crash
+      mockDoc.querySelector = (sel: string) => {
+        if (sel === ".shaper-scope") return mockScopeEl;
+        if (sel === "3-2") {
+          throw new Error("Failed to execute 'querySelector' on 'Document': '3-2' is not a valid selector.");
+        }
+        return null;
+      };
+
+      expect(() => getComputedCssValue("--shaper-font", "3-2")).not.toThrow();
+      expect(getComputedCssValue("--shaper-font", "3-2")).toBe("ScopedChartFont");
+    });
   });
 });

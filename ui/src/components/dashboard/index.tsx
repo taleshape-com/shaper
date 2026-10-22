@@ -418,289 +418,302 @@ const DataView = ({
           />
         )}
       </div>
-      {groupedSections.map((group, groupIndex) => (
-        <section key={groupIndex} className="shaper-section break-inside-avoid">
-          {group.sections.map(({ section, index: sectionIndex }) => {
-            if (section.type === "header") {
-              const header = section as HeaderSection;
-              const queries = header.queries.filter(
-                (query) => query.rows.length > 0,
-              );
+      {groupedSections.map((group, groupIndex) => {
+        const sectionClasses = group.sections
+          .map(({ section }) => section.class)
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <section key={groupIndex} className={cx("shaper-section break-inside-avoid", sectionClasses)}>
+            {group.sections.map(({ section, index: sectionIndex }) => {
+              if (section.type === "header") {
+                const header = section as HeaderSection;
+                const queries = header.queries.filter(
+                  (query) => query.rows.length > 0,
+                );
+                return (
+                  <div
+                    key={sectionIndex}
+                    id={toCssId(`header${sectionIndex}`)}
+                    className={cx("shaper-section-header flex flex-wrap items-center ml-2 mr-4", {
+                      "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle,
+                      "mt-8": (header.title || header.subtitle) && sectionIndex !== 0,
+                      "my-2": header.queries.length === 0 && !header.title && !header.subtitle && sectionIndex === 0,
+                      "pb-4": sectionIndex === sections.length - 1,
+                    })}
+                  >
+                    <div
+                      className={cx("@sm:flex-grow flex items-center ml-1", {
+                        "w-full @sm:w-fit": header.title || header.subtitle,
+                      })}
+                    >
+                      {sectionIndex === 0 ? (
+                        <>
+                          {menuButton}
+                          {header.title || header.subtitle ? (
+                            <div className="flex flex-col ml-1">
+                              {header.title ? (
+                                <h1 className="shaper-section-title text-2xl text-left py-1 mt-0.5 font-semibold">
+                                  {header.title}
+                                </h1>
+                              ) : null}
+                              {header.subtitle ? (
+                                <p className="shaper-section-subtitle text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
+                                  {header.subtitle}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : header.title || header.subtitle ? (
+                        <div className="flex flex-col ml-1">
+                          {header.title ? (
+                            <h2 className="text-xl text-left mt-0.5 font-semibold">
+                              {header.title}
+                            </h2>
+                          ) : null}
+                          {header.subtitle ? (
+                            <p className="text-sm text-ctext2 dark:text-dtext2 text-left mt-0.5 mb-1">
+                              {header.subtitle}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                    {queries.map(({ render, columns, rows }, index) => {
+                      if (render.type === "dropdown") {
+                        return (
+                          <DashboardDropdown
+                            key={index}
+                            idPrefix={`header${sectionIndex}-${render.type}-`}
+                            label={render.label}
+                            className={render.class}
+                            headers={columns}
+                            data={rows as (string | number | boolean)[][]}
+                            vars={vars}
+                            onChange={onVarsChanged}
+                          />
+                        );
+                      }
+                      if (render.type === "dropdownMulti") {
+                        return (
+                          <DashboardDropdownMulti
+                            key={index}
+                            idPrefix={`header${sectionIndex}-${render.type}-`}
+                            label={render.label}
+                            className={render.class}
+                            headers={columns}
+                            data={rows as (string | number | boolean)[][]}
+                            vars={vars}
+                            onChange={onVarsChanged}
+                          />
+                        );
+                      }
+                      if (render.type === "button") {
+                        return (
+                          <DashboardButton
+                            key={index}
+                            idPrefix={`header${sectionIndex}-${render.type}-`}
+                            label={render.label}
+                            className={render.class}
+                            headers={columns}
+                            data={rows as (string | number | boolean)[][]}
+                            baseUrl={baseUrl}
+                            getJwt={getJwt}
+                          />
+                        );
+                      }
+                      if (render.type === "datepicker") {
+                        return (
+                          <DashboardDatePicker
+                            key={index}
+                            idPrefix={`header${sectionIndex}-${render.type}-`}
+                            label={render.label}
+                            className={render.class}
+                            headers={columns}
+                            data={rows as (string | number | boolean)[][]}
+                            vars={vars}
+                            onChange={onVarsChanged}
+                          />
+                        );
+                      }
+                      if (render.type === "daterangePicker") {
+                        return (
+                          <DashboardDateRangePicker
+                            key={index}
+                            idPrefix={`header${sectionIndex}-${render.type}-`}
+                            label={render.label}
+                            className={render.class}
+                            headers={columns}
+                            data={rows as (string | number | boolean)[][]}
+                            vars={vars}
+                            onChange={onVarsChanged}
+                          />
+                        );
+                      }
+                      if (render.type === "input") {
+                        return (
+                          <DashboardInput
+                            key={index}
+                            idPrefix={`header${sectionIndex}-${render.type}-`}
+                            label={render.label}
+                            className={render.class}
+                            headers={columns}
+                            data={rows as (string | number | boolean)[][]}
+                            vars={vars}
+                            onChange={onVarsChanged}
+                          />
+                        );
+                      }
+                    })}
+                  </div>
+                );
+              }
+
+              const numQueriesInSection = section.queries.length;
+
               return (
                 <div
                   key={sectionIndex}
-                  id={toCssId(`header${sectionIndex}`)}
-                  className={cx("shaper-section-header flex flex-wrap items-center ml-2 mr-4", {
-                    "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle,
-                    "mt-8": (header.title || header.subtitle) && sectionIndex !== 0,
-                    "my-2": header.queries.length === 0 && !header.title && !header.subtitle && sectionIndex === 0,
-                    "pb-4": sectionIndex === sections.length - 1,
-                  })}
-                >
-                  <div
-                    className={cx("@sm:flex-grow flex items-center ml-1", {
-                      "w-full @sm:w-fit": header.title || header.subtitle,
-                    })}
-                  >
-                    {sectionIndex === 0 ? (
-                      <>
-                        {menuButton}
-                        {header.title || header.subtitle ? (
-                          <div className="flex flex-col ml-1">
-                            {header.title ? (
-                              <h1 className="shaper-section-title text-2xl text-left py-1 mt-0.5 font-semibold">
-                                {header.title}
-                              </h1>
-                            ) : null}
-                            {header.subtitle ? (
-                              <p className="shaper-section-subtitle text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
-                                {header.subtitle}
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : header.title || header.subtitle ? (
-                      <div className="flex flex-col ml-1">
-                        {header.title ? (
-                          <h2 className="text-xl text-left mt-0.5 font-semibold">
-                            {header.title}
-                          </h2>
-                        ) : null}
-                        {header.subtitle ? (
-                          <p className="text-sm text-ctext2 dark:text-dtext2 text-left mt-0.5 mb-1">
-                            {header.subtitle}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  {queries.map(({ render, columns, rows }, index) => {
-                    if (render.type === "dropdown") {
-                      return (
-                        <DashboardDropdown
-                          key={index}
-                          idPrefix={`header${sectionIndex}-${render.type}-`}
-                          label={render.label}
-                          headers={columns}
-                          data={rows as (string | number | boolean)[][]}
-                          vars={vars}
-                          onChange={onVarsChanged}
-                        />
-                      );
-                    }
-                    if (render.type === "dropdownMulti") {
-                      return (
-                        <DashboardDropdownMulti
-                          key={index}
-                          idPrefix={`header${sectionIndex}-${render.type}-`}
-                          label={render.label}
-                          headers={columns}
-                          data={rows as (string | number | boolean)[][]}
-                          vars={vars}
-                          onChange={onVarsChanged}
-                        />
-                      );
-                    }
-                    if (render.type === "button") {
-                      return (
-                        <DashboardButton
-                          key={index}
-                          idPrefix={`header${sectionIndex}-${render.type}-`}
-                          label={render.label}
-                          headers={columns}
-                          data={rows as (string | number | boolean)[][]}
-                          baseUrl={baseUrl}
-                          getJwt={getJwt}
-                        />
-                      );
-                    }
-                    if (render.type === "datepicker") {
-                      return (
-                        <DashboardDatePicker
-                          key={index}
-                          idPrefix={`header${sectionIndex}-${render.type}-`}
-                          label={render.label}
-                          headers={columns}
-                          data={rows as (string | number | boolean)[][]}
-                          vars={vars}
-                          onChange={onVarsChanged}
-                        />
-                      );
-                    }
-                    if (render.type === "daterangePicker") {
-                      return (
-                        <DashboardDateRangePicker
-                          key={index}
-                          idPrefix={`header${sectionIndex}-${render.type}-`}
-                          label={render.label}
-                          headers={columns}
-                          data={rows as (string | number | boolean)[][]}
-                          vars={vars}
-                          onChange={onVarsChanged}
-                        />
-                      );
-                    }
-                    if (render.type === "input") {
-                      return (
-                        <DashboardInput
-                          key={index}
-                          idPrefix={`header${sectionIndex}-${render.type}-`}
-                          label={render.label}
-                          headers={columns}
-                          data={rows as (string | number | boolean)[][]}
-                          vars={vars}
-                          onChange={onVarsChanged}
-                        />
-                      );
-                    }
-                  })}
-                </div>
-              );
-            }
-
-            const numQueriesInSection = section.queries.length;
-
-            return (
-              <div
-                key={sectionIndex}
-                id={toCssId(`content${sectionIndex}`)}
-                className={cx("shaper-section-content grid grid-cols-1 ml-4", {
-                  "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
-                  "@sm:grid-cols-3 print:grid-cols-3":
+                  id={toCssId(`content${sectionIndex}`)}
+                  className={cx("shaper-section-content grid grid-cols-1 ml-4", {
+                    "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
+                    "@sm:grid-cols-3 print:grid-cols-3":
                     numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
-                  "@lg:grid-cols-2 print:grid-cols-2":
+                    "@lg:grid-cols-2 print:grid-cols-2":
                     numQueriesInSection === 2 ||
                     (numContentSections === 1 && numQueriesInSection === 4),
-                  "@lg:grid-cols-3":
+                    "@lg:grid-cols-3":
                     numQueriesInSection > 4 ||
                     numQueriesInSection === 3 ||
                     (numQueriesInSection === 4 && numContentSections > 1),
-                  "@xl:grid-cols-4":
+                    "@xl:grid-cols-4":
                     (numQueriesInSection === 4 && numContentSections > 1) ||
                     numQueriesInSection === 7 ||
                     numQueriesInSection === 8 ||
                     numQueriesInSection > 9,
-                  "@4xl:grid-cols-5":
+                    "@4xl:grid-cols-5":
                     (numQueriesInSection === 5 && numContentSections > 1) ||
                     numQueriesInSection >= 9,
-                })}
-              >
-                {section.queries.map((query, queryIndex) => {
-                  if (query.render.type === "placeholder") {
-                    return <div key={queryIndex} className="shaper-placeholder"></div>;
-                  }
-                  const currentId = `${sectionIndex}-${queryIndex}`;
-                  const isFullscreen = fullscreenId === currentId;
-                  const isBigChartQuery = query.render.type === "linechart" || query.render.type === "scatterplot" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
-                  const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
-                  const singleTable = numQueriesInSection === 1 && query.render.type === "table";
-                  const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
-                  const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
-                  const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
-                  return (
-                    <Card
-                      key={queryIndex}
-                      id={toCssId(`content${sectionIndex}-${cardCssId}`)}
-                      className={cx(
-                        "shaper-card",
-                        queryTypeToCardCssClass(query.render.type),
-                        "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
-                        isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
-                          "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,
-                          "break-inside-avoid": !singleTable,
-                          "min-h-[240px]": isChartQuery,
-                          "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
-                          "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
-                          "h-[240px]": isChartQuery && !isBigChartQuery,
-                          "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
-                          // single table
-                          "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
-                          // pdf
-                          "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
-                          // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
-                          "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
-                          // fill screen height if only 2 sections
-                          "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
-                          // single chart and not table
-                          "@sm:h-[calc(70cqh-5.2rem)] @md:h-[calc(85cqh-5.2rem)] @lg:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
-                          // max heights:
-                          // 1 or 2 cols
-                          "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
-                          // 3 cols
-                          "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
-                            numQueriesInSection > 4 ||
+                  })}
+                >
+                  {section.queries.map((query, queryIndex) => {
+                    if (query.render.type === "placeholder") {
+                      return <div key={queryIndex} className={cx("shaper-placeholder", query.render.class)}></div>;
+                    }
+                    const currentId = `${sectionIndex}-${queryIndex}`;
+                    const isFullscreen = fullscreenId === currentId;
+                    const isBigChartQuery = query.render.type === "linechart" || query.render.type === "scatterplot" || query.render.type.startsWith("barchart") || query.render.type.startsWith("boxplot");
+                    const isChartQuery = isBigChartQuery || query.render.type === "gauge" || query.render.type === "piechart" || query.render.type === "donutchart";
+                    const singleTable = numQueriesInSection === 1 && query.render.type === "table";
+                    const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
+                    const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
+                    const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
+                    return (
+                      <Card
+                        key={queryIndex}
+                        id={toCssId(`content${sectionIndex}-${cardCssId}`)}
+                        className={cx(
+                          "shaper-card",
+                          queryTypeToCardCssClass(query.render.type),
+                          query.render.class,
+                          "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
+                          isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
+                            "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,
+                            "break-inside-avoid": !singleTable,
+                            "min-h-[240px]": isChartQuery,
+                            "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
+                            "h-[360px]": getRenderMode() !== "pdf" && isBigChartQuery || (numQueriesInSection > 1 && query.render.type === "table"),
+                            "h-[240px]": isChartQuery && !isBigChartQuery,
+                            "@sm:h-[360px]": getRenderMode() !== "pdf" && numQueriesInSection > 1 && sectionHasBigChart,
+                            // single table
+                            "max-h-[calc(100cqh-5.2rem)] print:max-h-none": getRenderMode() !== "pdf" && singleTable,
+                            // pdf
+                            "h-[340px]": getRenderMode() === "pdf" && sectionHasBigChart && (numContentSections > 1 || numQueriesInSection > 1),
+                            // single chart in pdf should should be higher. This is also what we use for PNG API downloads.
+                            "h-[400px]": getRenderMode() === "pdf" && isChartQuery && numContentSections === 1 && numQueriesInSection === 1,
+                            // fill screen height if only 2 sections
+                            "@sm:h-[calc(50cqh-3.1rem)]": getRenderMode() !== "pdf" && sectionHasBigChart && numContentSections === 2,
+                            // single chart and not table
+                            "@sm:h-[calc(70cqh-5.2rem)] @md:h-[calc(85cqh-5.2rem)] @lg:h-[calc(100cqh-5.2rem)]": getRenderMode() !== "pdf" && section.queries.some(q => q.render.type !== "table") && numContentSections === 1 && numQueriesInSection <= 2,
+                            // max heights:
+                            // 1 or 2 cols
+                            "max-h-[calc(82cqw)] @sm:max-h-[calc(37cqw)] @lg:max-h-[calc(33cqw)]": sectionHasChart && (numContentSections > 1 || numQueriesInSection > 1),
+                            // 3 cols
+                            "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
+                              numQueriesInSection > 4 ||
                             numQueriesInSection === 3 ||
                             (numQueriesInSection === 4 && numContentSections > 1)),
-                          // 4 cols
-                          "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
-                            (numQueriesInSection === 4 && numContentSections > 1) ||
+                            // 4 cols
+                            "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
+                              (numQueriesInSection === 4 && numContentSections > 1) ||
                             numQueriesInSection === 7 ||
                             numQueriesInSection === 8 ||
                             numQueriesInSection > 9),
-                          // 5 cols
-                          "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
+                            // 5 cols
+                            "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
                             numQueriesInSection >= 9,
-                          // not height related:
-                          "break-before-avoid": singleTable,
-                          "p-4": !isChartQuery,
-                        },
-                      )}
-                    >
-                      {(isChartQuery || query.render.type === "table") && totalContentQueries > 1 && (
-                        <FullscreenButton
-                          isFullscreen={isFullscreen}
-                          onToggle={() => handleToggleFullscreen(isFullscreen ? null : currentId)}
-                          className={cx("right-2", isFullscreen && "top-8 right-8")}
-                        />
-                      )}
-                      {isChartQuery ? (
-                        <ChartDownloadButton
-                          chartId={`${sectionIndex}-${queryIndex}`}
-                          label={query.render.label}
-                          className={cx("absolute top-2 right-2 z-40", { "top-8 right-16": isFullscreen, "right-10": totalContentQueries > 1 && !isFullscreen })}
-                          id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
-                        />
-                      ) : (
-                        <>
-                          {query.render.label && (
-                            <h2 className={cx("text-[15px] font-semibold font-display", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
-                              {query.render.label}
-                            </h2>
-                          )}
-                          {query.render.subtitle && (
-                            <p className="text-sm text-ctext2 dark:text-dtext2 pb-2">
-                              {query.render.subtitle}
-                            </p>
-                          )}
-                          {query.render.type === "table" && (
-                            <TableDownloadButton
-                              headers={query.columns}
-                              data={query.rows as (string | number | boolean)[][]}
-                              label={query.render.label}
-                              className={cx("right-10", isFullscreen && "top-8 right-16")}
-                              id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
-                            />
-                          )}
-                        </>
-                      )}
-                      {
-                        renderContent(
-                          query,
-                          sectionIndex,
-                          queryIndex,
-                          data.minTimeValue,
-                          data.maxTimeValue,
-                        )
-                      }
-                    </Card>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </section>
-      ))}
+                            // not height related:
+                            "break-before-avoid": singleTable,
+                            "p-4": !isChartQuery,
+                          },
+                        )}
+                      >
+                        {(isChartQuery || query.render.type === "table") && totalContentQueries > 1 && (
+                          <FullscreenButton
+                            isFullscreen={isFullscreen}
+                            onToggle={() => handleToggleFullscreen(isFullscreen ? null : currentId)}
+                            className={cx("right-2", isFullscreen && "top-8 right-8")}
+                          />
+                        )}
+                        {isChartQuery ? (
+                          <ChartDownloadButton
+                            chartId={`${sectionIndex}-${queryIndex}`}
+                            label={query.render.label}
+                            className={cx("absolute top-2 right-2 z-40", { "top-8 right-16": isFullscreen, "right-10": totalContentQueries > 1 && !isFullscreen })}
+                            id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                          />
+                        ) : (
+                          <>
+                            {query.render.label && (
+                              <h2 className={cx("text-[15px] font-semibold font-display", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
+                                {query.render.label}
+                              </h2>
+                            )}
+                            {query.render.subtitle && (
+                              <p className="text-sm text-ctext2 dark:text-dtext2 pb-2">
+                                {query.render.subtitle}
+                              </p>
+                            )}
+                            {query.render.type === "table" && (
+                              <TableDownloadButton
+                                headers={query.columns}
+                                data={query.rows as (string | number | boolean)[][]}
+                                label={query.render.label}
+                                className={cx("right-10", isFullscreen && "top-8 right-16")}
+                                id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                              />
+                            )}
+                          </>
+                        )}
+                        {
+                          renderContent(
+                            query,
+                            sectionIndex,
+                            queryIndex,
+                            data.minTimeValue,
+                            data.maxTimeValue,
+                          )
+                        }
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </section>
+        );
+      })}
       {
         numContentSections === 0 ? (
           <div className="mt-32 flex flex-col items-center justify-center text-ctext2 dark:text-dtext2">

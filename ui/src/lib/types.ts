@@ -117,6 +117,7 @@ export type Result = {
       type: "header";
       title?: string;
       subtitle?: string;
+      class?: string;
       queries: {
         render: {
           type:
@@ -127,6 +128,7 @@ export type Result = {
           | "daterangePicker"
           | "input";
           label?: string;
+          class?: string;
         };
         columns: Column[];
         rows: (string | number | boolean)[][];
@@ -134,6 +136,7 @@ export type Result = {
     }
     | {
       type: "content";
+      class?: string;
       queries: {
         render:
         | {
@@ -151,12 +154,14 @@ export type Result = {
           | "donutchart";
           label?: string;
           subtitle?: string;
+          class?: string;
           markLines: MarkLine[];
         }
         | {
           type: "gauge";
           label?: string;
           subtitle?: string;
+          class?: string;
           gaugeCategories: GaugeCategory[];
         };
         columns: Column[];
@@ -165,11 +170,13 @@ export type Result = {
     }
     | {
       type: "content";
+      class?: string;
       queries: {
         render: {
           type: "boxplot";
           label?: string;
           subtitle?: string;
+          class?: string;
           markLines: MarkLine[];
         };
         columns: Column[];

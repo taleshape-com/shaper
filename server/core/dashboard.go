@@ -41,6 +41,7 @@ type GetResult struct {
 type Section struct {
 	Title    *string `json:"title"`
 	Subtitle *string `json:"subtitle,omitempty"`
+	Class    *string `json:"class,omitempty"`
 	Type     string  `json:"type"`
 	Queries  []Query `json:"queries"`
 }
@@ -57,6 +58,7 @@ type Render struct {
 	Type            string          `json:"type"`
 	Label           *string         `json:"label"`
 	Subtitle        *string         `json:"subtitle,omitempty"`
+	Class           *string         `json:"class,omitempty"`
 	GaugeCategories []GaugeCategory `json:"gaugeCategories,omitempty"`
 	MarkLines       []MarkLine      `json:"markLines,omitempty"`
 }

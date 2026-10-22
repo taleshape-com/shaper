@@ -21,6 +21,7 @@ type DropdownProps = {
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
   idPrefix: string;
+  className?: string;
 };
 
 function DashboardDropdown ({
@@ -30,6 +31,7 @@ function DashboardDropdown ({
   onChange,
   vars,
   idPrefix,
+  className,
 }: DropdownProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "value");
   const labelIndex = headers.findIndex((header) => header.tag === "label");
@@ -38,7 +40,7 @@ function DashboardDropdown ({
   const selectedValue = Array.isArray(varField) ? varField[0] : varField;
 
   return (
-    <div className="shaper-dropdown flex items-center print:hidden">
+    <div className={cx("shaper-dropdown flex items-center print:hidden", className)}>
       {label && (
         <Label htmlFor={label} className="ml-3 pr-1 shrink-0">
           {label}:

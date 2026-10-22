@@ -12,26 +12,54 @@ export const getComputedCssValue = (
 
   let el: Element | null = null;
   if (typeof target === "string") {
-    el =
-      document.querySelector(`[data-chart-id="${target}"]`) ??
-      document.querySelector(target);
+    try {
+      const safeId = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(target) : target;
+      el = document.querySelector(`[data-chart-id="${safeId}"]`);
+    } catch {
+      el = null;
+    }
+    if (!el) {
+      try {
+        el = document.querySelector(target);
+      } catch {
+        // target is not a valid CSS selector (e.g. chartId like "3-1")
+        el = null;
+      }
+    }
+    if (!el) {
+      try {
+        el = document.getElementById(target);
+      } catch {
+        el = null;
+      }
+    }
   } else if (target) {
     el = target;
   }
 
-  // Find the closest dashboard container, or fallback to the first .shaper-scope, or documentElement
+  // Find the closest dashboard container, or fallback to the first .shaper-scope (preferring non-html dashboard div), or documentElement
   const scopedEl =
     el?.closest?.(".shaper-scope") ??
     el ??
+    document.querySelector(".shaper-scope:not(html)") ??
     document.querySelector(".shaper-scope") ??
     document.documentElement;
 
-  const computedValue = getComputedStyle(scopedEl).getPropertyValue(cssVar).trim();
+  const getStyle =
+    typeof window !== "undefined" && window.getComputedStyle
+      ? window.getComputedStyle
+      : typeof getComputedStyle === "function"
+        ? getComputedStyle
+        : null;
+
+  if (!scopedEl || !getStyle) return `var(${cssVar})`;
+
+  const computedValue = getStyle(scopedEl).getPropertyValue(cssVar).trim();
   if (computedValue) return computedValue;
 
   // Fallback to documentElement if scoped element did not define it and did not inherit
   if (scopedEl !== document.documentElement) {
-    const rootValue = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+    const rootValue = getStyle(document.documentElement).getPropertyValue(cssVar).trim();
     if (rootValue) return rootValue;
   }
 

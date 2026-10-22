@@ -14,6 +14,7 @@ type PickerProps = {
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
   idPrefix: string;
+  className?: string;
 };
 
 function DashboardDatePicker ({
@@ -23,6 +24,7 @@ function DashboardDatePicker ({
   onChange,
   vars,
   idPrefix,
+  className,
 }: PickerProps) {
   const defaultValueIndex = headers.findIndex((header) => header.tag === "default");
   if (defaultValueIndex === -1) {
@@ -35,7 +37,7 @@ function DashboardDatePicker ({
   const selectedDate = Array.isArray(varField) ? varField[0] : varField;
 
   return (
-    <div className="shaper-datepicker flex items-center print:hidden">
+    <div className={cx("shaper-datepicker flex items-center print:hidden", className)}>
       {label && <Label htmlFor={label} className="ml-3 pr-1 shrink-0">{label}:</Label>}
       <div className={cx("select-none", { ["ml-2"]: !label })}>
         <DatePicker
