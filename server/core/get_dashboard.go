@@ -146,11 +146,17 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 		if isLabel(colTypes, query.Rows) {
 			_, labelIndex := findColumnByTag(colTypes, "LABEL")
-			nextLabel = getUnionStringValue(query.Rows, labelIndex)
+			if labelIndex >= 0 {
+				nextLabel = getUnionStringValue(query.Rows, labelIndex)
+			}
 			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
-			nextSubtitle = getUnionStringValue(query.Rows, subtitleIndex)
+			if subtitleIndex >= 0 {
+				nextSubtitle = getUnionStringValue(query.Rows, subtitleIndex)
+			}
 			_, classIndex := findColumnByTag(colTypes, "CLASS")
-			nextClass = formatClasses(getUnionStringValue(query.Rows, classIndex))
+			if classIndex >= 0 {
+				nextClass = formatClasses(getUnionStringValue(query.Rows, classIndex))
+			}
 			continue
 		}
 
@@ -176,6 +182,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
 			sectionSubtitle := getUnionStringValue(query.Rows, subtitleIndex)
+			if sectionSubtitle == "" && nextSubtitle != "" {
+				sectionSubtitle = nextSubtitle
+				nextSubtitle = ""
+			}
 			if sectionSubtitle == "" {
 				lastSection.Subtitle = nil
 			} else {
@@ -183,6 +193,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 			_, classIndex := findColumnByTag(colTypes, "CLASS")
 			sectionClass := formatClasses(getUnionStringValue(query.Rows, classIndex))
+			if sectionClass == "" && nextClass != "" {
+				sectionClass = nextClass
+				nextClass = ""
+			}
 			if sectionClass == "" {
 				lastSection.Class = nil
 			} else {
@@ -511,9 +525,13 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 
 		if isLabel(colTypes, queryRows) {
 			_, labelIndex := findColumnByTag(colTypes, "LABEL")
-			nextLabel = getUnionStringValue(queryRows, labelIndex)
+			if labelIndex >= 0 {
+				nextLabel = getUnionStringValue(queryRows, labelIndex)
+			}
 			_, subtitleIndex := findColumnByTag(colTypes, "SUBTITLE")
-			nextSubtitle = getUnionStringValue(queryRows, subtitleIndex)
+			if subtitleIndex >= 0 {
+				nextSubtitle = getUnionStringValue(queryRows, subtitleIndex)
+			}
 			continue
 		}
 
@@ -888,7 +906,7 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 			return false
 		}
 	}
-	return hasLabel
+	return hasLabel || hasSubtitle || hasClass
 }
 
 func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {

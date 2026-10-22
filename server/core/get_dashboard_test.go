@@ -535,6 +535,117 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Nil(t, result.Sections[1].Queries[0].Render.Class)
 	})
 
+	t.Run("Card with Class without Label", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'my-standalone-card-class'::CLASS;
+				SELECT 42 AS "Total Users";
+			`,
+			ID: "test-card-class-without-label",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "value", q.Render.Type)
+		assert.Nil(t, q.Render.Label)
+		assert.Nil(t, q.Render.Subtitle)
+		assert.NotNil(t, q.Render.Class)
+		assert.Equal(t, "my-standalone-card-class", *q.Render.Class)
+	})
+
+	t.Run("Separate Label and Class queries for Card", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Active Users'::LABEL;
+				SELECT 'card-border-green, shadow-lg'::CLASS;
+				SELECT 100;
+			`,
+			ID: "test-separate-label-and-class",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+
+		q := result.Sections[0].Queries[0]
+		assert.Equal(t, "value", q.Render.Type)
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "Active Users", *q.Render.Label)
+		assert.Nil(t, q.Render.Subtitle)
+		assert.NotNil(t, q.Render.Class)
+		assert.Equal(t, "card-border-green shadow-lg", *q.Render.Class)
+	})
+
+	t.Run("Separate Class and Label queries for Card in reverse order", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'reverse-order-class'::CLASS;
+				SELECT 'Reversed Label'::LABEL;
+				SELECT 200;
+			`,
+			ID: "test-reverse-class-label-order",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+
+		q := result.Sections[0].Queries[0]
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "Reversed Label", *q.Render.Label)
+		assert.NotNil(t, q.Render.Class)
+		assert.Equal(t, "reverse-order-class", *q.Render.Class)
+	})
+
+	t.Run("Separate Class and Subtitle queries without Label", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'custom-class'::CLASS, 'Explanation without label'::SUBTITLE;
+				SELECT 300;
+			`,
+			ID: "test-class-subtitle-without-label",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+
+		q := result.Sections[0].Queries[0]
+		assert.Nil(t, q.Render.Label)
+		assert.NotNil(t, q.Render.Subtitle)
+		assert.Equal(t, "Explanation without label", *q.Render.Subtitle)
+		assert.NotNil(t, q.Render.Class)
+		assert.Equal(t, "custom-class", *q.Render.Class)
+	})
+
+	t.Run("Separate Class before Section query", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'separate-sec-class'::CLASS;
+				SELECT 'My Section'::SECTION;
+				SELECT 400;
+			`,
+			ID: "test-separate-class-before-section",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		// Section gets the class
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "My Section", *result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Class)
+		assert.Equal(t, "separate-sec-class", *result.Sections[0].Class)
+
+		// The card does not inherit the section's class
+		q := result.Sections[1].Queries[0]
+		assert.Nil(t, q.Render.Class)
+	})
+
+
 	t.Run("Struct column type", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: `SELECT {'name': 'Alice', 'age': 30, 'created': '2026-01-01'::DATE, 'active': true} AS user_info;`,
