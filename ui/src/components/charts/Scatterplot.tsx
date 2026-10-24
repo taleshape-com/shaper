@@ -212,11 +212,28 @@ const Scatterplot = (props: ScatterplotProps) => {
     }
     const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
     const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
+    const rawCustomValues = isContinuousData
+      ? Array.from(new Set(data.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
+        const numA = typeof a === "number" ? a : new Date(a).getTime();
+        const numB = typeof b === "number" ? b : new Date(b).getTime();
+        return numA - numB;
+      })
+      : undefined;
+    const xValues = isContinuousData ? rawCustomValues : xData;
     const xSpace = (chartWidth - 2 * chartPadding + (cleanYAxisLabel ? 50 : 30));
-    const shortenLabel = xData ? (xSpace / xData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    const shortenLabel = xValues && xValues.length > 0 ? (xSpace / xValues.length) * (0.10 + (0.00004 * xSpace)) : true;
+
+    let maxLabelLen = 0;
+    (xValues ?? []).forEach(x => {
+      const v = indexFormatter(indexType === "duration" || indexType === "time" ? new Date(x).getTime() : x, shortenLabel);
+      if (v.length > maxLabelLen) {
+        maxLabelLen = v.length;
+      }
+    });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
     const isEmpty = data.length === 0;
+    const customValues = hasManyLabels || isEmpty ? undefined : rawCustomValues;
 
     return {
       title: {
@@ -473,6 +490,9 @@ const Scatterplot = (props: ScatterplotProps) => {
         scale: !isEmpty && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
+          customValues,
+          showMinLabel: true,
+          showMaxLabel: true,
           formatter: (value: any) => {
             if (isEmpty) {
               return " ";
@@ -482,6 +502,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
+          interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
           rotate: shouldRotateXLabel ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
@@ -511,6 +532,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         },
         axisTick: {
           show: false,
+          customValues,
         },
         splitLine: {
           show: false,

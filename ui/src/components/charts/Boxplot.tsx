@@ -213,7 +213,14 @@ const Boxplot = (props: BoxplotProps) => {
     const isContinuousData = isTimestampData || isNumericData;
     const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
     const xSpace = (chartWidth - 2 * chartPadding + (cleanYAxisLabel ? 50 : 30));
-    const shortenLabel = cleanXData ? (xSpace / cleanXData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    const shortenLabel = cleanXData.length > 0 ? (xSpace / cleanXData.length) * (0.10 + (0.00004 * xSpace)) : true;
+    let maxLabelLen = 0;
+    cleanXData.forEach(x => {
+      const v = indexFormatter(decodeIndexValue(x, indexType), shortenLabel);
+      if (v.length > maxLabelLen) {
+        maxLabelLen = v.length;
+      }
+    });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
     const hasValidData = data.some(
@@ -353,6 +360,8 @@ const Boxplot = (props: BoxplotProps) => {
         show: true,
         axisLabel: {
           show: true,
+          showMinLabel: true,
+          showMaxLabel: true,
           formatter: (value: string) => {
             if (isEmpty) {
               return " ";
@@ -362,6 +371,7 @@ const Boxplot = (props: BoxplotProps) => {
           color: isEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
+          interval: cleanXData.length > 0 && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * cleanXData.length / (chartWidth / 80)) : undefined,
           rotate: shouldRotateXLabel ? 45 : 0,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
