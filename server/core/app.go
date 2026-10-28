@@ -180,7 +180,7 @@ func New(
 	if ssoLoginURL != "" {
 		loginRequired = true
 	}
-	if !loginRequired {
+	if !loginRequired && ssoLoginURL == "" {
 		logger.Warn("No users found. Authentication is disabled until first user is created. Make sure you don't expose sensitive data publicly.")
 	}
 

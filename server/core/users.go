@@ -101,7 +101,11 @@ type CreateUserPayload struct {
 	CreatedBy    string    `json:"createdBy"`
 }
 
-func CreateUser(app *App, ctx context.Context, email string, password string, name string) (string, error) {
+func CreateAdminUser(app *App, ctx context.Context, email string, password string, name string) (string, error) {
+	if app.SSOLoginURL != "" {
+		return "", ErrUserSetupCompleted
+	}
+
 	email = strings.TrimSpace(strings.ToLower(email))
 	name = strings.TrimSpace(name)
 	if name == "" {

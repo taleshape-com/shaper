@@ -384,7 +384,7 @@ func Setup(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Password is required"})
 		}
 
-		id, err := core.CreateUser(app, c.Request().Context(), setupRequest.Email, setupRequest.Password, setupRequest.Name)
+		id, err := core.CreateAdminUser(app, c.Request().Context(), setupRequest.Email, setupRequest.Password, setupRequest.Name)
 		if err != nil {
 			if errors.Is(err, core.ErrUserSetupCompleted) {
 				return c.JSON(http.StatusConflict, map[string]string{"error": "User setup already completed"})
