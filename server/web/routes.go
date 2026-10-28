@@ -357,12 +357,16 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 
 	// API routes - no caching
 	e.GET("/api/system/config", handler.GetSystemConfig(app))
-	e.POST("/api/login", handler.Login(app, loginAccountLimiter), loginLimiter)
+	if app.SSOLoginURL == "" {
+		e.POST("/api/login", handler.Login(app, loginAccountLimiter), loginLimiter)
+	}
 	e.POST("/api/auth/token", handler.TokenAuth(app))
 	e.POST("/api/auth/public", handler.PublicAuth(app, publicAuthLimiter))
-	e.POST("/api/auth/setup", handler.Setup(app))
-	e.GET("/api/invites/:code", handler.GetInvite(app), inviteLimiter)
-	e.POST("/api/invites/:code/claim", handler.ClaimInvite(app), inviteLimiter)
+	if app.SSOLoginURL == "" {
+		e.POST("/api/auth/setup", handler.Setup(app))
+		e.GET("/api/invites/:code", handler.GetInvite(app), inviteLimiter)
+		e.POST("/api/invites/:code/claim", handler.ClaimInvite(app), inviteLimiter)
+	}
 	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionIngestData))
 	e.POST("/api/deploy", handler.Deploy(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy))
 	e.POST("/api/validate", handler.Validate(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy, core.PermissionDeployDryRun))
@@ -372,7 +376,9 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy, core.PermissionDeployDryRun))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.GET("/version", handler.GetVersion(app))
-	apiWithAuth.POST("/logout", handler.Logout(app))
+	if app.SSOLoginURL == "" {
+		apiWithAuth.POST("/logout", handler.Logout(app))
+	}
 	apiWithAuth.POST("/folders", handler.CreateFolder(app))
 	apiWithAuth.DELETE("/folders/:id", handler.DeleteFolder(app))
 	apiWithAuth.POST("/folders/:id/name", handler.RenameFolder(app))
@@ -401,13 +407,17 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/users/:id/password", handler.UpdatePassword(app))
 	apiWithAuth.POST("/users/:id/name", handler.UpdateName(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
-	apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
-	apiWithAuth.POST("/invites", handler.CreateInvite(app))
+	if app.SSOLoginURL == "" {
+		apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
+		apiWithAuth.POST("/invites", handler.CreateInvite(app))
+	}
 	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
 	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
 	apiWithAuth.POST("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
 	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
-	apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
+	if !app.JWTSecretStatic {
+		apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
+	}
 
 	// Static assets - aggressive caching
 	assetsGroup := e.Group("/assets", CacheControl(CacheConfig{
