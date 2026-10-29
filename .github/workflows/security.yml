@@ -171,7 +171,42 @@ jobs:
 
       - name: Run OSV-Scanner
         run: |
+          set +e
           osv-scanner -r .
+          exit_code=$?
+          set -e
+
+          if [ "$exit_code" -eq 0 ]; then
+            exit 0
+          elif [ "$exit_code" -ne 1 ]; then
+            exit "$exit_code"
+          fi
+
+          # Exit code 1 means vulnerabilities were found.
+          # Only fail the workflow if at least one called vulnerability has a fixed version available.
+          osv-scanner --format=json --output-file=osv-results.json -r . || true
+          if jq -e '
+            [
+              .results[]?.packages[]? as $pkg
+              | ($pkg.groups // []
+                 | map(select(((.experimental_analysis // .experimentalAnalysis // {}) | length == 0) or ([(.experimental_analysis // .experimentalAnalysis // {})[]?.called] | any)))
+                 | map(.ids[]?)
+                ) as $called_ids
+              | $pkg.vulnerabilities[]?
+              | select(.id as $id | $called_ids | index($id))
+              | [
+                  .affected[]?
+                  | select(.package.name == $pkg.package.name and .package.ecosystem == $pkg.package.ecosystem)
+                  | .ranges[]?.events[]?.fixed // empty
+                ]
+              | select(length > 0)
+            ] | length == 0
+          ' osv-results.json > /dev/null; then
+            echo "No fix available yet for reported vulnerabilities; skipping failure."
+            exit 0
+          fi
+
+          exit 1
 
   trivy-docker:
     name: Docker Image Security (Trivy)

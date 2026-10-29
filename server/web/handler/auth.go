@@ -171,6 +171,16 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 							Error string `json:"error"`
 						}{Error: "Unauthorized"}, "  ")
 					}
+					var actor *core.Actor
+					if userId, ok := claims["userId"].(string); ok {
+						actor = &core.Actor{Type: core.ActorUser, ID: userId}
+					} else if apiKeyId, ok := claims["apiKeyId"].(string); ok {
+						actor = &core.Actor{Type: core.ActorAPIKey, ID: apiKeyId}
+					}
+					if actor != nil && !actor.HasPermission(c.Request().Context(), app.Sqlite, core.PermissionGenerateJWT) {
+						return c.JSON(http.StatusForbidden, map[string]string{"error": "Missing required permission: " + core.PermissionGenerateJWT})
+					}
+
 					isLongLived, _ := claims["longLived"].(bool)
 					if loginRequest.LongLived {
 						if isLongLived {
