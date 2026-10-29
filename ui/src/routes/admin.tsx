@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { Tabs, TabsList, TabsTrigger } from "../components/tremor/Tabs";
 import { MenuProvider } from "../components/providers/MenuProvider";
@@ -11,6 +11,14 @@ import { useEffect, useState } from "react";
 import { getSystemConfig } from "../lib/system";
 
 export const Route = createFileRoute("/admin")({
+  loader: () => {
+    const config = getSystemConfig();
+    if (config.ssoLoginUrl && !config.apiKeysEnabled && config.jwtSecretStatic) {
+      throw redirect({
+        to: "/",
+      });
+    }
+  },
   component: Admin,
 });
 
@@ -21,11 +29,12 @@ function Admin () {
 
   const config = getSystemConfig();
   const showUsersTab = !config.ssoLoginUrl;
+  const showKeysTab = config.apiKeysEnabled;
   const showSecurityTab = !config.jwtSecretStatic;
 
   let selectedTab = "users";
   if (!showUsersTab) {
-    selectedTab = "keys";
+    selectedTab = showKeysTab ? "keys" : "security";
   }
   if (location.pathname.endsWith("/admin/keys")) {
     selectedTab = "keys";
@@ -71,9 +80,11 @@ function Admin () {
                     <Link to="/admin">Users</Link>
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="keys" asChild>
-                  <Link to="/admin/keys">API Keys</Link>
-                </TabsTrigger>
+                {showKeysTab && (
+                  <TabsTrigger value="keys" asChild>
+                    <Link to="/admin/keys">API Keys</Link>
+                  </TabsTrigger>
+                )}
                 {showSecurityTab && (
                   <TabsTrigger value="security" asChild>
                     <Link to="/admin/security">Security</Link>

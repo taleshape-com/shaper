@@ -66,6 +66,9 @@ type CreateAPIKeyPayload struct {
 }
 
 func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
+	if app.NoAPIKeys {
+		return APIKeyListResult{}, fmt.Errorf("API keys are disabled")
+	}
 	type dbKey struct {
 		APIKey
 		Permissions *string `db:"permissions"`
@@ -93,6 +96,9 @@ func ListAPIKeys(app *App, ctx context.Context) (APIKeyListResult, error) {
 }
 
 func CreateAPIKey(app *App, ctx context.Context, name string, permissions []string) (string, string, error) {
+	if app.NoAPIKeys {
+		return "", "", fmt.Errorf("API keys are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", "", fmt.Errorf("no actor in context")
@@ -156,6 +162,9 @@ type DeleteAPIKeyPayload struct {
 }
 
 func DeleteAPIKey(app *App, ctx context.Context, id string) error {
+	if app.NoAPIKeys {
+		return fmt.Errorf("API keys are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
@@ -203,6 +212,9 @@ type UpdateAPIKeyPermissionsPayload struct {
 }
 
 func UpdateAPIKeyPermissions(app *App, ctx context.Context, id string, permissions []string) error {
+	if app.NoAPIKeys {
+		return fmt.Errorf("API keys are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")

@@ -37,6 +37,7 @@ type Config struct {
 	MaxStore            int64
 	Sqlite              *sqlx.DB
 	IngestSubjectPrefix string
+	NoAPIKeys           bool
 }
 
 type AuthCheckFunc func(context.Context, string) (bool, error)
@@ -45,6 +46,7 @@ type ClientAuth struct {
 	Token               []byte
 	Sqlite              *sqlx.DB
 	IngestSubjectPrefix string
+	NoAPIKeys           bool
 }
 
 // Implement NATS token auth to allow static token and API key authentication
@@ -55,6 +57,10 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 	if subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1 {
 		auth.RegisterUser(c.createUser("root", true))
 		return true
+	}
+
+	if c.NoAPIKeys {
+		return false
 	}
 
 	ok, err := core.ValidateAPIKey(c.Sqlite, context.Background(), opts.Token)
@@ -132,6 +138,7 @@ func New(config Config) (Comms, error) {
 			Token:               []byte(config.Token),
 			Sqlite:              config.Sqlite,
 			IngestSubjectPrefix: config.IngestSubjectPrefix,
+			NoAPIKeys:           config.NoAPIKeys,
 		},
 	}
 	// Configure authentication if token is provided

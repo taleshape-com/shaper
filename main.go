@@ -86,6 +86,7 @@ type Config struct {
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
 	NoEdit                     bool
+	NoAPIKeys                  bool
 	NodeIDFile                 string
 	TLSDomain                  string
 	TLSEmail                   string
@@ -413,6 +414,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	noPasswordProtectedSharing := flags.BoolLong("no-password-protected-sharing", "Disable sharing dashboards protected with a password")
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
 	noEdit := flags.BoolLong("no-edit", "Disable editing dashboards via the UI")
+	noAPIKeys := flags.BoolLong("no-api-keys", "Disable API keys")
 	tlsDomain := flags.StringLong("tls-domain", "", "DEPRECATED: Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "DEPRECATED: Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "DEPRECATED: Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
@@ -588,6 +590,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			NoPasswordProtectedSharing: *noPasswordProtectedSharing,
 			NoTasks:                    *noTasks,
 			NoEdit:                     *noEdit,
+			NoAPIKeys:                  *noAPIKeys,
 			NodeIDFile:                 *nodeIDFile,
 			TLSDomain:                  *tlsDomain,
 			TLSEmail:                   *tlsEmail,
@@ -1123,6 +1126,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.NoPasswordProtectedSharing,
 		cfg.NoTasks,
 		cfg.NoEdit,
+		cfg.NoAPIKeys,
 		cfg.NoChromeSandbox,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
@@ -1160,6 +1164,7 @@ func Run(cfg Config) func(context.Context) {
 		MaxStore:            cfg.NatsMaxStore,
 		Sqlite:              sqliteDbx,
 		IngestSubjectPrefix: cfg.IngestSubjectPrefix,
+		NoAPIKeys:           cfg.NoAPIKeys,
 	})
 	if err != nil {
 		logger.Error("Failed to create NATS communication layer", slog.Any("error", err))

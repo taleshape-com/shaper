@@ -859,5 +859,146 @@ func TestSetActor_InvalidOrMissingJWT(t *testing.T) {
 	})
 }
 
+func TestRoutes_NoAPIKeys(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer sdb.Close()
+	require.NoError(t, core.InitSQLite(sdb))
 
+	// Insert a valid API key into SQLite
+	apiKeyID := "testkeyid123"
+	apiKeyToken := "shaperkey." + apiKeyID + ".testsuffix1234567890123456789012"
+	salt := "testsalt123456789012345678901234"
+	// Compute HMAC-SHA256 matching core.ValidateAPIKey
+	ok, err := core.ValidateAPIKey(sdb, context.Background(), apiKeyToken)
+	require.NoError(t, err)
+	require.False(t, ok)
 
+	// Insert key using core.HandleCreateAPIKey
+	payloadBytes, err := json.Marshal(core.CreateAPIKeyPayload{
+		ID:          apiKeyID,
+		Timestamp:   time.Now(),
+		Name:        "Test Key",
+		Hash:        "560f0c2fb9ab780f657996401d9e4d3cf73475c8dc5c5d87d5fd52882f9cf277",
+		Salt:        salt,
+		Permissions: core.AllPermissions,
+		CreatedBy:   "user:user-123",
+	})
+	require.NoError(t, err)
+	require.True(t, core.HandleCreateAPIKey(&core.App{Sqlite: sdb}, payloadBytes))
+
+	secret := []byte("test-secret-key-32-bytes-long!")
+	app := &core.App{
+		LoginRequired: true,
+		NoTasks:       true,
+		NoAPIKeys:     true,
+		JWTSecret:     secret,
+		JWTExp:        time.Hour,
+		Sqlite:        sdb,
+	}
+
+	e := echo.New()
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	createJWT := func(claims jwt.MapClaims) string {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, err := token.SignedString(secret)
+		require.NoError(t, err)
+		return signed
+	}
+
+	apiKeyJWT := createJWT(jwt.MapClaims{
+		"apiKeyId": apiKeyID,
+		"exp":      time.Now().Add(time.Hour).Unix(),
+	})
+
+	t.Run("system config reports apiKeysEnabled false", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/system/config", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var res map[string]any
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		require.NoError(t, err)
+		assert.Equal(t, false, res["apiKeysEnabled"])
+	})
+
+	t.Run("key management and API-key-only endpoints are not registered", func(t *testing.T) {
+		registeredPaths := make(map[string]bool)
+		for _, r := range e.Routes() {
+			registeredPaths[r.Method+" "+r.Path] = true
+		}
+		disabledRoutes := []string{
+			http.MethodGet + " /api/keys",
+			http.MethodPost + " /api/keys",
+			http.MethodPost + " /api/keys/:id/permissions",
+			http.MethodDelete + " /api/keys/:id",
+			http.MethodGet + " /metrics",
+			http.MethodPost + " /api/data/:table_name",
+			http.MethodPost + " /api/sql",
+			http.MethodPost + " /api/download/:filename",
+		}
+		for _, route := range disabledRoutes {
+			assert.False(t, registeredPaths[route], "route %s should not be registered when NoAPIKeys is true", route)
+		}
+	})
+
+	t.Run("token exchange with API key is rejected with 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", strings.NewReader(`{"token":"`+apiKeyToken+`"}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("token refresh with API key JWT is rejected with 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", strings.NewReader(`{}`))
+		req.Header.Set("Authorization", "Bearer "+apiKeyJWT)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("API key JWT is rejected by SetActor with 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/apps", nil)
+		req.Header.Set("Authorization", "Bearer "+apiKeyJWT)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("direct API key token is rejected on API routes", func(t *testing.T) {
+		for _, path := range []string{"/api/apps", "/api/schema"} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("Authorization", "Bearer "+apiKeyToken)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusUnauthorized, rec.Code, "GET %s with API key should be 401", path)
+		}
+	})
+
+	t.Run("direct API key token is rejected even when LoginRequired is false", func(t *testing.T) {
+		noAuthApp := *app
+		noAuthApp.LoginRequired = false
+		eNoAuth := echo.New()
+		routes(eNoAuth, &noAuthApp, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+		for _, path := range []string{"/api/apps", "/api/schema"} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("Authorization", "Bearer "+apiKeyToken)
+			rec := httptest.NewRecorder()
+			eNoAuth.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusUnauthorized, rec.Code, "GET %s with API key should be 401 when LoginRequired is false", path)
+		}
+	})
+}

@@ -6,6 +6,7 @@ export interface ISystemConfig {
   loginRequired: boolean;
   tasksEnabled: boolean;
   editEnabled: boolean;
+  apiKeysEnabled: boolean;
   publicSharingEnabled: boolean;
   passwordProtectedSharingEnabled: boolean;
   ssoLoginUrl?: string;
@@ -51,6 +52,7 @@ const configChanged = (existingSystemConfig: ISystemConfig) => {
   return existingSystemConfig.loginRequired !== refreshedSystemConfig.loginRequired ||
     existingSystemConfig.tasksEnabled !== refreshedSystemConfig.tasksEnabled ||
     existingSystemConfig.editEnabled !== refreshedSystemConfig.editEnabled ||
+    existingSystemConfig.apiKeysEnabled !== refreshedSystemConfig.apiKeysEnabled ||
     existingSystemConfig.publicSharingEnabled !== refreshedSystemConfig.publicSharingEnabled ||
     existingSystemConfig.passwordProtectedSharingEnabled !== refreshedSystemConfig.passwordProtectedSharingEnabled ||
     existingSystemConfig.ssoLoginUrl !== refreshedSystemConfig.ssoLoginUrl ||

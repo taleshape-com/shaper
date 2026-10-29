@@ -116,6 +116,7 @@ export function MenuProvider ({
   const actuallyOpen = isMenuOpen === null ? defaultOpen : isMenuOpen;
 
   const config = getSystemConfig();
+  const showAdmin = !config.ssoLoginUrl || config.apiKeysEnabled || !config.jwtSecretStatic;
 
   // Determine the correct documentation URL based on current route
   const getDocumentationUrl = () => {
@@ -211,7 +212,7 @@ export function MenuProvider ({
             Docs
             <RiExternalLinkLine className="size-3.5 inline ml-1 -mt-1 fill-ctext2 dark:fill-dtext2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </a>
-          {!userName && (
+          {!userName && showAdmin && (
             <Link
               to="/admin"
               disabled={isAdmin}
@@ -251,19 +252,21 @@ export function MenuProvider ({
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem disabled={isAdmin} className="mt-1">
-                    <Link
-                      to="/admin"
-                      className={cx("flex gap-2 items-center", {
-                        "underline cursor-default": isAdmin,
-                      })}
-                    >
-                      <RiSettings4Line className="size-4" />
-                      Admin Settings
-                    </Link>
-                  </DropdownMenuItem>
+                  {showAdmin && (
+                    <DropdownMenuItem disabled={isAdmin} className="mt-1">
+                      <Link
+                        to="/admin"
+                        className={cx("flex gap-2 items-center", {
+                          "underline cursor-default": isAdmin,
+                        })}
+                      >
+                        <RiSettings4Line className="size-4" />
+                        Admin Settings
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
 
-                  <DropdownMenuSeparator />
+                  {showAdmin && <DropdownMenuSeparator />}
                   <DropdownMenuItem
                     onClick={async () => {
                       navigate((await logout()).options);
