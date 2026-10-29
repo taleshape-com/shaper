@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"shaper/server/web/webutil"
 	"strings"
 	"time"
 
@@ -220,57 +221,66 @@ func indexHTMLWithCache(frontendFS fs.FS, modTime time.Time, basePath string, fa
 		os.Exit(1)
 	}
 	defer indexFile.Close()
-	stat, err := indexFile.Stat()
-	if err != nil {
-		fmt.Printf("Error getting index.html stats: %v\n", err)
-		os.Exit(1)
-	}
-	lastModified := modTime.UTC().Format(http.TimeFormat)
-	etag := generateETag(modTime, stat.Size())
 	fileContent, err := io.ReadAll(indexFile)
 	if err != nil {
 		fmt.Printf("Error reading index.html content: %v\n", err)
 		os.Exit(1)
 	}
 
-	html := string(fileContent)
-	// Set base path
-	html = strings.ReplaceAll(html, "\"/assets/", "\""+basePath+"assets/")
-	html = strings.ReplaceAll(html, "\"./assets/", "\""+basePath+"assets/")
-	if favicon != "" || !IsBasePathSet(basePath) {
-		html = strings.ReplaceAll(html, "\"/favicon.ico\"", "\""+basePath+"favicon.ico\"")
-		html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\""+basePath+"favicon.ico\"")
-	} else {
-		html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\"/favicon.ico\"")
-	}
-	html = strings.Replace(html, "<script>window.shaper = { defaultBaseUrl: '/' }</script>", fmt.Sprintf("<script>window.shaper = { defaultBaseUrl: %q };</script>", basePath), 1)
-	// Remove any existing custom.css link so we can place it at the very end of <head>,
-	// ensuring custom CSS overrides Shaper's default index.css in the CSS cascade.
+	// Remove any existing custom.css link once — this is basepath-independent.
+	rawHTML := string(fileContent)
 	re := regexp.MustCompile(`(?i)[ \t]*<link[^>]*id=["']shaper-custom-css["'][^>]*>\s*|[ \t]*<link[^>]*href=["'][^"']*custom\.css["'][^>]*>\s*`)
-	html = re.ReplaceAllString(html, "")
+	rawHTML = re.ReplaceAllString(rawHTML, "")
 
-	linkTag := fmt.Sprintf("<link id=\"shaper-custom-css\" rel=\"stylesheet\" href=\"%sembed/custom.css\" />", basePath)
-	if strings.Contains(html, "</head>") {
-		html = strings.Replace(html, "</head>", "    "+linkTag+"\n  </head>", 1)
-	} else {
-		html += "\n" + linkTag
+	renderForBasePath := func(bp string) string {
+		html := rawHTML
+		html = strings.ReplaceAll(html, "\"/assets/", "\""+bp+"assets/")
+		html = strings.ReplaceAll(html, "\"./assets/", "\""+bp+"assets/")
+		if favicon != "" || !IsBasePathSet(bp) {
+			html = strings.ReplaceAll(html, "\"/favicon.ico\"", "\""+bp+"favicon.ico\"")
+			html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\""+bp+"favicon.ico\"")
+		} else {
+			html = strings.ReplaceAll(html, "\"./favicon.ico\"", "\"/favicon.ico\"")
+		}
+		html = strings.Replace(html, "<script>window.shaper = { defaultBaseUrl: '/' }</script>", fmt.Sprintf("<script>window.shaper = { defaultBaseUrl: %q };</script>", bp), 1)
+		linkTag := fmt.Sprintf("<link id=\"shaper-custom-css\" rel=\"stylesheet\" href=\"%sembed/custom.css\" />", bp)
+		if strings.Contains(html, "</head>") {
+			html = strings.Replace(html, "</head>", "    "+linkTag+"\n  </head>", 1)
+		} else {
+			html += "\n" + linkTag
+		}
+		return html
 	}
+
+	// Pre-render for the configured (static) basepath
+	staticHTML := renderForBasePath(basePath)
+	staticEtag := generateETag(modTime, int64(len(staticHTML)))
+	lastModified := modTime.UTC().Format(http.TimeFormat)
 
 	return func(c echo.Context) error {
-		// Add cache headers for index.html
+		effectivePath := webutil.ResolveBasePath(c, basePath)
+
+		var html string
+		var etag string
+		if effectivePath == basePath {
+			html = staticHTML
+			etag = staticEtag
+		} else {
+			html = renderForBasePath(effectivePath)
+			etag = generateContentETag([]byte(html))
+		}
+
 		c.Response().Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
-		c.Response().Header().Set("Expires", time.Now().UTC().Format(http.TimeFormat)) // Immediate expiration
+		c.Response().Header().Set("Expires", time.Now().UTC().Format(http.TimeFormat))
 		c.Response().Header().Set("Last-Modified", lastModified)
 		c.Response().Header().Set("ETag", `"`+etag+`"`)
 
-		// Check If-None-Match header
 		if match := c.Request().Header.Get("If-None-Match"); match != "" {
 			if strings.Contains(match, etag) {
 				return c.NoContent(http.StatusNotModified)
 			}
 		}
 
-		// Check If-Modified-Since header
 		if ifModifiedSince := c.Request().Header.Get("If-Modified-Since"); ifModifiedSince != "" {
 			if m, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
 				if modTime.Unix() <= m.Unix() {

@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -20,6 +21,30 @@ func ExtractClientIP(ctx echo.Context) string {
 		}
 	}
 	return id
+}
+
+// NormalizeBasePath ensures the path has a leading slash and trailing slash.
+func NormalizeBasePath(p string) string {
+	if p == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(p, "http://") && !strings.HasPrefix(p, "https://") && p[0] != '/' {
+		p = "/" + p
+	}
+	if p[len(p)-1] != '/' {
+		p += "/"
+	}
+	return p
+}
+
+// ResolveBasePath returns the effective base path for a request.
+// If X-Forwarded-Prefix header is present, it takes precedence.
+// Otherwise the configured basePath is used.
+func ResolveBasePath(c echo.Context, configuredBasePath string) string {
+	if prefix := c.Request().Header.Get("X-Forwarded-Prefix"); prefix != "" {
+		return NormalizeBasePath(prefix)
+	}
+	return configuredBasePath
 }
 
 // GetRequestURL reconstructs the full URL, handling reverse proxy scenarios

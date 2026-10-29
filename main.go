@@ -421,7 +421,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	tlsEmail := flags.StringLong("tls-email", "", "DEPRECATED: Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "DEPRECATED: Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
 	httpsHost := flags.StringLong("https-port", "", "DEPRECATED: Overwrite https hostname to not listen on all interfaces")
-	basePath := flags.StringLong("basepath", "/", "Base URL the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath. Can be a path starting with a slash or a full URL. If you want to use the download API with mode=url, you also have to set basepath to a full URL, otherwise URLs will be relative only. Does not apply if tls-domain set")
+	basePath := flags.StringLong("basepath", "/", "Base URL the frontend is served from. Override if you are using a reverse proxy and serve the frontend from a subpath. Can be a path starting with a slash or a full URL. Alternatively, configure your reverse proxy to send the X-Forwarded-Prefix header to set the base path dynamically per request (the header takes precedence when present). Does not apply if tls-domain set")
 	pdfDateFormat := flags.StringLong("pdf-date-format", "02.01.2006", "Date format for PDF exports, using Go time format, examples: '2006-01-02', '01/02/2006', '02.01.2006', 'Jan 2, 2006'")
 	corsDomains := flags.StringLong("cors-domains", "", "Comma-separated list of domains allowed for CORS (e.g. 'example.com,app.example.com')")
 	natsHost := flags.StringLong("nats-host", "0.0.0.0", "NATS server host")

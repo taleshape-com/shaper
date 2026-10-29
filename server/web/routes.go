@@ -459,16 +459,18 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.GET("/_internal/pdfview/:id", servePdfViewHTML(frontendFS, modTime), revalidateCache)
 
 	// Icon - moderate caching
-	if IsBasePathSet(app.BasePath) && favicon == "" {
-		e.GET("/favicon.ico", func(c echo.Context) error {
+	faviconHandler := serveFavicon(frontendFS, favicon, modTime)
+	faviconCache := CacheControl(CacheConfig{
+		MaxAge: 24 * time.Hour, // 1 day
+		Public: true,
+	})
+	e.GET("/favicon.ico", func(c echo.Context) error {
+		bp := webutil.ResolveBasePath(c, app.BasePath)
+		if IsBasePathSet(bp) && favicon == "" {
 			return c.String(http.StatusNotFound, "Not Found")
-		})
-	} else {
-		e.GET("/favicon.ico", serveFavicon(frontendFS, favicon, modTime), CacheControl(CacheConfig{
-			MaxAge: 24 * time.Hour, // 1 day
-			Public: true,
-		}))
-	}
+		}
+		return faviconCache(faviconHandler)(c)
+	})
 
 	// Index HTML - light caching with revalidation
 	e.GET("/*", indexHTMLWithCache(frontendFS, modTime, app.BasePath, favicon))
