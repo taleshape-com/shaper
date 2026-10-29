@@ -733,10 +733,11 @@ const DataView = ({
         })}
         data-footer-link={data.footerLink}
       >
-        {data.footerLink && (
+        {data.footerLink && /^(https?:|mailto:)/i.test(data.footerLink) && (
           <a
             href={data.footerLink}
             target="_blank"
+            rel="noopener noreferrer"
             className="no-underline text-ctext2 dark:text-dtext2 text-xs"
           >{data.footerLinkText || data.footerLink.replace(/^(https?:\/\/)|(mailto:)/, "")}</a>
         )}

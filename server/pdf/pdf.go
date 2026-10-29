@@ -338,7 +338,7 @@ func downloadImageAsBase64(imageURL string) (string, error) {
 
 func footer(formattedDate string, footerLink string) string {
 	content := ""
-	if footerLink != "" {
+	if footerLink != "" && (strings.HasPrefix(footerLink, "https://") || strings.HasPrefix(footerLink, "http://") || strings.HasPrefix(footerLink, "mailto:")) {
 		formattedLink := strings.TrimPrefix(footerLink, "http://")
 		formattedLink = strings.TrimPrefix(formattedLink, "https://")
 		formattedLink = strings.TrimPrefix(formattedLink, "mailto:")
