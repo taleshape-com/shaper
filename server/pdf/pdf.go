@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
@@ -58,7 +59,7 @@ func StreamDashboardPdf(
 	if err != nil {
 		return fmt.Errorf("failed to json marshal params: %w", err)
 	}
-	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
+	urlstr := baseUrl + "/_internal/pdfview/" + url.PathEscape(dashboardId) + "?vars=" + base64.StdEncoding.EncodeToString(vars) + "#jwt=" + jwtToken.Raw
 	headerImage := ""
 	footerLink := ""
 	err = chromedp.Do(ctx,
@@ -171,7 +172,7 @@ func StreamDashboardPng(
 	if err != nil {
 		return fmt.Errorf("failed to json marshal params: %w", err)
 	}
-	urlstr := baseUrl + "/_internal/pdfview/" + dashboardId + "?jwt=" + jwtToken.Raw + "&vars=" + base64.StdEncoding.EncodeToString(vars)
+	urlstr := baseUrl + "/_internal/pdfview/" + url.PathEscape(dashboardId) + "?vars=" + base64.StdEncoding.EncodeToString(vars) + "#jwt=" + jwtToken.Raw
 	pngData := ""
 	err = chromedp.Do(ctx,
 		chromedp.Navigate(urlstr),
@@ -277,17 +278,22 @@ func header(imageURL string) (string, error) {
 }
 
 func downloadImageAsBase64(imageURL string) (string, error) {
-	// If the imageURL is already a data URL, return it as-is
 	if strings.HasPrefix(imageURL, "data:") {
 		return imageURL, nil
 	}
 
-	// Create HTTP client with timeout to prevent hanging
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid image URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", fmt.Errorf("unsupported image URL scheme: %s", parsed.Scheme)
+	}
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	// Make HTTP request to download the image
 	resp, err := client.Get(imageURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch image: %w", err)
@@ -298,8 +304,8 @@ func downloadImageAsBase64(imageURL string) (string, error) {
 		return "", fmt.Errorf("failed to fetch image: status %d", resp.StatusCode)
 	}
 
-	// Read the image data
-	imageData, err := io.ReadAll(resp.Body)
+	const maxImageSize = 10 << 20 // 10 MB
+	imageData, err := io.ReadAll(io.LimitReader(resp.Body, maxImageSize))
 	if err != nil {
 		return "", fmt.Errorf("failed to read image data: %w", err)
 	}
@@ -336,7 +342,7 @@ func footer(formattedDate string, footerLink string) string {
 		formattedLink := strings.TrimPrefix(footerLink, "http://")
 		formattedLink = strings.TrimPrefix(formattedLink, "https://")
 		formattedLink = strings.TrimPrefix(formattedLink, "mailto:")
-		content = `<a href="` + footerLink + `" style="color: var(--shaper-text-color-secondary); text-decoration: none;">` + formattedLink + `</a>`
+		content = `<a href="` + html.EscapeString(footerLink) + `" style="color: var(--shaper-text-color-secondary); text-decoration: none;">` + html.EscapeString(formattedLink) + `</a>`
 	}
 	return `
 <div style="font-family: var(--shaper-font), ui-sans-serif, system-ui, sans-serif; font-size:7px; width: 100%; margin: 0 35px; display: flex; justify-content: space-between;">
