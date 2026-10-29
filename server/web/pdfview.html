@@ -28,8 +28,8 @@
       }
 
       function getJwtFromQuery() {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('jwt') || '';
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        return hashParams.get('jwt') || '';
       }
 
       const { pathname } = window.location;
