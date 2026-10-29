@@ -10,6 +10,7 @@ import (
 	"html"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -277,6 +278,76 @@ func header(imageURL string) (string, error) {
 	return `<img src="` + base64Image + `" style="max-height: 40px; margin-left: 35px; object-fit: contain;" />`, nil
 }
 
+// isPrivateOrReservedIP checks if an IP address is in a private, loopback,
+// link-local, or other reserved range that should not be accessed via SSRF.
+func isPrivateOrReservedIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	// Loopback (127.0.0.0/8, ::1)
+	if ip.IsLoopback() {
+		return true
+	}
+	// Link-local unicast (169.254.0.0/16, fe80::/10) - includes cloud metadata endpoints
+	if ip.IsLinkLocalUnicast() {
+		return true
+	}
+	// Link-local multicast
+	if ip.IsLinkLocalMulticast() {
+		return true
+	}
+	// Private networks (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7)
+	if ip.IsPrivate() {
+		return true
+	}
+	// Unspecified (0.0.0.0, ::)
+	if ip.IsUnspecified() {
+		return true
+	}
+	return false
+}
+
+// validateImageURLHost resolves the hostname and checks that none of the
+// resolved IPs are private or reserved. Returns an error if the URL is unsafe.
+func validateImageURLHost(imageURL string) error {
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	host := parsed.Hostname()
+	if host == "" {
+		return fmt.Errorf("missing hostname")
+	}
+
+	// Check if host is already an IP address
+	if ip := net.ParseIP(host); ip != nil {
+		if isPrivateOrReservedIP(ip) {
+			return fmt.Errorf("private or reserved IP address not allowed: %s", ip)
+		}
+		return nil
+	}
+
+	// Resolve hostname to IP addresses
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("failed to resolve hostname: %w", err)
+	}
+
+	if len(ips) == 0 {
+		return fmt.Errorf("hostname resolved to no addresses")
+	}
+
+	// Check all resolved IPs - reject if any are private/reserved
+	for _, ip := range ips {
+		if isPrivateOrReservedIP(ip) {
+			return fmt.Errorf("hostname resolves to private or reserved IP address: %s", ip)
+		}
+	}
+
+	return nil
+}
+
 func downloadImageAsBase64(imageURL string) (string, error) {
 	if strings.HasPrefix(imageURL, "data:") {
 		return imageURL, nil
@@ -290,8 +361,17 @@ func downloadImageAsBase64(imageURL string) (string, error) {
 		return "", fmt.Errorf("unsupported image URL scheme: %s", parsed.Scheme)
 	}
 
+	// Validate that the URL doesn't point to a private/reserved IP (SSRF protection)
+	if err := validateImageURLHost(imageURL); err != nil {
+		return "", fmt.Errorf("URL validation failed: %w", err)
+	}
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
+		// Disable redirects to prevent SSRF via redirect to internal IPs
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	resp, err := client.Get(imageURL)
