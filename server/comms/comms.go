@@ -38,6 +38,7 @@ type Config struct {
 	Sqlite              *sqlx.DB
 	IngestSubjectPrefix string
 	NoAPIKeys           bool
+	NoIngest            bool
 }
 
 type AuthCheckFunc func(context.Context, string) (bool, error)
@@ -47,6 +48,7 @@ type ClientAuth struct {
 	Sqlite              *sqlx.DB
 	IngestSubjectPrefix string
 	NoAPIKeys           bool
+	NoIngest            bool
 }
 
 // Implement NATS token auth to allow static token and API key authentication
@@ -59,7 +61,7 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 		return true
 	}
 
-	if c.NoAPIKeys {
+	if c.NoAPIKeys || c.NoIngest {
 		return false
 	}
 
@@ -139,6 +141,7 @@ func New(config Config) (Comms, error) {
 			Sqlite:              config.Sqlite,
 			IngestSubjectPrefix: config.IngestSubjectPrefix,
 			NoAPIKeys:           config.NoAPIKeys,
+			NoIngest:            config.NoIngest,
 		},
 	}
 	// Configure authentication if token is provided

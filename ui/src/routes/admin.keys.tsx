@@ -89,6 +89,10 @@ export const Route = createFileRoute("/admin/keys")({
 });
 
 function Admin () {
+  const config = getSystemConfig();
+  const availablePermissions = PERMISSIONS.filter(
+    (p) => p.value !== "data:ingest" || config.ingestEnabled,
+  );
   const data = Route.useLoaderData();
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState<NewAPIKeyResponse | null>(null);
@@ -239,7 +243,7 @@ function Admin () {
                       <DropdownMenuContent align="start">
                         <DropdownMenuLabel>Manage Permissions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {PERMISSIONS.map((perm) => (
+                        {availablePermissions.map((perm) => (
                           <DropdownMenuCheckboxItem
                             key={perm.value}
                             checked={key.permissions?.includes(perm.value) ?? false}
@@ -364,7 +368,7 @@ function Admin () {
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
-                const selectedPerms = PERMISSIONS.filter(
+                const selectedPerms = availablePermissions.filter(
                   (p) => formData.get(`perm-${p.value}`) === "on",
                 ).map((p) => p.value);
                 handleCreateKey(
@@ -387,7 +391,7 @@ function Admin () {
               <div className="space-y-2">
                 <Label>Permissions</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {PERMISSIONS.map((perm) => (
+                  {availablePermissions.map((perm) => (
                     <label
                       key={perm.value}
                       className="flex items-center gap-2 p-2 rounded border border-cb dark:border-db cursor-pointer hover:bg-cbga dark:hover:bg-dbga"

@@ -16,6 +16,7 @@ func GetSystemConfig(app *core.App) echo.HandlerFunc {
 			"tasksEnabled":                    !app.NoTasks,
 			"editEnabled":                     !app.NoEdit,
 			"apiKeysEnabled":                  !app.NoAPIKeys,
+			"ingestEnabled":                   !app.NoIngest,
 			"publicSharingEnabled":            !app.NoPublicSharing,
 			"passwordProtectedSharingEnabled": !app.NoPasswordProtectedSharing,
 			"ssoLoginUrl":                     app.SSOLoginURL,

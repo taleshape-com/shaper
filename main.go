@@ -87,6 +87,7 @@ type Config struct {
 	NoTasks                    bool
 	NoEdit                     bool
 	NoAPIKeys                  bool
+	NoIngest                   bool
 	NodeIDFile                 string
 	TLSDomain                  string
 	TLSEmail                   string
@@ -415,6 +416,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	noTasks := flags.BoolLong("no-tasks", "Disable task functionality")
 	noEdit := flags.BoolLong("no-edit", "Disable editing dashboards via the UI")
 	noAPIKeys := flags.BoolLong("no-api-keys", "Disable API keys")
+	noIngest := flags.BoolLong("no-ingest", "Disable data ingestion")
 	tlsDomain := flags.StringLong("tls-domain", "", "DEPRECATED: Domain name for TLS certificate")
 	tlsEmail := flags.StringLong("tls-email", "", "DEPRECATED: Email address for Let's Encrypt registration (optional, used for alerting about certificate expiration)")
 	tlsCache := flags.StringLong("tls-cache", "", "DEPRECATED: Path to Let's Encrypt cache directory (default: [--dir]/letsencrypt-cache)")
@@ -591,6 +593,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			NoTasks:                    *noTasks,
 			NoEdit:                     *noEdit,
 			NoAPIKeys:                  *noAPIKeys,
+			NoIngest:                   *noIngest,
 			NodeIDFile:                 *nodeIDFile,
 			TLSDomain:                  *tlsDomain,
 			TLSEmail:                   *tlsEmail,
@@ -1127,6 +1130,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.NoTasks,
 		cfg.NoEdit,
 		cfg.NoAPIKeys,
+		cfg.NoIngest,
 		cfg.NoChromeSandbox,
 		cfg.IngestSubjectPrefix,
 		cfg.StateSubjectPrefix,
@@ -1165,25 +1169,29 @@ func Run(cfg Config) func(context.Context) {
 		Sqlite:              sqliteDbx,
 		IngestSubjectPrefix: cfg.IngestSubjectPrefix,
 		NoAPIKeys:           cfg.NoAPIKeys,
+		NoIngest:            cfg.NoIngest,
 	})
 	if err != nil {
 		logger.Error("Failed to create NATS communication layer", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	ingestConsumer, err := ingest.Start(
-		cfg.IngestSubjectPrefix,
-		duckDBConnector,
-		duckdbSqlxDb,
-		logger.WithGroup("ingest"),
-		c.Conn,
-		cfg.IngestStreamName,
-		cfg.IngestStreamMaxAge,
-		ingestConsumerName,
-	)
-	if err != nil {
-		logger.Error("Failed to start ingest consumer", slog.Any("error", err))
-		os.Exit(1)
+	var ingestConsumer ingest.Ingest
+	if !cfg.NoIngest {
+		ingestConsumer, err = ingest.Start(
+			cfg.IngestSubjectPrefix,
+			duckDBConnector,
+			duckdbSqlxDb,
+			logger.WithGroup("ingest"),
+			c.Conn,
+			cfg.IngestStreamName,
+			cfg.IngestStreamMaxAge,
+			ingestConsumerName,
+		)
+		if err != nil {
+			logger.Error("Failed to start ingest consumer", slog.Any("error", err))
+			os.Exit(1)
+		}
 	}
 
 	err = app.Init(c.Conn)
@@ -1240,7 +1248,9 @@ func Run(cfg Config) func(context.Context) {
 			logger.ErrorContext(ctx, "Error stopping server", slog.Any("error", err))
 		}
 		logger.Info("Stopping NATS...")
-		ingestConsumer.Close()
+		if !cfg.NoIngest {
+			ingestConsumer.Close()
+		}
 		c.Close()
 		logger.Info("Closing DB connections...")
 		if err := duckdbSqlxDb.Close(); err != nil {
