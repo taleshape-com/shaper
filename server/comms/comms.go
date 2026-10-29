@@ -56,7 +56,7 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 	opts := auth.GetOpts()
 
 	// First check static token
-	if subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1 {
+	if len(c.Token) > 0 && subtle.ConstantTimeCompare([]byte(opts.Token), c.Token) == 1 {
 		auth.RegisterUser(c.createUser("root", true))
 		return true
 	}
@@ -71,6 +71,10 @@ func (c ClientAuth) Check(auth server.ClientAuthentication) bool {
 	}
 	if ok {
 		id := core.GetAPIKeyID(opts.Token)
+		actor := core.Actor{Type: core.ActorAPIKey, ID: id}
+		if !actor.HasPermission(context.Background(), c.Sqlite, core.PermissionIngestData) {
+			return false
+		}
 		auth.RegisterUser(c.createUser("key."+id, false))
 		return true
 	}
@@ -136,21 +140,18 @@ func New(config Config) (Comms, error) {
 		DontListen:             config.Port == 0,
 		// We handle signals separately
 		NoSigs: true,
-		CustomClientAuthentication: ClientAuth{
+	}
+	if config.Token != "" {
+		opts.Authorization = config.Token
+		opts.CustomClientAuthentication = ClientAuth{
 			Token:               []byte(config.Token),
 			Sqlite:              config.Sqlite,
 			IngestSubjectPrefix: config.IngestSubjectPrefix,
 			NoAPIKeys:           config.NoAPIKeys,
 			NoIngest:            config.NoIngest,
-		},
-	}
-	// Configure authentication if token is provided
-	if config.Token != "" {
-		opts.Authorization = config.Token
-	} else {
-		if config.Port > 0 {
-			config.Logger.Warn(fmt.Sprintf("nats: No nats-token provided and NATS is listening. If running in production make sure %s:%d is not exposed, configure a nats-token or remove nats-port", config.Host, config.Port))
 		}
+	} else if config.Port > 0 {
+		return Comms{}, fmt.Errorf("nats: --nats-token is required when --nats-port is set")
 	}
 	if config.Port == 0 {
 		config.Logger.Info("nats: Not listening on any network interfaces. Specify a port to make NATS available on the network.")
