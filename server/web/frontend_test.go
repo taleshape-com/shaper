@@ -377,6 +377,114 @@ func TestServeEmbedJS(t *testing.T) {
 	})
 }
 
+func TestIndexHTMLWithCache_XForwardedPrefix(t *testing.T) {
+	mockIndexHTML := `<!DOCTYPE html>
+<html>
+<head>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="/assets/main.css" />
+  <script>window.shaper = { defaultBaseUrl: '/' }</script>
+</head>
+<body></body>
+</html>`
+
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{
+			Data:    []byte(mockIndexHTML),
+			ModTime: time.Now(),
+		},
+	}
+
+	t.Run("uses X-Forwarded-Prefix when present", func(t *testing.T) {
+		e := echo.New()
+		handler := indexHTMLWithCache(mockFS, time.Now(), "/", "")
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("X-Forwarded-Prefix", "/dynamic/")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler(c)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		body := rec.Body.String()
+		assert.Contains(t, body, `href="/dynamic/assets/main.css"`)
+		assert.Contains(t, body, `defaultBaseUrl: "/dynamic/"`)
+		assert.Contains(t, body, `href="/dynamic/embed/custom.css"`)
+	})
+
+	t.Run("falls back to configured basepath without header", func(t *testing.T) {
+		e := echo.New()
+		handler := indexHTMLWithCache(mockFS, time.Now(), "/static/", "")
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler(c)
+		require.NoError(t, err)
+
+		body := rec.Body.String()
+		assert.Contains(t, body, `href="/static/assets/main.css"`)
+		assert.Contains(t, body, `defaultBaseUrl: "/static/"`)
+	})
+
+	t.Run("header overrides configured basepath", func(t *testing.T) {
+		e := echo.New()
+		handler := indexHTMLWithCache(mockFS, time.Now(), "/static/", "")
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("X-Forwarded-Prefix", "/override/")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler(c)
+		require.NoError(t, err)
+
+		body := rec.Body.String()
+		assert.Contains(t, body, `href="/override/assets/main.css"`)
+		assert.Contains(t, body, `defaultBaseUrl: "/override/"`)
+	})
+
+	t.Run("header value is normalized", func(t *testing.T) {
+		e := echo.New()
+		handler := indexHTMLWithCache(mockFS, time.Now(), "/", "")
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("X-Forwarded-Prefix", "no-slash")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler(c)
+		require.NoError(t, err)
+
+		body := rec.Body.String()
+		assert.Contains(t, body, `href="/no-slash/assets/main.css"`)
+		assert.Contains(t, body, `defaultBaseUrl: "/no-slash/"`)
+	})
+
+	t.Run("different prefixes produce different etags", func(t *testing.T) {
+		e := echo.New()
+		modTime := time.Now()
+		handler := indexHTMLWithCache(mockFS, modTime, "/", "")
+
+		req1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		req1.Header.Set("X-Forwarded-Prefix", "/prefix-a/")
+		rec1 := httptest.NewRecorder()
+		c1 := e.NewContext(req1, rec1)
+		require.NoError(t, handler(c1))
+
+		req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+		req2.Header.Set("X-Forwarded-Prefix", "/prefix-b/")
+		rec2 := httptest.NewRecorder()
+		c2 := e.NewContext(req2, rec2)
+		require.NoError(t, handler(c2))
+
+		assert.NotEqual(t, rec1.Header().Get("ETag"), rec2.Header().Get("ETag"))
+	})
+}
+
 func TestEmbedAndCustomCSSRoutes_CacheControl(t *testing.T) {
 	modTime := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
 	mockFS := fstest.MapFS{

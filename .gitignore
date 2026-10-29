@@ -27,3 +27,5 @@ pip-package/shaper_pkg/__pycache__
 
 # Never accidentally leak any secrets
 .env
+
+.security-review/
