@@ -1002,3 +1002,47 @@ func TestRoutes_NoAPIKeys(t *testing.T) {
 		}
 	})
 }
+
+func TestRoutes_NoIngest(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer sdb.Close()
+	require.NoError(t, core.InitSQLite(sdb))
+
+	app := &core.App{
+		LoginRequired: false,
+		NoTasks:       true,
+		NoIngest:      true,
+		JWTSecret:     []byte("test-secret-key-32-bytes-long!"),
+		JWTExp:        time.Hour,
+		Sqlite:        sdb,
+	}
+
+	e := echo.New()
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	t.Run("system config reports ingestEnabled false", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/system/config", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var res map[string]any
+		err := json.Unmarshal(rec.Body.Bytes(), &res)
+		require.NoError(t, err)
+		assert.Equal(t, false, res["ingestEnabled"])
+	})
+
+	t.Run("POST /api/data/:table_name route is not registered", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/data/events", strings.NewReader(`{"foo":"bar"}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.NotEqual(t, http.StatusAccepted, rec.Code)
+		assert.NotEqual(t, http.StatusOK, rec.Code)
+	})
+}

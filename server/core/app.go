@@ -50,6 +50,7 @@ type App struct {
 	NoTasks                    bool
 	NoEdit                     bool
 	NoAPIKeys                  bool
+	NoIngest                   bool
 	NoChromeSandbox            bool
 	StateConsumeCtx            jetstream.ConsumeContext
 	TaskConsumeCtx             jetstream.ConsumeContext
@@ -104,6 +105,7 @@ func New(
 	noTasks bool,
 	noEdit bool,
 	noAPIKeys bool,
+	noIngest bool,
 	noChromeSandbox bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
@@ -201,6 +203,9 @@ func New(
 	if noAPIKeys {
 		logger.Info("API keys disabled.")
 	}
+	if noIngest {
+		logger.Info("Data ingestion disabled.")
+	}
 	if noChromeSandbox {
 		logger.Info("Chrome sandbox disabled for PDF/PNG generation.")
 	}
@@ -244,6 +249,7 @@ func New(
 		NoTasks:                     noTasks,
 		NoEdit:                      noEdit,
 		NoAPIKeys:                   noAPIKeys,
+		NoIngest:                    noIngest,
 		NoChromeSandbox:             noChromeSandbox,
 		IngestSubjectPrefix:         ingestSubjectPrefix,
 		StateSubjectPrefix:          stateSubjectPrefix,

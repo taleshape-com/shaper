@@ -31,6 +31,9 @@ func validateTableName(tableName string) bool {
 }
 
 func PublishEvent(ctx context.Context, app *App, tableName string, payload any) (string, error) {
+	if app.NoIngest {
+		return "", fmt.Errorf("data ingestion is disabled")
+	}
 	if !validateTableName(tableName) {
 		return "", fmt.Errorf("invalid table name. Each part must be alphanumeric with underscores (max 128 characters) and separated by dots (up to 3 parts)")
 	}
@@ -55,6 +58,9 @@ func PublishEvent(ctx context.Context, app *App, tableName string, payload any) 
 }
 
 func PublishEvents(ctx context.Context, app *App, tableName string, payloads []map[string]any) ([]string, error) {
+	if app.NoIngest {
+		return nil, fmt.Errorf("data ingestion is disabled")
+	}
 	if !validateTableName(tableName) {
 		return nil, fmt.Errorf("invalid table name. Each part must be alphanumeric with underscores (max 128 characters) and separated by dots (up to 3 parts)")
 	}

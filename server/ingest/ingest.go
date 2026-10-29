@@ -839,5 +839,7 @@ func parseUnixTimestamp(value float64) time.Time {
 }
 
 func (c Ingest) Close() {
-	c.ingestCancelFunc()
+	if c.ingestCancelFunc != nil {
+		c.ingestCancelFunc()
+	}
 }
