@@ -102,7 +102,7 @@ export const Route = createFileRoute("/admin/")({
     const config = getSystemConfig();
     if (config.ssoLoginUrl) {
       throw redirect({
-        to: "/admin/keys",
+        to: config.apiKeysEnabled ? "/admin/keys" : !config.jwtSecretStatic ? "/admin/security" : "/",
       });
     }
     return queryApi(

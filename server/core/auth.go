@@ -379,7 +379,7 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 	}
 
 	// Check API key
-	if strings.HasPrefix(token, API_KEY_PREFIX) {
+	if !app.NoAPIKeys && strings.HasPrefix(token, API_KEY_PREFIX) {
 		ok, err := ValidateAPIKey(app.Sqlite, ctx, token)
 		if err != nil {
 			return AuthInfo{}, err

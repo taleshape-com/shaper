@@ -16,9 +16,11 @@ import { useState } from "react";
 import {
   createFileRoute,
   isRedirect,
+  redirect,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
+import { getSystemConfig } from "../lib/system";
 import { useToast } from "../hooks/useToast";
 import {
   Table,
@@ -75,6 +77,12 @@ type APIKeysResponse = {
 
 export const Route = createFileRoute("/admin/keys")({
   loader: async ({ context: { queryApi } }) => {
+    const config = getSystemConfig();
+    if (!config.apiKeysEnabled) {
+      throw redirect({
+        to: !config.ssoLoginUrl ? "/admin" : !config.jwtSecretStatic ? "/admin/security" : "/",
+      });
+    }
     return queryApi("keys") as Promise<APIKeysResponse>;
   },
   component: Admin,

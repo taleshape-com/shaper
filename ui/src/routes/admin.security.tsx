@@ -18,7 +18,7 @@ export const Route = createFileRoute("/admin/security")({
     const config = getSystemConfig();
     if (config.jwtSecretStatic) {
       throw redirect({
-        to: "/admin/keys",
+        to: config.apiKeysEnabled ? "/admin/keys" : !config.ssoLoginUrl ? "/admin" : "/",
       });
     }
   },

@@ -49,6 +49,7 @@ type App struct {
 	NoPasswordProtectedSharing bool
 	NoTasks                    bool
 	NoEdit                     bool
+	NoAPIKeys                  bool
 	NoChromeSandbox            bool
 	StateConsumeCtx            jetstream.ConsumeContext
 	TaskConsumeCtx             jetstream.ConsumeContext
@@ -102,6 +103,7 @@ func New(
 	noPasswordProtectedSharing bool,
 	noTasks bool,
 	noEdit bool,
+	noAPIKeys bool,
 	noChromeSandbox bool,
 	ingestSubjectPrefix string,
 	stateSubjectPrefix string,
@@ -196,6 +198,9 @@ func New(
 	if noEdit {
 		logger.Info("Dashboard editing via UI disabled.")
 	}
+	if noAPIKeys {
+		logger.Info("API keys disabled.")
+	}
 	if noChromeSandbox {
 		logger.Info("Chrome sandbox disabled for PDF/PNG generation.")
 	}
@@ -238,6 +243,7 @@ func New(
 		NoPasswordProtectedSharing:  noPasswordProtectedSharing,
 		NoTasks:                     noTasks,
 		NoEdit:                      noEdit,
+		NoAPIKeys:                   noAPIKeys,
 		NoChromeSandbox:             noChromeSandbox,
 		IngestSubjectPrefix:         ingestSubjectPrefix,
 		StateSubjectPrefix:          stateSubjectPrefix,

@@ -75,9 +75,11 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 					ID:   userID,
 				}
 			} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
-				actor = &core.Actor{
-					Type: core.ActorAPIKey,
-					ID:   apiKeyID,
+				if !app.NoAPIKeys {
+					actor = &core.Actor{
+						Type: core.ActorAPIKey,
+						ID:   apiKeyID,
+					}
 				}
 			} else if _, ok := claims["public"]; ok {
 				actor = &core.Actor{
@@ -128,6 +130,10 @@ func SetAPIKeyActor(app *core.App, contextKey string) func(next echo.HandlerFunc
 				}
 				ctx := core.ContextWithActor(c.Request().Context(), actor)
 				c.SetRequest(c.Request().WithContext(ctx))
+				return next(c)
+			}
+
+			if app.NoAPIKeys {
 				return next(c)
 			}
 
@@ -326,6 +332,9 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 		Validator: func(key string, c echo.Context) (bool, error) {
+			if app.NoAPIKeys {
+				return false, nil
+			}
 			ok, err := core.ValidateAPIKey(app.Sqlite, c.Request().Context(), key)
 			if err != nil {
 				return false, err
@@ -347,7 +356,9 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	e.HEAD("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionReadMetrics))
+	if !app.NoAPIKeys {
+		e.GET("/metrics", echoprometheus.NewHandler(), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionReadMetrics))
+	}
 
 	inviteLimiter := InviteRateLimiter()
 	downloadLimiter := DownloadRateLimiter()
@@ -367,12 +378,18 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		e.GET("/api/invites/:code", handler.GetInvite(app), inviteLimiter)
 		e.POST("/api/invites/:code/claim", handler.ClaimInvite(app), inviteLimiter)
 	}
-	e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionIngestData))
+	if !app.NoAPIKeys {
+		e.POST("/api/data/:table_name", handler.PostEvent(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionIngestData))
+	}
 	e.POST("/api/deploy", handler.Deploy(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy))
 	e.POST("/api/validate", handler.Validate(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy, core.PermissionDeployDryRun))
-	e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData))
+	if !app.NoAPIKeys {
+		e.POST("/api/sql", handler.ExecuteSQL(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData))
+	}
 	e.GET("/api/schema", handler.GetSchema(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionReadSchema))
-	e.POST("/api/download/:filename", handler.DownloadSQL(app, internalUrl, pdfDateFormat), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData), downloadLimiter)
+	if !app.NoAPIKeys {
+		e.POST("/api/download/:filename", handler.DownloadSQL(app, internalUrl, pdfDateFormat), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor, RequirePermission(app, core.PermissionQueryData), downloadLimiter)
+	}
 	e.GET("/api/apps", handler.ListApps(app), jwtOrAPIKeyMiddleware(app, jwtMiddleware, SetActor(app), middleware.KeyAuthWithConfig(keyAuthConfig), apiKeyActor), RequirePermission(app, core.PermissionDeploy, core.PermissionDeployDryRun))
 	e.GET("/api/public/:id/status", handler.GetDashboardStatus(app))
 	apiWithAuth.GET("/version", handler.GetVersion(app))
@@ -411,10 +428,12 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 		apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
 		apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	}
-	apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
-	apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
-	apiWithAuth.POST("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
-	apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
+	if !app.NoAPIKeys {
+		apiWithAuth.GET("/keys", handler.ListAPIKeys(app))
+		apiWithAuth.POST("/keys", handler.CreateAPIKey(app))
+		apiWithAuth.POST("/keys/:id/permissions", handler.UpdateAPIKeyPermissions(app))
+		apiWithAuth.DELETE("/keys/:id", handler.DeleteAPIKey(app))
+	}
 	if !app.JWTSecretStatic {
 		apiWithAuth.POST("/admin/reset-jwt-secret", handler.ResetJWTSecret(app))
 	}
@@ -461,7 +480,7 @@ func jwtOrAPIKeyMiddleware(app *core.App, jwtMiddleware echo.MiddlewareFunc, set
 		apiKeyChain := keyAuthMiddleware(apiKeyActorMid(next))
 		return func(c echo.Context) error {
 			token := extractAuthorizationToken(c)
-			if core.IsAPIKeyToken(token) || (!app.LoginRequired && token == "") {
+			if (!app.NoAPIKeys && core.IsAPIKeyToken(token)) || (!app.LoginRequired && token == "") {
 				return apiKeyChain(c)
 			}
 			return jwtChain(c)

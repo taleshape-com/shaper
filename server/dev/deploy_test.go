@@ -62,7 +62,8 @@ func setupTestApp(t *testing.T) (*core.App, func()) {
 		false,
 		true, // noTasks
 		false,
-		true, // noChromeSandbox
+		false, // noAPIKeys
+		true,  // noChromeSandbox
 		"shaper.ingest.",
 		"shaper.state.",
 		"shaper-state-test-"+filepath.Base(dataDir),

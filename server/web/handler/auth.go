@@ -166,6 +166,11 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 							Error string `json:"error"`
 						}{Error: "Unauthorized"}, "  ")
 					}
+					if _, hasAPIKey := claims["apiKeyId"]; hasAPIKey && app.NoAPIKeys {
+						return c.JSONPretty(http.StatusUnauthorized, struct {
+							Error string `json:"error"`
+						}{Error: "Unauthorized"}, "  ")
+					}
 					isLongLived, _ := claims["longLived"].(bool)
 					if loginRequest.LongLived {
 						if isLongLived {
