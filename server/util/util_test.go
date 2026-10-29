@@ -53,6 +53,69 @@ func TestIsValidVariableName(t *testing.T) {
 	}
 }
 
+func TestStripSQLComments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"No comments", "SELECT 1", "SELECT 1"},
+		{"Line comment", "SELECT 1 -- comment\nSELECT 2", "SELECT 1 \nSELECT 2"},
+		{"Block comment", "SELECT /* comment */ 1", "SELECT   1"},
+		{"Nested block comment", "SELECT /* outer /* inner */ still outer */ 1", "SELECT   1"},
+		{"Block comment with single quote", "SELECT /* ' */ 1", "SELECT   1"},
+		{"Block comment with double quote", "SELECT /* \" */ 1", "SELECT   1"},
+		{"Block comment preserves token separation", "SELECT/**/1", "SELECT 1"},
+		{"Block comment inside single-quoted string", "SELECT '/* not a comment */' FROM t", "SELECT '/* not a comment */' FROM t"},
+		{"Block comment inside double-quoted identifier", "SELECT \"/* not a comment */\" FROM t", "SELECT \"/* not a comment */\" FROM t"},
+		{"Multiple block comments", "SELECT /* a */ 1, /* b */ 2", "SELECT   1,   2"},
+		{"Unterminated block comment", "SELECT /* unterminated", "SELECT  "},
+		{"Block comment with semicolon", "SELECT /* ; */ 1", "SELECT   1"},
+		{"Block and line comments mixed", "SELECT /* block */ 1 -- line\nFROM t", "SELECT   1 \nFROM t"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, StripSQLComments(tt.input))
+		})
+	}
+}
+
+func TestSplitSQLQueriesBlockComments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			"Block comment with quote does not affect splitting",
+			"SELECT /* ' */ 1; SELECT 2",
+			[]string{"SELECT /* ' */ 1", "SELECT 2"},
+		},
+		{
+			"Block comment with semicolon does not split",
+			"SELECT /* ; */ 1",
+			[]string{"SELECT /* ; */ 1"},
+		},
+		{
+			"Nested block comment",
+			"SELECT /* /* ; */ ; */ 1; SELECT 2",
+			[]string{"SELECT /* /* ; */ ; */ 1", "SELECT 2"},
+		},
+		{
+			"Block comment injection attempt",
+			"SELECT /* ' */ ; DROP TABLE foo; SELECT /* ' */ 1",
+			[]string{"SELECT /* ' */ ", "DROP TABLE foo", "SELECT /* ' */ 1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := SplitSQLQueries(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
 func TestEscapeSQLString(t *testing.T) {
 	assert.Equal(t, "hello", EscapeSQLString("hello"))
 	assert.Equal(t, "O''Reilly", EscapeSQLString("O'Reilly"))
