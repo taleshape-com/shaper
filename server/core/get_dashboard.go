@@ -105,7 +105,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		matches := getVariableRegex.FindAllStringSubmatch(sqlString, -1)
 		for _, m := range matches {
 			if len(m) > 1 {
-				varName := m[1]
+				varName := strings.ToLower(m[1])
 				if !definedVars[varName] && !unsetVarsMap[varName] {
 					unsetVarsMap[varName] = true
 					unsetVariables = append(unsetVariables, varName)
@@ -117,7 +117,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		setMatches := setVariableRegex.FindAllStringSubmatch(sqlString, -1)
 		for _, m := range setMatches {
 			if len(m) > 1 {
-				varName := m[1]
+				varName := strings.ToLower(m[1])
 				definedVars[varName] = true
 			}
 		}
@@ -1686,6 +1686,11 @@ func getAxisType(rows Rows, index int) (string, error) {
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
 // NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
 func collectVars(singleVars map[string]string, multiVars map[string][]string, protectedVariables map[string]any, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+	protectedLower := make(map[string]bool, len(protectedVariables))
+	for k := range protectedVariables {
+		protectedLower[strings.ToLower(k)] = true
+	}
+
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
 		columnName := ""
@@ -1703,7 +1708,8 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for dropdown", columnName)
 		}
-		if _, protected := protectedVariables[columnName]; protected {
+		varName := strings.ToLower(columnName)
+		if protectedLower[varName] {
 			return nil
 		}
 		param := queryParams.Get(columnName)
@@ -1752,7 +1758,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 				}
 			}
 		}
-		singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
+		singleVars[varName] = "'" + util.EscapeSQLString(param) + "'"
 	}
 
 	// Fetch vars from dropdownMulti
@@ -1772,7 +1778,8 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for dropdownMulti", columnName)
 		}
-		if _, protected := protectedVariables[columnName]; protected {
+		varName := strings.ToLower(columnName)
+		if protectedLower[varName] {
 			return nil
 		}
 		params := queryParams[columnName]
@@ -1843,7 +1850,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		// If paramWasProvided but params is empty, we keep it as empty array
-		multiVars[columnName] = params
+		multiVars[varName] = params
 	}
 
 	// Fetch vars from datepicker
@@ -1866,7 +1873,8 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for datepicker", columnName)
 		}
-		if _, protected := protectedVariables[columnName]; protected {
+		varName := strings.ToLower(columnName)
+		if protectedLower[varName] {
 			return nil
 		}
 		param := queryParams.Get(columnName)
@@ -1886,7 +1894,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if param != "" {
-			singleVars[columnName] = "DATE '" + util.EscapeSQLString(param) + "'"
+			singleVars[varName] = "DATE '" + util.EscapeSQLString(param) + "'"
 		}
 	}
 
@@ -1921,10 +1929,12 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if !util.IsValidVariableName(toColumnName) {
 			return fmt.Errorf("invalid variable name %q for daterangePicker (to)", toColumnName)
 		}
-		if _, protected := protectedVariables[fromColumnName]; protected {
+		fromVarName := strings.ToLower(fromColumnName)
+		toVarName := strings.ToLower(toColumnName)
+		if protectedLower[fromVarName] {
 			return nil
 		}
-		if _, protected := protectedVariables[toColumnName]; protected {
+		if protectedLower[toVarName] {
 			return nil
 		}
 		fromParam := queryParams.Get(fromColumnName)
@@ -1944,7 +1954,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if fromParam != "" {
-			singleVars[fromColumnName] = "TIMESTAMP '" + util.EscapeSQLString(fromParam) + "'"
+			singleVars[fromVarName] = "TIMESTAMP '" + util.EscapeSQLString(fromParam) + "'"
 		}
 		toParam := queryParams.Get(toColumnName)
 		if toParam == "" {
@@ -1963,7 +1973,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if toParam != "" {
-			singleVars[toColumnName] = "TIMESTAMP '" + util.EscapeSQLString(toParam) + " 23:59:59.999999'"
+			singleVars[toVarName] = "TIMESTAMP '" + util.EscapeSQLString(toParam) + " 23:59:59.999999'"
 		}
 	}
 
@@ -1982,14 +1992,15 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for input", columnName)
 		}
-		if _, protected := protectedVariables[columnName]; protected {
+		varName := strings.ToLower(columnName)
+		if protectedLower[varName] {
 			return nil
 		}
 		param := queryParams.Get(columnName)
 		if len(param) > util.MaxInputVariableLength {
 			return fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
 		}
-		singleVars[columnName] = "'" + util.EscapeSQLString(param) + "'"
+		singleVars[varName] = "'" + util.EscapeSQLString(param) + "'"
 	}
 	return nil
 }
@@ -2302,12 +2313,13 @@ func getTokenVars(variables map[string]any) (map[string]string, map[string][]str
 		if !util.IsValidVariableName(k) {
 			return singleVars, multiVars, fmt.Errorf("invalid variable name %q: must match ^[a-zA-Z_][a-zA-Z0-9_]*$ and be at most %d characters", k, util.MaxVariableNameLength)
 		}
+		lowerK := strings.ToLower(k)
 		switch v := v.(type) {
 		case string:
 			if len(v) > util.MaxInputVariableLength {
 				return singleVars, multiVars, fmt.Errorf("variable %q value exceeds maximum allowed length of %d characters", k, util.MaxInputVariableLength)
 			}
-			singleVars[k] = "'" + util.EscapeSQLString(v) + "'"
+			singleVars[lowerK] = "'" + util.EscapeSQLString(v) + "'"
 		case []any:
 			if len(v) > util.MaxMultiVariableCount {
 				return singleVars, multiVars, fmt.Errorf("variable %q array size (%d) exceeds maximum allowed count of %d", k, len(v), util.MaxMultiVariableCount)
@@ -2323,7 +2335,7 @@ func getTokenVars(variables map[string]any) (map[string]string, map[string][]str
 					return singleVars, multiVars, fmt.Errorf("invalid type in array for key %s: %T", k, item)
 				}
 			}
-			multiVars[k] = strSlice
+			multiVars[lowerK] = strSlice
 		default:
 			return singleVars, multiVars, fmt.Errorf("unsupported type for key %s: %T", k, v)
 		}
