@@ -502,6 +502,24 @@ func findClosingParen(sql string, startPos int) (int, error) {
 	depth := 0
 	for i := startPos; i < len(sql); i++ {
 		c := sql[i]
+		// Skip block comments
+		if c == '/' && !inSingleQuote && !inDoubleQuote && i+1 < len(sql) && sql[i+1] == '*' {
+			commentDepth := 1
+			i += 2
+			for i < len(sql) && commentDepth > 0 {
+				if sql[i] == '/' && i+1 < len(sql) && sql[i+1] == '*' {
+					commentDepth++
+					i += 2
+				} else if sql[i] == '*' && i+1 < len(sql) && sql[i+1] == '/' {
+					commentDepth--
+					i += 2
+				} else {
+					i++
+				}
+			}
+			i--
+			continue
+		}
 		if c == '\'' && !inDoubleQuote {
 			if i+1 < len(sql) && sql[i+1] == '\'' {
 				i++ // Escaped quote
