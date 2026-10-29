@@ -65,6 +65,10 @@ func TestIsAllowedStatement(t *testing.T) {
 		{"Explain Disallowed", "EXPLAIN DROP TABLE x", false},
 		{"Explain Analyze Disallowed", "EXPLAIN ANALYZE DROP TABLE x", false},
 
+		// Block comments in parenthesized queries
+		{"Parens with block comment containing quote", "(SELECT /* ' */ 1)", true},
+		{"Parens with block comment containing paren", "(SELECT /* ) */ 1)", true},
+
 		// Edge Cases
 		{"Leading Spaces", "   SELECT 1", true},
 		{"Newlines", "\nSELECT\n1", true},

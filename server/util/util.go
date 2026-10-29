@@ -102,7 +102,29 @@ func StripSQLComments(sql string) string {
 			continue
 		}
 
-		// Check for comment start (--) only when not inside quotes
+		// Check for block comment start (/*) only when not inside quotes
+		if c == '/' && !inSingleQuote && !inDoubleQuote {
+			if i+1 < len(sql) && sql[i+1] == '*' {
+				depth := 1
+				i += 2
+				for i < len(sql) && depth > 0 {
+					if sql[i] == '/' && i+1 < len(sql) && sql[i+1] == '*' {
+						depth++
+						i += 2
+					} else if sql[i] == '*' && i+1 < len(sql) && sql[i+1] == '/' {
+						depth--
+						i += 2
+					} else {
+						i++
+					}
+				}
+				result.WriteByte(' ')
+				i--
+				continue
+			}
+		}
+
+		// Check for line comment start (--) only when not inside quotes
 		if c == '-' && !inSingleQuote && !inDoubleQuote {
 			if i+1 < len(sql) && sql[i+1] == '-' {
 				// Found comment start, skip to end of line
@@ -139,6 +161,33 @@ func SplitSQLQueries(sql string) ([]string, error) {
 		// Track line numbers
 		if c == '\n' {
 			lineNum++
+		}
+
+		// Handle block comments
+		if c == '/' && !inSingleQuote && !inDoubleQuote && i+1 < len(sql) && sql[i+1] == '*' {
+			depth := 1
+			i++
+			currentQuery.WriteByte(sql[i])
+			for depth > 0 {
+				i++
+				if i >= len(sql) {
+					break
+				}
+				currentQuery.WriteByte(sql[i])
+				if sql[i] == '\n' {
+					lineNum++
+				}
+				if sql[i] == '/' && i+1 < len(sql) && sql[i+1] == '*' {
+					i++
+					currentQuery.WriteByte(sql[i])
+					depth++
+				} else if sql[i] == '*' && i+1 < len(sql) && sql[i+1] == '/' {
+					i++
+					currentQuery.WriteByte(sql[i])
+					depth--
+				}
+			}
+			continue
 		}
 
 		// Handle single quotes
