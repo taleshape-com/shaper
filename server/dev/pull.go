@@ -432,6 +432,25 @@ func sanitizeFileName(name string) string {
 	return name
 }
 
+func validateInsideBaseDir(baseDir, targetPath string) error {
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve base directory: %w", err)
+	}
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve target path: %w", err)
+	}
+	rel, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return fmt.Errorf("failed to compute relative path: %w", err)
+	}
+	if strings.HasPrefix(rel, "..") {
+		return fmt.Errorf("path traversal detected: %s escapes base directory %s", targetPath, baseDir)
+	}
+	return nil
+}
+
 func getExpectedFilePath(baseDir string, app api.App) (string, error) {
 	// Construct path (same logic as writeAppFile)
 	dashPath := app.Path
@@ -442,6 +461,11 @@ func getExpectedFilePath(baseDir string, app api.App) (string, error) {
 	dashPath = strings.TrimPrefix(dashPath, "/")
 
 	dirPath := filepath.Join(baseDir, dashPath)
+
+	if err := validateInsideBaseDir(baseDir, dirPath); err != nil {
+		return "", err
+	}
+
 	suffix := DASHBOARD_SUFFIX
 	if app.Type == "task" {
 		suffix = TASK_SUFFIX
@@ -467,6 +491,11 @@ func writeAppFile(baseDir string, app api.App) error {
 	dashPath = strings.TrimPrefix(dashPath, "/")
 
 	dirPath := filepath.Join(baseDir, dashPath)
+
+	if err := validateInsideBaseDir(baseDir, dirPath); err != nil {
+		return err
+	}
+
 	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
 	}
