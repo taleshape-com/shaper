@@ -976,7 +976,7 @@ function DashboardEditor () {
             </div>
 
             <div className="pt-2">
-              <a href={`../../view/${params.id}`} target="_blank">
+              <a href={`../../view/${params.id}`} target="_blank" rel="noopener noreferrer">
                 <Button type="button" variant="primary" className="w-full">
                   Open Shared Dashboard
                   <RiExternalLinkLine className="size-4 ml-2" />
