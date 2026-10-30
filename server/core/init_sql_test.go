@@ -182,7 +182,7 @@ func TestInitSQLConfigurationOptionMemoryMode(t *testing.T) {
 	assert.Contains(t, err.Error(), "the configuration has been locked")
 }
 
-func TestNewAdminUserValidation(t *testing.T) {
+func TestNewAdminEmailValidation(t *testing.T) {
 	dbName := cuid2.Generate()
 	sdb, err := sqlx.Open("sqlite", fmt.Sprintf("file:%s?mode=memory&cache=shared", dbName))
 	require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestNewAdminUserValidation(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	newApp := func(ssoLoginURL, adminUser, adminPassword string) (*App, error) {
+	newApp := func(ssoLoginURL, adminEmail, adminPassword string) (*App, error) {
 		return New(
 			"test",
 			"node-1",
@@ -238,35 +238,43 @@ func TestNewAdminUserValidation(t *testing.T) {
 			"broadcast",
 			ssoLoginURL,
 			"",
-			adminUser,
+			adminEmail,
 			adminPassword,
 		)
 	}
 
-	t.Run("fails when only adminUser is set", func(t *testing.T) {
+	t.Run("fails when only adminEmail is set", func(t *testing.T) {
 		_, err := newApp("", "admin@example.com", "")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "both admin-user and admin-password must be set")
+		assert.Contains(t, err.Error(), "both admin-email and admin-password must be set")
 	})
 
 	t.Run("fails when only adminPassword is set", func(t *testing.T) {
 		_, err := newApp("", "", "secret")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "both admin-user and admin-password must be set")
+		assert.Contains(t, err.Error(), "both admin-email and admin-password must be set")
 	})
 
-	t.Run("fails when adminUser and ssoLoginURL are both set", func(t *testing.T) {
+	t.Run("fails when adminEmail is not a valid email address", func(t *testing.T) {
+		for _, invalid := range []string{"admin", "not-an-email@", "@example.com", "Admin <admin@example.com>"} {
+			_, err := newApp("", invalid, "secret")
+			require.Error(t, err, "expected error for invalid email %q", invalid)
+			assert.Contains(t, err.Error(), "admin-email must be a valid email address")
+		}
+	})
+
+	t.Run("fails when adminEmail and ssoLoginURL are both set", func(t *testing.T) {
 		_, err := newApp("https://sso.example.com/login", "admin@example.com", "secret")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot set admin-user and sso-login-url at the same time")
+		assert.Contains(t, err.Error(), "cannot set admin-email and sso-login-url at the same time")
 	})
 
-	t.Run("succeeds and sets LoginRequired true when both adminUser and adminPassword are set", func(t *testing.T) {
+	t.Run("succeeds and sets LoginRequired true when both adminEmail and adminPassword are set", func(t *testing.T) {
 		app, err := newApp("", "admin@example.com", "secret")
 		require.NoError(t, err)
 		require.NotNil(t, app)
 		assert.True(t, app.LoginRequired)
-		assert.Equal(t, "admin@example.com", app.AdminUser)
+		assert.Equal(t, "admin@example.com", app.AdminEmail)
 		assert.Equal(t, "secret", app.AdminPassword)
 	})
 }

@@ -1047,7 +1047,7 @@ func TestRoutes_NoIngest(t *testing.T) {
 	})
 }
 
-func TestRoutes_SetupRejectedWhenAdminUserSet(t *testing.T) {
+func TestRoutes_SetupRejectedWhenAdminEmailSet(t *testing.T) {
 	sdb, err := sqlx.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sdb.Close()
@@ -1055,7 +1055,7 @@ func TestRoutes_SetupRejectedWhenAdminUserSet(t *testing.T) {
 
 	app := &core.App{
 		LoginRequired: true,
-		AdminUser:     "admin@example.com",
+		AdminEmail:    "admin@example.com",
 		AdminPassword: "secret",
 		NoTasks:       true,
 		JWTSecret:     []byte("test-secret-key-32-bytes-long!"),

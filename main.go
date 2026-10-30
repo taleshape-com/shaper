@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/mail"
 	"os"
 	"os/signal"
 	"path"
@@ -143,7 +144,7 @@ type Config struct {
 	NoChromeSandbox            bool
 	SSOLoginURL                string
 	JWTSecret                  string
-	AdminUser                  string
+	AdminEmail                 string
 	AdminPassword              string
 	Deploy                     string
 }
@@ -443,7 +444,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 	jwtExp := flags.DurationLong("jwtexp", 15*time.Minute, "JWT expiration duration")
 	ssoLoginURL := flags.StringLong("sso-login-url", "", "SSO Login URL to redirect users when authentication is missing or expired")
 	jwtSecret := flags.StringLong("jwt-secret", "", "Static shared secret for signing and validating JWTs")
-	adminUser := flags.StringLong("admin-user", "", "Email address for the initial admin user to be automatically created on startup")
+	adminEmail := flags.StringLong("admin-email", "", "Email address for the initial admin user to be automatically created on startup")
 	adminPassword := flags.StringLong("admin-password", "", "Password for the initial admin user to be automatically created on startup")
 	sessionExp := flags.DurationLong("sessionexp", 30*24*time.Hour, "Session expiration duration")
 	inviteExp := flags.DurationLong("inviteexp", 7*24*time.Hour, "Invite expiration duration")
@@ -538,11 +539,17 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			os.Exit(1)
 		}
 
-		if *adminUser != "" && *ssoLoginURL != "" {
-			return fmt.Errorf("cannot set --admin-user and --sso-login-url at the same time")
+		if *adminEmail != "" && *ssoLoginURL != "" {
+			return fmt.Errorf("cannot set --admin-email and --sso-login-url at the same time")
 		}
-		if (*adminUser != "") != (*adminPassword != "") {
-			return fmt.Errorf("both --admin-user and --admin-password must be set")
+		if (*adminEmail != "") != (*adminPassword != "") {
+			return fmt.Errorf("both --admin-email and --admin-password must be set")
+		}
+		if *adminEmail != "" {
+			addr, err := mail.ParseAddress(*adminEmail)
+			if err != nil || addr.Address != *adminEmail {
+				return fmt.Errorf("--admin-email must be a valid email address")
+			}
 		}
 
 		tlsCacheDir := *tlsCache
@@ -660,7 +667,7 @@ func buildRootCommand(ctx context.Context) *ff.Command {
 			NoChromeSandbox:            *noChromeSandbox,
 			SSOLoginURL:                *ssoLoginURL,
 			JWTSecret:                  *jwtSecret,
-			AdminUser:                  *adminUser,
+			AdminEmail:                 *adminEmail,
 			AdminPassword:              *adminPassword,
 			Deploy:                     *deployDir,
 		}
@@ -1163,7 +1170,7 @@ func Run(cfg Config) func(context.Context) {
 		cfg.TaskBroadcastSubject,
 		cfg.SSOLoginURL,
 		cfg.JWTSecret,
-		cfg.AdminUser,
+		cfg.AdminEmail,
 		cfg.AdminPassword,
 	)
 	if err != nil {
