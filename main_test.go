@@ -186,3 +186,78 @@ func TestTLSFlagsDeprecated(t *testing.T) {
 	}
 }
 
+func TestAdminUserFlagsValidation(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("flags are registered with empty defaults", func(t *testing.T) {
+		rootCmd := buildRootCommand(ctx)
+		for _, flagName := range []string{"admin-user", "admin-password"} {
+			flag, ok := rootCmd.Flags.GetFlag(flagName)
+			if !ok {
+				t.Fatalf("expected --%s flag to be registered on root command", flagName)
+			}
+			if flag.GetDefault() != "" {
+				t.Errorf("expected default empty string for --%s, got %q", flagName, flag.GetDefault())
+			}
+		}
+	})
+
+	t.Run("fails when only admin-user is set", func(t *testing.T) {
+		rootCmd := buildRootCommand(ctx)
+		err := rootCmd.ParseAndRun(ctx, []string{"--admin-user", "admin@example.com"})
+		if err == nil {
+			t.Fatal("expected error when only --admin-user is set, got nil")
+		}
+	})
+
+	t.Run("fails when only admin-password is set", func(t *testing.T) {
+		rootCmd := buildRootCommand(ctx)
+		err := rootCmd.ParseAndRun(ctx, []string{"--admin-password", "secret123"})
+		if err == nil {
+			t.Fatal("expected error when only --admin-password is set, got nil")
+		}
+	})
+
+	t.Run("fails when only SHAPER_ADMIN_USER env var is set", func(t *testing.T) {
+		t.Setenv("SHAPER_ADMIN_USER", "admin@example.com")
+		rootCmd := buildRootCommand(ctx)
+		err := rootCmd.ParseAndRun(ctx, []string{}, ff.WithEnvVarPrefix("SHAPER"))
+		if err == nil {
+			t.Fatal("expected error when only SHAPER_ADMIN_USER is set, got nil")
+		}
+	})
+
+	t.Run("fails when only SHAPER_ADMIN_PASSWORD env var is set", func(t *testing.T) {
+		t.Setenv("SHAPER_ADMIN_PASSWORD", "secret123")
+		rootCmd := buildRootCommand(ctx)
+		err := rootCmd.ParseAndRun(ctx, []string{}, ff.WithEnvVarPrefix("SHAPER"))
+		if err == nil {
+			t.Fatal("expected error when only SHAPER_ADMIN_PASSWORD is set, got nil")
+		}
+	})
+
+	t.Run("fails when admin-user and sso-login-url are both set", func(t *testing.T) {
+		rootCmd := buildRootCommand(ctx)
+		err := rootCmd.ParseAndRun(ctx, []string{
+			"--admin-user", "admin@example.com",
+			"--admin-password", "secret123",
+			"--sso-login-url", "https://sso.example.com/login",
+		})
+		if err == nil {
+			t.Fatal("expected error when --admin-user and --sso-login-url are set at the same time, got nil")
+		}
+	})
+
+	t.Run("fails when SHAPER_ADMIN_USER and SHAPER_SSO_LOGIN_URL env vars are both set", func(t *testing.T) {
+		t.Setenv("SHAPER_ADMIN_USER", "admin@example.com")
+		t.Setenv("SHAPER_ADMIN_PASSWORD", "secret123")
+		t.Setenv("SHAPER_SSO_LOGIN_URL", "https://sso.example.com/login")
+		rootCmd := buildRootCommand(ctx)
+		err := rootCmd.ParseAndRun(ctx, []string{}, ff.WithEnvVarPrefix("SHAPER"))
+		if err == nil {
+			t.Fatal("expected error when SHAPER_ADMIN_USER and SHAPER_SSO_LOGIN_URL are set at the same time, got nil")
+		}
+	})
+}
+
+

@@ -80,6 +80,8 @@ func TestInitSQLConfigurationOption(t *testing.T) {
 		"broadcast",
 		"",
 		"",
+		"",
+		"",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, app)
@@ -153,6 +155,8 @@ func TestInitSQLConfigurationOptionMemoryMode(t *testing.T) {
 		"broadcast",
 		"",
 		"",
+		"",
+		"",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, app)
@@ -177,3 +181,93 @@ func TestInitSQLConfigurationOptionMemoryMode(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "the configuration has been locked")
 }
+
+func TestNewAdminUserValidation(t *testing.T) {
+	dbName := cuid2.Generate()
+	sdb, err := sqlx.Open("sqlite", fmt.Sprintf("file:%s?mode=memory&cache=shared", dbName))
+	require.NoError(t, err)
+	defer sdb.Close()
+
+	ddb, err := sqlx.Open("duckdb", ":memory:")
+	require.NoError(t, err)
+	defer ddb.Close()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	newApp := func(ssoLoginURL, adminUser, adminPassword string) (*App, error) {
+		return New(
+			"test",
+			"node-1",
+			"dev",
+			sdb,
+			ddb,
+			":memory:",
+			"",
+			"",
+			"",
+			false,
+			"",
+			"_shaper",
+			logger,
+			"/",
+			15*time.Minute,
+			24*time.Hour,
+			7*24*time.Hour,
+			false,
+			false,
+			true,
+			false,
+			false,
+			false,
+			true,
+			"shaper.ingest.",
+			"shaper.state.",
+			"state-stream",
+			0,
+			"config-bucket",
+			"dash-bucket",
+			24*time.Hour,
+			"dl-bucket",
+			10*time.Minute,
+			"tasks-stream",
+			"shaper.tasks.",
+			"task-consumer",
+			"results-stream",
+			"shaper.task-results.",
+			0,
+			"broadcast",
+			ssoLoginURL,
+			"",
+			adminUser,
+			adminPassword,
+		)
+	}
+
+	t.Run("fails when only adminUser is set", func(t *testing.T) {
+		_, err := newApp("", "admin@example.com", "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "both admin-user and admin-password must be set")
+	})
+
+	t.Run("fails when only adminPassword is set", func(t *testing.T) {
+		_, err := newApp("", "", "secret")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "both admin-user and admin-password must be set")
+	})
+
+	t.Run("fails when adminUser and ssoLoginURL are both set", func(t *testing.T) {
+		_, err := newApp("https://sso.example.com/login", "admin@example.com", "secret")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot set admin-user and sso-login-url at the same time")
+	})
+
+	t.Run("succeeds and sets LoginRequired true when both adminUser and adminPassword are set", func(t *testing.T) {
+		app, err := newApp("", "admin@example.com", "secret")
+		require.NoError(t, err)
+		require.NotNil(t, app)
+		assert.True(t, app.LoginRequired)
+		assert.Equal(t, "admin@example.com", app.AdminUser)
+		assert.Equal(t, "secret", app.AdminPassword)
+	})
+}
+

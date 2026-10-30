@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"shaper/server/util"
@@ -39,6 +40,8 @@ type App struct {
 	LoginRequired               bool
 	BasePath                    string
 	SSOLoginURL                 string
+	AdminUser                   string
+	AdminPassword               string
 	JWTSecret                   []byte
 	JWTSecretStatic             bool
 
@@ -125,7 +128,16 @@ func New(
 	taskBroadcastSubject string,
 	ssoLoginURL string,
 	jwtSecret string,
+	adminUser string,
+	adminPassword string,
 ) (*App, error) {
+	if adminUser != "" && ssoLoginURL != "" {
+		return nil, fmt.Errorf("cannot set admin-user and sso-login-url at the same time")
+	}
+	if (adminUser != "") != (adminPassword != "") {
+		return nil, fmt.Errorf("both admin-user and admin-password must be set")
+	}
+
 	logger.Info("Setting up SQLite")
 	if err := InitSQLite(sqliteDbx); err != nil {
 		return nil, err
@@ -181,7 +193,7 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	if ssoLoginURL != "" {
+	if ssoLoginURL != "" || adminUser != "" {
 		loginRequired = true
 	}
 	if !loginRequired && ssoLoginURL == "" {
@@ -239,6 +251,8 @@ func New(
 		LoginRequired:               loginRequired,
 		BasePath:                    baseURL,
 		SSOLoginURL:                 ssoLoginURL,
+		AdminUser:                   adminUser,
+		AdminPassword:               adminPassword,
 		JWTSecret:                   []byte(jwtSecret),
 		JWTSecretStatic:             jwtSecret != "",
 		JWTExp:                      jwtExp,
@@ -402,6 +416,16 @@ func (app *App) Init(nc *nats.Conn) error {
 
 	if err := LoadJWTSecret(app); err != nil {
 		return fmt.Errorf("failed to load JWT secret: %w", err)
+	}
+
+	if app.AdminUser != "" && app.AdminPassword != "" {
+		_, err := CreateAdminUser(app, context.Background(), app.AdminUser, app.AdminPassword, "")
+		if err != nil && !errors.Is(err, ErrUserSetupCompleted) {
+			return fmt.Errorf("failed to create initial admin user: %w", err)
+		}
+		if err == nil {
+			app.Logger.Info("Created initial admin user", slog.String("email", app.AdminUser))
+		}
 	}
 
 	if !app.NoTasks {
