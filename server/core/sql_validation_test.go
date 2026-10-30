@@ -69,6 +69,28 @@ func TestIsAllowedStatement(t *testing.T) {
 		{"Parens with block comment containing quote", "(SELECT /* ' */ 1)", true},
 		{"Parens with block comment containing paren", "(SELECT /* ) */ 1)", true},
 
+		// Remote database functions: DML and connection management (blocked)
+		{"Postgres Execute", "SELECT * FROM postgres_execute('catalog', 'INSERT INTO t VALUES(1)')", false},
+		{"Postgres Attach Func", "SELECT * FROM postgres_attach('dsn')", false},
+		{"Postgres Configure Pool", "SELECT * FROM postgres_configure_pool('catalog', 4)", false},
+		{"MySQL Execute", "SELECT * FROM mysql_execute('catalog', 'INSERT INTO t VALUES(1)')", false},
+		{"MySQL Attach Func", "SELECT * FROM mysql_attach('dsn')", false},
+		{"SQLite Attach Func", "SELECT * FROM sqlite_attach('file.db')", false},
+		{"Postgres Execute Case Insensitive", "SELECT * FROM POSTGRES_EXECUTE('catalog', 'DELETE FROM t')", false},
+		{"Postgres Execute In CTE", "WITH t AS (SELECT * FROM postgres_execute('c', 'INSERT INTO t VALUES(1)')) SELECT * FROM t", false},
+		{"Postgres Execute Quoted", `SELECT * FROM "postgres_execute"('catalog', 'INSERT INTO t VALUES(1)')`, false},
+		{"Not A Function Name", "SELECT my_postgres_execute FROM t", true},
+		{"Function Name In String", "SELECT 'postgres_execute' AS label", true},
+
+		// Remote database functions: read/pushdown (allowed for legitimate use)
+		{"Postgres Query", "SELECT * FROM postgres_query('catalog', 'SELECT 1')", true},
+		{"Postgres Scan", "SELECT * FROM postgres_scan('catalog', 'schema', 'table')", true},
+		{"Postgres Scan Pushdown", "SELECT * FROM postgres_scan_pushdown('catalog', 'schema', 'table')", true},
+		{"MySQL Query", "SELECT * FROM mysql_query('catalog', 'SELECT 1')", true},
+		{"MySQL Scan", "SELECT * FROM mysql_scan('catalog', 'schema', 'table')", true},
+		{"MySQL Scan Pushdown", "SELECT * FROM mysql_scan_pushdown('catalog', 'schema', 'table')", true},
+		{"SQLite Scan", "SELECT * FROM sqlite_scan('file.db', 'table')", true},
+
 		// Edge Cases
 		{"Leading Spaces", "   SELECT 1", true},
 		{"Newlines", "\nSELECT\n1", true},

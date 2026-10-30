@@ -30,11 +30,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
-    # Disable grouping until we are ready to upgrade to DuckDB 2.x, likely after 2.1 release
-    # groups:
-    #   docker:
-    #     patterns:
-    #       - "*"
+    groups:
+      docker:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/"
@@ -42,10 +41,11 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
-    groups:
-      gomod:
-        patterns:
-          - "*"
+    # Disable grouping until we are ready to upgrade to DuckDB 2.x, likely after 2.1 release
+    # groups:
+    #   gomod:
+    #     patterns:
+    #       - "*"
 
   - package-ecosystem: "pip"
     directory: "/pip-package"
