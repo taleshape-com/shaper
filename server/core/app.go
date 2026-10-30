@@ -5,8 +5,10 @@ package core
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/mail"
 	"shaper/server/util"
 	"strings"
 	"time"
@@ -39,6 +41,8 @@ type App struct {
 	LoginRequired               bool
 	BasePath                    string
 	SSOLoginURL                 string
+	AdminEmail                  string
+	AdminPassword               string
 	JWTSecret                   []byte
 	JWTSecretStatic             bool
 
@@ -125,7 +129,22 @@ func New(
 	taskBroadcastSubject string,
 	ssoLoginURL string,
 	jwtSecret string,
+	adminEmail string,
+	adminPassword string,
 ) (*App, error) {
+	if adminEmail != "" && ssoLoginURL != "" {
+		return nil, fmt.Errorf("cannot set admin-email and sso-login-url at the same time")
+	}
+	if (adminEmail != "") != (adminPassword != "") {
+		return nil, fmt.Errorf("both admin-email and admin-password must be set")
+	}
+	if adminEmail != "" {
+		addr, err := mail.ParseAddress(adminEmail)
+		if err != nil || addr.Address != adminEmail {
+			return nil, fmt.Errorf("admin-email must be a valid email address")
+		}
+	}
+
 	logger.Info("Setting up SQLite")
 	if err := InitSQLite(sqliteDbx); err != nil {
 		return nil, err
@@ -181,7 +200,7 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	if ssoLoginURL != "" {
+	if ssoLoginURL != "" || adminEmail != "" {
 		loginRequired = true
 	}
 	if !loginRequired && ssoLoginURL == "" {
@@ -239,6 +258,8 @@ func New(
 		LoginRequired:               loginRequired,
 		BasePath:                    baseURL,
 		SSOLoginURL:                 ssoLoginURL,
+		AdminEmail:                  adminEmail,
+		AdminPassword:               adminPassword,
 		JWTSecret:                   []byte(jwtSecret),
 		JWTSecretStatic:             jwtSecret != "",
 		JWTExp:                      jwtExp,
@@ -402,6 +423,16 @@ func (app *App) Init(nc *nats.Conn) error {
 
 	if err := LoadJWTSecret(app); err != nil {
 		return fmt.Errorf("failed to load JWT secret: %w", err)
+	}
+
+	if app.AdminEmail != "" && app.AdminPassword != "" {
+		_, err := CreateAdminUser(app, context.Background(), app.AdminEmail, app.AdminPassword, "")
+		if err != nil && !errors.Is(err, ErrUserSetupCompleted) {
+			return fmt.Errorf("failed to create initial admin user: %w", err)
+		}
+		if err == nil {
+			app.Logger.Info("Created initial admin user", slog.String("email", app.AdminEmail))
+		}
 	}
 
 	if !app.NoTasks {

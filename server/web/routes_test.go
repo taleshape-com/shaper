@@ -1046,3 +1046,37 @@ func TestRoutes_NoIngest(t *testing.T) {
 		assert.NotEqual(t, http.StatusOK, rec.Code)
 	})
 }
+
+func TestRoutes_SetupRejectedWhenAdminEmailSet(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer sdb.Close()
+	require.NoError(t, core.InitSQLite(sdb))
+
+	app := &core.App{
+		LoginRequired: true,
+		AdminEmail:    "admin@example.com",
+		AdminPassword: "secret",
+		NoTasks:       true,
+		JWTSecret:     []byte("test-secret-key-32-bytes-long!"),
+		JWTExp:        time.Hour,
+		Sqlite:        sdb,
+	}
+
+	e := echo.New()
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/setup", strings.NewReader(`{"email":"attacker@example.com","password":"pass","name":"Attacker"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	var res map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &res))
+	assert.Equal(t, "User setup already completed", res["error"])
+}
+

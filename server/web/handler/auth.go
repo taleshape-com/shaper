@@ -383,6 +383,10 @@ func PublicAuth(app *core.App, rateLimiter ...middleware.RateLimiterStore) echo.
 
 func Setup(app *core.App) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if app.AdminEmail != "" {
+			return c.JSON(http.StatusConflict, map[string]string{"error": "User setup already completed"})
+		}
+
 		var setupRequest struct {
 			Email    string `json:"email"`
 			Name     string `json:"name"`
