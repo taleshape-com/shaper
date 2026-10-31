@@ -91,10 +91,60 @@ func matchesPrefix(upperSql string, prefix []string) bool {
 	return true
 }
 
+// disallowedDashboardFunctions lists DuckDB table functions that execute DML
+// on an attached remote database or open new remote connections. Read-oriented
+// functions (postgres_query, *_scan) are intentionally allowed because they
+// serve legitimate pushdown use cases and are safe when the remote role is
+// restricted to SELECT.
+var disallowedDashboardFunctions = []string{
+	"postgres_execute",
+	"postgres_attach",
+	"postgres_configure_pool",
+	"mysql_execute",
+	"mysql_attach",
+	"sqlite_attach",
+}
+
+func containsDisallowedFunction(sql string) bool {
+	lower := strings.ToLower(sql)
+	for _, fn := range disallowedDashboardFunctions {
+		for idx := 0; idx < len(lower); {
+			pos := strings.Index(lower[idx:], fn)
+			if pos < 0 {
+				break
+			}
+			pos += idx
+			if pos > 0 {
+				prev := lower[pos-1]
+				if (prev >= 'a' && prev <= 'z') || (prev >= '0' && prev <= '9') || prev == '_' {
+					idx = pos + len(fn)
+					continue
+				}
+			}
+			rest := strings.TrimLeft(lower[pos+len(fn):], " \t\r\n")
+			if strings.HasPrefix(rest, "(") {
+				return true
+			}
+			// Handle quoted identifiers: "postgres_query"(
+			if strings.HasPrefix(rest, "\"") {
+				rest2 := strings.TrimLeft(rest[1:], " \t\r\n")
+				if strings.HasPrefix(rest2, "(") {
+					return true
+				}
+			}
+			idx = pos + len(fn)
+		}
+	}
+	return false
+}
+
 func IsAllowedStatement(app *App, sql string) bool {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return true
+	}
+	if containsDisallowedFunction(sql) {
+		return false
 	}
 	upper := strings.ToUpper(sql)
 
