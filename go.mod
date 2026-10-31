@@ -4,7 +4,7 @@ module shaper
 go 1.26.10
 
 require (
-	github.com/chromedp/cdproto v0.158.3
+	github.com/chromedp/cdproto v0.158.4
 	github.com/chromedp/chromedp v0.21.0
 	github.com/duckdb/duckdb-go/v2 v2.10506.0
 	github.com/gobwas/ws v1.4.0
