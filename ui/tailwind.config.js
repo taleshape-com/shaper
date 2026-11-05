@@ -53,6 +53,7 @@ export default {
       fontFamily: {
         sans: ['var(--shaper-font)', ...defaultTheme.fontFamily.sans],
         display: ['var(--shaper-display-font)', ...defaultTheme.fontFamily.sans],
+        mono: ['var(--shaper-mono-font)', ...defaultTheme.fontFamily.mono],
       },
       screens: {
         '4xl': '1948px',

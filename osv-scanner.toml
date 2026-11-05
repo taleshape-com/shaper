@@ -7,3 +7,7 @@ reason = "Stack-exhaustion DoS through deeply nested patterns in braces is not a
 [[IgnoredVulns]]
 id = "GO-2026-5932"
 reason = "Affects unmaintained golang.org/x/crypto/openpgp subpackage which will not be fixed. We only use x/crypto/bcrypt and x/crypto/acme/autocert."
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"  # or CVE-2026-118764
+reason = "Only used transitively by ESLint/typescript-eslint during local linting on trusted files; not exposed to untrusted input."
