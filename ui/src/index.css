@@ -60,6 +60,7 @@
 :root {
   --shaper-font: DMSans;
   --shaper-display-font: SourceSansPro;
+  --shaper-mono-font: ui-monospace;
   --shaper-reference-line-color: #b5b5b5;
 
   --shaper-color-two: #7ca7d4;
