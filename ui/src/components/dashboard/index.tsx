@@ -27,6 +27,8 @@ import DashboardPieChart from "./DashboardPieChart";
 import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 import { TableDownloadButton } from "../charts/TableDownloadButton";
 import { FullscreenButton } from "./FullscreenButton";
+import TextWithLinks from "../TextWithLinks";
+import { isSafeUrl } from "../../lib/linkUtils";
 
 export interface DashboardProps {
   id?: string;
@@ -459,7 +461,7 @@ const DataView = ({
                               ) : null}
                               {header.subtitle ? (
                                 <p className="shaper-section-subtitle text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
-                                  {header.subtitle}
+                                  <TextWithLinks text={header.subtitle} />
                                 </p>
                               ) : null}
                             </div>
@@ -474,7 +476,7 @@ const DataView = ({
                           ) : null}
                           {header.subtitle ? (
                             <p className="text-sm text-ctext2 dark:text-dtext2 text-left mt-0.5 mb-1">
-                              {header.subtitle}
+                              <TextWithLinks text={header.subtitle} />
                             </p>
                           ) : null}
                         </div>
@@ -609,12 +611,18 @@ const DataView = ({
                     const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
                     const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
                     const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
+                    const cardLink = !isFullscreen && query.render.link && isSafeUrl(query.render.link) ? query.render.link : undefined;
                     return (
                       <Card
                         key={queryIndex}
+                        as={cardLink ? "a" : "div"}
+                        href={cardLink}
+                        target={cardLink && query.render.linkNewTab ? "_blank" : undefined}
+                        rel={cardLink && query.render.linkNewTab ? "noopener noreferrer" : undefined}
                         id={toCssId(`content${sectionIndex}-${cardCssId}`)}
                         className={cx(
                           "shaper-card",
+                          cardLink && "cursor-pointer [&_*]:cursor-pointer no-underline text-inherit transition-all duration-150 hover:border-cprimary dark:hover:border-dprimary hover:shadow-sm",
                           queryTypeToCardCssClass(query.render.type),
                           query.render.class,
                           "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
@@ -676,13 +684,13 @@ const DataView = ({
                         ) : (
                           <>
                             {query.render.label && (
-                              <h2 className={cx("text-[15px] font-semibold font-display", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
+                              <h2 className={cx("text-[15px] font-semibold font-display", cardLink && "group-hover:text-cprimary dark:group-hover:text-dprimary transition-colors", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
                                 {query.render.label}
                               </h2>
                             )}
                             {query.render.subtitle && (
                               <p className="text-sm text-ctext2 dark:text-dtext2 pb-2">
-                                {query.render.subtitle}
+                                <TextWithLinks text={query.render.subtitle} />
                               </p>
                             )}
                             {query.render.type === "table" && (

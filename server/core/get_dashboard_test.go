@@ -411,6 +411,24 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
 	})
 
+	t.Run("Section and Label Subtitle with links", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Overview'::SECTION, 'Check docs at https://example.com/docs'::SUBTITLE;
+				SELECT 'Active Users'::LABEL, 'Source: [User API](https://api.example.com/users)'::SUBTITLE;
+				SELECT 42;
+			`,
+			ID: "test-subtitle-with-links",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+		assert.NotNil(t, result.Sections[0].Subtitle)
+		assert.Equal(t, "Check docs at https://example.com/docs", *result.Sections[0].Subtitle)
+		assert.NotNil(t, result.Sections[1].Queries[0].Render.Subtitle)
+		assert.Equal(t, "Source: [User API](https://api.example.com/users)", *result.Sections[1].Queries[0].Render.Subtitle)
+	})
+
 	t.Run("Section and Label with reversed column order for Subtitle", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: `
@@ -914,5 +932,128 @@ SELECT 100 AS val;
 		assert.NoError(t, err)
 		assert.NotNil(t, result.CSS)
 		assert.Equal(t, `<\/style><script>alert(1)</script>`, *result.CSS)
+	})
+
+	t.Run("Card with LINK in same SELECT as LABEL", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'User Metrics'::LABEL, 'https://example.com/metrics'::LINK;
+SELECT 1234 AS users;
+`,
+			ID: "test-card-link-with-label",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		query := result.Sections[0].Queries[0]
+		assert.NotNil(t, query.Render.Label)
+		assert.Equal(t, "User Metrics", *query.Render.Label)
+		assert.NotNil(t, query.Render.Link)
+		assert.Equal(t, "https://example.com/metrics", *query.Render.Link)
+		assert.False(t, query.Render.LinkNewTab)
+	})
+
+	t.Run("Card with LINK_NEWTAB in same SELECT as LABEL", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'External Docs'::LABEL, 'https://example.com/docs'::LINK_NEWTAB;
+SELECT 'Documentation' AS info;
+`,
+			ID: "test-card-link-newtab-with-label",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		query := result.Sections[0].Queries[0]
+		assert.NotNil(t, query.Render.Label)
+		assert.Equal(t, "External Docs", *query.Render.Label)
+		assert.NotNil(t, query.Render.Link)
+		assert.Equal(t, "https://example.com/docs", *query.Render.Link)
+		assert.True(t, query.Render.LinkNewTab)
+	})
+
+	t.Run("Card with LINK without LABEL", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT '/dashboard/sub'::LINK;
+SELECT 42 AS value;
+`,
+			ID: "test-card-link-without-label",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		query := result.Sections[0].Queries[0]
+		assert.Nil(t, query.Render.Label)
+		assert.NotNil(t, query.Render.Link)
+		assert.Equal(t, "/dashboard/sub", *query.Render.Link)
+		assert.False(t, query.Render.LinkNewTab)
+	})
+
+	t.Run("Card with LINK_NEWTAB without LABEL", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'https://example.com/newtab'::LINK_NEWTAB;
+SELECT 99 AS count;
+`,
+			ID: "test-card-link-newtab-without-label",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		query := result.Sections[0].Queries[0]
+		assert.Nil(t, query.Render.Label)
+		assert.NotNil(t, query.Render.Link)
+		assert.Equal(t, "https://example.com/newtab", *query.Render.Link)
+		assert.True(t, query.Render.LinkNewTab)
+	})
+
+	t.Run("Card with separate LABEL and LINK queries", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'Card Title'::LABEL;
+SELECT 'https://example.com/card'::LINK;
+SELECT 50 AS val;
+`,
+			ID: "test-separate-label-and-link",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		query := result.Sections[0].Queries[0]
+		assert.NotNil(t, query.Render.Label)
+		assert.Equal(t, "Card Title", *query.Render.Label)
+		assert.NotNil(t, query.Render.Link)
+		assert.Equal(t, "https://example.com/card", *query.Render.Link)
+		assert.False(t, query.Render.LinkNewTab)
+	})
+
+	t.Run("Card with LABEL, SUBTITLE, CLASS, and LINK in same query", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 'my-custom-card'::CLASS, 'Clickable Card'::LABEL, 'Card description'::SUBTITLE, 'https://example.com/target'::LINK_NEWTAB;
+SELECT 777 AS lucky;
+`,
+			ID: "test-all-card-tags",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 1, len(result.Sections[0].Queries))
+		query := result.Sections[0].Queries[0]
+		assert.NotNil(t, query.Render.Label)
+		assert.Equal(t, "Clickable Card", *query.Render.Label)
+		assert.NotNil(t, query.Render.Subtitle)
+		assert.Equal(t, "Card description", *query.Render.Subtitle)
+		assert.NotNil(t, query.Render.Class)
+		assert.Equal(t, "my-custom-card", *query.Render.Class)
+		assert.NotNil(t, query.Render.Link)
+		assert.Equal(t, "https://example.com/target", *query.Render.Link)
+		assert.True(t, query.Render.LinkNewTab)
 	})
 }

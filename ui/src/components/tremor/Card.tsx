@@ -5,13 +5,17 @@ import { Slot } from "@radix-ui/react-slot";
 
 import { cx } from "../../lib/utils";
 
-interface CardProps extends React.ComponentPropsWithoutRef<"div"> {
-  asChild?: boolean
+interface CardProps extends React.HTMLAttributes<HTMLElement> {
+  asChild?: boolean;
+  as?: React.ElementType;
+  href?: string;
+  target?: string;
+  rel?: string;
 }
 
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, asChild, ...props }, forwardedRef) => {
-    const Component = asChild ? Slot : "div";
+const Card = React.forwardRef<HTMLElement, CardProps>(
+  ({ className, asChild, as: Tag = "div", ...props }, forwardedRef) => {
+    const Component = asChild ? Slot : Tag;
     return (
       <Component
         ref={forwardedRef}

@@ -155,6 +155,8 @@ export type Result = {
           label?: string;
           subtitle?: string;
           class?: string;
+          link?: string;
+          linkNewTab?: boolean;
           markLines: MarkLine[];
         }
         | {
@@ -162,6 +164,8 @@ export type Result = {
           label?: string;
           subtitle?: string;
           class?: string;
+          link?: string;
+          linkNewTab?: boolean;
           gaugeCategories: GaugeCategory[];
         };
         columns: Column[];
@@ -177,6 +181,8 @@ export type Result = {
           label?: string;
           subtitle?: string;
           class?: string;
+          link?: string;
+          linkNewTab?: boolean;
           markLines: MarkLine[];
         };
         columns: Column[];

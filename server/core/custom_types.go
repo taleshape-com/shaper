@@ -44,6 +44,8 @@ var dbTypes = []struct {
 	{"SECTION", "UNION(\"section_varchar\" VARCHAR)", "string"},
 	{"SUBTITLE", "UNION(\"subtitle_varchar\" VARCHAR)", "string"},
 	{"CLASS", "UNION(\"class_varchar\" VARCHAR)", "string"},
+	{"LINK", "UNION(\"link_varchar\" VARCHAR)", "string"},
+	{"LINK_NEWTAB", "UNION(\"link_newtab_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_CSV", "UNION(\"download_csv_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_XLSX", "UNION(\"download_xlsx_varchar\" VARCHAR)", "string"},
 	{"DOWNLOAD_JSON", "UNION(\"download_json_varchar\" VARCHAR)", "string"},

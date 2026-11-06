@@ -59,6 +59,8 @@ type Render struct {
 	Label           *string         `json:"label"`
 	Subtitle        *string         `json:"subtitle,omitempty"`
 	Class           *string         `json:"class,omitempty"`
+	Link            *string         `json:"link,omitempty"`
+	LinkNewTab      bool            `json:"linkNewTab,omitempty"`
 	GaugeCategories []GaugeCategory `json:"gaugeCategories,omitempty"`
 	MarkLines       []MarkLine      `json:"markLines,omitempty"`
 }
