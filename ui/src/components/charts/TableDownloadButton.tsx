@@ -60,7 +60,11 @@ export const TableDownloadButton: React.FC<TableDownloadButtonProps> = ({
           "pointer-events-auto",
           className,
         )}
-        onClick={handleDownload}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleDownload();
+        }}
         title={translate("Save as CSV")}
         id={id}
       >

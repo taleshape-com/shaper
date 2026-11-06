@@ -45,6 +45,10 @@ func Start(
 	e.HideBanner = true
 	e.HidePort = true
 
+	// Configure safe IP extractor to prevent X-Forwarded-For spoofing attacks (CVE-2026-118653 / GO-2026-6872).
+	// Trusts reverse proxy headers only from loopback, link-local, and private networks.
+	e.IPExtractor = echo.ExtractIPFromXFFHeader()
+
 	// Middlewares
 	e.Use(slogecho.NewWithFilters(
 		app.Logger.WithGroup("web"),

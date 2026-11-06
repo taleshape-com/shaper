@@ -36,6 +36,7 @@ export const FullscreenButton: React.FC<FullscreenButtonProps> = ({
           className,
         )}
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           onToggle();
         }}

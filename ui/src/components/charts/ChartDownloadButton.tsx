@@ -56,7 +56,11 @@ export const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
           "pointer-events-auto",
           className,
         )}
-        onClick={handleDownload}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleDownload();
+        }}
         title={translate("Save as image")}
         id={id}
       >

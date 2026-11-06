@@ -55,6 +55,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	nextLabel := ""
 	nextSubtitle := ""
 	nextClass := ""
+	nextLink := ""
+	nextLinkNewTab := false
 	hideNextContentSection := false
 	nextIsDownload := false
 	nextMarkLines := []MarkLine{}
@@ -157,6 +159,16 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			if classIndex >= 0 {
 				nextClass = formatClasses(getUnionStringValue(query.Rows, classIndex))
 			}
+			_, linkIndex := findColumnByTag(colTypes, "LINK")
+			if linkIndex >= 0 {
+				nextLink = getUnionStringValue(query.Rows, linkIndex)
+				nextLinkNewTab = false
+			}
+			_, linkNewTabIndex := findColumnByTag(colTypes, "LINK_NEWTAB")
+			if linkNewTabIndex >= 0 {
+				nextLink = getUnionStringValue(query.Rows, linkNewTabIndex)
+				nextLinkNewTab = true
+			}
 			continue
 		}
 
@@ -250,11 +262,18 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			c := nextClass
 			classValue = &c
 		}
+		var linkValue *string
+		if nextLink != "" {
+			l := nextLink
+			linkValue = &l
+		}
 		query.Render = Render{
 			Type:            rInfo.Type,
 			Label:           rInfo.Label,
 			Subtitle:        rInfo.Subtitle,
 			Class:           classValue,
+			Link:            linkValue,
+			LinkNewTab:      nextLinkNewTab,
 			GaugeCategories: rInfo.GaugeCategories,
 			MarkLines:       rInfo.MarkLines,
 		}
@@ -436,6 +455,8 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		nextLabel = ""
 		nextSubtitle = ""
 		nextClass = ""
+		nextLink = ""
+		nextLinkNewTab = false
 		nextMarkLines = []MarkLine{}
 	}
 	if err := conn.Close(); err != nil {
@@ -886,6 +907,7 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 	hasLabel := false
 	hasSubtitle := false
 	hasClass := false
+	hasLink := false
 	for _, c := range columns {
 		if isTag(c, "LABEL") {
 			if hasLabel {
@@ -902,11 +924,16 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 				return false
 			}
 			hasClass = true
+		} else if isTag(c, "LINK") || isTag(c, "LINK_NEWTAB") {
+			if hasLink {
+				return false
+			}
+			hasLink = true
 		} else {
 			return false
 		}
 	}
-	return hasLabel || hasSubtitle || hasClass
+	return hasLabel || hasSubtitle || hasClass || hasLink
 }
 
 func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
