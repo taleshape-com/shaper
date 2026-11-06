@@ -9,10 +9,22 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var defaultIPExtractor = echo.ExtractIPFromXFFHeader()
+
 // ExtractClientIP extracts the client IP address from echo.Context, handling reverse proxy headers with fallback to RemoteAddr.
+// If the Echo instance has an IPExtractor configured, it delegates to ctx.RealIP().
+// Otherwise, it uses a secure default extractor (ExtractIPFromXFFHeader) to prevent X-Forwarded-For spoofing.
 func ExtractClientIP(ctx echo.Context) string {
-	id := ctx.RealIP()
-	if id == "" {
+	if ctx == nil {
+		return ""
+	}
+	var id string
+	if ctx.Echo() != nil && ctx.Echo().IPExtractor != nil {
+		id = ctx.RealIP()
+	} else if ctx.Request() != nil {
+		id = defaultIPExtractor(ctx.Request())
+	}
+	if id == "" && ctx.Request() != nil {
 		host, _, err := net.SplitHostPort(ctx.Request().RemoteAddr)
 		if err == nil {
 			id = host
