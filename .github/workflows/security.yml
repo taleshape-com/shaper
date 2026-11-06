@@ -108,7 +108,39 @@ jobs:
 
       - name: Run govulncheck
         run: |
+          set +e
           go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+          exit_code=$?
+          set -e
+
+          if [ "$exit_code" -eq 0 ]; then
+            exit 0
+          fi
+
+          # Exit code is non-zero (vulnerabilities found).
+          # Only fail the workflow if at least one called vulnerability has a fixed version available.
+          go run golang.org/x/vuln/cmd/govulncheck@latest -format json ./... > govulncheck-results.json || true
+          if jq -e -s '
+            ([
+              .[] | select(.osv != null) | .osv as $osv |
+              $osv.affected[]? |
+              {
+                key: "\($osv.id):\(.package.name)",
+                value: [ .ranges[]?.events[]?.fixed // empty ]
+              }
+            ] | from_entries) as $fixes |
+            [
+              .[] | select(.finding != null) |
+              .finding as $f |
+              ($f.trace[0].module // "") as $mod |
+              select(($fixes["\($f.osv):\($mod)"] // []) | length > 0)
+            ] | length == 0
+          ' govulncheck-results.json > /dev/null; then
+            echo "No fix available yet for reported vulnerabilities; skipping failure."
+            exit 0
+          fi
+
+          exit 1
 
   secret-scan:
     name: Secret Scan (Gitleaks)

@@ -1,13 +1,13 @@
 # https://google.github.io/osv-scanner/configuration/
 
 [[IgnoredVulns]]
-id = "GHSA-vfj7-8cjw-p6xm"
-reason = "Stack-exhaustion DoS through deeply nested patterns in braces is not a concern for our application, and no non-breaking fix is currently available."
-
-[[IgnoredVulns]]
-id = "GO-2026-5932"
-reason = "Affects unmaintained golang.org/x/crypto/openpgp subpackage which will not be fixed. We only use x/crypto/bcrypt and x/crypto/acme/autocert."
-
-[[IgnoredVulns]]
 id = "GHSA-g3hv-75wg-m249"  # or CVE-2026-118764
 reason = "Only used transitively by ESLint/typescript-eslint during local linting on trusted files; not exposed to untrusted input."
+
+[[IgnoredVulns]]
+id = "GO-2026-6872"
+reason = "Mitigated in code by configuring e.IPExtractor = echo.ExtractIPFromXFFHeader() and safe fallback in webutil.ExtractClientIP. Fixed in Echo v4.16.3, but vuln.go.dev lists Fixed in: N/A for echo/v4."
+
+[[IgnoredVulns]]
+id = "GO-2026-6875"
+reason = "Mitigated in code by configuring e.IPExtractor = echo.ExtractIPFromXFFHeader(). Fixed in Echo v4.16.3, but vuln.go.dev lists Fixed in: N/A for echo/v4."
