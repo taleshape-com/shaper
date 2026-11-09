@@ -41,6 +41,7 @@ type GetResult struct {
 type Section struct {
 	Title    *string `json:"title"`
 	Subtitle *string `json:"subtitle,omitempty"`
+	Tooltip  *string `json:"tooltip,omitempty"`
 	Class    *string `json:"class,omitempty"`
 	Type     string  `json:"type"`
 	Queries  []Query `json:"queries"`
@@ -58,6 +59,7 @@ type Render struct {
 	Type            string          `json:"type"`
 	Label           *string         `json:"label"`
 	Subtitle        *string         `json:"subtitle,omitempty"`
+	Tooltip         *string         `json:"tooltip,omitempty"`
 	Class           *string         `json:"class,omitempty"`
 	Link            *string         `json:"link,omitempty"`
 	LinkNewTab      bool            `json:"linkNewTab,omitempty"`
@@ -82,6 +84,7 @@ type renderInfo struct {
 	Type            string
 	Label           *string
 	Subtitle        *string
+	Tooltip         *string
 	IndexAxisIndex  *int
 	ValueAxisIndex  *int
 	CategoryIndex   *int

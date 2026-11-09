@@ -29,6 +29,16 @@ import { TableDownloadButton } from "../charts/TableDownloadButton";
 import { FullscreenButton } from "./FullscreenButton";
 import TextWithLinks from "../TextWithLinks";
 import { isSafeUrl } from "../../lib/linkUtils";
+import DashboardTooltip from "./DashboardTooltip";
+
+function measureTextWidth (text: string, font: string): number {
+  if (typeof document === "undefined") return text.length * 9;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) return text.length * 9;
+  context.font = font;
+  return context.measureText(text).width;
+}
 
 export interface DashboardProps {
   id?: string;
@@ -438,26 +448,35 @@ const DataView = ({
                     key={sectionIndex}
                     id={toCssId(`header${sectionIndex}`)}
                     className={cx("shaper-section-header flex flex-wrap items-center ml-2 mr-4", {
-                      "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle,
-                      "mt-8": (header.title || header.subtitle) && sectionIndex !== 0,
-                      "my-2": header.queries.length === 0 && !header.title && !header.subtitle && sectionIndex === 0,
+                      "mt-3 mb-3": header.queries.length > 0 || header.title || header.subtitle || header.tooltip,
+                      "mt-8": (header.title || header.subtitle || header.tooltip) && sectionIndex !== 0,
+                      "my-2": header.queries.length === 0 && !header.title && !header.subtitle && !header.tooltip && sectionIndex === 0,
                       "pb-4": sectionIndex === sections.length - 1,
                     })}
                   >
                     <div
                       className={cx("@sm:flex-grow flex items-center ml-1", {
-                        "w-full @sm:w-fit": header.title || header.subtitle,
+                        "w-full @sm:w-fit": header.title || header.subtitle || header.tooltip,
                       })}
                     >
                       {sectionIndex === 0 ? (
                         <>
                           {menuButton}
-                          {header.title || header.subtitle ? (
+                          {header.title || header.subtitle || header.tooltip ? (
                             <div className="flex flex-col ml-1">
                               {header.title ? (
-                                <h1 className="shaper-section-title text-2xl text-left py-1 mt-0.5 font-semibold">
-                                  {header.title}
-                                </h1>
+                                <div className="flex items-center gap-2">
+                                  <h1 className="shaper-section-title text-2xl text-left py-1 mt-0.5 font-semibold">
+                                    {header.title}
+                                  </h1>
+                                  {header.tooltip ? (
+                                    <DashboardTooltip content={header.tooltip} size="md" />
+                                  ) : null}
+                                </div>
+                              ) : header.tooltip ? (
+                                <div className="py-1">
+                                  <DashboardTooltip content={header.tooltip} size="md" />
+                                </div>
                               ) : null}
                               {header.subtitle ? (
                                 <p className="shaper-section-subtitle text-sm text-ctext2 dark:text-dtext2 text-left -mt-0.5 mb-1">
@@ -467,12 +486,21 @@ const DataView = ({
                             </div>
                           ) : null}
                         </>
-                      ) : header.title || header.subtitle ? (
+                      ) : header.title || header.subtitle || header.tooltip ? (
                         <div className="flex flex-col ml-1">
                           {header.title ? (
-                            <h2 className="text-xl text-left mt-0.5 font-semibold">
-                              {header.title}
-                            </h2>
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-xl text-left mt-0.5 font-semibold">
+                                {header.title}
+                              </h2>
+                              {header.tooltip ? (
+                                <DashboardTooltip content={header.tooltip} size="md" />
+                              ) : null}
+                            </div>
+                          ) : header.tooltip ? (
+                            <div className="py-1">
+                              <DashboardTooltip content={header.tooltip} size="md" />
+                            </div>
                           ) : null}
                           {header.subtitle ? (
                             <p className="text-sm text-ctext2 dark:text-dtext2 text-left mt-0.5 mb-1">
@@ -581,22 +609,22 @@ const DataView = ({
                   className={cx("shaper-section-content grid grid-cols-1 ml-4", {
                     "@sm:grid-cols-2 print:grid-cols-2": numQueriesInSection > 1,
                     "@sm:grid-cols-3 print:grid-cols-3":
-                    numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
+                      numQueriesInSection === 3 && section.queries.every(q => q.render.type === "value"),
                     "@lg:grid-cols-2 print:grid-cols-2":
-                    numQueriesInSection === 2 ||
-                    (numContentSections === 1 && numQueriesInSection === 4),
+                      numQueriesInSection === 2 ||
+                      (numContentSections === 1 && numQueriesInSection === 4),
                     "@lg:grid-cols-3":
-                    numQueriesInSection > 4 ||
-                    numQueriesInSection === 3 ||
-                    (numQueriesInSection === 4 && numContentSections > 1),
+                      numQueriesInSection > 4 ||
+                      numQueriesInSection === 3 ||
+                      (numQueriesInSection === 4 && numContentSections > 1),
                     "@xl:grid-cols-4":
-                    (numQueriesInSection === 4 && numContentSections > 1) ||
-                    numQueriesInSection === 7 ||
-                    numQueriesInSection === 8 ||
-                    numQueriesInSection > 9,
+                      (numQueriesInSection === 4 && numContentSections > 1) ||
+                      numQueriesInSection === 7 ||
+                      numQueriesInSection === 8 ||
+                      numQueriesInSection > 9,
                     "@4xl:grid-cols-5":
-                    (numQueriesInSection === 5 && numContentSections > 1) ||
-                    numQueriesInSection >= 9,
+                      (numQueriesInSection === 5 && numContentSections > 1) ||
+                      numQueriesInSection >= 9,
                   })}
                 >
                   {section.queries.map((query, queryIndex) => {
@@ -625,9 +653,9 @@ const DataView = ({
                           cardLink && "cursor-pointer [&_*]:cursor-pointer no-underline text-inherit transition-all duration-150 hover:border-cprimary dark:hover:border-dprimary hover:shadow-sm",
                           queryTypeToCardCssClass(query.render.type),
                           query.render.class,
-                          "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
+                          "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col",
                           isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
-                            "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle,
+                            "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle && !query.render.tooltip,
                             "break-inside-avoid": !singleTable,
                             "min-h-[240px]": isChartQuery,
                             "@sm:min-h-[240px]": numQueriesInSection > 1 && (sectionHasBigChart || section.queries.some(q => q.render.type === "table")),
@@ -650,17 +678,17 @@ const DataView = ({
                             // 3 cols
                             "@lg:max-h-[calc(24cqw)]": sectionHasChart && (
                               numQueriesInSection > 4 ||
-                            numQueriesInSection === 3 ||
-                            (numQueriesInSection === 4 && numContentSections > 1)),
+                              numQueriesInSection === 3 ||
+                              (numQueriesInSection === 4 && numContentSections > 1)),
                             // 4 cols
                             "@xl:max-h-[calc(16cqw)]": sectionHasChart && (
                               (numQueriesInSection === 4 && numContentSections > 1) ||
-                            numQueriesInSection === 7 ||
-                            numQueriesInSection === 8 ||
-                            numQueriesInSection > 9),
+                              numQueriesInSection === 7 ||
+                              numQueriesInSection === 8 ||
+                              numQueriesInSection > 9),
                             // 5 cols
                             "@4xl:max-h-[calc(13cqw)]": sectionHasChart && (numQueriesInSection === 5 && numContentSections > 1) ||
-                            numQueriesInSection >= 9,
+                              numQueriesInSection >= 9,
                             // not height related:
                             "break-before-avoid": singleTable,
                             "p-4": !isChartQuery,
@@ -675,20 +703,67 @@ const DataView = ({
                           />
                         )}
                         {isChartQuery ? (
-                          <ChartDownloadButton
-                            chartId={`${sectionIndex}-${queryIndex}`}
-                            label={query.render.label}
-                            className={cx("absolute top-2 right-2 z-40", { "top-8 right-16": isFullscreen, "right-10": totalContentQueries > 1 && !isFullscreen })}
-                            id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
-                          />
+                          <>
+                            {query.render.tooltip && (
+                              <div
+                                className="absolute z-40"
+                                style={
+                                  query.render.label
+                                    ? {
+                                      top: isFullscreen ? "47px" : "15px",
+                                      left: `${(isFullscreen ? 48 : 16) + Math.round(measureTextWidth(query.render.label, "600 15px Geist, system-ui, -apple-system, sans-serif")) + 6}px`,
+                                    }
+                                    : {
+                                      top: isFullscreen ? "36px" : "13px",
+                                      right: isFullscreen
+                                        ? "104px"
+                                        : totalContentQueries > 1
+                                          ? "74px"
+                                          : "42px",
+                                    }
+                                }
+                              >
+                                <DashboardTooltip content={query.render.tooltip} size="sm" />
+                              </div>
+                            )}
+                            <ChartDownloadButton
+                              chartId={`${sectionIndex}-${queryIndex}`}
+                              label={query.render.label}
+                              className={cx("absolute top-2 right-2 z-40", { "top-8 right-16": isFullscreen, "right-10": totalContentQueries > 1 && !isFullscreen })}
+                              id={toCssId(`content${sectionIndex}-${cardCssId}-download-button`)}
+                            />
+                          </>
                         ) : (
                           <>
-                            {query.render.label && (
-                              <h2 className={cx("text-[15px] font-semibold font-display", cardLink && "group-hover:text-cprimary dark:group-hover:text-dprimary transition-colors", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
-                                {query.render.label}
-                              </h2>
-                            )}
-                            {query.render.subtitle && (
+                            {query.render.label ? (
+                              <div className={cx("flex items-center gap-1.5", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
+                                <h2 className="text-[15px] font-semibold font-display">
+                                  {query.render.label}
+                                </h2>
+                                {query.render.tooltip ? (
+                                  <DashboardTooltip
+                                    content={query.render.tooltip}
+                                    size="sm"
+                                  />
+                                ) : null}
+                              </div>
+                            ) : query.render.tooltip ? (
+                              <div
+                                className={cx(
+                                  "flex items-center pb-2",
+                                  query.render.subtitle ? "justify-between gap-2" : "justify-end",
+                                  query.render.type === "table" && "pr-16",
+                                )}
+                              >
+                                {query.render.subtitle ? (
+                                  <p className="text-sm text-ctext2 dark:text-dtext2">
+                                    <TextWithLinks text={query.render.subtitle} />
+                                  </p>
+                                ) : null}
+                                <DashboardTooltip content={query.render.tooltip} size="sm" />
+                              </div>
+                            ) : null}
+                            {query.render.subtitle && (query.render.label || !query.render.tooltip) && (
                               <p className="text-sm text-ctext2 dark:text-dtext2 pb-2">
                                 <TextWithLinks text={query.render.subtitle} />
                               </p>

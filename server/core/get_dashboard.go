@@ -54,6 +54,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	}
 	nextLabel := ""
 	nextSubtitle := ""
+	nextTooltip := ""
 	nextClass := ""
 	nextLink := ""
 	nextLinkNewTab := false
@@ -155,6 +156,10 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			if subtitleIndex >= 0 {
 				nextSubtitle = getUnionStringValue(query.Rows, subtitleIndex)
 			}
+			_, tooltipIndex := findColumnByTag(colTypes, "TOOLTIP")
+			if tooltipIndex >= 0 {
+				nextTooltip = getUnionStringValue(query.Rows, tooltipIndex)
+			}
 			_, classIndex := findColumnByTag(colTypes, "CLASS")
 			if classIndex >= 0 {
 				nextClass = formatClasses(getUnionStringValue(query.Rows, classIndex))
@@ -173,7 +178,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		}
 
 		if isSectionTitle(colTypes, query.Rows) {
-			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil || result.Sections[sLen-1].Subtitle != nil || result.Sections[sLen-1].Class != nil {
+			if sLen := len(result.Sections); sLen == 0 || result.Sections[sLen-1].Type != "header" || result.Sections[sLen-1].Title != nil || result.Sections[sLen-1].Subtitle != nil || result.Sections[sLen-1].Tooltip != nil || result.Sections[sLen-1].Class != nil {
 				result.Sections = append(result.Sections, Section{
 					Type:    "header",
 					Queries: []Query{},
@@ -202,6 +207,17 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				lastSection.Subtitle = nil
 			} else {
 				lastSection.Subtitle = &sectionSubtitle
+			}
+			_, tooltipIndex := findColumnByTag(colTypes, "TOOLTIP")
+			sectionTooltip := getUnionStringValue(query.Rows, tooltipIndex)
+			if sectionTooltip == "" && nextTooltip != "" {
+				sectionTooltip = nextTooltip
+				nextTooltip = ""
+			}
+			if sectionTooltip == "" {
+				lastSection.Tooltip = nil
+			} else {
+				lastSection.Tooltip = &sectionTooltip
 			}
 			_, classIndex := findColumnByTag(colTypes, "CLASS")
 			sectionClass := formatClasses(getUnionStringValue(query.Rows, classIndex))
@@ -256,7 +272,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextSubtitle, nextMarkLines)
+		rInfo := getRenderInfo(colTypes, query.Rows, nextLabel, nextSubtitle, nextTooltip, nextMarkLines)
 		var classValue *string
 		if nextClass != "" {
 			c := nextClass
@@ -271,6 +287,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			Type:            rInfo.Type,
 			Label:           rInfo.Label,
 			Subtitle:        rInfo.Subtitle,
+			Tooltip:         rInfo.Tooltip,
 			Class:           classValue,
 			Link:            linkValue,
 			LinkNewTab:      nextLinkNewTab,
@@ -454,6 +471,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 
 		nextLabel = ""
 		nextSubtitle = ""
+		nextTooltip = ""
 		nextClass = ""
 		nextLink = ""
 		nextLinkNewTab = false
@@ -509,6 +527,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 
 	nextLabel := ""
 	nextSubtitle := ""
+	nextTooltip := ""
 	nextMarkLines := []MarkLine{}
 	nextIsDownload := false
 	hideNextContentSection := false
@@ -553,6 +572,10 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			if subtitleIndex >= 0 {
 				nextSubtitle = getUnionStringValue(queryRows, subtitleIndex)
 			}
+			_, tooltipIndex := findColumnByTag(colTypes, "TOOLTIP")
+			if tooltipIndex >= 0 {
+				nextTooltip = getUnionStringValue(queryRows, tooltipIndex)
+			}
 			continue
 		}
 
@@ -573,7 +596,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			continue
 		}
 
-		rInfo := getRenderInfo(colTypes, queryRows, nextLabel, nextSubtitle, nextMarkLines)
+		rInfo := getRenderInfo(colTypes, queryRows, nextLabel, nextSubtitle, nextTooltip, nextMarkLines)
 
 		if rInfo.Download == "pdf" {
 			id := sourceDashboardId
@@ -611,6 +634,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 
 		nextLabel = ""
 		nextSubtitle = ""
+		nextTooltip = ""
 		nextMarkLines = []MarkLine{}
 	}
 
@@ -906,6 +930,7 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 	}
 	hasLabel := false
 	hasSubtitle := false
+	hasTooltip := false
 	hasClass := false
 	hasLink := false
 	for _, c := range columns {
@@ -919,6 +944,11 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 				return false
 			}
 			hasSubtitle = true
+		} else if isTag(c, "TOOLTIP") {
+			if hasTooltip {
+				return false
+			}
+			hasTooltip = true
 		} else if isTag(c, "CLASS") {
 			if hasClass {
 				return false
@@ -933,7 +963,7 @@ func isLabel(columns []*sql.ColumnType, rows Rows) bool {
 			return false
 		}
 	}
-	return hasLabel || hasSubtitle || hasClass || hasLink
+	return hasLabel || hasSubtitle || hasTooltip || hasClass || hasLink
 }
 
 func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
@@ -942,6 +972,7 @@ func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
 	}
 	hasSection := false
 	hasSubtitle := false
+	hasTooltip := false
 	hasClass := false
 	for _, c := range columns {
 		if isTag(c, "SECTION") {
@@ -954,6 +985,11 @@ func isSectionTitle(columns []*sql.ColumnType, rows Rows) bool {
 				return false
 			}
 			hasSubtitle = true
+		} else if isTag(c, "TOOLTIP") {
+			if hasTooltip {
+				return false
+			}
+			hasTooltip = true
 		} else if isTag(c, "CLASS") {
 			if hasClass {
 				return false
@@ -1053,7 +1089,7 @@ func getDownloadType(columns []*sql.ColumnType) string {
 	return ""
 }
 
-func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle string, markLines []MarkLine) renderInfo {
+func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle string, tooltip string, markLines []MarkLine) renderInfo {
 	var labelValue *string
 	if label != "" {
 		labelValue = &label
@@ -1061,6 +1097,10 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 	var subtitleValue *string
 	if subtitle != "" {
 		subtitleValue = &subtitle
+	}
+	var tooltipValue *string
+	if tooltip != "" {
+		tooltipValue = &tooltip
 	}
 	xaxis, xaxisIndex := findColumnByTag(columns, "XAXIS")
 
@@ -1082,6 +1122,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "linechart",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &linechartIndex,
@@ -1118,6 +1159,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "scatterplot",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &scatterplotIndex,
@@ -1148,6 +1190,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "barchartHorizontal",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartIndex,
@@ -1173,6 +1216,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "barchartHorizontalStacked",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
@@ -1192,6 +1236,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "barchartVertical",
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartIndex,
@@ -1209,6 +1254,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "barchartVerticalStacked",
 			IndexAxisIndex: &yaxisIndex,
 			ValueAxisIndex: &barchartStackedIndex,
@@ -1229,6 +1275,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:      labelValue,
 			Subtitle:   subtitleValue,
+			Tooltip:    tooltipValue,
 			Type:       "dropdown",
 			ValueIndex: &dropdownIndex,
 		}
@@ -1245,6 +1292,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:      labelValue,
 			Subtitle:   subtitleValue,
+			Tooltip:    tooltipValue,
 			Type:       "dropdownMulti",
 			ValueIndex: &dropdownMultiIndex,
 		}
@@ -1262,6 +1310,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		return renderInfo{
 			Label:      labelValue,
 			Subtitle:   subtitleValue,
+			Tooltip:    tooltipValue,
 			Type:       "datepicker",
 			ValueIndex: &datepickerIndex,
 		}
@@ -1273,6 +1322,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		return renderInfo{
 			Label:     labelValue,
 			Subtitle:  subtitleValue,
+			Tooltip:   tooltipValue,
 			Type:      "daterangePicker",
 			FromIndex: &daterangeFromIndex,
 			ToIndex:   &daterangeToIndex,
@@ -1290,6 +1340,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		return renderInfo{
 			Label:           labelValue,
 			Subtitle:        subtitleValue,
+			Tooltip:         tooltipValue,
 			Type:            "button",
 			Download:        downloadType,
 			DownloadIdIndex: downloadIdIndex,
@@ -1300,6 +1351,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		return renderInfo{
 			Label:    labelValue,
 			Subtitle: subtitleValue,
+			Tooltip:  tooltipValue,
 			Type:     "placeholder",
 		}
 	}
@@ -1423,6 +1475,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:           labelValue,
 			Subtitle:        subtitleValue,
+			Tooltip:         tooltipValue,
 			Type:            "gauge",
 			ValueAxisIndex:  &gaugeIndex,
 			GaugeCategories: categories,
@@ -1463,6 +1516,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           renderType,
 			ValueAxisIndex: &piechartIndex,
 		}
@@ -1481,6 +1535,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		r := renderInfo{
 			Label:          labelValue,
 			Subtitle:       subtitleValue,
+			Tooltip:        tooltipValue,
 			Type:           "boxplot",
 			IndexAxisIndex: &xaxisIndex,
 			ValueAxisIndex: &boxplotIndex,
@@ -1497,6 +1552,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		return renderInfo{
 			Label:     labelValue,
 			Subtitle:  subtitleValue,
+			Tooltip:   tooltipValue,
 			Type:      "input",
 			HintIndex: &inputTagIndex,
 		}
@@ -1521,6 +1577,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 			return renderInfo{
 				Label:      labelValue,
 				Subtitle:   subtitleValue,
+				Tooltip:    tooltipValue,
 				Type:       "value",
 				ValueSize:  valueSize,
 				ValueIndex: valueIndex,
@@ -1531,6 +1588,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 			return renderInfo{
 				Label:        labelValue,
 				Subtitle:     subtitleValue,
+				Tooltip:      tooltipValue,
 				CompareIndex: &compareTagIndex,
 				Type:         "value",
 				ValueSize:    valueSize,
@@ -1543,6 +1601,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 	r := renderInfo{
 		Label:    labelValue,
 		Subtitle: subtitleValue,
+		Tooltip:  tooltipValue,
 		Type:     "table",
 	}
 	if len(trendTagIndices) > 0 {

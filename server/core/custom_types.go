@@ -43,6 +43,7 @@ var dbTypes = []struct {
 	{"HINT", "UNION(\"hint_varchar\" VARCHAR)", "string"},
 	{"SECTION", "UNION(\"section_varchar\" VARCHAR)", "string"},
 	{"SUBTITLE", "UNION(\"subtitle_varchar\" VARCHAR)", "string"},
+	{"TOOLTIP", "UNION(\"tooltip_varchar\" VARCHAR)", "string"},
 	{"CLASS", "UNION(\"class_varchar\" VARCHAR)", "string"},
 	{"LINK", "UNION(\"link_varchar\" VARCHAR)", "string"},
 	{"LINK_NEWTAB", "UNION(\"link_newtab_varchar\" VARCHAR)", "string"},
