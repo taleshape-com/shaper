@@ -117,6 +117,7 @@ export type Result = {
       type: "header";
       title?: string;
       subtitle?: string;
+      tooltip?: string;
       class?: string;
       queries: {
         render: {
@@ -154,6 +155,7 @@ export type Result = {
           | "donutchart";
           label?: string;
           subtitle?: string;
+          tooltip?: string;
           class?: string;
           link?: string;
           linkNewTab?: boolean;
@@ -163,6 +165,7 @@ export type Result = {
           type: "gauge";
           label?: string;
           subtitle?: string;
+          tooltip?: string;
           class?: string;
           link?: string;
           linkNewTab?: boolean;
@@ -180,6 +183,7 @@ export type Result = {
           type: "boxplot";
           label?: string;
           subtitle?: string;
+          tooltip?: string;
           class?: string;
           link?: string;
           linkNewTab?: boolean;

@@ -454,7 +454,89 @@ func TestQueryDashboard(t *testing.T) {
 		assert.NotNil(t, q.Render.Label)
 		assert.Equal(t, "My Label", *q.Render.Label)
 		assert.NotNil(t, q.Render.Subtitle)
-		assert.Equal(t, "Explanation for chart", *q.Render.Subtitle)
+		assert.Equal(t, "This is my section", *result.Sections[0].Subtitle)
+	})
+
+	t.Run("Section and Label with Tooltip", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'My Section'::SECTION, 'Info about section'::TOOLTIP;
+				SELECT 'My Label'::LABEL, 'Tooltip details'::TOOLTIP;
+				SELECT 1::XAXIS, 10::LINECHART;
+			`,
+			ID: "test-section-label-tooltip",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		// Check Section Title and Tooltip
+		assert.Equal(t, "header", result.Sections[0].Type)
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "My Section", *result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Tooltip)
+		assert.Equal(t, "Info about section", *result.Sections[0].Tooltip)
+		assert.Nil(t, result.Sections[0].Subtitle)
+
+		// Check Render Label and Tooltip on linechart query
+		assert.Equal(t, "content", result.Sections[1].Type)
+		assert.Equal(t, 1, len(result.Sections[1].Queries))
+		q := result.Sections[1].Queries[0]
+		assert.Equal(t, "linechart", q.Render.Type)
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "My Label", *q.Render.Label)
+		assert.NotNil(t, q.Render.Tooltip)
+		assert.Equal(t, "Tooltip details", *q.Render.Tooltip)
+		assert.Nil(t, q.Render.Subtitle)
+	})
+
+	t.Run("Section and Label with Subtitle and Tooltip with markdown links", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Overview'::SECTION, 'Section subtitle'::SUBTITLE, 'Section info with [link](https://example.com)'::TOOLTIP;
+				SELECT 'Metrics'::LABEL, 'Metric subtitle'::SUBTITLE, 'Detailed documentation at [docs](https://docs.example.com)'::TOOLTIP;
+				SELECT 42;
+			`,
+			ID: "test-subtitle-tooltip-links",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result.Sections))
+
+		assert.NotNil(t, result.Sections[0].Title)
+		assert.Equal(t, "Overview", *result.Sections[0].Title)
+		assert.NotNil(t, result.Sections[0].Subtitle)
+		assert.Equal(t, "Section subtitle", *result.Sections[0].Subtitle)
+		assert.NotNil(t, result.Sections[0].Tooltip)
+		assert.Equal(t, "Section info with [link](https://example.com)", *result.Sections[0].Tooltip)
+
+		q := result.Sections[1].Queries[0]
+		assert.Equal(t, "value", q.Render.Type)
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "Metrics", *q.Render.Label)
+		assert.NotNil(t, q.Render.Subtitle)
+		assert.Equal(t, "Metric subtitle", *q.Render.Subtitle)
+		assert.NotNil(t, q.Render.Tooltip)
+		assert.Equal(t, "Detailed documentation at [docs](https://docs.example.com)", *q.Render.Tooltip)
+	})
+
+	t.Run("Card with separate TOOLTIP query", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Card Label'::LABEL;
+				SELECT 'Separate tooltip text'::TOOLTIP;
+				SELECT 100;
+			`,
+			ID: "test-separate-tooltip",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		q := result.Sections[0].Queries[0]
+		assert.NotNil(t, q.Render.Label)
+		assert.Equal(t, "Card Label", *q.Render.Label)
+		assert.NotNil(t, q.Render.Tooltip)
+		assert.Equal(t, "Separate tooltip text", *q.Render.Tooltip)
 	})
 
 	t.Run("Section and Label with Class", func(t *testing.T) {
