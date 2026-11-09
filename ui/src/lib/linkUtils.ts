@@ -43,6 +43,20 @@ export const isSafeUrl = (url: string): boolean => {
   }
 };
 
+// Check if a URL is relative or query-only (e.g. /..., ./..., ../..., ?...)
+// Note: In-page fragment/hash links (#...) are excluded because Chromium converts them
+// into native internal PDF destinations (/Dest) that jump to sections within the PDF.
+export const isRelativeOrQueryUrl = (url: string): boolean => {
+  if (!url) return false;
+  const trimmed = url.trim();
+  return (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("./") ||
+    trimmed.startsWith("../") ||
+    trimmed.startsWith("?")
+  );
+};
+
 // Parses extended markdown attributes e.g. {target="_blank" rel="noopener"}
 // Strictly limited to `target` and `rel` attributes; ignores all other attributes.
 export const parseLinkAttributes = (

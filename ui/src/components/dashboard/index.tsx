@@ -28,7 +28,7 @@ import { ChartDownloadButton } from "../charts/ChartDownloadButton";
 import { TableDownloadButton } from "../charts/TableDownloadButton";
 import { FullscreenButton } from "./FullscreenButton";
 import TextWithLinks from "../TextWithLinks";
-import { isSafeUrl } from "../../lib/linkUtils";
+import { isSafeUrl, isRelativeOrQueryUrl } from "../../lib/linkUtils";
 import DashboardTooltip from "./DashboardTooltip";
 
 function measureTextWidth (text: string, font: string): number {
@@ -639,7 +639,8 @@ const DataView = ({
                     const sectionHasBigChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value" && q.render.type !== "gauge" && q.render.type !== "piechart" && q.render.type !== "donutchart");
                     const sectionHasChart = section.queries.some(q => q.render.type !== "table" && q.render.type !== "value");
                     const cardCssId = query.render.label || `${query.render.type}${queryIndex}`;
-                    const cardLink = !isFullscreen && query.render.link && isSafeUrl(query.render.link) ? query.render.link : undefined;
+                    const isPdf = getRenderMode() === "pdf";
+                    const cardLink = !isFullscreen && query.render.link && isSafeUrl(query.render.link) && (!isPdf || !isRelativeOrQueryUrl(query.render.link)) ? query.render.link : undefined;
                     return (
                       <Card
                         key={queryIndex}

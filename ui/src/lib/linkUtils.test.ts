@@ -3,6 +3,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isSafeUrl,
+  isRelativeOrQueryUrl,
   parseLinkAttributes,
   trimBareUrl,
   splitTextAndUrls,
@@ -38,6 +39,24 @@ describe("isSafeUrl", () => {
     expect(isSafeUrl("https://")).toBe(false);
     expect(isSafeUrl("https:// example.com")).toBe(false);
     expect(isSafeUrl("javascript:void(0)")).toBe(false);
+  });
+});
+
+describe("isRelativeOrQueryUrl", () => {
+  it("identifies relative paths and query strings", () => {
+    expect(isRelativeOrQueryUrl("/dashboards/123")).toBe(true);
+    expect(isRelativeOrQueryUrl("./subpath")).toBe(true);
+    expect(isRelativeOrQueryUrl("../parent/view")).toBe(true);
+    expect(isRelativeOrQueryUrl("?country=US")).toBe(true);
+    expect(isRelativeOrQueryUrl("   ?tab=1   ")).toBe(true);
+  });
+
+  it("returns false for fragment hashes, absolute URLs, and empty strings", () => {
+    expect(isRelativeOrQueryUrl("#kpi")).toBe(false);
+    expect(isRelativeOrQueryUrl("https://example.com")).toBe(false);
+    expect(isRelativeOrQueryUrl("http://localhost:3000")).toBe(false);
+    expect(isRelativeOrQueryUrl("mailto:support@taleshape.com")).toBe(false);
+    expect(isRelativeOrQueryUrl("")).toBe(false);
   });
 });
 

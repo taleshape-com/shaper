@@ -99,6 +99,7 @@ func StreamDashboardPdf(
 		}),
 		// Set margin-top if header image is set to avoid overlap
 		// Also remove header and footer elements as we use PDF header+footer
+		// Remove href from relative and query-only links so Chrome does not generate dead/internal PDF link annotations
 		chromedp.Evaluate[chromedp.Void](`
 			const el = document.querySelector('.shaper-scope .shaper-custom-dashboard-header');
 			if (el && el.getAttribute('data-header-image')) {
@@ -110,6 +111,13 @@ func StreamDashboardPdf(
 			if (header) header.remove();
 			const footer = document.querySelector('.shaper-scope .shaper-custom-dashboard-footer');
 			if (footer) footer.remove();
+
+			document.querySelectorAll('a[href]').forEach(a => {
+				const href = (a.getAttribute('href') || '').trim();
+				if (href.startsWith('?') || href.startsWith('/') || href.startsWith('.')) {
+					a.removeAttribute('href');
+				}
+			});
 		`),
 		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			h, err := header(headerImage)
