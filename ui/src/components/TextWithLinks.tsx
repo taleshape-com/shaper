@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import React from "react";
-import { splitTextAndUrls, FAST_CHECK_REGEX } from "../lib/linkUtils";
+import { splitTextAndUrls, FAST_CHECK_REGEX, isRelativeOrQueryUrl } from "../lib/linkUtils";
+import { getRenderMode } from "../lib/utils";
 
 // Component to render text with clickable links and line breaks
 export const TextWithLinks: React.FC<{ text?: string | null; className?: string }> = ({ text, className }) => {
@@ -14,11 +15,15 @@ export const TextWithLinks: React.FC<{ text?: string | null; className?: string 
   }
 
   const parts = splitTextAndUrls(text);
+  const isPdf = getRenderMode() === "pdf";
 
   return (
     <span className={className}>
       {parts.map((part, index) => {
         if (part.type === "url" && part.href) {
+          if (isPdf && isRelativeOrQueryUrl(part.href)) {
+            return <span key={index}>{part.content}</span>;
+          }
           return (
             <a
               key={index}

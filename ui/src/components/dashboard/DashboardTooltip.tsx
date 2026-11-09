@@ -127,6 +127,7 @@ export const DashboardTooltip: React.FC<DashboardTooltipProps> = ({
           className={cx(
             "shaper-tooltip-anchor shaper-tooltip-trigger inline-flex items-center justify-center shrink-0 cursor-pointer rounded text-ctext2 dark:text-dtext2 hover:text-ctext hover:dark:text-dtext transition-colors",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cring focus-visible:dark:ring-dring",
+            "print:hidden",
             className,
           )}
         >
