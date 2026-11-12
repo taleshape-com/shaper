@@ -58,9 +58,7 @@ type AppsResponse struct {
 
 // SchemaResponse represents the database schema.
 type SchemaResponse struct {
-	Databases  []Database  `json:"databases"`
-	Extensions []Extension `json:"extensions,omitempty"`
-	Secrets    []Secret    `json:"secrets,omitempty"`
+	Databases []Database `json:"databases"`
 }
 
 // Database represents a database in the schema.
@@ -118,16 +116,3 @@ type Enum struct {
 	Values []string `json:"values"`
 }
 
-// Extension represents a DuckDB extension.
-type Extension struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-}
-
-// Secret represents a DuckDB secret.
-type Secret struct {
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	Provider string   `json:"provider"`
-	Scope    []string `json:"scope,omitempty"`
-}
