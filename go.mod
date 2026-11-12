@@ -25,7 +25,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/stretchr/testify v1.12.1
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
-	github.com/xuri/excelize/v2 v2.11.1-0.20261007082036-efb59188b3f5
+	github.com/xuri/excelize/v2 v2.11.1
 	golang.org/x/crypto v0.58.1-0.20261105095718-a1058eb15227
 	golang.org/x/mod v0.42.0
 	golang.org/x/time v0.16.0
@@ -85,7 +85,7 @@ require (
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/xuri/efp v0.0.2 // indirect
+	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
