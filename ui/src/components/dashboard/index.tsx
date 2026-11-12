@@ -654,7 +654,7 @@ const DataView = ({
                           cardLink && "cursor-pointer [&_*]:cursor-pointer no-underline text-inherit transition-all duration-150 hover:border-cprimary dark:hover:border-dprimary hover:shadow-sm",
                           queryTypeToCardCssClass(query.render.type),
                           query.render.class,
-                          "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col",
+                          "mr-4 mb-4 bg-cbg dark:bg-dbg border border-cbga rounded flex flex-col group",
                           isFullscreen ? "absolute inset-0 z-[100] m-0 h-full w-full overflow-auto p-8 border-none" : {
                             "border-none": numQueriesInSection === 1 && !query.render.label && !query.render.subtitle && !query.render.tooltip,
                             "break-inside-avoid": !singleTable,
@@ -738,7 +738,7 @@ const DataView = ({
                           <>
                             {query.render.label ? (
                               <div className={cx("flex items-center gap-1.5", { "pb-2": !query.render.subtitle, "pb-0.5": !!query.render.subtitle })}>
-                                <h2 className="text-[15px] font-semibold font-display">
+                                <h2 className={cx("text-[15px] font-semibold font-display", cardLink && "group-hover:text-cprimary dark:group-hover:text-dprimary transition-colors")}>
                                   {query.render.label}
                                 </h2>
                                 {query.render.tooltip ? (
