@@ -280,6 +280,30 @@ func TestQueryDashboard(t *testing.T) {
 		assert.Equal(t, int64(1785844800000), result.ReloadAt) // 2026-08-04 12:00:00 UTC = 1785844800000 ms
 	})
 
+	t.Run("VARCHAR and int in YLINE and XLINE", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+				SELECT 'Target Category'::YLINE;
+				SELECT 10.0::BARCHART AS bval, 'Cat A'::YAXIS AS y;
+				SELECT 100::XLINE;
+				SELECT 1::XAXIS AS x, 20.0::LINECHART AS val;
+			`,
+			ID: "test-varchar-yline",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, len(result.Sections), 1)
+		q1 := result.Sections[0].Queries[0]
+		assert.Equal(t, 1, len(q1.Render.MarkLines))
+		assert.True(t, q1.Render.MarkLines[0].IsYaxis)
+		assert.Equal(t, "Target Category", q1.Render.MarkLines[0].Value)
+
+		q2 := result.Sections[0].Queries[1]
+		assert.Equal(t, 1, len(q2.Render.MarkLines))
+		assert.False(t, q2.Render.MarkLines[0].IsYaxis)
+		assert.Equal(t, float64(100), q2.Render.MarkLines[0].Value)
+	})
+
 	t.Run("Rejects invalid variable names in token variables", func(t *testing.T) {
 		dq := DashboardQuery{
 			Content: "SELECT 1 AS val",

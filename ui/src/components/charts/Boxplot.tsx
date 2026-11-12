@@ -7,7 +7,15 @@ import type {
   ScatterSeriesOption,
   LineSeriesOption,
 } from "echarts/charts";
-import { getThemeColors, getChartFont, getDisplayFont, toSingleLine } from "../../lib/chartUtils";
+import {
+  getThemeColors,
+  getChartFont,
+  getDisplayFont,
+  toSingleLine,
+  extractMarkLineNumber,
+  getMarkLineAxisBounds,
+  getMarkLineLabelAlignment,
+} from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
 import { DarkModeContext } from "../../contexts/DarkModeContext";
@@ -95,7 +103,32 @@ const Boxplot = (props: BoxplotProps) => {
     const displayFont = getDisplayFont(chartId);
     const cleanXAxisLabel = toSingleLine(xAxisLabel);
     const cleanYAxisLabel = toSingleLine(yAxisLabel);
-    const cleanXData = xData.map(toSingleLine);
+    let cleanXData = xData.map(toSingleLine);
+
+    const yLineValues: number[] = [];
+    if (markLines && markLines.length > 0) {
+      const existingX = new Set(cleanXData);
+      const missingX: string[] = [];
+      for (const m of markLines) {
+        if (m.isYAxis) {
+          const num = extractMarkLineNumber(m.value, false);
+          if (num !== undefined) yLineValues.push(num);
+        } else {
+          const v = isDatableType(indexType)
+            ? toSingleLine(new Date(m.value).toUTCString())
+            : toSingleLine(String(m.value));
+          if (!existingX.has(v)) {
+            existingX.add(v);
+            missingX.push(v);
+          }
+        }
+      }
+      if (missingX.length > 0) {
+        cleanXData = [...cleanXData, ...missingX];
+      }
+    }
+
+    const yAxisBounds = getMarkLineAxisBounds(yLineValues, { scale: false });
 
     // Set up chart options
     const series: (BoxplotSeriesOption | ScatterSeriesOption | LineSeriesOption)[] = [
@@ -161,15 +194,23 @@ const Boxplot = (props: BoxplotProps) => {
         type: "line",
         markLine: {
           silent: true,
+          animation: false,
           symbol: "none",
           data: markLines.map(m => {
-            const v = m.isYAxis ? m.value
+            const num = extractMarkLineNumber(m.value, false);
+            const v = m.isYAxis ? (num !== undefined ? num : m.value)
               : isDatableType(indexType)
-                ? new Date(m.value).toUTCString()
-                : m.value.toString();
+                ? toSingleLine(new Date(m.value).toUTCString())
+                : toSingleLine(m.value.toString());
+            const alignment = !m.isYAxis
+              ? getMarkLineLabelAlignment(v, {
+                isContinuous: false,
+                categories: cleanXData,
+              })
+              : undefined;
             return {
               xAxis: m.isYAxis ? undefined : v as number | string,
-              yAxis: m.isYAxis ? v as number : undefined,
+              yAxis: m.isYAxis ? (num !== undefined ? num : v as number) : undefined,
               symbol: m.isYAxis ? "none" : "circle",
               symbolSize: 6.5,
               lineStyle: {
@@ -183,6 +224,8 @@ const Boxplot = (props: BoxplotProps) => {
                 formatter: m.label,
                 position: m.isYAxis ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
                 distance: m.isYAxis ? 1.5 : multiEventLines ? 5 : 3.8,
+                align: !m.isYAxis ? alignment?.align : undefined,
+                padding: !m.isYAxis ? alignment?.padding : undefined,
                 color: textColorSecondary,
                 fontFamily: chartFont,
                 fontWeight: 500,
@@ -230,6 +273,8 @@ const Boxplot = (props: BoxplotProps) => {
         d.some((v) => typeof v === "number" && !isNaN(v)),
     );
     const isEmpty = !hasValidData;
+    const hasMarkLines = Boolean(markLines && markLines.length > 0);
+    const isCompletelyEmpty = isEmpty && !hasMarkLines;
 
     return {
       color: cleanXData.map((_, i) => colorByIndex.get(i) || primaryColor),
@@ -356,19 +401,19 @@ const Boxplot = (props: BoxplotProps) => {
       },
       xAxis: {
         type: "category",
-        data: isEmpty ? ["", "", "", "", ""] : cleanXData,
+        data: isCompletelyEmpty ? ["", "", "", "", ""] : (cleanXData.length === 0 ? [""] : cleanXData),
         show: true,
         axisLabel: {
           show: true,
           showMinLabel: true,
           showMaxLabel: true,
           formatter: (value: string) => {
-            if (isEmpty) {
+            if (isCompletelyEmpty) {
               return " ";
             }
             return toSingleLine(indexFormatter(decodeIndexValue(value, indexType), shortenLabel));
           },
-          color: isEmpty ? "transparent" : textColorSecondary,
+          color: isCompletelyEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           interval: cleanXData.length > 0 && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * cleanXData.length / (chartWidth / 80)) : undefined,
@@ -416,19 +461,19 @@ const Boxplot = (props: BoxplotProps) => {
       },
       yAxis: {
         type: "value" as const,
-        min: isEmpty ? 0 : undefined,
-        max: isEmpty ? 4 : undefined,
-        interval: isEmpty ? 1 : undefined,
+        min: isCompletelyEmpty ? 0 : yAxisBounds.min,
+        max: isCompletelyEmpty ? 4 : yAxisBounds.max,
+        interval: isCompletelyEmpty ? 1 : undefined,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            if (isEmpty) {
+            if (isCompletelyEmpty) {
               return "000";
             }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: isEmpty ? "transparent" : textColorSecondary,
+          color: isCompletelyEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
@@ -477,7 +522,7 @@ const Boxplot = (props: BoxplotProps) => {
           textAlign: "center",
         },
       },
-      series: isEmpty ? [] : series,
+      series: isCompletelyEmpty ? [] : series,
     };
   }, [
     data,

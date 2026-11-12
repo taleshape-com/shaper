@@ -9,6 +9,9 @@ import {
   getChartFont,
   getDisplayFont,
   toSingleLine,
+  extractMarkLineNumber,
+  getMarkLineAxisBounds,
+  getMarkLineLabelAlignment,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -97,6 +100,43 @@ const Scatterplot = (props: ScatterplotProps) => {
     const isNumericData = indexType === "number" || indexType === "percent";
     const isContinuousData = isTimestampData || isNumericData;
 
+    const yLineValues: number[] = [];
+    const xLineValues: number[] = [];
+    if (markLines) {
+      for (const m of markLines) {
+        if (m.isYAxis) {
+          const num = extractMarkLineNumber(m.value, false);
+          if (num !== undefined) yLineValues.push(num);
+        } else {
+          const num = extractMarkLineNumber(m.value, isTimestampData);
+          if (num !== undefined) xLineValues.push(num);
+        }
+      }
+    }
+
+    let dataCopy = data;
+    if (!isContinuousData && markLines && markLines.length > 0) {
+      const existingX = new Set(data.map((item) => String(item[index])));
+      const missingXLines: Record<string, any>[] = [];
+      for (const m of markLines) {
+        if (!m.isYAxis) {
+          const catVal = String(m.value);
+          if (!existingX.has(catVal)) {
+            existingX.add(catVal);
+            missingXLines.push({ [index]: catVal });
+          }
+        }
+      }
+      if (missingXLines.length > 0) {
+        dataCopy = [...data, ...missingXLines];
+      }
+    }
+
+    const yAxisBounds = getMarkLineAxisBounds(yLineValues, { scale: false });
+    const xAxisBounds = isContinuousData
+      ? getMarkLineAxisBounds(xLineValues, { scale: isNumericData, isTime: isTimestampData })
+      : { min: undefined, max: undefined };
+
     // Set up chart options
     const series: ScatterSeriesOption[] = [];
     cleanCategories.forEach((category, catIndex) => {
@@ -114,7 +154,7 @@ const Scatterplot = (props: ScatterplotProps) => {
               ? { value: [item[index], val], itemStyle: { color: sc } }
               : [item[index], val];
           })
-          : data.map((item) => {
+          : dataCopy.map((item) => {
             const sc = safeColor(item._color);
             const val = item[category] ?? item[origCategory];
             return sc && val != null
@@ -150,6 +190,15 @@ const Scatterplot = (props: ScatterplotProps) => {
           foundEventLine = true;
         }
       }
+
+      const xCategories = !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
+      const dataXNumbers = isContinuousData
+        ? data.map((item) => extractMarkLineNumber(item[index], isTimestampData)).filter((n): n is number => n !== undefined)
+        : [];
+      const allXValues = isContinuousData ? [...dataXNumbers, ...xLineValues] : [];
+      const continuousXMin = allXValues.length > 0 ? Math.min(...allXValues) : undefined;
+      const continuousXMax = allXValues.length > 0 ? Math.max(...allXValues) : undefined;
+
       series.push({
         type: "scatter" as const,
         markLine: {
@@ -157,9 +206,18 @@ const Scatterplot = (props: ScatterplotProps) => {
           animation: false,
           symbol: "none",
           data: markLines.map(m => {
+            const num = extractMarkLineNumber(m.value, false);
+            const alignment = !m.isYAxis
+              ? getMarkLineLabelAlignment(m.value, {
+                isContinuous: isContinuousData,
+                categories: xCategories,
+                min: continuousXMin,
+                max: continuousXMax,
+              })
+              : undefined;
             return {
-              xAxis: m.isYAxis ? undefined : m.value,
-              yAxis: m.isYAxis ? m.value : undefined,
+              xAxis: m.isYAxis ? undefined : (!isContinuousData ? String(m.value) : m.value),
+              yAxis: m.isYAxis ? (num !== undefined ? num : m.value) : undefined,
               symbol: m.isYAxis ? "none" : "circle",
               symbolSize: 6.5,
               lineStyle: {
@@ -172,6 +230,8 @@ const Scatterplot = (props: ScatterplotProps) => {
                 formatter: m.label,
                 position: m.isYAxis ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
                 distance: m.isYAxis ? 1.5 : multiEventLines ? 5 : 3.8,
+                align: !m.isYAxis ? alignment?.align : undefined,
+                padding: !m.isYAxis ? alignment?.padding : undefined,
                 color: textColorSecondary,
                 fontFamily: chartFont,
                 fontWeight: 500,
@@ -211,7 +271,7 @@ const Scatterplot = (props: ScatterplotProps) => {
       }
     }
     const spaceForXaxisLabel = 10 + (cleanXAxisLabel ? 25 : 0);
-    const xData = !isContinuousData ? data.map((item) => item[index]) : undefined;
+    const xData = !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
     const rawCustomValues = isContinuousData
       ? Array.from(new Set(data.map((item) => item[index]).filter((val) => val != null))).sort((a, b) => {
         const numA = typeof a === "number" ? a : new Date(a).getTime();
@@ -233,7 +293,9 @@ const Scatterplot = (props: ScatterplotProps) => {
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
     const isEmpty = data.length === 0;
-    const customValues = hasManyLabels || isEmpty ? undefined : rawCustomValues;
+    const hasMarkLines = Boolean(markLines && markLines.length > 0);
+    const isCompletelyEmpty = isEmpty && !hasMarkLines;
+    const customValues = hasManyLabels || isCompletelyEmpty ? undefined : rawCustomValues;
 
     return {
       title: {
@@ -428,7 +490,7 @@ const Scatterplot = (props: ScatterplotProps) => {
         },
       },
       legend: {
-        show: showLegend,
+        show: !isEmpty && showLegend,
         data: cleanCategories,
         selectedMode: false,
         type: canFitLegendItems ? "plain" : "scroll",
@@ -478,28 +540,30 @@ const Scatterplot = (props: ScatterplotProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: isEmpty
+        type: isCompletelyEmpty
           ? ("category" as const)
           : isTimestampData
             ? ("time" as const)
             : isNumericData
               ? ("value" as const)
               : ("category" as const),
-        data: isEmpty ? ["", "", "", "", ""] : xData,
+        data: isCompletelyEmpty ? ["", "", "", "", ""] : isContinuousData ? undefined : (isEmpty && (!xData || xData.length === 0) ? [""] : xData),
+        min: isContinuousData ? xAxisBounds.min : undefined,
+        max: isContinuousData ? xAxisBounds.max : undefined,
         show: true,
-        scale: !isEmpty && isNumericData ? true : undefined,
+        scale: !isCompletelyEmpty && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           customValues,
           showMinLabel: true,
           showMaxLabel: true,
           formatter: (value: any) => {
-            if (isEmpty) {
+            if (isCompletelyEmpty) {
               return " ";
             }
             return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, shortenLabel));
           },
-          color: isEmpty ? "transparent" : textColorSecondary,
+          color: isCompletelyEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
@@ -549,19 +613,19 @@ const Scatterplot = (props: ScatterplotProps) => {
       },
       yAxis: {
         type: "value" as const,
-        min: isEmpty ? 0 : undefined,
-        max: isEmpty ? 4 : undefined,
-        interval: isEmpty ? 1 : undefined,
+        min: isCompletelyEmpty ? 0 : yAxisBounds.min,
+        max: isCompletelyEmpty ? 4 : yAxisBounds.max,
+        interval: isCompletelyEmpty ? 1 : undefined,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            if (isEmpty) {
+            if (isCompletelyEmpty) {
               return "000";
             }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: isEmpty ? "transparent" : textColorSecondary,
+          color: isCompletelyEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           padding: [4, 8, 4, 8],
           hideOverlap: true,
@@ -614,7 +678,7 @@ const Scatterplot = (props: ScatterplotProps) => {
           textAlign: "center",
         },
       },
-      series: isEmpty ? [] : series,
+      series: isCompletelyEmpty ? [] : series,
     };
   }, [
     data,

@@ -1047,6 +1047,12 @@ func getMarkLines(columns []*sql.ColumnType, rows Rows) ([]MarkLine, bool) {
 				continue
 			}
 			line.Value = val
+		case int64:
+			line.Value = float64(val)
+		case int32:
+			line.Value = float64(val)
+		case int:
+			line.Value = float64(val)
 		case time.Time:
 			if strings.HasSuffix(u.Tag, "_time") {
 				line.Value = formatTime(val)
