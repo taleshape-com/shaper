@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 module shaper
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/chromedp/cdproto v0.158.6

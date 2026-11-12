@@ -9,6 +9,9 @@ import {
   getChartFont,
   getDisplayFont,
   toSingleLine,
+  extractMarkLineNumber,
+  getMarkLineAxisBounds,
+  getMarkLineLabelAlignment,
 } from "../../lib/chartUtils";
 import { cx } from "../../lib/utils";
 import { ChartHoverContext } from "../../contexts/ChartHoverContext";
@@ -114,6 +117,82 @@ const BarChart = (props: BarChartProps) => {
       });
     }
 
+    if (markLines && markLines.length > 0) {
+      if (layout === "vertical") {
+        // In vertical layout, Y is the category/index axis
+        const existingY = new Set(dataCopy.map((item) => String(item[index])));
+        const missingYLines: Record<string, any>[] = [];
+        for (const m of markLines) {
+          if (m.isYAxis) {
+            let catVal: string;
+            if (isDatableType(indexType)) {
+              const d = new Date(m.value);
+              catVal = isNaN(d.getTime()) ? String(m.value) : d.toISOString();
+            } else {
+              catVal = String(m.value);
+            }
+            if (!existingY.has(catVal)) {
+              existingY.add(catVal);
+              missingYLines.push({ [index]: catVal });
+            }
+          }
+        }
+        if (missingYLines.length > 0) {
+          dataCopy = [...dataCopy, ...missingYLines];
+        }
+      } else {
+        // In horizontal layout, X is the category axis if !isContinuousData
+        if (!isContinuousData) {
+          const existingX = new Set(dataCopy.map((item) => String(item[index])));
+          const missingXLines: Record<string, any>[] = [];
+          for (const m of markLines) {
+            if (!m.isYAxis) {
+              const catVal = String(m.value);
+              if (!existingX.has(catVal)) {
+                existingX.add(catVal);
+                missingXLines.push({ [index]: catVal });
+              }
+            }
+          }
+          if (missingXLines.length > 0) {
+            dataCopy = [...dataCopy, ...missingXLines];
+          }
+        }
+      }
+    }
+
+    const yLineValues: number[] = [];
+    const xLineValues: number[] = [];
+    if (markLines) {
+      for (const m of markLines) {
+        if (layout === "horizontal") {
+          if (m.isYAxis) {
+            const num = extractMarkLineNumber(m.value, false);
+            if (num !== undefined) yLineValues.push(num);
+          } else if (isContinuousData) {
+            const num = extractMarkLineNumber(m.value, isTimestampData);
+            if (num !== undefined) xLineValues.push(num);
+          }
+        } else {
+          // layout === "vertical"
+          if (!m.isYAxis) {
+            const num = extractMarkLineNumber(m.value, false);
+            if (num !== undefined) xLineValues.push(num);
+          }
+        }
+      }
+    }
+
+    const yAxisBounds = layout === "horizontal"
+      ? getMarkLineAxisBounds(yLineValues, { scale: false })
+      : { min: undefined, max: undefined };
+
+    const xAxisBounds = layout === "vertical"
+      ? getMarkLineAxisBounds(xLineValues, { scale: false })
+      : isContinuousData
+        ? getMarkLineAxisBounds(xLineValues, { scale: isNumericData, isTime: isTimestampData })
+        : { min: undefined, max: undefined };
+
     // Set up chart options
     const series: BarSeriesOption[] = cleanCategories.map((category, catIndex) => {
       const origCategory = categories[catIndex] ?? category;
@@ -155,8 +234,7 @@ const BarChart = (props: BarChartProps) => {
       let foundEventLine = false;
       let multiEventLines = false;
       for (const m of markLines) {
-        const isEventLine = !m.isYAxis && layout === "horizontal";
-        if (isEventLine) {
+        if (!m.isYAxis) {
           if (foundEventLine) {
             multiEventLines = true;
             break;
@@ -164,6 +242,33 @@ const BarChart = (props: BarChartProps) => {
           foundEventLine = true;
         }
       }
+
+      const xCategories = layout === "horizontal" && !isContinuousData ? dataCopy.map((item) => item[index]) : undefined;
+      let continuousXMin: number | undefined;
+      let continuousXMax: number | undefined;
+      if (layout === "horizontal" && isContinuousData) {
+        const dataXNumbers = dataCopy.map((item) => extractMarkLineNumber(item[index], isTimestampData)).filter((n): n is number => n !== undefined);
+        const allXValues = [...dataXNumbers, ...xLineValues];
+        if (allXValues.length > 0) {
+          continuousXMin = Math.min(...allXValues);
+          continuousXMax = Math.max(...allXValues);
+        }
+      } else if (layout === "vertical") {
+        const valNumbers: number[] = [];
+        dataCopy.forEach((item) => {
+          cleanCategories.forEach((cat, idx) => {
+            const origCat = categories[idx] ?? cat;
+            const val = item[cat] ?? item[origCat];
+            if (val != null && !isNaN(Number(val))) {
+              valNumbers.push(Number(val));
+            }
+          });
+        });
+        const allXValues = [0, ...valNumbers, ...xLineValues];
+        continuousXMin = Math.min(...allXValues);
+        continuousXMax = Math.max(...allXValues);
+      }
+
       series.push({
         type: "bar" as const,
         stack: type === "stacked" ? "stack" : categories[0],
@@ -171,11 +276,42 @@ const BarChart = (props: BarChartProps) => {
           silent: true,
           symbol: "none",
           animation: false,
-          data: markLines.filter(m => !m.isYAxis || layout === "horizontal").map(m => {
-            const isGoalLine = m.isYAxis || layout === "vertical";
+          data: markLines.map(m => {
+            const isGoalLine = layout === "horizontal" ? m.isYAxis : !m.isYAxis;
+            let xVal: any = undefined;
+            let yVal: any = undefined;
+            if (layout === "horizontal") {
+              if (m.isYAxis) {
+                const num = extractMarkLineNumber(m.value, false);
+                yVal = num !== undefined ? num : m.value;
+              } else {
+                xVal = !isContinuousData ? String(m.value) : m.value;
+              }
+            } else {
+              // layout === "vertical"
+              if (!m.isYAxis) {
+                const num = extractMarkLineNumber(m.value, false);
+                xVal = num !== undefined ? num : m.value;
+              } else {
+                if (isDatableType(indexType)) {
+                  const d = new Date(m.value);
+                  yVal = isNaN(d.getTime()) ? String(m.value) : d.toISOString();
+                } else {
+                  yVal = String(m.value);
+                }
+              }
+            }
+            const alignment = !m.isYAxis
+              ? getMarkLineLabelAlignment(m.value, {
+                isContinuous: layout === "vertical" || isContinuousData,
+                categories: xCategories,
+                min: continuousXMin,
+                max: continuousXMax,
+              })
+              : undefined;
             return {
-              xAxis: m.isYAxis ? undefined : m.value,
-              yAxis: m.isYAxis ? m.value : undefined,
+              xAxis: xVal,
+              yAxis: yVal,
               symbol: isGoalLine ? "none" : "circle",
               symbolSize: 6.5,
               lineStyle: {
@@ -186,8 +322,10 @@ const BarChart = (props: BarChartProps) => {
               },
               label: {
                 formatter: m.label,
-                position: isGoalLine ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
-                distance: isGoalLine ? 1.5 : multiEventLines ? 5 : 3.8,
+                position: m.isYAxis ? "insideStartTop" : multiEventLines ? "insideEnd" : "end",
+                distance: m.isYAxis ? 1.5 : multiEventLines ? 5 : 3.8,
+                align: !m.isYAxis ? alignment?.align : undefined,
+                padding: !m.isYAxis ? alignment?.padding : undefined,
                 color: textColorSecondary,
                 fontFamily: chartFont,
                 fontWeight: 500,
@@ -196,7 +334,7 @@ const BarChart = (props: BarChartProps) => {
                 width: m.isYAxis ? chartWidth / 3 : chartHeight / 2,
                 overflow: "truncate",
                 textBorderColor: backgroundColorSecondary,
-                textBorderWidth: !isGoalLine && multiEventLines ? 2 : 0,
+                textBorderWidth: !m.isYAxis && multiEventLines ? 2 : 0,
               },
             };
           }),
@@ -247,8 +385,10 @@ const BarChart = (props: BarChartProps) => {
     });
     const hasManyLabels = typeof shortenLabel === "number" && shortenLabel <= 12;
     const shouldRotateXLabel = !isContinuousData && !cleanXAxisLabel && hasManyLabels;
+    const hasMarkLines = Boolean(markLines && markLines.length > 0);
     const isEmpty = dataCopy.length === 0;
-    const customValues = hasManyLabels || isEmpty ? undefined : rawCustomValues;
+    const isCompletelyEmpty = isEmpty && !hasMarkLines;
+    const customValues = hasManyLabels || isCompletelyEmpty ? undefined : rawCustomValues;
 
     return {
       title: {
@@ -508,24 +648,26 @@ const BarChart = (props: BarChartProps) => {
         outerBoundsContain: "axisLabel",
       },
       xAxis: {
-        type: isEmpty
+        type: isCompletelyEmpty
           ? (layout === "vertical" ? ("value" as const) : ("category" as const))
           : layout === "vertical"
             ? ("value" as const)
             : (isTimestampData ? ("time" as const) : isNumericData ? ("value" as const) : ("category" as const)),
-        data: isEmpty ? (layout === "vertical" ? undefined : ["", "", "", "", ""]) : xData,
-        min: isEmpty && layout === "vertical" ? 0 : undefined,
-        max: isEmpty && layout === "vertical" ? 4 : undefined,
-        interval: isEmpty && layout === "vertical" ? 1 : undefined,
+        data: isCompletelyEmpty
+          ? (layout === "vertical" ? undefined : ["", "", "", "", ""])
+          : (layout === "vertical" ? undefined : (isContinuousData ? undefined : (isEmpty && (!xData || xData.length === 0) ? [""] : xData))),
+        min: isCompletelyEmpty && layout === "vertical" ? 0 : (layout === "vertical" ? xAxisBounds.min : (isContinuousData ? xAxisBounds.min : undefined)),
+        max: isCompletelyEmpty && layout === "vertical" ? 4 : (layout === "vertical" ? xAxisBounds.max : (isContinuousData ? xAxisBounds.max : undefined)),
+        interval: isCompletelyEmpty && layout === "vertical" ? 1 : undefined,
         show: true,
-        scale: !isEmpty && layout === "horizontal" && isNumericData ? true : undefined,
+        scale: !isCompletelyEmpty && layout === "horizontal" && isNumericData ? true : undefined,
         axisLabel: {
           show: true,
           customValues,
           showMinLabel: true,
           showMaxLabel: true,
           formatter: (value: any) => {
-            if (isEmpty) {
+            if (isCompletelyEmpty) {
               return layout === "vertical" ? "000" : " ";
             }
             if (layout === "horizontal") {
@@ -533,7 +675,7 @@ const BarChart = (props: BarChartProps) => {
             }
             return toSingleLine(valueFormatter(value, true));
           },
-          color: isEmpty ? "transparent" : textColorSecondary,
+          color: isCompletelyEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           interval: xData && !shouldRotateXLabel ? Math.floor((maxLabelLen / 13) * xData.length / (chartWidth / 80)) : undefined,
@@ -590,20 +732,22 @@ const BarChart = (props: BarChartProps) => {
         },
       },
       yAxis: {
-        type: isEmpty
+        type: isCompletelyEmpty
           ? (layout === "horizontal" ? ("value" as const) : ("category" as const))
           : layout === "horizontal"
             ? ("value" as const)
             : ("category" as const),
-        data: isEmpty ? (layout === "vertical" ? ["", "", "", "", ""] : undefined) : (layout === "vertical" ? dataCopy.map((item) => item[index]) : undefined),
-        min: isEmpty && layout === "horizontal" ? 0 : undefined,
-        max: isEmpty && layout === "horizontal" ? 4 : undefined,
-        interval: isEmpty && layout === "horizontal" ? 1 : undefined,
+        data: isCompletelyEmpty
+          ? (layout === "vertical" ? ["", "", "", "", ""] : undefined)
+          : (layout === "vertical" ? (isEmpty && (!dataCopy || dataCopy.length === 0) ? [""] : dataCopy.map((item) => item[index])) : undefined),
+        min: isCompletelyEmpty && layout === "horizontal" ? 0 : (layout === "horizontal" ? yAxisBounds.min : undefined),
+        max: isCompletelyEmpty && layout === "horizontal" ? 4 : (layout === "horizontal" ? yAxisBounds.max : undefined),
+        interval: isCompletelyEmpty && layout === "horizontal" ? 1 : undefined,
         show: true,
         axisLabel: {
           show: true,
           formatter: (value: any) => {
-            if (isEmpty) {
+            if (isCompletelyEmpty) {
               return layout === "horizontal" ? "000" : " ";
             }
             if (layout === "horizontal") {
@@ -611,7 +755,7 @@ const BarChart = (props: BarChartProps) => {
             }
             return toSingleLine(indexFormatter(indexType === "duration" || indexType === "time" ? new Date(value).getTime() : value, xSpace / 30));
           },
-          color: isEmpty ? "transparent" : textColorSecondary,
+          color: isCompletelyEmpty ? "transparent" : textColorSecondary,
           fontFamily: chartFont,
           fontSize: 12,
           showMinLabel: true,
@@ -656,7 +800,7 @@ const BarChart = (props: BarChartProps) => {
           },
         },
       },
-      series: isEmpty ? [] : series,
+      series: isCompletelyEmpty ? [] : series,
       // We use a graphic element to display the y-axis label instead of the axis name
       // since the name can overlap with the axis labels.
       // See https://github.com/apache/echarts/issues/12415#issuecomment-2285226567

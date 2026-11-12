@@ -23,7 +23,7 @@ var dbTypes = []struct {
 	{"XAXIS", "UNION(\"xaxis_varchar\" VARCHAR, \"xaxis_timestamp\" TIMESTAMP, \"xaxis_timestamptz\" TIMESTAMPTZ, \"xaxis_time\" TIME, \"xaxis_double\" DOUBLE, \"xaxis_interval\" INTERVAL)", "axis"},
 	{"YAXIS", "UNION(\"yaxis_varchar\" VARCHAR, \"yaxis_timestamp\" TIMESTAMP, \"yaxis_timestamptz\" TIMESTAMPTZ, \"yaxis_time\" TIME, \"yaxis_double\" DOUBLE, \"yaxis_interval\" INTERVAL)", "axis"},
 	{"XLINE", "UNION(\"xline_varchar\" VARCHAR, \"xline_timestamp\" TIMESTAMP, \"xline_timestamptz\" TIMESTAMPTZ, \"xline_time\" TIME, \"xline_double\" DOUBLE, \"xline_interval\" INTERVAL)", "axis"},
-	{"YLINE", "UNION(\"yline_timestamp\" TIMESTAMP, \"yline_timestamptz\" TIMESTAMPTZ, \"yline_time\" TIME, \"yline_double\" DOUBLE, \"yline_interval\" INTERVAL)", "axis"},
+	{"YLINE", "UNION(\"yline_varchar\" VARCHAR, \"yline_timestamp\" TIMESTAMP, \"yline_timestamptz\" TIMESTAMPTZ, \"yline_time\" TIME, \"yline_double\" DOUBLE, \"yline_interval\" INTERVAL)", "axis"},
 	{"LINECHART", "UNION(\"linechart_interval\" INTERVAL, \"linechart_double\" DOUBLE)", "chart"},
 	{"LINECHART_PERCENT", "UNION(\"linechart_percent_double\" DOUBLE)", "percent"},
 	{"LINECHART_CATEGORY", "UNION(\"linechart_category_varchar\" VARCHAR)", "string"},

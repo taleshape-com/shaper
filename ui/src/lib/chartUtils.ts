@@ -372,3 +372,222 @@ export const getEChartsColor = (
 
   return getComputedCssValue(varName, target);
 };
+
+export const getNiceNumber = (range: number, round: boolean): number => {
+  if (range <= 0 || !isFinite(range)) return 1;
+  const exponent = Math.floor(Math.log10(range));
+  const fraction = range / Math.pow(10, exponent);
+  let niceFraction: number;
+  if (round) {
+    if (fraction < 1.5) niceFraction = 1;
+    else if (fraction < 3) niceFraction = 2;
+    else if (fraction < 7) niceFraction = 5;
+    else niceFraction = 10;
+  } else {
+    if (fraction <= 1) niceFraction = 1;
+    else if (fraction <= 2) niceFraction = 2;
+    else if (fraction <= 5) niceFraction = 5;
+    else niceFraction = 10;
+  }
+  return niceFraction * Math.pow(10, exponent);
+};
+
+export const getNiceAxisRange = (
+  min: number,
+  max: number,
+  maxTicks = 5,
+): { niceMin: number; niceMax: number } => {
+  const actualMin = Math.min(min, max);
+  const actualMax = Math.max(min, max);
+  if (actualMin === actualMax) {
+    if (actualMin === 0) return { niceMin: 0, niceMax: 1 };
+    const mag = Math.pow(10, Math.floor(Math.log10(Math.abs(actualMin))));
+    return {
+      niceMin: actualMin > 0 ? 0 : actualMin - mag,
+      niceMax: actualMin > 0 ? actualMin + mag : 0,
+    };
+  }
+  const range = getNiceNumber(actualMax - actualMin, false);
+  const tickSpacing = getNiceNumber(range / (maxTicks - 1), true);
+  const rawMin = Math.floor(actualMin / tickSpacing) * tickSpacing;
+  const rawMax = Math.ceil(actualMax / tickSpacing) * tickSpacing;
+
+  const decimals = Math.max(0, -Math.floor(Math.log10(tickSpacing)) + 1);
+  const niceMin = Number(rawMin.toFixed(Math.min(10, decimals)));
+  const niceMax = Number(rawMax.toFixed(Math.min(10, decimals)));
+  return { niceMin, niceMax };
+};
+
+export const extractMarkLineNumber = (
+  value: string | number,
+  isTime = false,
+): number | undefined => {
+  if (typeof value === "number") {
+    return isNaN(value) || !isFinite(value) ? undefined : value;
+  }
+  if (typeof value === "string") {
+    if (isTime) {
+      const parsed = new Date(value).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    const num = Number(value);
+    if (!isNaN(num) && isFinite(num)) return num;
+  }
+  return undefined;
+};
+
+export interface MarkLineAxisOptions {
+  scale?: boolean;
+  isTime?: boolean;
+}
+
+export function getMarkLineAxisBounds (
+  markLineValues: number[],
+  options?: MarkLineAxisOptions,
+): {
+  min: ((value: { min: number; max: number }) => number | undefined) | undefined;
+  max: ((value: { min: number; max: number }) => number | undefined) | undefined;
+} {
+  const validValues = markLineValues.filter(
+    (v) => typeof v === "number" && !isNaN(v) && isFinite(v),
+  );
+  if (validValues.length === 0) {
+    return { min: undefined, max: undefined };
+  }
+
+  const markMin = Math.min(...validValues);
+  const markMax = Math.max(...validValues);
+  const scale = options?.scale ?? false;
+  const isTime = options?.isTime ?? false;
+
+  const minCallback = (v: { min: number; max: number }): number | undefined => {
+    const hasDataMin = !isNaN(v.min) && isFinite(v.min);
+    const hasDataMax = !isNaN(v.max) && isFinite(v.max);
+
+    if (!hasDataMin) {
+      if (isTime) {
+        return markMin === markMax ? markMin - 86400000 : markMin;
+      }
+      const curMin = markMin;
+      const curMax = markMax;
+      const baseMin = scale ? curMin : Math.min(0, curMin);
+      const baseMax = scale ? curMax : Math.max(0, curMax);
+      return getNiceAxisRange(baseMin, baseMax).niceMin;
+    }
+
+    const baseMin = scale ? v.min : Math.min(0, v.min);
+    if (markMin < baseMin) {
+      if (isTime) {
+        return markMin;
+      }
+      const overallMin = markMin;
+      const overallMax = Math.max(hasDataMax ? v.max : baseMin, markMax);
+      return getNiceAxisRange(overallMin, overallMax).niceMin;
+    }
+
+    return undefined;
+  };
+
+  const maxCallback = (v: { min: number; max: number }): number | undefined => {
+    const hasDataMin = !isNaN(v.min) && isFinite(v.min);
+    const hasDataMax = !isNaN(v.max) && isFinite(v.max);
+
+    if (!hasDataMax) {
+      if (isTime) {
+        return markMin === markMax ? markMax + 86400000 : markMax;
+      }
+      const curMin = markMin;
+      const curMax = markMax;
+      const baseMin = scale ? curMin : Math.min(0, curMin);
+      const baseMax = scale ? curMax : Math.max(0, curMax);
+      return getNiceAxisRange(baseMin, baseMax).niceMax;
+    }
+
+    const baseMax = scale ? v.max : Math.max(0, v.max);
+    if (markMax > baseMax) {
+      if (isTime) {
+        return markMax;
+      }
+      const overallMin = Math.min(hasDataMin ? v.min : baseMax, markMin);
+      const overallMax = markMax;
+      return getNiceAxisRange(overallMin, overallMax).niceMax;
+    }
+
+    return undefined;
+  };
+
+  return {
+    min: minCallback,
+    max: maxCallback,
+  };
+}
+
+export interface MarkLineLabelAlignmentOptions {
+  isContinuous?: boolean;
+  categories?: unknown[];
+  min?: number;
+  max?: number;
+}
+
+export function getMarkLineLabelAlignment (
+  markLineValue: unknown,
+  options?: MarkLineLabelAlignmentOptions,
+): {
+  align?: "left" | "right" | "center";
+  padding?: [number, number, number, number];
+} {
+  if (!options) {
+    return { align: "center" };
+  }
+
+  const { isContinuous, categories, min, max } = options;
+
+  if (isContinuous) {
+    if (min !== undefined && max !== undefined && max > min) {
+      const numVal =
+        typeof markLineValue === "number" || typeof markLineValue === "string"
+          ? extractMarkLineNumber(markLineValue, false)
+          : undefined;
+      if (numVal !== undefined) {
+        const span = max - min;
+        if (numVal >= min + 0.9 * span) {
+          return { align: "right", padding: [0, 4, 0, 0] };
+        }
+        if (numVal <= min + 0.1 * span) {
+          return { align: "left", padding: [0, 0, 0, 4] };
+        }
+      }
+    }
+    return { align: "center" };
+  }
+
+  // Categorical axis
+  if (categories && categories.length > 1) {
+    const lastCat = categories[categories.length - 1];
+    const firstCat = categories[0];
+
+    const isMatch = (val: unknown, target: unknown): boolean => {
+      if (val === target) return true;
+      if (val == null || target == null) return false;
+      const strVal = String(val).trim();
+      const strTarget = String(target).trim();
+      if (strVal === strTarget) return true;
+
+      const tVal = typeof val === "number" ? val : Date.parse(strVal);
+      const tTarget = typeof target === "number" ? target : Date.parse(strTarget);
+      if (!isNaN(tVal) && !isNaN(tTarget) && tVal === tTarget) {
+        return true;
+      }
+      return false;
+    };
+
+    if (isMatch(markLineValue, lastCat)) {
+      return { align: "right", padding: [0, 4, 0, 0] };
+    }
+    if (isMatch(markLineValue, firstCat)) {
+      return { align: "left", padding: [0, 0, 0, 4] };
+    }
+  }
+
+  return { align: "center" };
+}
