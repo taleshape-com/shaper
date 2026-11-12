@@ -29,60 +29,7 @@ func (app *App) GetSchema(ctx context.Context, ignore []string) (*api.SchemaResp
 	}
 
 	res := &api.SchemaResponse{
-		Databases:  make([]api.Database, 0, len(databases)),
-		Extensions: make([]api.Extension, 0),
-		Secrets:    make([]api.Secret, 0),
-	}
-
-	// Fetch Extensions
-	var extensions []struct {
-		Name        string `db:"extension_name"`
-		Description string `db:"description"`
-	}
-	_ = db.SelectContext(ctx, &extensions, `
-		SELECT extension_name, description
-		FROM duckdb_extensions()
-		WHERE loaded AND installed AND extension_name NOT IN ('autocomplete', 'core_functions', 'icu', 'jemalloc', 'json', 'parquet')
-		ORDER BY extension_name
-	`)
-	for _, e := range extensions {
-		res.Extensions = append(res.Extensions, api.Extension{
-			Name:        e.Name,
-			Description: e.Description,
-		})
-	}
-
-	// Fetch Secrets
-	rows, err := db.QueryxContext(ctx, `
-		SELECT name, type, provider, scope
-		FROM duckdb_secrets()
-		ORDER BY name
-	`)
-	if err == nil {
-		for rows.Next() {
-			m := make(map[string]interface{})
-			if err := rows.MapScan(m); err == nil {
-				s := api.Secret{}
-				if val, ok := m["name"]; ok && val != nil {
-					s.Name = fmt.Sprint(val)
-				}
-				if val, ok := m["type"]; ok && val != nil {
-					s.Type = fmt.Sprint(val)
-				}
-				if val, ok := m["provider"]; ok && val != nil {
-					s.Provider = fmt.Sprint(val)
-				}
-				if val, ok := m["scope"]; ok && val != nil {
-					if scopes, ok := val.([]interface{}); ok {
-						for _, scope := range scopes {
-							s.Scope = append(s.Scope, fmt.Sprint(scope))
-						}
-					}
-				}
-				res.Secrets = append(res.Secrets, s)
-			}
-		}
-		rows.Close()
+		Databases: make([]api.Database, 0, len(databases)),
 	}
 
 	for _, d := range databases {

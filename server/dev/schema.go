@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func RunSchemaCommand(ctx context.Context, configPath, urlOverride, authFile string, includeExtensions, includeSecrets bool) error {
+func RunSchemaCommand(ctx context.Context, configPath, urlOverride, authFile string) error {
 	cfg, err := LoadConfig(configPath, urlOverride)
 	if err != nil {
 		return err
@@ -58,37 +58,15 @@ func RunSchemaCommand(ctx context.Context, configPath, urlOverride, authFile str
 		return fmt.Errorf("failed to decode schema response: %w", err)
 	}
 
-	output := formatSchemaMarkdown(schema, includeExtensions, includeSecrets)
+	output := formatSchemaMarkdown(schema)
 	fmt.Print(output)
 
 	return nil
 }
 
-func formatSchemaMarkdown(schema api.SchemaResponse, includeExtensions, includeSecrets bool) string {
+func formatSchemaMarkdown(schema api.SchemaResponse) string {
 	var sb strings.Builder
 	sb.WriteString("# Database Schema\n\n")
-
-	if includeExtensions && len(schema.Extensions) > 0 {
-		sb.WriteString("## Loaded Extensions\n\n")
-		headers := []string{"Extension", "Description"}
-		rows := make([][]string, 0, len(schema.Extensions))
-		for _, e := range schema.Extensions {
-			rows = append(rows, []string{e.Name, e.Description})
-		}
-		sb.WriteString(formatPaddedTable(headers, rows))
-		sb.WriteString("\n")
-	}
-
-	if includeSecrets && len(schema.Secrets) > 0 {
-		sb.WriteString("## Secrets\n\n")
-		headers := []string{"Name", "Type", "Provider", "Scope"}
-		rows := make([][]string, 0, len(schema.Secrets))
-		for _, s := range schema.Secrets {
-			rows = append(rows, []string{s.Name, s.Type, s.Provider, strings.Join(s.Scope, ", ")})
-		}
-		sb.WriteString(formatPaddedTable(headers, rows))
-		sb.WriteString("\n")
-	}
 
 	for _, db := range schema.Databases {
 		dbHasContent := false
