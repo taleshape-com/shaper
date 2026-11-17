@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/big"
 	"net/url"
 	"regexp"
 	"shaper/server/util"
@@ -636,6 +637,24 @@ func handleCellValue(value any, xlsx *excelize.File, sheetName string, cell stri
 		uint, uint8, uint16, uint32, uint64,
 		float32, float64:
 		_ = xlsx.SetCellValue(sheetName, cell, v)
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
+	case *big.Int:
+		if v == nil {
+			_ = xlsx.SetCellValue(sheetName, cell, "")
+			_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["text"])
+			return
+		}
+		if v.IsInt64() {
+			_ = xlsx.SetCellValue(sheetName, cell, v.Int64())
+		} else if v.IsUint64() {
+			_ = xlsx.SetCellValue(sheetName, cell, v.Uint64())
+		} else {
+			f, _ := v.Float64()
+			_ = xlsx.SetCellValue(sheetName, cell, f)
+		}
+		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
+	case duckdb.Decimal:
+		_ = xlsx.SetCellValue(sheetName, cell, v.Float64())
 		_ = xlsx.SetCellStyle(sheetName, cell, cell, styles["number"])
 	case time.Time:
 		_ = xlsx.SetCellValue(sheetName, cell, v)
