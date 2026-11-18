@@ -5,11 +5,16 @@ package core
 import (
 	"bytes"
 	"context"
+	"io"
+	"log/slog"
+	"net/url"
 	"strings"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/xuri/excelize/v2"
+	_ "modernc.org/sqlite"
 )
 
 func TestStreamSQLToCSV(t *testing.T) {
@@ -184,5 +189,92 @@ func TestGetVarPrefixOnlyQueriesBeforeDownload(t *testing.T) {
 
 	if !strings.Contains(varPrefix, "my_var") {
 		t.Errorf("expected varPrefix to contain my_var, got: %q", varPrefix)
+	}
+}
+
+func TestStreamQueryXLSXNumericTypes(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer sdb.Close()
+
+	if err := InitSQLite(sdb); err != nil {
+		t.Fatalf("failed to init sqlite: %v", err)
+	}
+
+	db, err := sqlx.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("failed to open duckdb: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := initDuckDB(db); err != nil {
+		t.Fatalf("failed to init duckdb: %v", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	app := &App{
+		Sqlite: sdb,
+		DuckDB: db,
+		Logger: logger,
+	}
+
+	content := `SELECT 'T'::LABEL;
+SELECT category, count(*) AS n, sum(qty) AS total_qty, sum(price) AS revenue
+FROM (VALUES ('a', 2, 10.50::DECIMAL(10,2)), ('a', 3, 4.25::DECIMAL(10,2)), ('b', 1, 7.00::DECIMAL(10,2))) t(category, qty, price)
+GROUP BY ALL ORDER BY ALL;`
+
+	_, err = sdb.Exec(`INSERT INTO apps (id, type, name, content, created_at, updated_at, visibility)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), ?)`,
+		"xlsx-dash", "dashboard", "XLSX Test", content, "public")
+	if err != nil {
+		t.Fatalf("failed to insert dashboard: %v", err)
+	}
+
+	buf := &bytes.Buffer{}
+	err = StreamQueryXLSX(app, context.Background(), "xlsx-dash", url.Values{}, -1, nil, buf)
+	if err != nil {
+		t.Fatalf("StreamQueryXLSX failed: %v", err)
+	}
+
+	xlsx, err := excelize.OpenReader(buf)
+	if err != nil {
+		t.Fatalf("failed to open generated xlsx: %v", err)
+	}
+	defer xlsx.Close()
+
+	// Check cell types and values for row 2 ('a', 2, 5, 14.75) and row 3 ('b', 1, 1, 7)
+	type expectedCell struct {
+		cell     string
+		wantVal  string
+		wantType excelize.CellType
+	}
+	expected := []expectedCell{
+		{cell: "A2", wantVal: "a", wantType: excelize.CellTypeSharedString},
+		{cell: "B2", wantVal: "2", wantType: excelize.CellTypeUnset}, // numbers in Excel have unset or number cell type
+		{cell: "C2", wantVal: "5", wantType: excelize.CellTypeUnset},
+		{cell: "D2", wantVal: "14.75", wantType: excelize.CellTypeUnset},
+		{cell: "A3", wantVal: "b", wantType: excelize.CellTypeSharedString},
+		{cell: "B3", wantVal: "1", wantType: excelize.CellTypeUnset},
+		{cell: "C3", wantVal: "1", wantType: excelize.CellTypeUnset},
+		{cell: "D3", wantVal: "7", wantType: excelize.CellTypeUnset},
+	}
+
+	for _, exp := range expected {
+		ct, err := xlsx.GetCellType("Sheet1", exp.cell)
+		if err != nil {
+			t.Fatalf("GetCellType(%s) failed: %v", exp.cell, err)
+		}
+		if ct != exp.wantType {
+			t.Errorf("cell %s type = %v, want %v", exp.cell, ct, exp.wantType)
+		}
+		val, err := xlsx.GetCellValue("Sheet1", exp.cell)
+		if err != nil {
+			t.Fatalf("GetCellValue(%s) failed: %v", exp.cell, err)
+		}
+		if val != exp.wantVal {
+			t.Errorf("cell %s value = %q, want %q", exp.cell, val, exp.wantVal)
+		}
 	}
 }
