@@ -1162,4 +1162,53 @@ SELECT 777 AS lucky;
 		assert.Equal(t, "https://example.com/target", *query.Render.Link)
 		assert.True(t, query.Render.LinkNewTab)
 	})
+
+	t.Run("FLOAT values in custom types and plain columns", func(t *testing.T) {
+		dq := DashboardQuery{
+			Content: `
+SELECT 0.33::FLOAT::YLINE, 'Target'::LABEL;
+SELECT 'point'::YAXIS, col0::CATEGORY, col1::FLOAT::BARCHART_STACKED_PERCENT
+FROM (
+  VALUES
+  ('A', 0.33),
+  ('B', 0.67)
+);
+SELECT 0.33::FLOAT::GAUGE_PERCENT, [0.0::FLOAT, 0.33::FLOAT, 0.67::FLOAT, 1.0::FLOAT]::RANGE;
+SELECT 0.33::FLOAT AS plain_float, 'NaN'::FLOAT AS nan_float, 'Infinity'::FLOAT AS inf_float, 'NaN'::DOUBLE AS nan_double, 'Infinity'::DOUBLE AS inf_double;
+`,
+			ID: "test-float-precision",
+		}
+		result, err := QueryDashboard(app, ctx, dq, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(result.Sections))
+		assert.Equal(t, 3, len(result.Sections[0].Queries))
+
+		// 1. Stacked percent barchart with YLINE
+		barQuery := result.Sections[0].Queries[0]
+		assert.Equal(t, "barchartVerticalStacked", barQuery.Render.Type)
+		assert.Equal(t, 0.33, barQuery.Rows[0][2])
+		assert.Equal(t, 0.67, barQuery.Rows[1][2])
+		assert.Equal(t, 1, len(barQuery.Render.MarkLines))
+		assert.Equal(t, 0.33, barQuery.Render.MarkLines[0].Value)
+
+		// 2. Gauge with FLOAT range
+		gaugeQuery := result.Sections[0].Queries[1]
+		assert.Equal(t, "gauge", gaugeQuery.Render.Type)
+		assert.Equal(t, 0.33, gaugeQuery.Rows[0][0])
+		assert.Equal(t, 3, len(gaugeQuery.Render.GaugeCategories))
+		assert.Equal(t, 0.0, gaugeQuery.Render.GaugeCategories[0].From)
+		assert.Equal(t, 0.33, gaugeQuery.Render.GaugeCategories[0].To)
+		assert.Equal(t, 0.33, gaugeQuery.Render.GaugeCategories[1].From)
+		assert.Equal(t, 0.67, gaugeQuery.Render.GaugeCategories[1].To)
+		assert.Equal(t, 0.67, gaugeQuery.Render.GaugeCategories[2].From)
+		assert.Equal(t, 1.0, gaugeQuery.Render.GaugeCategories[2].To)
+
+		// 3. Plain FLOAT and NaN/Inf handling
+		tableQuery := result.Sections[0].Queries[2]
+		assert.Equal(t, 0.33, tableQuery.Rows[0][0])
+		assert.Nil(t, tableQuery.Rows[0][1])
+		assert.Nil(t, tableQuery.Rows[0][2])
+		assert.Nil(t, tableQuery.Rows[0][3])
+		assert.Nil(t, tableQuery.Rows[0][4])
+	})
 }
