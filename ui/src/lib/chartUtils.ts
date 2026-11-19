@@ -439,6 +439,7 @@ export const extractMarkLineNumber = (
 export interface MarkLineAxisOptions {
   scale?: boolean;
   isTime?: boolean;
+  isStackedPercent?: boolean;
 }
 
 export function getMarkLineAxisBounds (
@@ -448,11 +449,23 @@ export function getMarkLineAxisBounds (
   min: ((value: { min: number; max: number }) => number | undefined) | undefined;
   max: ((value: { min: number; max: number }) => number | undefined) | undefined;
 } {
+  const isStackedPercent = options?.isStackedPercent ?? false;
   const validValues = markLineValues.filter(
     (v) => typeof v === "number" && !isNaN(v) && isFinite(v),
   );
   if (validValues.length === 0) {
-    return { min: undefined, max: undefined };
+    if (!isStackedPercent) {
+      return { min: undefined, max: undefined };
+    }
+    return {
+      min: undefined,
+      max: (v: { min: number; max: number }): number | undefined => {
+        if (!isNaN(v.max) && isFinite(v.max) && v.max > 1 && v.max <= 1 + 1e-5) {
+          return 1;
+        }
+        return undefined;
+      },
+    };
   }
 
   const markMin = Math.min(...validValues);
@@ -511,6 +524,10 @@ export function getMarkLineAxisBounds (
       const overallMin = Math.min(hasDataMin ? v.min : baseMax, markMin);
       const overallMax = markMax;
       return getNiceAxisRange(overallMin, overallMax).niceMax;
+    }
+
+    if (isStackedPercent && v.max > 1 && v.max <= 1 + 1e-5) {
+      return 1;
     }
 
     return undefined;

@@ -62,6 +62,11 @@ describe("formatValue with numbers", () => {
     // If it actually returns 'e' in string representation (e.g. 1e+20)
     expect(formatValue(1e21, columnType, shouldFormat)).toBe("1e+21");
   });
+
+  it("should strip IEEE-754 floating-point arithmetic noise", () => {
+    expect(formatValue(0.1 + 0.2, columnType, shouldFormat)).toBe("0.3");
+    expect(formatValue(0.14 + 0.28 + 0.58, columnType, shouldFormat)).toBe("1");
+  });
 });
 
 describe("formatValue with timestamp", () => {

@@ -57,7 +57,7 @@ export const formatValue = (value: string | number | boolean | null | undefined 
     if (shouldFormatNumbers && columnType === "number") {
       const rawValueString = shortFormat
         ? (Math.round(value * 100) / 100).toString()
-        : value.toString();
+        : parseFloat(value.toPrecision(15)).toString();
 
       if (rawValueString.includes("e") || rawValueString.includes("E")) {
         return rawValueString;

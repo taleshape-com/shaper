@@ -183,12 +183,14 @@ const BarChart = (props: BarChartProps) => {
       }
     }
 
+    const isStackedPercent = type === "stacked" && valueType === "percent";
+
     const yAxisBounds = layout === "horizontal"
-      ? getMarkLineAxisBounds(yLineValues, { scale: false })
+      ? getMarkLineAxisBounds(yLineValues, { scale: false, isStackedPercent })
       : { min: undefined, max: undefined };
 
     const xAxisBounds = layout === "vertical"
-      ? getMarkLineAxisBounds(xLineValues, { scale: false })
+      ? getMarkLineAxisBounds(xLineValues, { scale: false, isStackedPercent })
       : isContinuousData
         ? getMarkLineAxisBounds(xLineValues, { scale: isNumericData, isTime: isTimestampData })
         : { min: undefined, max: undefined };
@@ -439,7 +441,7 @@ const BarChart = (props: BarChartProps) => {
           let tooltipContent = `<div class="text-sm font-medium">${echartsEncode(title)}</div>`;
 
           if (type === "stacked" && (valueType === "number" || valueType === "duration")) {
-            const total = params.reduce((sum: number, item: any) => {
+            const rawTotal = params.reduce((sum: number, item: any) => {
               if (item.axisDim !== indexDim) {
                 return sum; // Skip non-index axis items
               }
@@ -457,6 +459,7 @@ const BarChart = (props: BarChartProps) => {
 
               return sum + value;
             }, 0);
+            const total = parseFloat(rawTotal.toPrecision(15));
             tooltipContent += `<div class="flex justify-between space-x-2 mt-2">
               <span class="font-medium">${echartsEncode(translate("TOTAL"))}</span>
               <span>${echartsEncode(valueFormatter(total))}</span>

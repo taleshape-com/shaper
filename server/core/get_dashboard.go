@@ -384,6 +384,9 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			for i, cell := range row {
 				colType := query.Columns[i].Type
 				if u, ok := cell.(duckdb.Union); ok {
+					if f, ok := u.Value.(float64); ok {
+						u.Value = normalizeUnionFloat64(f)
+					}
 					cell = u.Value
 					row[i] = u.Value
 				}
@@ -408,8 +411,19 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 					}
 					continue
 				}
+				if n, ok := cell.(float32); ok {
+					f := float64(n)
+					if math.IsNaN(f) || math.IsInf(f, 0) {
+						row[i] = nil
+					} else if colType == "string" {
+						row[i] = strconv.FormatFloat(f, 'f', -1, 32)
+					} else {
+						row[i] = normalizeUnionFloat64(f)
+					}
+					continue
+				}
 				if n, ok := cell.(float64); ok {
-					if math.IsNaN(n) {
+					if math.IsNaN(n) || math.IsInf(n, 0) {
 						row[i] = nil
 					} else if colType == "string" {
 						row[i] = strconv.FormatFloat(n, 'f', -1, 64)
@@ -1046,7 +1060,7 @@ func getMarkLines(columns []*sql.ColumnType, rows Rows) ([]MarkLine, bool) {
 			if math.IsNaN(val) || math.IsInf(val, 0) {
 				continue
 			}
-			line.Value = val
+			line.Value = normalizeUnionFloat64(val)
 		case int64:
 			line.Value = float64(val)
 		case int32:
@@ -1392,7 +1406,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 			if len(rangeArr) == 1 {
 				switch v := rangeArr[0].(type) {
 				case float64:
-					singleValue = v
+					singleValue = normalizeUnionFloat64(v)
 					hasSingleValue = true
 				case duckdb.Interval:
 					singleValue = float64(formatInterval(v))
@@ -1402,7 +1416,7 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 			if gauge, ok := row[gaugeIndex].(duckdb.Union); ok {
 				switch v := gauge.Value.(type) {
 				case float64:
-					gaugeValue = v
+					gaugeValue = normalizeUnionFloat64(v)
 				case duckdb.Interval:
 					isInterval = true
 				}
@@ -1452,13 +1466,17 @@ func getRenderInfo(columns []*sql.ColumnType, rows Rows, label string, subtitle 
 		categories := []GaugeCategory{}
 		fromAny := rangeArr[0]
 		from, ok := fromAny.(float64)
-		if !ok {
+		if ok {
+			from = normalizeUnionFloat64(from)
+		} else {
 			from = float64(formatInterval(fromAny))
 		}
 		for i := 1; i < len(rangeArr); i++ {
 			toAny := rangeArr[i]
 			to, ok := toAny.(float64)
-			if !ok {
+			if ok {
+				to = normalizeUnionFloat64(to)
+			} else {
 				to = float64(formatInterval(toAny))
 			}
 			g := GaugeCategory{
@@ -2697,6 +2715,17 @@ func duckMapToMap(value any) any {
 		return duckMapToMap(v.Value)
 	case duckdb.Decimal:
 		return v.Float64()
+	case float32:
+		f := float64(v)
+		if math.IsNaN(f) || math.IsInf(f, 0) {
+			return nil
+		}
+		return normalizeUnionFloat64(f)
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return nil
+		}
+		return normalizeUnionFloat64(v)
 	case duckdb.Interval:
 		return formatInterval(v)
 	case string:
@@ -2715,4 +2744,21 @@ func duckMapToMap(value any) any {
 	}
 
 	return value
+}
+
+// normalizeUnionFloat64 cleans up float32-to-float64 precision artifacts caused
+// by DuckDB implicitly casting FLOAT values to DOUBLE inside Shaper's UNION types.
+// When a float32 is cast to float64, its lower 29 mantissa bits are zero (float64(float32(n)) == n).
+// Re-formatting with 32-bit shortest-decimal precision turns 0.33000001311302185 back into 0.33.
+func normalizeUnionFloat64(n float64) float64 {
+	if math.IsNaN(n) || math.IsInf(n, 0) || math.Trunc(n) == n {
+		return n
+	}
+	if float64(float32(n)) == n {
+		s := strconv.FormatFloat(n, 'g', -1, 32)
+		if parsed, err := strconv.ParseFloat(s, 64); err == nil {
+			return parsed
+		}
+	}
+	return n
 }

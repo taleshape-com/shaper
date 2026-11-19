@@ -308,6 +308,22 @@ describe("getMarkLineAxisBounds", () => {
     expect(bounds.min!({ min: 0.01, max: 0.04 })).toBeUndefined();
     expect(bounds.max!({ min: 0.01, max: 0.04 })).toBe(0.08);
   });
+
+  it("clamps stacked percent axis max to 1 when float sum is slightly above 1", () => {
+    const bounds = getMarkLineAxisBounds([], { scale: false, isStackedPercent: true });
+    expect(bounds.min).toBeUndefined();
+    expect(bounds.max!({ min: 0, max: 0.33000001311302185 + 0.6700000166893005 })).toBe(1);
+    expect(bounds.max!({ min: 0, max: 0.8 })).toBeUndefined();
+    expect(bounds.max!({ min: 0, max: 1.25 })).toBeUndefined();
+
+    // With markLine below 1, still clamps to 1
+    const boundsWithLowerMark = getMarkLineAxisBounds([0.8], { scale: false, isStackedPercent: true });
+    expect(boundsWithLowerMark.max!({ min: 0, max: 0.33000001311302185 + 0.6700000166893005 })).toBe(1);
+
+    // With markLine above 1, markLine still expands the axis
+    const boundsWithMark = getMarkLineAxisBounds([1.2], { scale: false, isStackedPercent: true });
+    expect(boundsWithMark.max!({ min: 0, max: 0.33000001311302185 + 0.6700000166893005 })).toBe(1.5);
+  });
 });
 
 describe("ECharts markLine visibility with getMarkLineAxisBounds", () => {
@@ -707,6 +723,29 @@ describe("getMarkLineLabelAlignment", () => {
       expect(match).toBeTruthy();
       expect(match![0]).toContain("translate");
       expect(match![0]).not.toContain("matrix(0,-1,1,0");
+    });
+
+    it("does not scale stacked percent bar chart axis to 120% when float values sum slightly above 1", () => {
+      const xBounds = getMarkLineAxisBounds([], { scale: false, isStackedPercent: true });
+      const chart = echarts.init(null, null, { renderer: "svg", ssr: true, width: 500, height: 300 });
+      chart.setOption({
+        xAxis: {
+          type: "value",
+          min: xBounds.min,
+          max: xBounds.max,
+          axisLabel: {
+            formatter: (v: number) => `${Math.round(v * 10000) / 100}%`,
+          },
+        },
+        yAxis: { type: "category", data: ["point"] },
+        series: [
+          { type: "bar", stack: "stack", data: [0.33000001311302185] },
+          { type: "bar", stack: "stack", data: [0.6700000166893005] },
+        ],
+      });
+      const svg = chart.renderToSVGString();
+      expect(svg).toContain(">100%</text>");
+      expect(svg).not.toContain(">120%</text>");
     });
   });
 });

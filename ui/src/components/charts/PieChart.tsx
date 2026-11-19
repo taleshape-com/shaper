@@ -94,7 +94,8 @@ const PieChart = (props: PieChartProps) => {
     const availableHeight = chartHeight - labelTopOffset - chartPadding * 2;
     const centerY = labelTopOffset + chartPadding + availableHeight * 0.50;
     const radius = Math.min(Math.min(chartWidth, availableHeight), 800) * 0.40;
-    const totalValue = cleanData.reduce((acc, d) => acc + d.value, 0);
+    const rawTotalValue = cleanData.reduce((acc, d) => acc + d.value, 0);
+    const totalValue = isPercent && Math.abs(rawTotalValue - 1) <= 1e-5 ? 1 : parseFloat(rawTotalValue.toPrecision(15));
 
     const series: PieSeriesOption = {
       type: "pie",
