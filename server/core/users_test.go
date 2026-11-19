@@ -246,3 +246,105 @@ func TestHandleCreateUser_InvariantEnforcement(t *testing.T) {
 		t.Fatalf("second user was inserted despite active user existing")
 	}
 }
+
+func TestHandleDeleteUser(t *testing.T) {
+	db, err := sqlx.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db.Close()
+
+	if err := InitSQLite(db); err != nil {
+		t.Fatalf("failed to init sqlite: %v", err)
+	}
+
+	app := &App{
+		Sqlite: db,
+		Logger: nil,
+	}
+
+	now := time.Now().UTC()
+	user1ID := "user-1"
+	user2ID := "user-2"
+
+	// Insert two users
+	_, err = db.Exec(`INSERT INTO users (id, email, name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		user1ID, "user1@example.com", "User 1", "hash", now, now)
+	if err != nil {
+		t.Fatalf("failed to insert user 1: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO users (id, email, name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		user2ID, "user2@example.com", "User 2", "hash", now, now)
+	if err != nil {
+		t.Fatalf("failed to insert user 2: %v", err)
+	}
+
+	// Insert a session for user 1
+	_, err = db.Exec(`INSERT INTO sessions (id, user_id, hash, salt, created_at) VALUES (?, ?, ?, ?, ?)`,
+		"session-1", user1ID, "hash", "salt", now)
+	if err != nil {
+		t.Fatalf("failed to insert session: %v", err)
+	}
+
+	// Insert invites created by user 1 and user 2
+	user1Actor := (&Actor{Type: ActorUser, ID: user1ID}).String()
+	user2Actor := (&Actor{Type: ActorUser, ID: user2ID}).String()
+	_, err = db.Exec(`INSERT INTO invites (code, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
+		"INVITE1", "invite1@example.com", now, user1Actor)
+	if err != nil {
+		t.Fatalf("failed to insert invite 1: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO invites (code, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
+		"INVITE2", "invite2@example.com", now, user2Actor)
+	if err != nil {
+		t.Fatalf("failed to insert invite 2: %v", err)
+	}
+
+	// Delete user 1
+	payload := DeleteUserPayload{
+		ID:        user1ID,
+		Timestamp: now.Add(time.Hour),
+		DeletedBy: user2Actor,
+	}
+	data, _ := json.Marshal(payload)
+
+	if !HandleDeleteUser(app, data) {
+		t.Fatalf("HandleDeleteUser failed")
+	}
+
+	// Verify user 1 is soft-deleted
+	var deletedAt *time.Time
+	if err := db.Get(&deletedAt, `SELECT deleted_at FROM users WHERE id = ?`, user1ID); err != nil {
+		t.Fatalf("failed to query deleted_at: %v", err)
+	}
+	if deletedAt == nil {
+		t.Fatalf("expected user 1 to be soft-deleted")
+	}
+
+	// Verify user 1's session is deleted
+	var sessionCount int
+	if err := db.Get(&sessionCount, `SELECT COUNT(*) FROM sessions WHERE user_id = ?`, user1ID); err != nil {
+		t.Fatalf("failed to count sessions: %v", err)
+	}
+	if sessionCount != 0 {
+		t.Fatalf("expected 0 sessions for user 1, got %d", sessionCount)
+	}
+
+	// Verify invite created by user 1 is deleted, while user 2's invite remains
+	var invite1Exists bool
+	if err := db.Get(&invite1Exists, `SELECT EXISTS(SELECT 1 FROM invites WHERE code = 'INVITE1')`); err != nil {
+		t.Fatalf("failed to check invite 1: %v", err)
+	}
+	if invite1Exists {
+		t.Fatalf("expected invite created by user 1 to be deleted")
+	}
+
+	var invite2Exists bool
+	if err := db.Get(&invite2Exists, `SELECT EXISTS(SELECT 1 FROM invites WHERE code = 'INVITE2')`); err != nil {
+		t.Fatalf("failed to check invite 2: %v", err)
+	}
+	if !invite2Exists {
+		t.Fatalf("expected invite created by user 2 to remain")
+	}
+}
+
