@@ -211,7 +211,7 @@ func TestUsers_DashboardIDRestriction(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/api/invites/", nil)
 			rec := httptest.NewRecorder()
 			c := newContextWithUser(e, req, rec, token)
-			c.SetParamNames("code")
+			c.SetParamNames("email")
 			c.SetParamValues("")
 
 			h := DeleteInvite(app)
@@ -228,7 +228,7 @@ func TestUsers_DashboardIDRestriction(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/api/invites/", nil)
 			rec := httptest.NewRecorder()
 			c := newContextWithUser(e, req, rec, token)
-			c.SetParamNames("code")
+			c.SetParamNames("email")
 			c.SetParamValues("")
 
 			h := DeleteInvite(app)
