@@ -246,6 +246,9 @@ func executeTaskOnDB(app *App, ctx context.Context, db *sqlx.DB, content string)
 const skipInitTasksKey contextKey = "skipInitTasks"
 
 func RunTask(app *App, ctx context.Context, content string) (TaskResult, error) {
+	if app.NoTasks {
+		return TaskResult{}, fmt.Errorf("tasks are disabled")
+	}
 	ctx = context.WithValue(ctx, skipInitTasksKey, true)
 	db, cleanup, err := app.GetDuckDB(ctx)
 	if err != nil {

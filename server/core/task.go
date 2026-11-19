@@ -61,6 +61,9 @@ type DeleteTaskPayload struct {
 }
 
 func GetTask(app *App, ctx context.Context, id string) (Task, error) {
+	if app.NoTasks {
+		return Task{}, fmt.Errorf("tasks are disabled")
+	}
 	var task Task
 	err := app.Sqlite.GetContext(ctx, &task,
 		`SELECT a.id, a.folder_id, a.name, a.content, a.created_at, a.updated_at, a.created_by, a.updated_by,
@@ -89,6 +92,9 @@ func GetTask(app *App, ctx context.Context, id string) (Task, error) {
 }
 
 func CreateTask(app *App, ctx context.Context, name string, content string, path string, requestedID string) (string, error) {
+	if app.NoTasks {
+		return "", fmt.Errorf("tasks are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return "", fmt.Errorf("no actor in context")
@@ -142,11 +148,16 @@ func HandleCreateTask(app *App, data []byte) bool {
 		app.Logger.Error("failed to insert task into DB", slog.Any("error", err))
 		return false
 	}
-	scheduleAndTrackNextTaskRun(app, ctx, payload.ID, payload.Content)
+	if !app.NoTasks {
+		scheduleAndTrackNextTaskRun(app, ctx, payload.ID, payload.Content)
+	}
 	return true
 }
 
 func SaveTaskContent(app *App, ctx context.Context, id string, content string) error {
+	if app.NoTasks {
+		return fmt.Errorf("tasks are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
@@ -189,11 +200,16 @@ func HandleUpdateTaskContent(app *App, data []byte) bool {
 		app.Logger.Error("failed to execute UPDATE statement", slog.Any("error", err))
 		return false
 	}
-	scheduleAndTrackNextTaskRun(app, ctx, payload.ID, payload.Content)
+	if !app.NoTasks {
+		scheduleAndTrackNextTaskRun(app, ctx, payload.ID, payload.Content)
+	}
 	return true
 }
 
 func SaveTaskName(app *App, ctx context.Context, id string, name string) error {
+	if app.NoTasks {
+		return fmt.Errorf("tasks are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
@@ -238,6 +254,9 @@ func HandleUpdateTaskName(app *App, data []byte) bool {
 }
 
 func DeleteTask(app *App, ctx context.Context, id string) error {
+	if app.NoTasks {
+		return fmt.Errorf("tasks are disabled")
+	}
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
