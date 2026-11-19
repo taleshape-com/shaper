@@ -47,7 +47,6 @@ interface IUser {
 }
 
 interface IInvite {
-  code: string;
   email: string;
   createdAt: string;
 }
@@ -398,8 +397,8 @@ function UsersManagement () {
             </DialogHeader>
 
             {inviteCode ? (
-              <div>
-                <div className="flex items-center gap-2 my-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mt-4">
                   <code className="bg-cbga dark:bg-dbga p-2 rounded flex-grow overflow-hidden text-ellipsis">
                     {getInviteLink(inviteCode.code)}
                   </code>
@@ -413,13 +412,19 @@ function UsersManagement () {
                         description: "Invite link copied to clipboard",
                       });
                     }}
-                    variant="light"
+                    variant="primary"
                   >
                     Copy
                   </Button>
                 </div>
+
+                <p className="text-sm text-cerr dark:text-derr">
+                  Make sure to copy this link now. You won't be able to see it again!
+                </p>
+
                 <DialogFooter>
                   <Button
+                    variant="light"
                     onClick={() => {
                       setShowInviteDialog(false);
                       setInviteCode(null);
@@ -510,7 +515,7 @@ function UsersManagement () {
               onClick={async () => {
                 if (deleteInviteDialog) {
                   try {
-                    await queryApi(`invites/${deleteInviteDialog.code}`, {
+                    await queryApi(`invites/${encodeURIComponent(deleteInviteDialog.email)}`, {
                       method: "DELETE",
                     });
                     toast({
@@ -552,13 +557,13 @@ function UsersManagement () {
                       <TableRow>
                         <TableHeaderCell className="text-md text-ctext dark:text-dtext">Email</TableHeaderCell>
                         <TableHeaderCell className="text-md text-ctext dark:text-dtext">Created</TableHeaderCell>
-                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">Invite Link</TableHeaderCell>
+                        <TableHeaderCell className="text-md text-ctext dark:text-dtext">Status</TableHeaderCell>
                         <TableHeaderCell className="text-md text-ctext dark:text-dtext">Actions</TableHeaderCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {data.invites.map((invite) => (
-                        <TableRow key={invite.code} className="[tbody_&]:bg-cbgs [tbody_&]:dark:bg-dbgs">
+                        <TableRow key={invite.email} className="[tbody_&]:bg-cbgs [tbody_&]:dark:bg-dbgs">
                           <TableCell className="text-ctext2 dark:text-dtext2">
                             {invite.email}
                           </TableCell>
@@ -581,28 +586,7 @@ function UsersManagement () {
                                 );
                               }
                               return (
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <code className="bg-cbg dark:bg-dbg p-1 rounded text-sm overflow-hidden text-ellipsis">
-                                      {getInviteLink(invite.code)}
-                                    </code>
-                                    <Button
-                                      variant="light"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(getInviteLink(invite.code));
-                                        toast({
-                                          title: "Success",
-                                          description: "Invite link copied to clipboard",
-                                        });
-                                      }}
-                                    >
-                                      Copy
-                                    </Button>
-                                  </div>
-                                  <div className="text-xs text-ctext2 dark:text-dtext2">
-                                    {inviteState.expiresIn}
-                                  </div>
-                                </div>
+                                <span>{inviteState.expiresIn}</span>
                               );
                             })()}
                           </TableCell>

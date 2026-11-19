@@ -125,7 +125,7 @@ func InitSQLite(sdb *sqlx.DB) error {
 	// Create invites table
 	_, err = sdb.Exec(`
 		CREATE TABLE IF NOT EXISTS invites (
-			code TEXT PRIMARY KEY,
+			code_hash TEXT PRIMARY KEY,
 			email TEXT NOT NULL,
 			created_at DATETIME NOT NULL,
 			created_by TEXT
@@ -133,6 +133,9 @@ func InitSQLite(sdb *sqlx.DB) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("error creating invites table: %w", err)
+	}
+	if err := migrateInvitesTable(sdb); err != nil {
+		return fmt.Errorf("error migrating invites table: %w", err)
 	}
 
 	// Create task_runs table
@@ -163,4 +166,32 @@ func InitSQLite(sdb *sqlx.DB) error {
 	}
 
 	return nil
+}
+
+func migrateInvitesTable(sdb *sqlx.DB) error {
+	// Rename legacy `code` column to `code_hash` if it exists
+	_, _ = sdb.Exec(`ALTER TABLE invites RENAME COLUMN code TO code_hash`)
+
+	// Hash any existing plaintext invite codes (legacy codes are 12 chars, SHA-256 hex is 64 chars)
+	var codes []string
+	if err := sdb.Select(&codes, `SELECT code_hash FROM invites WHERE length(code_hash) != 64`); err != nil {
+		return err
+	}
+	if len(codes) == 0 {
+		return nil
+	}
+
+	tx, err := sdb.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	for _, c := range codes {
+		if _, err := tx.Exec(`UPDATE invites SET code_hash = $1 WHERE code_hash = $2`, hashInviteCode(c), c); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

@@ -425,7 +425,7 @@ func routes(e *echo.Echo, app *core.App, frontendFS fs.FS, modTime time.Time, cu
 	apiWithAuth.POST("/users/:id/name", handler.UpdateName(app))
 	apiWithAuth.DELETE("/users/:id", handler.DeleteUser(app))
 	if app.SSOLoginURL == "" {
-		apiWithAuth.DELETE("/invites/:code", handler.DeleteInvite(app))
+		apiWithAuth.DELETE("/invites/:email", handler.DeleteInvite(app))
 		apiWithAuth.POST("/invites", handler.CreateInvite(app))
 	}
 	if !app.NoAPIKeys {

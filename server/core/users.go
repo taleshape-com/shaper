@@ -5,6 +5,8 @@ package core
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -249,22 +251,28 @@ func HandleCreateUser(app *App, data []byte) bool {
 }
 
 type DeleteInvitePayload struct {
-	Code      string    `json:"code"`
+	Email string `json:"email,omitempty"`
+	// Code is kept for backwards compatibility when replaying older NATS state events
+	Code      string    `json:"code,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 	// NOTE: Not used, but might want to log this in the future
 	DeletedBy string `json:"deletedBy"`
 }
 
-func DeleteInvite(app *App, ctx context.Context, code string) error {
+func DeleteInvite(app *App, ctx context.Context, email string) error {
 	actor := ActorFromContext(ctx)
 	if actor == nil {
 		return fmt.Errorf("no actor in context")
 	}
+	email = strings.TrimSpace(strings.ToLower(email))
+	if email == "" {
+		return fmt.Errorf("invite not found")
+	}
 	// Check if invite exists
 	var exists bool
 	err := app.Sqlite.GetContext(ctx, &exists,
-		`SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1)`,
-		code)
+		`SELECT EXISTS(SELECT 1 FROM invites WHERE email = $1)`,
+		email)
 	if err != nil {
 		return fmt.Errorf("failed to check invite existence: %w", err)
 	}
@@ -273,7 +281,7 @@ func DeleteInvite(app *App, ctx context.Context, code string) error {
 	}
 
 	payload := DeleteInvitePayload{
-		Code:      code,
+		Email:     email,
 		Timestamp: time.Now(),
 		DeletedBy: actor.String(),
 	}
@@ -289,10 +297,17 @@ func HandleDeleteInvite(app *App, data []byte) bool {
 		return false
 	}
 
-	_, err = app.Sqlite.Exec(
-		`DELETE FROM invites WHERE code = $1`,
-		payload.Code,
-	)
+	if payload.Email != "" {
+		_, err = app.Sqlite.Exec(
+			`DELETE FROM invites WHERE email = $1`,
+			payload.Email,
+		)
+	} else {
+		_, err = app.Sqlite.Exec(
+			`DELETE FROM invites WHERE code_hash = $1`,
+			normalizeInviteCodeHash(payload.Code),
+		)
+	}
 	if err != nil {
 		app.Logger.Error("failed to delete invite from DB", slog.Any("error", err))
 		return false
@@ -479,7 +494,7 @@ func ListUsers(app *App, ctx context.Context, sort string, order string) (UserLi
 	// Get invites ordered by creation date
 	invites := []Invite{}
 	err = app.Sqlite.SelectContext(ctx, &invites,
-		`SELECT code, email, created_at
+		`SELECT email, created_at
 		 FROM invites
 		 ORDER BY created_at DESC`)
 	if err != nil {
@@ -589,10 +604,25 @@ func HandleDeleteUser(app *App, data []byte) bool {
 }
 
 type Invite struct {
-	Code      string    `db:"code" json:"code"`
+	Code      string    `db:"-" json:"code,omitempty"`
+	CodeHash  string    `db:"code_hash" json:"-"`
 	Email     string    `db:"email" json:"email"`
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	CreatedBy *string   `db:"created_by" json:"-"`
+}
+
+func hashInviteCode(code string) string {
+	sum := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(sum[:])
+}
+
+func normalizeInviteCodeHash(codeOrHash string) string {
+	if len(codeOrHash) == 64 {
+		if _, err := hex.DecodeString(codeOrHash); err == nil {
+			return strings.ToLower(codeOrHash)
+		}
+	}
+	return hashInviteCode(codeOrHash)
 }
 
 func isInviteExpired(createdAt time.Time, expiration time.Duration) bool {
@@ -602,8 +632,8 @@ func isInviteExpired(createdAt time.Time, expiration time.Duration) bool {
 func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 	var invite Invite
 	err := app.Sqlite.GetContext(ctx, &invite,
-		`SELECT code, email, created_at FROM invites WHERE code = $1`,
-		code)
+		`SELECT email, created_at FROM invites WHERE code_hash = $1`,
+		hashInviteCode(code))
 	if err != nil {
 		return nil, fmt.Errorf("invite not found")
 	}
@@ -614,7 +644,9 @@ func GetInvite(app *App, ctx context.Context, code string) (*Invite, error) {
 }
 
 type CreateInvitePayload struct {
-	Code      string    `json:"code"`
+	CodeHash string `json:"codeHash,omitempty"`
+	// Code is kept for backwards compatibility when replaying older NATS state events
+	Code      string    `json:"code,omitempty"`
 	Email     string    `json:"email"`
 	Timestamp time.Time `json:"timestamp"`
 	CreatedBy string    `json:"createdBy"`
@@ -655,10 +687,11 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 	}
 
 	code := generateInviteCode()
+	codeHash := hashInviteCode(code)
 	var exists bool
 	err = app.Sqlite.GetContext(ctx, &exists,
-		`SELECT EXISTS(SELECT 1 FROM invites WHERE code = $1)`,
-		code)
+		`SELECT EXISTS(SELECT 1 FROM invites WHERE code_hash = $1)`,
+		codeHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check invite code uniqueness: %w", err)
 	}
@@ -667,7 +700,7 @@ func CreateInvite(app *App, ctx context.Context, email string) (*Invite, error) 
 	}
 
 	payload := CreateInvitePayload{
-		Code:      code,
+		CodeHash:  codeHash,
 		Email:     email,
 		Timestamp: time.Now(),
 		CreatedBy: actor.String(),
@@ -693,11 +726,16 @@ func HandleCreateInvite(app *App, data []byte) bool {
 		return false
 	}
 
+	codeHash := payload.CodeHash
+	if codeHash == "" {
+		codeHash = normalizeInviteCodeHash(payload.Code)
+	}
+
 	_, err = app.Sqlite.Exec(
 		`INSERT OR IGNORE INTO invites (
-			code, email, created_at, created_by
+			code_hash, email, created_at, created_by
 		) VALUES ($1, $2, $3, $4)`,
-		payload.Code, payload.Email, payload.Timestamp, payload.CreatedBy,
+		codeHash, payload.Email, payload.Timestamp, payload.CreatedBy,
 	)
 	if err != nil {
 		app.Logger.Error("failed to insert invite into DB", slog.Any("error", err))
@@ -727,7 +765,9 @@ func generateInviteCode() string {
 }
 
 type ClaimInvitePayload struct {
-	Code         string    `json:"code"`
+	CodeHash string `json:"codeHash,omitempty"`
+	// Code is kept for backwards compatibility when replaying older NATS state events
+	Code         string    `json:"code,omitempty"`
 	Email        string    `json:"email"`
 	Name         string    `json:"name"`
 	PasswordHash string    `json:"passwordHash"`
@@ -736,11 +776,12 @@ type ClaimInvitePayload struct {
 }
 
 func ClaimInvite(app *App, ctx context.Context, code string, name string, password string) (string, error) {
+	codeHash := hashInviteCode(code)
 	// Get invite details
 	var invite Invite
 	err := app.Sqlite.GetContext(ctx, &invite,
-		`SELECT * FROM invites WHERE code = $1`,
-		code)
+		`SELECT * FROM invites WHERE code_hash = $1`,
+		codeHash)
 	if err != nil {
 		return "", fmt.Errorf("invalid invite code")
 	}
@@ -768,7 +809,7 @@ func ClaimInvite(app *App, ctx context.Context, code string, name string, passwo
 
 	userId := cuid2.Generate()
 	payload := ClaimInvitePayload{
-		Code:         code,
+		CodeHash:     codeHash,
 		Email:        invite.Email,
 		Name:         name,
 		PasswordHash: string(passwordHash),
@@ -810,10 +851,15 @@ func HandleClaimInvite(app *App, data []byte) bool {
 		return false
 	}
 
+	codeHash := payload.CodeHash
+	if codeHash == "" {
+		codeHash = normalizeInviteCodeHash(payload.Code)
+	}
+
 	// Delete the invite
 	_, err = tx.Exec(
-		`DELETE FROM invites WHERE code = $1`,
-		payload.Code,
+		`DELETE FROM invites WHERE code_hash = $1`,
+		codeHash,
 	)
 	if err != nil {
 		app.Logger.Error("failed to delete invite", slog.Any("error", err))
@@ -837,7 +883,7 @@ func ListInvites(app *App, ctx context.Context) (InviteList, error) {
 	var invites []Invite
 	err := app.Sqlite.SelectContext(ctx,
 		&invites,
-		`SELECT code, email, created_at
+		`SELECT email, created_at
 			 FROM invites
 			 ORDER BY created_at DESC`)
 	if err != nil {
