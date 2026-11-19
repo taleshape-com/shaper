@@ -558,6 +558,16 @@ func HandleDeleteUser(app *App, data []byte) bool {
 		return false
 	}
 
+	// Delete invites created by this user
+	_, err = tx.Exec(
+		`DELETE FROM invites WHERE created_by = $1`,
+		(&Actor{Type: ActorUser, ID: payload.ID}).String(),
+	)
+	if err != nil {
+		app.Logger.Error("failed to delete user invites", slog.Any("error", err))
+		return false
+	}
+
 	// Then soft delete the user
 	_, err = tx.Exec(
 		`UPDATE users SET deleted_at = $1, deleted_by = $2 WHERE id = $3`,
