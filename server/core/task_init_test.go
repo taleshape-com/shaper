@@ -349,3 +349,42 @@ func TestGetDuckDBMemoryModeFolderFiltering(t *testing.T) {
 		assert.True(t, checkTableExists(db, "sales_table"))
 	})
 }
+
+func TestNoTasksServiceGuards(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	app.NoTasks = true
+	ctx := ContextWithActor(context.Background(), &Actor{Type: ActorUser, ID: "u1"})
+
+	_, err := CreateTask(app, ctx, "test", "SELECT 'init'::SCHEDULE; CREATE TABLE should_not_exist (x INT);", "/", "")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	_, err = GetTask(app, ctx, "t1")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	err = SaveTaskContent(app, ctx, "t1", "SELECT 1;")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	err = SaveTaskName(app, ctx, "t1", "new-name")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	err = DeleteTask(app, ctx, "t1")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	_, err = RunTask(app, ctx, "CREATE TABLE should_not_exist (x INT);")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	_, err = ManualTaskRun(app, ctx, "CREATE TABLE should_not_exist (x INT);")
+	assert.ErrorContains(t, err, "tasks are disabled")
+
+	// Even if HandleCreateTask is replayed from NATS state stream when NoTasks is true, it must not execute or schedule the task
+	payload := `{"id":"replayed-task","timestamp":"2026-01-01T00:00:00Z","path":"/","name":"replayed","content":"SELECT 'init'::SCHEDULE; CREATE TABLE replayed_probe (x INT);","createdBy":"user:u1"}`
+	ok := HandleCreateTask(app, []byte(payload))
+	assert.True(t, ok)
+
+	var tableCount int
+	err = app.DuckDB.Get(&tableCount, "SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN ('should_not_exist', 'replayed_probe')")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, tableCount)
+}

@@ -160,6 +160,10 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 	// Special handling for search queries - use simpler query with relevance ordering
 	if opts.Query != "" {
 		lowerQuery := strings.ToLower(opts.Query)
+		typeFilter := ""
+		if app.NoTasks {
+			typeFilter = " AND a.type = 'dashboard'"
+		}
 		querySearch := fmt.Sprintf(`
 			WITH RECURSIVE folder_path(id, parent_folder_id, name, path) AS (
 				SELECT id, parent_folder_id, name, '/' || name || '/' as path
@@ -198,14 +202,14 @@ func ListApps(app *App, ctx context.Context, opts ListAppsOptions) (api.AppsResp
 				FROM apps a
 				LEFT JOIN folder_path fp ON a.folder_id = fp.id
 				LEFT JOIN task_runs t ON t.task_id = a.id AND a.type = 'task'
-				WHERE LOWER(a.name) LIKE ?
+				WHERE LOWER(a.name) LIKE ?%s
 			)
 			SELECT
 				id, path, folder_id, name, content, created_at, updated_at,
 				created_by, updated_by, visibility, type,
 				last_run_at, last_run_success, last_run_duration, next_run_at, next_run_type
 			FROM ranked
-			ORDER BY relevance ASC, name ASC%s`, paginationClause)
+			ORDER BY relevance ASC, name ASC%s`, typeFilter, paginationClause)
 
 		// Args: apps exact, apps prefix, apps contains
 		searchArgs := []interface{}{

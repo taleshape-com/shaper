@@ -142,6 +142,9 @@ func getNextTaskRun(app *App, ctx context.Context, content string) (*time.Time, 
 }
 
 func scheduleAndTrackNextTaskRun(app *App, ctx context.Context, taskID string, content string) {
+	if app.NoTasks {
+		return
+	}
 	unscheduleTask(app, taskID)
 	nextRunAt, scheduleType, err := getNextTaskRun(app, ctx, content)
 	if err != nil {
@@ -497,6 +500,9 @@ func (app *App) HandleTaskResult(msg jetstream.Msg) {
 }
 
 func ManualTaskRun(app *App, ctx context.Context, content string) (TaskResult, error) {
+	if app.NoTasks {
+		return TaskResult{}, fmt.Errorf("tasks are disabled")
+	}
 	_, scheduleType, err := getNextTaskRun(app, ctx, content)
 	if err != nil {
 		return TaskResult{}, fmt.Errorf("failed to get next task run: %w", err)

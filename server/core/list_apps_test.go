@@ -255,4 +255,27 @@ func TestListAppsQueryFilter(t *testing.T) {
 	if len(dashboards) != 0 {
 		t.Fatalf("expected 0 dashboards matching 'nonexistent', got %d", len(dashboards))
 	}
+
+	// Verify tasks are filtered out in search query when NoTasks is true
+	now := time.Now().UTC()
+	if _, err := app.Sqlite.Exec(`INSERT INTO apps (id, folder_id, name, content, created_at, updated_at, type)
+		VALUES ('task-root', NULL, 'Root Task', 'SELECT 1', ?, ?, 'task')`, now, now); err != nil {
+		t.Fatalf("failed to seed task: %v", err)
+	}
+	app.NoTasks = true
+	respNoTasks, err := ListApps(app, ctx, ListAppsOptions{
+		Path:              "/",
+		IncludeSubfolders: true,
+		Query:             "root",
+		Sort:              "name",
+		Order:             "asc",
+	})
+	if err != nil {
+		t.Fatalf("ListApps with NoTasks and query: %v", err)
+	}
+	for _, a := range respNoTasks.Apps {
+		if a.Type == "task" {
+			t.Fatalf("expected task to be filtered out when NoTasks is true, got %+v", a)
+		}
+	}
 }

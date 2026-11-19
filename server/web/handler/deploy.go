@@ -87,6 +87,9 @@ func ProcessDeployOperation(ctx context.Context, app *core.App, idx int, req api
 	default:
 		return DeployResult{}, fmt.Errorf("apps[%d]: unsupported type %q", idx, req.Type)
 	}
+	if appType == "task" && app.NoTasks {
+		return DeployResult{}, fmt.Errorf("apps[%d]: tasks are disabled on this server", idx)
+	}
 
 	switch strings.ToLower(strings.TrimSpace(req.Operation)) {
 	case "create":
