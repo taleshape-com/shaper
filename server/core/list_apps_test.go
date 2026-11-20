@@ -43,6 +43,7 @@ func setupListAppsTestApp(t *testing.T) *App {
 			created_by TEXT,
 			updated_by TEXT,
 			visibility TEXT,
+			share_updated_at DATETIME,
 			type TEXT NOT NULL
 		);`,
 		`CREATE TABLE task_runs (

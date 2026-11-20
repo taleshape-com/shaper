@@ -4,6 +4,9 @@ package web
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +22,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/time/rate"
 	_ "modernc.org/sqlite"
 )
@@ -406,6 +410,7 @@ func TestRoutes_PublicAuthRateLimiterIntegration(t *testing.T) {
 			created_by TEXT,
 			updated_by TEXT,
 			visibility TEXT,
+			share_updated_at DATETIME,
 			type TEXT NOT NULL,
 			password_hash TEXT,
 			folder_id TEXT
@@ -573,6 +578,19 @@ func TestRoutes_DownloadRateLimiterIntegration(t *testing.T) {
 }
 
 func TestRoutes_DeployDashboardIDRestriction(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer sdb.Close()
+	require.NoError(t, core.InitSQLite(sdb))
+
+	_, err = sdb.Exec(`
+		INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
+		VALUES ('user-123', 'user123@example.com', 'User 123', 'test-password-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+		INSERT INTO sessions (id, user_id, hash, salt, created_at)
+		VALUES ('session-123', 'user-123', 'hash123', 'salt123', CURRENT_TIMESTAMP);
+	`)
+	require.NoError(t, err)
+
 	e := echo.New()
 	secret := []byte("test-secret-key-32-bytes-long!")
 	app := &core.App{
@@ -580,6 +598,7 @@ func TestRoutes_DeployDashboardIDRestriction(t *testing.T) {
 		NoTasks:       true,
 		JWTSecret:     secret,
 		JWTExp:        time.Hour,
+		Sqlite:        sdb,
 	}
 
 	mockFS := fstest.MapFS{
@@ -589,6 +608,10 @@ func TestRoutes_DeployDashboardIDRestriction(t *testing.T) {
 	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
 
 	createJWT := func(claims jwt.MapClaims) string {
+		if _, hasUser := claims["userId"]; hasUser {
+			claims["sessionId"] = "session-123"
+			claims["pwdRev"] = core.ComputePasswordRevision("test-password-hash")
+		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		signed, err := token.SignedString(secret)
 		require.NoError(t, err)
@@ -648,6 +671,10 @@ func TestRoutes_PublicActorRestrictions(t *testing.T) {
 	_, err = sdb.Exec(`
 		INSERT INTO apps (id, name, content, created_at, updated_at, visibility, type)
 		VALUES ('test-dash-id', 'Test Dashboard', 'SELECT 1;', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'public', 'dashboard');
+		INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
+		VALUES ('user-123', 'user123@example.com', 'User 123', 'test-password-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+		INSERT INTO sessions (id, user_id, hash, salt, created_at)
+		VALUES ('session-123', 'user-123', 'hash123', 'salt123', CURRENT_TIMESTAMP);
 	`)
 	require.NoError(t, err)
 
@@ -669,15 +696,23 @@ func TestRoutes_PublicActorRestrictions(t *testing.T) {
 	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
 
 	createJWT := func(claims jwt.MapClaims) string {
+		if _, hasUser := claims["userId"]; hasUser {
+			claims["sessionId"] = "session-123"
+			claims["pwdRev"] = core.ComputePasswordRevision("test-password-hash")
+		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		signed, err := token.SignedString(secret)
 		require.NoError(t, err)
 		return signed
 	}
 
+	dashInfo, err := core.GetDashboardInfo(app, context.Background(), "test-dash-id")
+	require.NoError(t, err)
+
 	publicToken := createJWT(jwt.MapClaims{
 		"dashboardId": "test-dash-id",
 		"public":      "public",
+		"shareRev":    dashInfo.ShareRevision,
 		"exp":         time.Now().Add(time.Hour).Unix(),
 	})
 
@@ -1078,5 +1113,423 @@ func TestRoutes_SetupRejectedWhenAdminEmailSet(t *testing.T) {
 	var res map[string]string
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &res))
 	assert.Equal(t, "User setup already completed", res["error"])
+}
+
+type memKVEntry struct {
+	value []byte
+}
+
+func (e *memKVEntry) Bucket() string                  { return "" }
+func (e *memKVEntry) Key() string                     { return "" }
+func (e *memKVEntry) Value() []byte                   { return e.value }
+func (e *memKVEntry) Revision() uint64                { return 0 }
+func (e *memKVEntry) Created() time.Time              { return time.Now() }
+func (e *memKVEntry) Delta() uint64                   { return 0 }
+func (e *memKVEntry) Operation() jetstream.KeyValueOp { return jetstream.KeyValuePut }
+
+type memKV struct {
+	jetstream.KeyValue
+	data map[string][]byte
+}
+
+func (m *memKV) Put(ctx context.Context, key string, value []byte) (uint64, error) {
+	if m.data == nil {
+		m.data = make(map[string][]byte)
+	}
+	m.data[key] = value
+	return 0, nil
+}
+
+func (m *memKV) Get(ctx context.Context, key string) (jetstream.KeyValueEntry, error) {
+	if v, ok := m.data[key]; ok {
+		return &memKVEntry{value: v}, nil
+	}
+	return nil, jetstream.ErrKeyNotFound
+}
+
+func TestRoutes_StateAwareTokenRevocation(t *testing.T) {
+	sdb, err := sqlx.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer sdb.Close()
+	require.NoError(t, core.InitSQLite(sdb))
+
+	ddb, err := sqlx.Open("duckdb", "")
+	require.NoError(t, err)
+	defer ddb.Close()
+
+	downloadsKV := &memKV{data: make(map[string][]byte)}
+	secret := []byte("test-secret-key-32-bytes-long!")
+	app := &core.App{
+		LoginRequired: true,
+		NoTasks:       true,
+		JWTSecret:     secret,
+		JWTExp:        15 * time.Minute,
+		Sqlite:        sdb,
+		DuckDB:        ddb,
+		DownloadsKv:   downloadsKV,
+	}
+
+	e := echo.New()
+	mockFS := fstest.MapFS{
+		"dist/index.html": &fstest.MapFile{Data: []byte("<html></html>")},
+	}
+	routes(e, app, mockFS, time.Now(), "", "", "http://localhost:8080", "2006-01-02")
+
+	_, err = sdb.Exec(`
+		INSERT INTO apps (id, name, content, created_at, updated_at, visibility, type)
+		VALUES ('share-dash', 'Share Dashboard', 'SELECT ''SECRET_MARKER'' as marker;', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'public', 'dashboard');
+	`)
+	require.NoError(t, err)
+
+	mintPublicJWT := func(password string) (int, string) {
+		body := map[string]string{"dashboardId": "share-dash"}
+		if password != "" {
+			body["password"] = password
+		}
+		b, _ := json.Marshal(body)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/public", strings.NewReader(string(b)))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			return rec.Code, ""
+		}
+		var res struct {
+			JWT string `json:"jwt"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &res))
+		return rec.Code, res.JWT
+	}
+
+	setVisibility := func(visibility string) {
+		payload, err := json.Marshal(core.UpdateDashboardVisibilityPayload{
+			ID:         "share-dash",
+			TimeStamp:  time.Now().UTC(),
+			Visibility: visibility,
+			UpdatedBy:  "user:owner",
+		})
+		require.NoError(t, err)
+		require.True(t, core.HandleUpdateDashboardVisibility(app, payload))
+	}
+
+	setPassword := func(password string) {
+		hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+		require.NoError(t, err)
+		payload, err := json.Marshal(core.UpdateDashboardPasswordPayload{
+			ID:           "share-dash",
+			TimeStamp:    time.Now().UTC(),
+			PasswordHash: string(hashBytes),
+			UpdatedBy:    "user:owner",
+		})
+		require.NoError(t, err)
+		require.True(t, core.HandleUpdateDashboardPassword(app, payload))
+	}
+
+	t.Run("public share token is immediately revoked on unpublish and stays revoked on republish", func(t *testing.T) {
+		code, pubJWT := mintPublicJWT("")
+		require.Equal(t, http.StatusOK, code)
+		require.NotEmpty(t, pubJWT)
+
+		// Works while public
+		req := httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		req.Header.Set("Authorization", "Bearer "+pubJWT)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "SECRET_MARKER")
+
+		// Request a download URL while public
+		reqDlUrl := httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash/download/export.csv?query_id=0&mode=url", nil)
+		reqDlUrl.Header.Set("Authorization", "Bearer "+pubJWT)
+		recDlUrl := httptest.NewRecorder()
+		e.ServeHTTP(recDlUrl, reqDlUrl)
+		require.Equal(t, http.StatusOK, recDlUrl.Code)
+		var dlRes struct {
+			URL string `json:"url"`
+		}
+		require.NoError(t, json.Unmarshal(recDlUrl.Body.Bytes(), &dlRes))
+		require.NotEmpty(t, dlRes.URL)
+
+		// Unpublish (set to private)
+		setVisibility("private")
+
+		// Old public JWT is rejected on GET /api/dashboards/:id
+		req = httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		req.Header.Set("Authorization", "Bearer "+pubJWT)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		// Old public JWT is rejected on GET /api/dashboards/:id/download/:filename
+		reqDl := httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash/download/export.csv?query_id=0", nil)
+		reqDl.Header.Set("Authorization", "Bearer "+pubJWT)
+		recDl := httptest.NewRecorder()
+		e.ServeHTTP(recDl, reqDl)
+		assert.Equal(t, http.StatusUnauthorized, recDl.Code)
+
+		// Previously minted one-time download URL (streamFile) is also rejected
+		reqStream := httptest.NewRequest(http.MethodGet, dlRes.URL, nil)
+		recStream := httptest.NewRecorder()
+		e.ServeHTTP(recStream, reqStream)
+		assert.Equal(t, http.StatusUnauthorized, recStream.Code)
+
+		// Republishing to public generates a new share revision; old token remains invalid
+		time.Sleep(2 * time.Millisecond)
+		setVisibility("public")
+		req = httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		req.Header.Set("Authorization", "Bearer "+pubJWT)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("password-protected share token is immediately revoked on password rotation or visibility change", func(t *testing.T) {
+		setPassword("PasswordA")
+		setVisibility("password-protected")
+
+		code, pwJWT := mintPublicJWT("PasswordA")
+		require.Equal(t, http.StatusOK, code)
+		require.NotEmpty(t, pwJWT)
+
+		// Works with PasswordA token
+		req := httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		req.Header.Set("Authorization", "Bearer "+pwJWT)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		// Rotate password to PasswordB
+		time.Sleep(2 * time.Millisecond)
+		setPassword("PasswordB")
+
+		// Token minted with PasswordA is immediately rejected on render and download
+		req = httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		req.Header.Set("Authorization", "Bearer "+pwJWT)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		reqDl := httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash/download/export.csv?query_id=0", nil)
+		reqDl.Header.Set("Authorization", "Bearer "+pwJWT)
+		recDl := httptest.NewRecorder()
+		e.ServeHTTP(recDl, reqDl)
+		assert.Equal(t, http.StatusUnauthorized, recDl.Code)
+
+		// Minting with PasswordA fails, minting with PasswordB succeeds
+		codeA, _ := mintPublicJWT("PasswordA")
+		assert.Equal(t, http.StatusUnauthorized, codeA)
+		codeB, pwJWTB := mintPublicJWT("PasswordB")
+		require.Equal(t, http.StatusOK, codeB)
+
+		// Changing visibility to private revokes PasswordB token
+		time.Sleep(2 * time.Millisecond)
+		setVisibility("private")
+		req = httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		req.Header.Set("Authorization", "Bearer "+pwJWTB)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("API key embed token works on private dashboards, disallows longLived, and is revoked when key is deleted or loses permission", func(t *testing.T) {
+		setVisibility("private")
+
+		apiKeyID := "embedkey99"
+		apiKeyToken := "shaperkey." + apiKeyID + ".testsuffix1234567890123456789012"
+		salt := "testsalt123456789012345678901234"
+		mac := hmac.New(sha256.New, []byte(salt))
+		mac.Write([]byte(apiKeyToken))
+		keyHash := hex.EncodeToString(mac.Sum(nil))
+		payloadBytes, err := json.Marshal(core.CreateAPIKeyPayload{
+			ID:          apiKeyID,
+			Timestamp:   time.Now().UTC(),
+			Name:        "Embed Key",
+			Hash:        keyHash,
+			Salt:        salt,
+			Permissions: []string{core.PermissionGenerateJWT},
+			CreatedBy:   "user:owner",
+		})
+		require.NoError(t, err)
+		require.True(t, core.HandleCreateAPIKey(app, payloadBytes))
+
+		// Rejects longLived: true
+		reqLL := httptest.NewRequest(http.MethodPost, "/api/auth/token", strings.NewReader(`{"token":"`+apiKeyToken+`","dashboardId":"share-dash","longLived":true}`))
+		reqLL.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		recLL := httptest.NewRecorder()
+		e.ServeHTTP(recLL, reqLL)
+		assert.Equal(t, http.StatusBadRequest, recLL.Code)
+
+		// Mints short-lived embed token
+		reqMint := httptest.NewRequest(http.MethodPost, "/api/auth/token", strings.NewReader(`{"token":"`+apiKeyToken+`","dashboardId":"share-dash"}`))
+		reqMint.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		recMint := httptest.NewRecorder()
+		e.ServeHTTP(recMint, reqMint)
+		require.Equal(t, http.StatusOK, recMint.Code)
+		var mintRes struct {
+			JWT string `json:"jwt"`
+		}
+		require.NoError(t, json.Unmarshal(recMint.Body.Bytes(), &mintRes))
+
+		// Embed token works on private dashboard
+		reqDash := httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		reqDash.Header.Set("Authorization", "Bearer "+mintRes.JWT)
+		recDash := httptest.NewRecorder()
+		e.ServeHTTP(recDash, reqDash)
+		require.Equal(t, http.StatusOK, recDash.Code)
+
+		// Removing jwt permission immediately revokes outstanding embed token
+		permPayload, err := json.Marshal(core.UpdateAPIKeyPermissionsPayload{
+			ID:          apiKeyID,
+			Timestamp:   time.Now().UTC(),
+			Permissions: []string{},
+			UpdatedBy:   "user:owner",
+		})
+		require.NoError(t, err)
+		require.True(t, core.HandleUpdateAPIKeyPermissions(app, permPayload))
+
+		reqDash = httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		reqDash.Header.Set("Authorization", "Bearer "+mintRes.JWT)
+		recDash = httptest.NewRecorder()
+		e.ServeHTTP(recDash, reqDash)
+		assert.Equal(t, http.StatusUnauthorized, recDash.Code)
+
+		// Restoring permission re-allows, then deleting API key permanently revokes
+		permPayloadRestore, _ := json.Marshal(core.UpdateAPIKeyPermissionsPayload{
+			ID:          apiKeyID,
+			Timestamp:   time.Now().UTC(),
+			Permissions: []string{core.PermissionGenerateJWT},
+			UpdatedBy:   "user:owner",
+		})
+		require.True(t, core.HandleUpdateAPIKeyPermissions(app, permPayloadRestore))
+
+		delPayload, _ := json.Marshal(core.DeleteAPIKeyPayload{
+			ID:        apiKeyID,
+			TimeStamp: time.Now().UTC(),
+		})
+		require.True(t, core.HandleDeleteAPIKey(app, delPayload))
+
+		reqDash = httptest.NewRequest(http.MethodGet, "/api/dashboards/share-dash", nil)
+		reqDash.Header.Set("Authorization", "Bearer "+mintRes.JWT)
+		recDash = httptest.NewRecorder()
+		e.ServeHTTP(recDash, reqDash)
+		assert.Equal(t, http.StatusUnauthorized, recDash.Code)
+	})
+
+	t.Run("user JWTs (short-lived and 30d long-lived) are immediately revoked on logout, password change, and user deletion", func(t *testing.T) {
+		pwHashABytes, err := bcrypt.GenerateFromPassword([]byte("UserPassA"), bcrypt.MinCost)
+		require.NoError(t, err)
+		pwHashA := string(pwHashABytes)
+		_, err = sdb.Exec(`
+			INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
+			VALUES ('user-rev', 'rev@example.com', 'Rev User', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+			INSERT INTO sessions (id, user_id, hash, salt, created_at)
+			VALUES ('sess-rev-1', 'user-rev', 'hash1', 'salt1', CURRENT_TIMESTAMP);
+		`, pwHashA)
+		require.NoError(t, err)
+
+		makeUserJWT := func(sessionID string, pwHash string, longLived bool) string {
+			exp := time.Now().Add(15 * time.Minute).Unix()
+			if longLived {
+				exp = time.Now().Add(30 * 24 * time.Hour).Unix()
+			}
+			claims := jwt.MapClaims{
+				"userId":    "user-rev",
+				"sessionId": sessionID,
+				"pwdRev":    core.ComputePasswordRevision(pwHash),
+				"exp":       exp,
+			}
+			if longLived {
+				claims["longLived"] = true
+			}
+			tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+			signed, err := tok.SignedString(secret)
+			require.NoError(t, err)
+			return signed
+		}
+
+		shortJWT := makeUserJWT("sess-rev-1", pwHashA, false)
+		longJWT := makeUserJWT("sess-rev-1", pwHashA, true)
+
+		// Both work before logout
+		for _, tok := range []string{shortJWT, longJWT} {
+			req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+			req.Header.Set("Authorization", "Bearer "+tok)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			require.Equal(t, http.StatusOK, rec.Code)
+		}
+
+		// Delete session (simulating logout)
+		delSessPayload, _ := json.Marshal(core.DeleteSessionPayload{
+			ID:        "sess-rev-1",
+			Timestamp: time.Now().UTC(),
+		})
+		require.True(t, core.HandleDeleteSession(app, delSessPayload))
+
+		// Both short-lived and 30d long-lived JWTs are immediately rejected on API routes and /api/auth/token
+		for _, tok := range []string{shortJWT, longJWT} {
+			req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+			req.Header.Set("Authorization", "Bearer "+tok)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+			reqRefresh := httptest.NewRequest(http.MethodPost, "/api/auth/token", strings.NewReader(`{}`))
+			reqRefresh.Header.Set("Authorization", "Bearer "+tok)
+			reqRefresh.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			recRefresh := httptest.NewRecorder()
+			e.ServeHTTP(recRefresh, reqRefresh)
+			assert.Equal(t, http.StatusUnauthorized, recRefresh.Code)
+		}
+
+		// New session, then password change (preserving sess-rev-2 via ExcludeSessionID)
+		_, err = sdb.Exec(`
+			INSERT INTO sessions (id, user_id, hash, salt, created_at)
+			VALUES ('sess-rev-2', 'user-rev', 'hash2', 'salt2', CURRENT_TIMESTAMP);
+		`)
+		require.NoError(t, err)
+		jwtBeforePwChange := makeUserJWT("sess-rev-2", pwHashA, true)
+
+		pwHashBBytes, err := bcrypt.GenerateFromPassword([]byte("UserPassB"), bcrypt.MinCost)
+		require.NoError(t, err)
+		pwHashB := string(pwHashBBytes)
+		updPwPayload, _ := json.Marshal(core.UpdateUserPasswordPayload{
+			UserID:           "user-rev",
+			PasswordHash:     pwHashB,
+			Timestamp:        time.Now().UTC(),
+			UpdatedBy:        "user:user-rev",
+			ExcludeSessionID: "sess-rev-2",
+		})
+		require.True(t, core.HandleUpdateUserPassword(app, updPwPayload))
+
+		// Token with old pwdRev is immediately rejected
+		req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		req.Header.Set("Authorization", "Bearer "+jwtBeforePwChange)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+		// Token with updated pwdRev works until user is deleted
+		jwtAfterPwChange := makeUserJWT("sess-rev-2", pwHashB, true)
+		req = httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		req.Header.Set("Authorization", "Bearer "+jwtAfterPwChange)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		// Soft-delete user
+		delUserPayload, _ := json.Marshal(core.DeleteUserPayload{
+			ID:        "user-rev",
+			Timestamp: time.Now().UTC(),
+			DeletedBy: "user:admin",
+		})
+		require.True(t, core.HandleDeleteUser(app, delUserPayload))
+
+		req = httptest.NewRequest(http.MethodGet, "/api/version", nil)
+		req.Header.Set("Authorization", "Bearer "+jwtAfterPwChange)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
 }
 

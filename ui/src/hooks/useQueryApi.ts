@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { getJwt } from "../lib/auth";
+import { getJwt, localStorageJwtKey } from "../lib/auth";
 import { useCallback } from "react";
 import { goToLoginPage } from "../lib/utils";
 import { fetchWithRetry } from "../lib/fetchWithRetry";
@@ -21,6 +21,7 @@ export const useQueryApi = (): QueryApiFunc => {
       signal: options.signal,
     });
     if (response.status === 401) {
+      localStorage.removeItem(localStorageJwtKey);
       throw goToLoginPage();
     }
     if (response.status !== 200 && response.status !== 201) {

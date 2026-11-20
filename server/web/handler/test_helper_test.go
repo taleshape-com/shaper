@@ -30,6 +30,16 @@ func setupTestApp(t *testing.T) *core.App {
 		t.Fatalf("failed to init sqlite: %v", err)
 	}
 
+	_, err = db.Exec(`
+		INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
+		VALUES ('test-user-id', 'test@example.com', 'Test User', 'test-password-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+		INSERT INTO sessions (id, user_id, hash, salt, created_at)
+		VALUES ('test-session-id', 'test-user-id', 'hash', 'salt', CURRENT_TIMESTAMP);
+	`)
+	if err != nil {
+		t.Fatalf("failed to seed test user and session: %v", err)
+	}
+
 	duckdb, err := sqlx.Open("duckdb", "")
 	if err != nil {
 		t.Fatalf("failed to open duckdb: %v", err)
@@ -52,6 +62,8 @@ func setupTestApp(t *testing.T) *core.App {
 func createDashboardScopedToken(dashboardId string) *jwt.Token {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId":      "test-user-id",
+		"sessionId":   "test-session-id",
+		"pwdRev":      core.ComputePasswordRevision("test-password-hash"),
 		"dashboardId": dashboardId,
 		"exp":         time.Now().Add(time.Hour).Unix(),
 	})
@@ -59,8 +71,10 @@ func createDashboardScopedToken(dashboardId string) *jwt.Token {
 
 func createUserToken() *jwt.Token {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": "test-user-id",
-		"exp":    time.Now().Add(time.Hour).Unix(),
+		"userId":    "test-user-id",
+		"sessionId": "test-session-id",
+		"pwdRev":    core.ComputePasswordRevision("test-password-hash"),
+		"exp":       time.Now().Add(time.Hour).Unix(),
 	})
 }
 

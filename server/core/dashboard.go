@@ -12,16 +12,19 @@ var ErrDashboardNotFound = errors.New("Dashboard Not Found")
 const TMP_DASHBOARD_PREFIX = "shaper-tmp."
 
 type Dashboard struct {
-	ID         string    `db:"id" json:"id"`
-	FolderID   *string   `db:"folder_id" json:"folderId,omitempty"`
-	Path       string    `json:"path,omitempty"`
-	Name       string    `db:"name" json:"name"`
-	Content    string    `db:"content" json:"content"`
-	CreatedAt  time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt  time.Time `db:"updated_at" json:"updatedAt"`
-	CreatedBy  *string   `db:"created_by" json:"createdBy,omitempty"`
-	UpdatedBy  *string   `db:"updated_by" json:"updatedBy,omitempty"`
-	Visibility *string   `db:"visibility" json:"visibility,omitempty"`
+	ID             string     `db:"id" json:"id"`
+	FolderID       *string    `db:"folder_id" json:"folderId,omitempty"`
+	Path           string     `json:"path,omitempty"`
+	Name           string     `db:"name" json:"name"`
+	Content        string     `db:"content" json:"content"`
+	CreatedAt      time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updatedAt"`
+	CreatedBy      *string    `db:"created_by" json:"createdBy,omitempty"`
+	UpdatedBy      *string    `db:"updated_by" json:"updatedBy,omitempty"`
+	Visibility     *string    `db:"visibility" json:"visibility,omitempty"`
+	PasswordHash   *string    `db:"password_hash" json:"-"`
+	ShareUpdatedAt *time.Time `db:"share_updated_at" json:"-"`
+	ShareRevision  string     `db:"-" json:"-"`
 }
 
 type GetResult struct {

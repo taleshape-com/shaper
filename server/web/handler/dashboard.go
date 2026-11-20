@@ -491,6 +491,13 @@ func RequestDashboardDownload(app *core.App, internalUrl string, pdfDateFormat s
 		for k, v := range claims {
 			newClaims[k] = v
 		}
+		if idClaim, hasId := claims["dashboardId"]; hasId && idClaim != idParam {
+			if _, isPublic := claims["public"]; isPublic {
+				if _, hasShareID := newClaims["shareDashboardId"]; !hasShareID {
+					newClaims["shareDashboardId"] = idClaim
+				}
+			}
+		}
 		newClaims["exp"] = time.Now().Add(app.JWTExp).Unix()
 		newClaims["dashboardId"] = idParam
 		downloadJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
@@ -768,6 +775,11 @@ func streamFile(app *core.App, c echo.Context, internalUrl string, pdfDateFormat
 		return c.JSONPretty(http.StatusUnauthorized, struct {
 			Error string `json:"error"`
 		}{Error: errMsg}, "  ")
+	}
+	if core.ValidateJWTClaims(app, c.Request().Context(), claims) == nil {
+		return c.JSONPretty(http.StatusUnauthorized, struct {
+			Error string `json:"error"`
+		}{Error: "Unauthorized"}, "  ")
 	}
 	variables := map[string]any{}
 	if vars, hasVariables := claims["variables"]; hasVariables {

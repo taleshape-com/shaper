@@ -239,6 +239,9 @@ export function EmbedComponent ({
         getJwt={handleGetJwt}
         onVarsChanged={handleVarsChanged}
         onDataChange={handleDataChanged}
+        onError={() => {
+          jwtRef.current = null;
+        }}
       />
       <PasswordDialog
         open={showPasswordDialog}
