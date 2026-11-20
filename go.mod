@@ -27,7 +27,7 @@ require (
 	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/xuri/excelize/v2 v2.11.1
 	golang.org/x/crypto v0.58.1-0.20261105095718-a1058eb15227
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.61.1
 )
