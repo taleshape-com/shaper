@@ -21,6 +21,7 @@ type DropdownProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  defaultValue?: string[];
   idPrefix: string;
   className?: string;
 };
@@ -31,6 +32,7 @@ function DashboardDropdownMulti ({
   headers,
   onChange,
   vars,
+  defaultValue,
   idPrefix,
   className,
 }: DropdownProps) {
@@ -39,20 +41,23 @@ function DashboardDropdownMulti ({
   const hintIndex = headers.findIndex((header) => header.tag === "hint");
   const varName = headers[valueIndex].name;
   const selectedVal = (vars ?? {})[varName];
-  const selectedValArr = selectedVal
+  const isDefaultState = selectedVal === undefined || selectedVal === null;
+  const allValues = data.map((row) =>
+    formatValue(
+      row[valueIndex],
+      headers[valueIndex].type,
+    ).toString(),
+  );
+  const selectedValArr = !isDefaultState
     ? Array.isArray(selectedVal)
       ? selectedVal
       : [selectedVal]
-    : [];
+    : defaultValue !== undefined
+      ? defaultValue
+      : allValues;
 
-  // Determine if all are currently selected
-  // If no selectedVal is set (undefined/null), treat as all selected (default state)
-  // If selectedVal is empty array, treat as none selected (explicitly unselected)
-  // If selectedVal has all values, treat as all selected (explicitly selected all)
-  const isDefaultState = selectedVal === undefined || selectedVal === null;
-  const hasAllValues = selectedValArr.length === data.length;
-  const allSelected = isDefaultState || hasAllValues;
-  const noneSelected = !isDefaultState && selectedValArr.length === 0;
+  const allSelected = data.length > 0 && selectedValArr.length === data.length;
+  const noneSelected = selectedValArr.length === 0;
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -66,7 +71,7 @@ function DashboardDropdownMulti ({
             id={toCssId(`${idPrefix}${varName}`)}
           >
             {label ?? varName} (
-            {noneSelected ? 0 : selectedValArr.length || data.length})
+            {selectedValArr.length})
             <SelectPrimitives.Icon asChild>
               <RiExpandUpDownLine className="ml-2 size-4 shrink-0 text-ctext2 dark:text-dtext2" />
             </SelectPrimitives.Icon>
@@ -78,8 +83,7 @@ function DashboardDropdownMulti ({
               row[valueIndex],
               headers[valueIndex].type,
             );
-            const isChecked =
-              isDefaultState || selectedValArr.includes(value.toString());
+            const isChecked = selectedValArr.includes(value.toString());
 
             return (
               <DropdownMenuCheckboxItem
@@ -87,28 +91,13 @@ function DashboardDropdownMulti ({
                 checked={isChecked}
                 onSelect={(e) => e.preventDefault()}
                 onCheckedChange={(checked) => {
-                  if (isDefaultState) {
-                    // Default state - all selected, clicking deselects this one
-                    const allValues = data.map((row) =>
-                      formatValue(
-                        row[valueIndex],
-                        headers[valueIndex].type,
-                      ).toString(),
-                    );
-                    const newSelection = allValues.filter(
-                      (v) => v !== value.toString(),
-                    );
-                    onChange({ ...vars, [varName]: newSelection });
+                  const valSet = new Set(selectedValArr);
+                  if (checked) {
+                    valSet.add(value.toString());
                   } else {
-                    // Normal toggle behavior
-                    const valSet = new Set(selectedValArr);
-                    if (checked) {
-                      valSet.add(value.toString());
-                    } else {
-                      valSet.delete(value.toString());
-                    }
-                    onChange({ ...vars, [varName]: Array.from(valSet) });
+                    valSet.delete(value.toString());
                   }
+                  onChange({ ...vars, [varName]: Array.from(valSet) });
                 }}
                 hint={
                   hintIndex !== -1
@@ -134,12 +123,6 @@ function DashboardDropdownMulti ({
                   onChange({ ...vars, [varName]: [] });
                 } else {
                   // Select all - set to all values
-                  const allValues = data.map((row) =>
-                    formatValue(
-                      row[valueIndex],
-                      headers[valueIndex].type,
-                    ).toString(),
-                  );
                   onChange({ ...vars, [varName]: allValues });
                 }
               }}

@@ -759,6 +759,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 	if err != nil {
 		return "", "", err
 	}
+	sqlDefaultVars := make(map[string]any)
 
 	if app.InternalDBName != "" {
 		searchPath := fmt.Sprintf("SET search_path = 'main,\"%s\".main,system';", util.EscapeSQLIdentifier(app.InternalDBName))
@@ -771,6 +772,13 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 		sqlString = strings.TrimSpace(sqlString)
 		if sqlString == "" {
 			continue
+		}
+		setMatches := setVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		resetMatches := resetVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		for _, m := range resetMatches {
+			if len(m) > 1 {
+				delete(sqlDefaultVars, strings.ToLower(m[1]))
+			}
 		}
 		if !IsAllowedStatement(app, sqlString) {
 			return "", "", fmt.Errorf("disallowed SQL statement in query %d", queryIndex+1)
@@ -793,6 +801,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 		}
 		colTypes, err := rows.ColumnTypes()
 		if err != nil {
+			_ = rows.Close()
 			return "", "", err
 		}
 		for rows.Next() {
@@ -804,6 +813,17 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 				return "", "", err
 			}
 			data = append(data, row)
+		}
+		if err := rows.Close(); err != nil {
+			return "", "", err
+		}
+		if len(setMatches) > 0 {
+			if err := readSQLVariables(ctx, conn, setMatches, sqlDefaultVars); err != nil {
+				return "", "", err
+			}
+		}
+		if isSideEffect(app, sqlString) {
+			continue
 		}
 
 		if isLabel(colTypes, data) || isSectionTitle(colTypes, data) {
@@ -824,7 +844,7 @@ func getVarPrefix(app *App, conn *sqlx.Conn, ctx context.Context, sqlQueries []s
 			}
 			columns = append(columns, col)
 		}
-		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, columns, data)
+		_, err = collectVars(singleVars, multiVars, variables, sqlDefaultVars, rInfo.Type, queryParams, columns, data)
 		if err != nil {
 			return "", "", err
 		}

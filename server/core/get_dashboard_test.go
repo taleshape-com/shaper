@@ -1211,4 +1211,81 @@ SELECT 0.33::FLOAT AS plain_float, 'NaN'::FLOAT AS nan_float, 'Infinity'::FLOAT 
 		assert.Nil(t, tableQuery.Rows[0][3])
 		assert.Nil(t, tableQuery.Rows[0][4])
 	})
+
+	t.Run("SET VARIABLE defaults for DROPDOWN_MULTI, DROPDOWN, and INPUT", func(t *testing.T) {
+		// 1. DROPDOWN_MULTI with empty default []
+		dqMultiEmpty := DashboardQuery{
+			Content: `
+				SET VARIABLE category = [];
+				SELECT 'a'::DROPDOWN_MULTI AS category UNION ALL SELECT 'b';
+				SELECT getvariable('category') AS selected;
+			`,
+			ID: "test-multi-empty",
+		}
+		res, err := QueryDashboard(app, ctx, dqMultiEmpty, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(res.Sections))
+		assert.Equal(t, []string{}, res.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "", res.Sections[1].Queries[0].Rows[0][0])
+
+		// Overriding with queryParams selects 'a'
+		resOverride, err := QueryDashboard(app, ctx, dqMultiEmpty, url.Values{"category": []string{"a"}}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{}, resOverride.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "a", resOverride.Sections[1].Queries[0].Rows[0][0])
+
+		// 2. DROPDOWN_MULTI with subset default ['b', 'c', 'invalid']
+		dqMultiSubset := DashboardQuery{
+			Content: `
+				SET VARIABLE category = ['b', 'c', 'invalid'];
+				SELECT 'a'::DROPDOWN_MULTI AS category UNION ALL SELECT 'b' UNION ALL SELECT 'c';
+				SELECT getvariable('category') AS selected;
+			`,
+			ID: "test-multi-subset",
+		}
+		resSubset, err := QueryDashboard(app, ctx, dqMultiSubset, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"b", "c"}, resSubset.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "b, c", resSubset.Sections[1].Queries[0].Rows[0][0])
+
+		// 3. Single DROPDOWN with SET VARIABLE default
+		dqSingle := DashboardQuery{
+			Content: `
+				SET VARIABLE my_drop = 'val2';
+				SELECT 'val1'::DROPDOWN AS my_drop UNION ALL SELECT 'val2';
+				SELECT getvariable('my_drop') AS selected;
+			`,
+			ID: "test-single-default",
+		}
+		resSingle, err := QueryDashboard(app, ctx, dqSingle, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "val2", resSingle.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "val2", resSingle.Sections[1].Queries[0].Rows[0][0])
+
+		// Overriding single DROPDOWN with queryParams
+		resSingleOverride, err := QueryDashboard(app, ctx, dqSingle, url.Values{"my_drop": []string{"val1"}}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "val2", resSingleOverride.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "val1", resSingleOverride.Sections[1].Queries[0].Rows[0][0])
+
+		// 4. INPUT with SET VARIABLE default
+		dqInput := DashboardQuery{
+			Content: `
+				SET VARIABLE search = 'initial query';
+				SELECT 'Type here...'::INPUT AS search;
+				SELECT getvariable('search') AS search_val;
+			`,
+			ID: "test-input-default",
+		}
+		resInput, err := QueryDashboard(app, ctx, dqInput, url.Values{}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "initial query", resInput.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "initial query", resInput.Sections[1].Queries[0].Rows[0][0])
+
+		// Clearing INPUT via empty query param overrides the SET VARIABLE default
+		resInputCleared, err := QueryDashboard(app, ctx, dqInput, url.Values{"search": []string{""}}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "initial query", resInputCleared.Sections[0].Queries[0].Render.DefaultValue)
+		assert.Equal(t, "", resInputCleared.Sections[1].Queries[0].Rows[0][0])
+	})
 }

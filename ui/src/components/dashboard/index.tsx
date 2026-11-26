@@ -518,6 +518,7 @@ const DataView = ({
                             idPrefix={`header${sectionIndex}-${render.type}-`}
                             label={render.label}
                             className={render.class}
+                            defaultValue={typeof render.defaultValue === "string" ? render.defaultValue : undefined}
                             headers={columns}
                             data={rows as (string | number | boolean)[][]}
                             vars={vars}
@@ -532,6 +533,7 @@ const DataView = ({
                             idPrefix={`header${sectionIndex}-${render.type}-`}
                             label={render.label}
                             className={render.class}
+                            defaultValue={Array.isArray(render.defaultValue) ? render.defaultValue : undefined}
                             headers={columns}
                             data={rows as (string | number | boolean)[][]}
                             vars={vars}
@@ -588,6 +590,7 @@ const DataView = ({
                             idPrefix={`header${sectionIndex}-${render.type}-`}
                             label={render.label}
                             className={render.class}
+                            defaultValue={typeof render.defaultValue === "string" ? render.defaultValue : undefined}
                             headers={columns}
                             data={rows as (string | number | boolean)[][]}
                             vars={vars}

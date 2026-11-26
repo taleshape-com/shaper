@@ -130,6 +130,7 @@ export type Result = {
           | "input";
           label?: string;
           class?: string;
+          defaultValue?: string | string[];
         };
         columns: Column[];
         rows: (string | number | boolean)[][];

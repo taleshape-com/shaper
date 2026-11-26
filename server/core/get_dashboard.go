@@ -24,7 +24,8 @@ const QUERY_MAX_ROWS = 3000
 
 var (
 	getVariableRegex        = regexp.MustCompile(`(?i)getvariable\s*\(\s*'([^']+)'\s*\)`)
-	setVariableRegex        = regexp.MustCompile(`(?i)SET\s+VARIABLE\s+([a-zA-Z0-9_]+)`)
+	setVariableRegex        = regexp.MustCompile(`(?i)SET\s+VARIABLE\s+"?([a-zA-Z0-9_]+)"?`)
+	resetVariableRegex      = regexp.MustCompile(`(?i)RESET\s+VARIABLE\s+"?([a-zA-Z0-9_]+)"?`)
 	castRegex               = regexp.MustCompile(`(?is)^CAST\(.+ AS .+\)$`)
 	singleQuoteEscapedRegex = regexp.MustCompile(`(?s)^'(?:[^']|'')*'$`)
 	boxplotRegex            = regexp.MustCompile(`(?is)^boxplot\(.+\)$`)
@@ -79,6 +80,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 	for k := range multiVars {
 		definedVars[k] = true
 	}
+	sqlDefaultVars := make(map[string]any)
 	unsetVarsMap := make(map[string]bool)
 	unsetVariables := []string{}
 
@@ -124,6 +126,14 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 				definedVars[varName] = true
 			}
 		}
+		resetMatches := resetVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		for _, m := range resetMatches {
+			if len(m) > 1 {
+				varName := strings.ToLower(m[1])
+				delete(definedVars, varName)
+				delete(sqlDefaultVars, varName)
+			}
+		}
 
 		if !IsAllowedStatement(app, sqlString) {
 			return result, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
@@ -139,6 +149,11 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		queryRows, colTypes, err := app.runDashboardQuery(ctx, conn, sqlString, queryIndex, dashboardQuery.ID, singleVars, multiVars)
 		if err != nil {
 			return result, err
+		}
+		if len(setMatches) > 0 {
+			if err := readSQLVariables(ctx, conn, setMatches, sqlDefaultVars); err != nil {
+				return result, err
+			}
 		}
 
 		query := Query{Columns: []Column{}, Rows: queryRows}
@@ -365,9 +380,12 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 			}
 		}
 
-		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, query.Columns, query.Rows)
+		defaultVal, err := collectVars(singleVars, multiVars, variables, sqlDefaultVars, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
+		}
+		if defaultVal != nil {
+			query.Render.DefaultValue = defaultVal
 		}
 		for k := range singleVars {
 			definedVars[k] = true
@@ -375,7 +393,7 @@ func QueryDashboard(app *App, ctx context.Context, dashboardQuery DashboardQuery
 		for k := range multiVars {
 			definedVars[k] = true
 		}
-		err = collectDownloadLinkParams(downloadLinkParams, rInfo.Type, queryParams, query.Columns, query.Rows)
+		err = collectDownloadLinkParams(downloadLinkParams, sqlDefaultVars, rInfo.Type, queryParams, query.Columns, query.Rows)
 		if err != nil {
 			return result, err
 		}
@@ -538,6 +556,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 	if err != nil {
 		return false, err
 	}
+	sqlDefaultVars := make(map[string]any)
 
 	nextLabel := ""
 	nextSubtitle := ""
@@ -557,6 +576,13 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 		if sqlString == "" {
 			continue
 		}
+		setMatches := setVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		resetMatches := resetVariableRegex.FindAllStringSubmatch(sqlString, -1)
+		for _, m := range resetMatches {
+			if len(m) > 1 {
+				delete(sqlDefaultVars, strings.ToLower(m[1]))
+			}
+		}
 		if !IsAllowedStatement(app, sqlString) {
 			return false, fmt.Errorf("Disallowed SQL statement in query %d", queryIndex+1)
 		}
@@ -571,6 +597,11 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 		queryRows, colTypes, err := app.runDashboardQuery(ctx, conn, sqlString, queryIndex, sourceDashboardId, singleVars, multiVars)
 		if err != nil {
 			return false, err
+		}
+		if len(setMatches) > 0 {
+			if err := readSQLVariables(ctx, conn, setMatches, sqlDefaultVars); err != nil {
+				return false, err
+			}
 		}
 
 		if isSideEffect(app, sqlString) {
@@ -641,7 +672,7 @@ func ValidateDashboardDownload(app *App, ctx context.Context, sourceDashboardId 
 			})
 		}
 
-		err = collectVars(singleVars, multiVars, variables, rInfo.Type, queryParams, columns, queryRows)
+		_, err = collectVars(singleVars, multiVars, variables, sqlDefaultVars, rInfo.Type, queryParams, columns, queryRows)
 		if err != nil {
 			return false, err
 		}
@@ -1792,14 +1823,157 @@ func getAxisType(rows Rows, index int) (string, error) {
 	return "string", nil
 }
 
+func readSQLVariables(ctx context.Context, conn *sqlx.Conn, setMatches [][]string, sqlDefaultVars map[string]any) error {
+	for _, m := range setMatches {
+		if len(m) > 1 {
+			varName := strings.ToLower(m[1])
+			if !util.IsValidVariableName(varName) {
+				continue
+			}
+			rows, err := conn.QueryxContext(ctx, fmt.Sprintf("SELECT getvariable('%s');", util.EscapeSQLString(varName)))
+			if err != nil {
+				return fmt.Errorf("failed to read variable %q: %w", varName, err)
+			}
+			if rows.Next() {
+				row, err := rows.SliceScan()
+				if err != nil {
+					_ = rows.Close()
+					return fmt.Errorf("failed to scan variable %q: %w", varName, err)
+				}
+				if len(row) > 0 {
+					sqlDefaultVars[varName] = row[0]
+				}
+			}
+			if err := rows.Close(); err != nil {
+				return fmt.Errorf("failed to close rows for variable %q: %w", varName, err)
+			}
+		}
+	}
+	return nil
+}
+
+func extractSQLDefaultString(val any) string {
+	if val == nil {
+		return ""
+	}
+	if s, ok := val.(string); ok {
+		return s
+	}
+	if arr, ok := val.([]any); ok {
+		if len(arr) == 0 || arr[0] == nil {
+			return ""
+		}
+		if s, ok := arr[0].(string); ok {
+			return s
+		}
+		return fmt.Sprint(arr[0])
+	}
+	if arr, ok := val.([]string); ok {
+		if len(arr) == 0 {
+			return ""
+		}
+		return arr[0]
+	}
+	return fmt.Sprint(val)
+}
+
+func extractSQLDefaultSlice(val any) []string {
+	if val == nil {
+		return []string{}
+	}
+	if arr, ok := val.([]any); ok {
+		res := make([]string, 0, len(arr))
+		for _, item := range arr {
+			if item == nil {
+				res = append(res, "")
+			} else if s, ok := item.(string); ok {
+				res = append(res, s)
+			} else {
+				res = append(res, fmt.Sprint(item))
+			}
+		}
+		return res
+	}
+	if arr, ok := val.([]string); ok {
+		return arr
+	}
+	if s, ok := val.(string); ok {
+		return []string{s}
+	}
+	return []string{fmt.Sprint(val)}
+}
+
+func isDropdownValueInData(data Rows, columnIndex int, target string) (bool, error) {
+	for i, row := range data {
+		union, ok := row[columnIndex].(duckdb.Union)
+		if !ok {
+			return false, fmt.Errorf("invalid union value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+		}
+		val, ok := union.Value.(string)
+		if !ok {
+			if union.Value == nil {
+				val = ""
+			} else {
+				return false, fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+			}
+		}
+		if val == target {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func filterDropdownMultiValues(data Rows, columnIndex int, candidates []string) ([]string, error) {
+	if len(candidates) == 0 {
+		return []string{}, nil
+	}
+	paramsToCheck := map[string]bool{}
+	for _, param := range candidates {
+		paramsToCheck[param] = true
+	}
+	for i, row := range data {
+		union, ok := row[columnIndex].(duckdb.Union)
+		if !ok {
+			return nil, fmt.Errorf("invalid union value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+		}
+		val, ok := union.Value.(string)
+		if !ok {
+			if union.Value == nil {
+				val = ""
+			} else {
+				return nil, fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+			}
+		}
+		if paramsToCheck[val] {
+			delete(paramsToCheck, val)
+			if len(paramsToCheck) == 0 {
+				break
+			}
+		}
+	}
+	if len(paramsToCheck) == 0 {
+		return candidates, nil
+	}
+	cleanedParams := make([]string, 0, len(candidates)-len(paramsToCheck))
+	for _, param := range candidates {
+		if paramsToCheck[param] {
+			continue
+		}
+		cleanedParams = append(cleanedParams, param)
+	}
+	return cleanedParams, nil
+}
+
 // TODO: test and harden variable escaping
 // TODO: assert that variables in query are set. otherwise it silently falls back to empty string
 // NOTE: Technically we don't need to reset variables since we are not reusing connections. I just have a better feeling with this.
-func collectVars(singleVars map[string]string, multiVars map[string][]string, protectedVariables map[string]any, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+func collectVars(singleVars map[string]string, multiVars map[string][]string, protectedVariables map[string]any, sqlDefaultVars map[string]any, renderType string, queryParams url.Values, columns []Column, data Rows) (any, error) {
 	protectedLower := make(map[string]bool, len(protectedVariables))
 	for k := range protectedVariables {
 		protectedLower[strings.ToLower(k)] = true
 	}
+	var defaultValue any
 
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
@@ -1813,58 +1987,60 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if columnName == "" {
-			return fmt.Errorf("missing value column for dropdown")
+			return nil, fmt.Errorf("missing value column for dropdown")
 		}
 		if !util.IsValidVariableName(columnName) {
-			return fmt.Errorf("invalid variable name %q for dropdown", columnName)
+			return nil, fmt.Errorf("invalid variable name %q for dropdown", columnName)
 		}
 		varName := strings.ToLower(columnName)
 		if protectedLower[varName] {
-			return nil
+			return nil, nil
 		}
+
+		var sqlDefaultStr *string
+		if rawDefault, hasSQLDefault := sqlDefaultVars[varName]; hasSQLDefault {
+			candidate := extractSQLDefaultString(rawDefault)
+			isValid, err := isDropdownValueInData(data, columnIndex, candidate)
+			if err != nil {
+				return nil, err
+			}
+			if isValid {
+				sqlDefaultStr = &candidate
+				defaultValue = candidate
+			}
+		}
+
 		param := queryParams.Get(columnName)
-		if param != "" {
-			// Check if param actually exists in the dropdown
-			isValidVar := false
-			for i, row := range data {
-				union, ok := row[columnIndex].(duckdb.Union)
-				if !ok {
-					return fmt.Errorf("invalid union value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+		hasValidParam := false
+		if queryParams.Has(columnName) {
+			isValidVar, err := isDropdownValueInData(data, columnIndex, param)
+			if err != nil {
+				return nil, err
+			}
+			if isValidVar {
+				hasValidParam = true
+			}
+		}
+		if !hasValidParam {
+			if sqlDefaultStr != nil {
+				param = *sqlDefaultStr
+			} else {
+				if len(data) == 0 {
+					// No vars for dropdown without options
+					return nil, nil
 				}
-				val, ok := union.Value.(string)
+				// Set default value to first row
+				union, ok := data[0][columnIndex].(duckdb.Union)
+				if !ok {
+					return nil, fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+				}
+				param, ok = union.Value.(string)
 				if !ok {
 					if union.Value == nil {
-						val = ""
+						param = ""
 					} else {
-						return fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+						return nil, fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
 					}
-				}
-				if val == param {
-					isValidVar = true
-					break
-				}
-			}
-			if !isValidVar {
-				// Ignore invalid param
-				param = ""
-			}
-		}
-		if param == "" {
-			if len(data) == 0 {
-				// No vars for dropdown without options
-				return nil
-			}
-			// Set default value to first row
-			union, ok := data[0][columnIndex].(duckdb.Union)
-			if !ok {
-				return fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
-			}
-			param, ok = union.Value.(string)
-			if !ok {
-				if union.Value == nil {
-					param = ""
-				} else {
-					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
 				}
 			}
 		}
@@ -1883,79 +2059,73 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if columnName == "" {
-			return fmt.Errorf("missing value column for dropdownMulti")
+			return nil, fmt.Errorf("missing value column for dropdownMulti")
 		}
 		if !util.IsValidVariableName(columnName) {
-			return fmt.Errorf("invalid variable name %q for dropdownMulti", columnName)
+			return nil, fmt.Errorf("invalid variable name %q for dropdownMulti", columnName)
 		}
 		varName := strings.ToLower(columnName)
 		if protectedLower[varName] {
-			return nil
+			return nil, nil
 		}
+
+		var sqlDefaultParams []string
+		rawDefault, hasSQLDefault := sqlDefaultVars[varName]
+		if hasSQLDefault {
+			candidates := extractSQLDefaultSlice(rawDefault)
+			if len(candidates) > util.MaxMultiVariableCount {
+				return nil, fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(candidates), util.MaxMultiVariableCount)
+			}
+			for _, item := range candidates {
+				if len(item) > util.MaxMultiVariableItemLength {
+					return nil, fmt.Errorf("dropdownMulti variable %q item exceeds maximum allowed length of %d characters", columnName, util.MaxMultiVariableItemLength)
+				}
+			}
+			var err error
+			sqlDefaultParams, err = filterDropdownMultiValues(data, columnIndex, candidates)
+			if err != nil {
+				return nil, err
+			}
+			defaultValue = sqlDefaultParams
+		}
+
 		params := queryParams[columnName]
 		if len(params) > util.MaxMultiVariableCount {
-			return fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(params), util.MaxMultiVariableCount)
+			return nil, fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(params), util.MaxMultiVariableCount)
 		}
 		for _, param := range params {
 			if len(param) > util.MaxMultiVariableItemLength {
-				return fmt.Errorf("dropdownMulti variable %q item exceeds maximum allowed length of %d characters", columnName, util.MaxMultiVariableItemLength)
+				return nil, fmt.Errorf("dropdownMulti variable %q item exceeds maximum allowed length of %d characters", columnName, util.MaxMultiVariableItemLength)
 			}
 		}
 		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
-			paramsToCheck := map[string]bool{}
-			for _, param := range params {
-				paramsToCheck[param] = true
-			}
-			for i, row := range data {
-				union, ok := row[columnIndex].(duckdb.Union)
-				var val string
-				if !ok {
-					return fmt.Errorf("invalid union value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-				}
-				val, ok = union.Value.(string)
-				if !ok {
-					if union.Value == nil {
-						val = ""
-					} else {
-						return fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-					}
-				}
-				if paramsToCheck[val] {
-					delete(paramsToCheck, val)
-					if len(paramsToCheck) == 0 {
-						break
-					}
-				}
-			}
-			if len(paramsToCheck) > 0 {
-				// Remove invalid params
-				cleanedParams := make([]string, 0, len(params)-len(paramsToCheck))
-				for _, param := range params {
-					if paramsToCheck[param] {
-						continue
-					}
-					cleanedParams = append(cleanedParams, param)
-				}
-				params = cleanedParams
+			var err error
+			params, err = filterDropdownMultiValues(data, columnIndex, params)
+			if err != nil {
+				return nil, err
 			}
 		}
 		if len(params) == 0 && !paramWasProvided {
-			// Set default value to all rows only when no parameter was provided
-			for i, row := range data {
-				union, ok := row[columnIndex].(duckdb.Union)
-				if !ok {
-					return fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-				} else {
-					val, ok := union.Value.(string)
+			if hasSQLDefault {
+				params = sqlDefaultParams
+			} else {
+				// Set default value to all rows only when no parameter was provided
+				for i, row := range data {
+					union, ok := row[columnIndex].(duckdb.Union)
 					if !ok {
-						if union.Value == nil {
-							val = ""
-						} else {
-							return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+						return nil, fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					} else {
+						val, ok := union.Value.(string)
+						if !ok {
+							if union.Value == nil {
+								val = ""
+							} else {
+								return nil, fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+							}
 						}
+						params = append(params, val)
 					}
-					params = append(params, val)
 				}
 			}
 		}
@@ -1966,7 +2136,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 	// Fetch vars from datepicker
 	if renderType == "datepicker" {
 		if len(data) == 0 {
-			return nil
+			return nil, nil
 		}
 		columnName := ""
 		defaultValueIndex := -1
@@ -1978,14 +2148,14 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if columnName == "" {
-			return fmt.Errorf("missing datepicker column")
+			return nil, fmt.Errorf("missing datepicker column")
 		}
 		if !util.IsValidVariableName(columnName) {
-			return fmt.Errorf("invalid variable name %q for datepicker", columnName)
+			return nil, fmt.Errorf("invalid variable name %q for datepicker", columnName)
 		}
 		varName := strings.ToLower(columnName)
 		if protectedLower[varName] {
-			return nil
+			return nil, nil
 		}
 		param := queryParams.Get(columnName)
 		if param == "" {
@@ -2000,7 +2170,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		} else {
 			// Check if param is a valid date
 			if !isDateString(param) {
-				return fmt.Errorf("invalid date for datepicker query param '%s': %s", columnName, param)
+				return nil, fmt.Errorf("invalid date for datepicker query param '%s': %s", columnName, param)
 			}
 		}
 		if param != "" {
@@ -2011,7 +2181,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 	// Fetch vars from daterangePicker
 	if renderType == "daterangePicker" {
 		if len(data) == 0 {
-			return nil
+			return nil, nil
 		}
 		fromColumnName := ""
 		toColumnName := ""
@@ -2028,24 +2198,24 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if fromColumnName == "" {
-			return fmt.Errorf("missing DATEPICKER_FROM column")
+			return nil, fmt.Errorf("missing DATEPICKER_FROM column")
 		}
 		if !util.IsValidVariableName(fromColumnName) {
-			return fmt.Errorf("invalid variable name %q for daterangePicker (from)", fromColumnName)
+			return nil, fmt.Errorf("invalid variable name %q for daterangePicker (from)", fromColumnName)
 		}
 		if toColumnName == "" {
-			return fmt.Errorf("missing DATEPICKER_TO column")
+			return nil, fmt.Errorf("missing DATEPICKER_TO column")
 		}
 		if !util.IsValidVariableName(toColumnName) {
-			return fmt.Errorf("invalid variable name %q for daterangePicker (to)", toColumnName)
+			return nil, fmt.Errorf("invalid variable name %q for daterangePicker (to)", toColumnName)
 		}
 		fromVarName := strings.ToLower(fromColumnName)
 		toVarName := strings.ToLower(toColumnName)
 		if protectedLower[fromVarName] {
-			return nil
+			return nil, nil
 		}
 		if protectedLower[toVarName] {
-			return nil
+			return nil, nil
 		}
 		fromParam := queryParams.Get(fromColumnName)
 		if fromParam == "" {
@@ -2060,7 +2230,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		} else {
 			// Check if fromParam is a valid date
 			if !isDateString(fromParam) {
-				return fmt.Errorf("invalid date for datepicker query fromParam '%s': %s", fromColumnName, fromParam)
+				return nil, fmt.Errorf("invalid date for datepicker query fromParam '%s': %s", fromColumnName, fromParam)
 			}
 		}
 		if fromParam != "" {
@@ -2079,7 +2249,7 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 		} else {
 			// Check if toParam is a valid date
 			if !isDateString(toParam) {
-				return fmt.Errorf("invalid date for datepicker query toParam '%s': %s", toColumnName, toParam)
+				return nil, fmt.Errorf("invalid date for datepicker query toParam '%s': %s", toColumnName, toParam)
 			}
 		}
 		if toParam != "" {
@@ -2097,26 +2267,33 @@ func collectVars(singleVars map[string]string, multiVars map[string][]string, pr
 			}
 		}
 		if columnName == "" {
-			return fmt.Errorf("missing hint column for input")
+			return nil, fmt.Errorf("missing hint column for input")
 		}
 		if !util.IsValidVariableName(columnName) {
-			return fmt.Errorf("invalid variable name %q for input", columnName)
+			return nil, fmt.Errorf("invalid variable name %q for input", columnName)
 		}
 		varName := strings.ToLower(columnName)
 		if protectedLower[varName] {
-			return nil
+			return nil, nil
 		}
 		param := queryParams.Get(columnName)
+		if rawDefault, hasSQLDefault := sqlDefaultVars[varName]; hasSQLDefault {
+			sqlDefaultStr := extractSQLDefaultString(rawDefault)
+			defaultValue = sqlDefaultStr
+			if !queryParams.Has(columnName) {
+				param = sqlDefaultStr
+			}
+		}
 		if len(param) > util.MaxInputVariableLength {
-			return fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
+			return nil, fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
 		}
 		singleVars[varName] = "'" + util.EscapeSQLString(param) + "'"
 	}
-	return nil
+	return defaultValue, nil
 }
 
 // TODO: This shares a lot of code with collectVars. Also, should we really collect vars upfront like this? Or should we collect them when doing the actual download?
-func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string, queryParams url.Values, columns []Column, data Rows) error {
+func collectDownloadLinkParams(downloadLinkParams url.Values, sqlDefaultVars map[string]any, renderType string, queryParams url.Values, columns []Column, data Rows) error {
 	// Fetch vars from dropdown
 	if renderType == "dropdown" {
 		columnName := ""
@@ -2134,49 +2311,49 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for dropdown", columnName)
 		}
-		param := queryParams.Get(columnName)
-		if param != "" {
-			// Check if param actually exists in the dropdown
-			isValidVar := false
-			for i, row := range data {
-				union, ok := row[columnIndex].(duckdb.Union)
-				if !ok {
-					return fmt.Errorf("invalid union value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-				}
-				val, ok := union.Value.(string)
-				if !ok {
-					if union.Value == nil {
-						val = ""
-					} else {
-						return fmt.Errorf("invalid string value for dropdown value, got: %v (type %t, row, %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-					}
-				}
-				if val == param {
-					isValidVar = true
-					break
-				}
+		varName := strings.ToLower(columnName)
+		var sqlDefaultStr *string
+		if rawDefault, hasSQLDefault := sqlDefaultVars[varName]; hasSQLDefault {
+			candidate := extractSQLDefaultString(rawDefault)
+			isValid, err := isDropdownValueInData(data, columnIndex, candidate)
+			if err != nil {
+				return err
 			}
-			if !isValidVar {
-				// Ignore invalid param
-				param = ""
+			if isValid {
+				sqlDefaultStr = &candidate
 			}
 		}
-		if param == "" {
-			if len(data) == 0 {
-				// No vars for dropdown without options
-				return nil
+		param := queryParams.Get(columnName)
+		hasValidParam := false
+		if queryParams.Has(columnName) {
+			isValidVar, err := isDropdownValueInData(data, columnIndex, param)
+			if err != nil {
+				return err
 			}
-			// Set default value to first row
-			union, ok := data[0][columnIndex].(duckdb.Union)
-			if !ok {
-				return fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+			if isValidVar {
+				hasValidParam = true
 			}
-			param, ok = union.Value.(string)
-			if !ok {
-				if union.Value == nil {
-					param = ""
-				} else {
-					return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+		}
+		if !hasValidParam {
+			if sqlDefaultStr != nil {
+				param = *sqlDefaultStr
+			} else {
+				if len(data) == 0 {
+					// No vars for dropdown without options
+					return nil
+				}
+				// Set default value to first row
+				union, ok := data[0][columnIndex].(duckdb.Union)
+				if !ok {
+					return fmt.Errorf("invalid union value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+				}
+				param, ok = union.Value.(string)
+				if !ok {
+					if union.Value == nil {
+						param = ""
+					} else {
+						return fmt.Errorf("invalid string value as first value for default dropdown value, got: %v (type %T, column %v)", data[0][columnIndex], data[0][columnIndex], columnIndex)
+					}
 				}
 			}
 		}
@@ -2200,6 +2377,25 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for dropdownMulti", columnName)
 		}
+		varName := strings.ToLower(columnName)
+		var sqlDefaultParams []string
+		rawDefault, hasSQLDefault := sqlDefaultVars[varName]
+		if hasSQLDefault {
+			candidates := extractSQLDefaultSlice(rawDefault)
+			if len(candidates) > util.MaxMultiVariableCount {
+				return fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(candidates), util.MaxMultiVariableCount)
+			}
+			for _, item := range candidates {
+				if len(item) > util.MaxMultiVariableItemLength {
+					return fmt.Errorf("dropdownMulti variable %q item exceeds maximum allowed length of %d characters", columnName, util.MaxMultiVariableItemLength)
+				}
+			}
+			var err error
+			sqlDefaultParams, err = filterDropdownMultiValues(data, columnIndex, candidates)
+			if err != nil {
+				return err
+			}
+		}
 		params := queryParams[columnName]
 		if len(params) > util.MaxMultiVariableCount {
 			return fmt.Errorf("dropdownMulti variable %q item count (%d) exceeds maximum allowed count of %d", columnName, len(params), util.MaxMultiVariableCount)
@@ -2211,65 +2407,42 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		}
 		paramWasProvided := queryParams.Has(columnName)
 		if len(params) > 0 {
-			paramsToCheck := map[string]bool{}
-			for _, param := range params {
-				paramsToCheck[param] = true
-			}
-			for i, row := range data {
-				union, ok := row[columnIndex].(duckdb.Union)
-				var val string
-				if !ok {
-					return fmt.Errorf("invalid union value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-				}
-				val, ok = union.Value.(string)
-				if !ok {
-					if union.Value == nil {
-						val = ""
-					} else {
-						return fmt.Errorf("invalid string value for dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-					}
-				}
-				if paramsToCheck[val] {
-					delete(paramsToCheck, val)
-					if len(paramsToCheck) == 0 {
-						break
-					}
-				}
-			}
-			if len(paramsToCheck) > 0 {
-				// Remove invalid params
-				cleanedParams := make([]string, 0, len(params)-len(paramsToCheck))
-				for _, param := range params {
-					if paramsToCheck[param] {
-						continue
-					}
-					cleanedParams = append(cleanedParams, param)
-				}
-				params = cleanedParams
+			var err error
+			params, err = filterDropdownMultiValues(data, columnIndex, params)
+			if err != nil {
+				return err
 			}
 		}
 		if len(params) == 0 && !paramWasProvided {
-			// Set default value to all rows only when no parameter was provided
-			for i, row := range data {
-				union, ok := row[columnIndex].(duckdb.Union)
-				if !ok {
-					return fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
-				} else {
-					val, ok := union.Value.(string)
+			if hasSQLDefault {
+				params = sqlDefaultParams
+			} else {
+				// Set default value to all rows only when no parameter was provided
+				for i, row := range data {
+					union, ok := row[columnIndex].(duckdb.Union)
 					if !ok {
-						if union.Value == nil {
-							val = ""
-						} else {
-							return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+						return fmt.Errorf("invalid union value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+					} else {
+						val, ok := union.Value.(string)
+						if !ok {
+							if union.Value == nil {
+								val = ""
+							} else {
+								return fmt.Errorf("invalid string value for default dropdown-multi value, got: %v (type %T, row %v, column %v)", row[columnIndex], row[columnIndex], i, columnIndex)
+							}
 						}
+						params = append(params, val)
 					}
-					params = append(params, val)
 				}
 			}
 		}
-		// If paramWasProvided but params is empty, we keep it as empty array
-		for _, param := range params {
-			downloadLinkParams.Add(columnName, param)
+		// If paramWasProvided or hasSQLDefault with empty params, keep it as empty array in downloadLinkParams
+		if len(params) == 0 && (paramWasProvided || hasSQLDefault) {
+			downloadLinkParams[columnName] = []string{}
+		} else {
+			for _, param := range params {
+				downloadLinkParams.Add(columnName, param)
+			}
 		}
 	}
 
@@ -2400,11 +2573,17 @@ func collectDownloadLinkParams(downloadLinkParams url.Values, renderType string,
 		if !util.IsValidVariableName(columnName) {
 			return fmt.Errorf("invalid variable name %q for input", columnName)
 		}
+		varName := strings.ToLower(columnName)
 		param := queryParams.Get(columnName)
+		if !queryParams.Has(columnName) {
+			if rawDefault, hasSQLDefault := sqlDefaultVars[varName]; hasSQLDefault {
+				param = extractSQLDefaultString(rawDefault)
+			}
+		}
 		if len(param) > util.MaxInputVariableLength {
 			return fmt.Errorf("input variable %q value exceeds maximum allowed length of %d characters", columnName, util.MaxInputVariableLength)
 		}
-		if param != "" {
+		if param != "" || queryParams.Has(columnName) {
 			downloadLinkParams.Add(columnName, param)
 		}
 	}

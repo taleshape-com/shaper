@@ -20,6 +20,7 @@ type DropdownProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  defaultValue?: string;
   idPrefix: string;
   className?: string;
 };
@@ -30,6 +31,7 @@ function DashboardDropdown ({
   headers,
   onChange,
   vars,
+  defaultValue,
   idPrefix,
   className,
 }: DropdownProps) {
@@ -37,7 +39,7 @@ function DashboardDropdown ({
   const labelIndex = headers.findIndex((header) => header.tag === "label");
   const varName = headers[valueIndex].name;
   const varField = (vars ?? {})[varName];
-  const selectedValue = Array.isArray(varField) ? varField[0] : varField;
+  const selectedValue = (Array.isArray(varField) ? varField[0] : varField) ?? defaultValue;
 
   return (
     <div className={cx("shaper-dropdown flex items-center print:hidden", className)}>
@@ -54,7 +56,7 @@ function DashboardDropdown ({
             }
             onChange({ ...vars, [varName]: value });
           }}
-          value={data.some((row) => row[valueIndex] === selectedValue) ? selectedValue : formatValue(
+          value={selectedValue !== undefined && data.some((row) => formatValue(row[valueIndex], headers[valueIndex].type).toString() === selectedValue) ? (selectedValue || EMPTY) : formatValue(
             data[0][valueIndex],
             headers[valueIndex].type,
           ).toString() || EMPTY}

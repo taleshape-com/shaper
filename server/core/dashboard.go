@@ -63,6 +63,7 @@ type Render struct {
 	Class           *string         `json:"class,omitempty"`
 	Link            *string         `json:"link,omitempty"`
 	LinkNewTab      bool            `json:"linkNewTab,omitempty"`
+	DefaultValue    any             `json:"defaultValue,omitempty"`
 	GaugeCategories []GaugeCategory `json:"gaugeCategories,omitempty"`
 	MarkLines       []MarkLine      `json:"markLines,omitempty"`
 }
