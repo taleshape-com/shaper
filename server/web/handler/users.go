@@ -5,6 +5,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"shaper/server/core"
 
@@ -308,6 +309,9 @@ func DeleteInvite(app *core.App) echo.HandlerFunc {
 		}
 
 		email := c.Param("email")
+		if unescaped, err := url.PathUnescape(email); err == nil {
+			email = unescaped
+		}
 		if email == "" {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
