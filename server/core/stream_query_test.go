@@ -190,6 +190,29 @@ func TestGetVarPrefixOnlyQueriesBeforeDownload(t *testing.T) {
 	if !strings.Contains(varPrefix, "my_var") {
 		t.Errorf("expected varPrefix to contain my_var, got: %q", varPrefix)
 	}
+
+	// Test SET VARIABLE defaults in getVarPrefix
+	sqlsWithDefaults := []string{
+		"SET VARIABLE cat = [];",
+		"SELECT 'a'::DROPDOWN_MULTI AS cat UNION ALL SELECT 'b';",
+		"SET VARIABLE drop_var = 'second';",
+		"SELECT 'first'::DROPDOWN AS drop_var UNION ALL SELECT 'second';",
+		"SET VARIABLE search_var = 'hello';",
+		"SELECT 'Hint'::INPUT AS search_var;",
+	}
+	varPrefixDefaults, _, err := getVarPrefix(app, conn, ctx, sqlsWithDefaults, url.Values{}, nil)
+	if err != nil {
+		t.Fatalf("getVarPrefix with defaults failed: %v", err)
+	}
+	if !strings.Contains(varPrefixDefaults, `SET VARIABLE "cat" = []::VARCHAR[];`) {
+		t.Errorf("expected varPrefix to have empty cat array, got: %q", varPrefixDefaults)
+	}
+	if !strings.Contains(varPrefixDefaults, `SET VARIABLE "drop_var" = 'second';`) {
+		t.Errorf("expected varPrefix to have drop_var='second', got: %q", varPrefixDefaults)
+	}
+	if !strings.Contains(varPrefixDefaults, `SET VARIABLE "search_var" = 'hello';`) {
+		t.Errorf("expected varPrefix to have search_var='hello', got: %q", varPrefixDefaults)
+	}
 }
 
 func TestStreamQueryXLSXNumericTypes(t *testing.T) {

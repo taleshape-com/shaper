@@ -14,6 +14,7 @@ type InputProps = {
   data: (string | number | boolean)[][];
   onChange: (newVars: Record<string, string | string[]>) => void;
   vars?: Record<string, string | string[]>;
+  defaultValue?: string;
   idPrefix: string;
   className?: string;
 };
@@ -24,13 +25,14 @@ function DashboardInput ({
   headers,
   onChange,
   vars,
+  defaultValue,
   idPrefix,
   className,
 }: InputProps) {
   const valueIndex = headers.findIndex((header) => header.tag === "hint");
   const varName = headers[valueIndex].name;
   const varField = (vars ?? {})[varName];
-  const externalValue = Array.isArray(varField) ? varField[0] : varField;
+  const externalValue = (Array.isArray(varField) ? varField[0] : varField) ?? defaultValue;
 
   // Local state for immediate UI updates
   const [localValue, setLocalValue] = useState(externalValue || "");
