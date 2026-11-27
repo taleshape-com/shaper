@@ -78,6 +78,8 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 			return fmt.Errorf("failed to scan row for duckdb table %s: %w", duckDbTable, err)
 		}
 		placeholders := ""
+		colNames := make([]string, len(cols))
+		copy(colNames, cols)
 		for i := range cols {
 			if i > 0 {
 				placeholders += ", "
@@ -91,9 +93,15 @@ func migrateTableData(sqliteDbx *sqlx.DB, duckDbx *sqlx.DB, table string, deprec
 				}
 				values[i] = formatInterval(v)
 			}
+			if table == "invites" && cols[i] == "code" {
+				colNames[i] = "code_hash"
+				if s, ok := values[i].(string); ok {
+					values[i] = hashInviteCode(s)
+				}
+			}
 		}
 		_, err := tx.Exec(
-			fmt.Sprintf(`INSERT INTO %s (%s) VALUES (%s)`, table, strings.Join(cols, ", "), placeholders),
+			fmt.Sprintf(`INSERT INTO %s (%s) VALUES (%s)`, table, strings.Join(colNames, ", "), placeholders),
 			values...,
 		)
 		if err != nil {

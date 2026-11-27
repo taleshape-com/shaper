@@ -5,6 +5,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"shaper/server/core"
 
@@ -307,14 +308,17 @@ func DeleteInvite(app *core.App) echo.HandlerFunc {
 			}{Error: "Unauthorized"}, "  ")
 		}
 
-		code := c.Param("code")
-		if code == "" {
+		email := c.Param("email")
+		if unescaped, err := url.PathUnescape(email); err == nil {
+			email = unescaped
+		}
+		if email == "" {
 			return c.JSONPretty(http.StatusBadRequest, struct {
 				Error string `json:"error"`
-			}{Error: "Invite code is required"}, "  ")
+			}{Error: "Invite email is required"}, "  ")
 		}
 
-		err := core.DeleteInvite(app, c.Request().Context(), code)
+		err := core.DeleteInvite(app, c.Request().Context(), email)
 		if err != nil {
 			c.Logger().Error("error deleting invite:", slog.Any("error", err))
 			return c.JSONPretty(http.StatusBadRequest, struct {

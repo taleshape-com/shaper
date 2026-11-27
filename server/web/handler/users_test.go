@@ -211,7 +211,7 @@ func TestUsers_DashboardIDRestriction(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/api/invites/", nil)
 			rec := httptest.NewRecorder()
 			c := newContextWithUser(e, req, rec, token)
-			c.SetParamNames("code")
+			c.SetParamNames("email")
 			c.SetParamValues("")
 
 			h := DeleteInvite(app)
@@ -228,7 +228,7 @@ func TestUsers_DashboardIDRestriction(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/api/invites/", nil)
 			rec := httptest.NewRecorder()
 			c := newContextWithUser(e, req, rec, token)
-			c.SetParamNames("code")
+			c.SetParamNames("email")
 			c.SetParamValues("")
 
 			h := DeleteInvite(app)
@@ -240,6 +240,34 @@ func TestUsers_DashboardIDRestriction(t *testing.T) {
 			}
 			if rec.Code != http.StatusBadRequest {
 				t.Errorf("expected status 400 (validation error), got %d: %s", rec.Code, rec.Body.String())
+			}
+		})
+
+		t.Run("url-encoded email parameter is unescaped before lookup", func(t *testing.T) {
+			_, err := app.Sqlite.Exec(`INSERT INTO invites (code_hash, email, created_at) VALUES ('hash123', 'user+test@example.com', CURRENT_TIMESTAMP)`)
+			if err != nil {
+				t.Fatalf("failed to insert invite: %v", err)
+			}
+			defer func() {
+				_, _ = app.Sqlite.Exec(`DELETE FROM invites WHERE email = 'user+test@example.com'`)
+			}()
+
+			token := createUserToken()
+			req := httptest.NewRequest(http.MethodDelete, "/api/invites/user%2Btest%40example.com", nil)
+			rec := httptest.NewRecorder()
+			c := newContextWithUser(e, req, rec, token)
+			c.SetParamNames("email")
+			c.SetParamValues("user%2Btest%40example.com")
+
+			// Note: app.SubmitState will panic in unit test because StateConsumer isn't initialized,
+			// which proves it got past the DB existence check ("invite not found") in DeleteInvite.
+			h := DeleteInvite(app)
+			func() {
+				defer func() { _ = recover() }()
+				_ = h(c)
+			}()
+			if bytes.Contains(rec.Body.Bytes(), []byte("invite not found")) {
+				t.Fatalf("expected URL-encoded email to match invite in DB, got: %s", rec.Body.String())
 			}
 		})
 	})

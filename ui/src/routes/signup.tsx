@@ -11,7 +11,6 @@ import { useToast } from "../hooks/useToast";
 import { useAuth } from "../lib/auth";
 
 interface Invite {
-  code: string;
   email: string;
   createdAt: string;
 }

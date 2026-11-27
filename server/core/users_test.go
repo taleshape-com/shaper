@@ -3,6 +3,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -289,13 +290,15 @@ func TestHandleDeleteUser(t *testing.T) {
 	// Insert invites created by user 1 and user 2
 	user1Actor := (&Actor{Type: ActorUser, ID: user1ID}).String()
 	user2Actor := (&Actor{Type: ActorUser, ID: user2ID}).String()
-	_, err = db.Exec(`INSERT INTO invites (code, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
-		"INVITE1", "invite1@example.com", now, user1Actor)
+	invite1Hash := hashInviteCode("INVITE1")
+	invite2Hash := hashInviteCode("INVITE2")
+	_, err = db.Exec(`INSERT INTO invites (code_hash, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
+		invite1Hash, "invite1@example.com", now, user1Actor)
 	if err != nil {
 		t.Fatalf("failed to insert invite 1: %v", err)
 	}
-	_, err = db.Exec(`INSERT INTO invites (code, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
-		"INVITE2", "invite2@example.com", now, user2Actor)
+	_, err = db.Exec(`INSERT INTO invites (code_hash, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
+		invite2Hash, "invite2@example.com", now, user2Actor)
 	if err != nil {
 		t.Fatalf("failed to insert invite 2: %v", err)
 	}
@@ -332,7 +335,7 @@ func TestHandleDeleteUser(t *testing.T) {
 
 	// Verify invite created by user 1 is deleted, while user 2's invite remains
 	var invite1Exists bool
-	if err := db.Get(&invite1Exists, `SELECT EXISTS(SELECT 1 FROM invites WHERE code = 'INVITE1')`); err != nil {
+	if err := db.Get(&invite1Exists, `SELECT EXISTS(SELECT 1 FROM invites WHERE code_hash = ?)`, invite1Hash); err != nil {
 		t.Fatalf("failed to check invite 1: %v", err)
 	}
 	if invite1Exists {
@@ -340,11 +343,123 @@ func TestHandleDeleteUser(t *testing.T) {
 	}
 
 	var invite2Exists bool
-	if err := db.Get(&invite2Exists, `SELECT EXISTS(SELECT 1 FROM invites WHERE code = 'INVITE2')`); err != nil {
+	if err := db.Get(&invite2Exists, `SELECT EXISTS(SELECT 1 FROM invites WHERE code_hash = ?)`, invite2Hash); err != nil {
 		t.Fatalf("failed to check invite 2: %v", err)
 	}
 	if !invite2Exists {
 		t.Fatalf("expected invite created by user 2 to remain")
 	}
 }
+
+func TestInviteHashingAndMigration(t *testing.T) {
+	db, err := sqlx.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db.Close()
+
+	now := time.Now().UTC()
+
+	// 1. Simulate legacy invites table with plaintext code column
+	_, err = db.Exec(`
+		CREATE TABLE invites (
+			code TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			created_by TEXT
+		)
+	`)
+	if err != nil {
+		t.Fatalf("failed to create legacy invites table: %v", err)
+	}
+
+	legacyCode := "LEGACYCODE23"
+	_, err = db.Exec(`INSERT INTO invites (code, email, created_at, created_by) VALUES (?, ?, ?, ?)`,
+		legacyCode, "legacy@example.com", now, "user:u1")
+	if err != nil {
+		t.Fatalf("failed to insert legacy invite: %v", err)
+	}
+
+	// 2. Run InitSQLite which should rename column to code_hash and hash existing codes
+	if err := InitSQLite(db); err != nil {
+		t.Fatalf("failed to run InitSQLite migration: %v", err)
+	}
+
+	// Verify idempotency of InitSQLite
+	if err := InitSQLite(db); err != nil {
+		t.Fatalf("failed to run InitSQLite second time: %v", err)
+	}
+
+	var storedHash string
+	if err := db.Get(&storedHash, `SELECT code_hash FROM invites WHERE email = 'legacy@example.com'`); err != nil {
+		t.Fatalf("failed to query migrated code_hash: %v", err)
+	}
+	if storedHash != hashInviteCode(legacyCode) {
+		t.Fatalf("expected migrated hash %s, got %s", hashInviteCode(legacyCode), storedHash)
+	}
+
+	app := &App{
+		Sqlite:    db,
+		InviteExp: 24 * time.Hour,
+	}
+
+	// 3. Verify GetInvite finds the migrated invite by plaintext code and does not return code
+	inv, err := GetInvite(app, context.Background(), legacyCode)
+	if err != nil {
+		t.Fatalf("GetInvite failed for migrated invite: %v", err)
+	}
+	if inv.Email != "legacy@example.com" {
+		t.Fatalf("expected email legacy@example.com, got %s", inv.Email)
+	}
+	if inv.Code != "" {
+		t.Fatalf("expected empty Code in GetInvite response, got %s", inv.Code)
+	}
+
+	// 4. Verify HandleCreateInvite with new CodeHash payload and legacy Code payload
+	newCode := "NEWINVITE234"
+	createData, _ := json.Marshal(CreateInvitePayload{
+		CodeHash:  hashInviteCode(newCode),
+		Email:     "new@example.com",
+		Timestamp: now,
+		CreatedBy: "user:u1",
+	})
+	if !HandleCreateInvite(app, createData) {
+		t.Fatalf("HandleCreateInvite failed")
+	}
+
+	invNew, err := GetInvite(app, context.Background(), newCode)
+	if err != nil || invNew.Email != "new@example.com" {
+		t.Fatalf("GetInvite failed for newly created invite: %v", err)
+	}
+
+	// 5. Verify HandleClaimInvite deletes invite by hash
+	claimData, _ := json.Marshal(ClaimInvitePayload{
+		CodeHash:     hashInviteCode(newCode),
+		Email:        "new@example.com",
+		Name:         "New User",
+		PasswordHash: "hash",
+		UserId:       "user-new",
+		Timestamp:    now,
+	})
+	if !HandleClaimInvite(app, claimData) {
+		t.Fatalf("HandleClaimInvite failed")
+	}
+	if _, err := GetInvite(app, context.Background(), newCode); err == nil {
+		t.Fatalf("expected claimed invite to be deleted")
+	}
+
+	// 6. Verify HandleDeleteInvite by email
+	delData, _ := json.Marshal(DeleteInvitePayload{
+		Email:     "legacy@example.com",
+		Timestamp: now,
+		DeletedBy: "user:u1",
+	})
+	if !HandleDeleteInvite(app, delData) {
+		t.Fatalf("HandleDeleteInvite failed")
+	}
+	if _, err := GetInvite(app, context.Background(), legacyCode); err == nil {
+		t.Fatalf("expected deleted invite to be gone")
+	}
+}
+
 
