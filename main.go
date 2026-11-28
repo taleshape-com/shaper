@@ -686,11 +686,12 @@ func addDevSubcommand(rootCmd *ff.Command) *ff.Command {
 	devAuthFile := devFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	noOpen := devFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
 
-	usage := "watch local dashboard files and show preview"
+	shortHelp := "watch local dashboard files and show preview"
+	usage := "watch local dashboard files and show preview.\n\n  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests."
 	devCmd := &ff.Command{
 		Name:      "dev",
 		Usage:     "shaper dev [--config path] [--url url] [--auth-file path] [--no-open]",
-		ShortHelp: usage,
+		ShortHelp: shortHelp,
 		Flags:     devFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			if *help {
@@ -712,11 +713,12 @@ func addPreviewSubcommand(rootCmd *ff.Command) *ff.Command {
 	previewAuthFile := previewFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	noOpen := previewFlags.BoolLong("no-open", "Disable auto-opening the dashboard in the browser")
 
-	usage := "create a temporary dashboard preview"
+	shortHelp := "create a temporary dashboard preview"
+	usage := "create a temporary dashboard preview.\n\n  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests."
 	previewCmd := &ff.Command{
 		Name:      "preview",
 		Usage:     "shaper preview <path/to/dashboard.dashboard.sql> [--config path] [--url url] [--auth-file path] [--no-open]",
-		ShortHelp: usage,
+		ShortHelp: shortHelp,
 		Flags:     previewFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			if *help {
@@ -741,11 +743,12 @@ func addPullSubcommand(rootCmd *ff.Command) *ff.Command {
 	pullAuthFile := pullFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	pullYes := pullFlags.Bool('y', "yes", "Skip confirmation prompt")
 
-	usage := "pull dashboards from server to local files"
+	shortHelp := "pull dashboards from server to local files"
+	usage := "pull dashboards from server to local files.\n\n  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests."
 	pullCmd := &ff.Command{
 		Name:      "pull",
 		Usage:     "shaper pull [--config path] [--url url] [--auth-file path] [--yes]",
-		ShortHelp: usage,
+		ShortHelp: shortHelp,
 		Flags:     pullFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			if *help {
@@ -791,11 +794,12 @@ func addDeploySubcommand(rootCmd *ff.Command) *ff.Command {
 	deployAuthFile := deployFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	deployValidateOnly := deployFlags.BoolLong("validate-only", "Run validation checks without applying any changes")
 
-	usage := `Deploy dashboards from files using API key or user auth. Set SHAPER_DEPLOY_API_KEY to authenticate or log in.`
+	shortHelp := `Deploy dashboards from files using API key or user auth. Set SHAPER_DEPLOY_API_KEY to authenticate or log in.`
+	usage := shortHelp + "\n\n  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests."
 	deployCmd := &ff.Command{
 		Name:      "deploy",
 		Usage:     "shaper deploy [--config path] [--url url] [--auth-file path] [--validate-only]",
-		ShortHelp: usage,
+		ShortHelp: shortHelp,
 		Flags:     deployFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			if *help {
@@ -820,7 +824,8 @@ func addValidateSubcommand(rootCmd *ff.Command) *ff.Command {
   If no files are passed, all dashboards in the configured directory are validated.
   Otherwise, pass file paths to .dashboard.sql files or folders.
 
-  Set SHAPER_DEPLOY_API_KEY to authenticate.`
+  Set SHAPER_DEPLOY_API_KEY to authenticate.
+  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests.`
 
 	validateCmd := &ff.Command{
 		Name:      "validate",
@@ -846,11 +851,12 @@ func addSchemaSubcommand(rootCmd *ff.Command) *ff.Command {
 	schemaURL := schemaFlags.StringLong("url", "", "Server URL (overrides url in config file)")
 	schemaAuthFile := schemaFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 
-	usage := "Show database schema as Markdown"
+	shortHelp := "Show database schema as Markdown"
+	usage := "Show database schema as Markdown.\n\n  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests."
 	schemaCmd := &ff.Command{
 		Name:      "schema",
 		Usage:     "shaper schema [--config path] [--url url] [--auth-file path]",
-		ShortHelp: usage,
+		ShortHelp: shortHelp,
 		Flags:     schemaFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			if *help {
@@ -872,11 +878,12 @@ func addLoginSubcommand(rootCmd *ff.Command) *ff.Command {
 	loginAuthFile := loginFlags.StringLong("auth-file", ".shaper-auth", "Path to auth token file")
 	noOpen := loginFlags.BoolLong("no-open", "Disable auto-opening the browser")
 
-	usage := "log in to shaper server"
+	shortHelp := "log in to shaper server"
+	usage := "log in to shaper server.\n\n  Set SHAPER_HEADERS to send custom HTTP headers with CLI requests."
 	loginCmd := &ff.Command{
 		Name:      "login",
 		Usage:     "shaper login [--config path] [--url url] [--auth-file path] [--no-open]",
-		ShortHelp: usage,
+		ShortHelp: shortHelp,
 		Flags:     loginFlags,
 		Exec: func(ctx context.Context, args []string) error {
 			if *help {
