@@ -14,6 +14,7 @@ import { localStorageTokenKey, localStorageJwtKey, testLogin } from "../lib/auth
 export const Route = createFileRoute("/dev-login")({
   validateSearch: z.object({
     port: z.coerce.number().int().positive().optional(),
+    status: z.enum(["success"]).optional(),
   }),
   loaderDeps: ({ search: { port } }) => ({ port }),
   loader: async ({ deps: { port } }) => {
@@ -34,9 +35,15 @@ export const Route = createFileRoute("/dev-login")({
 type Status = "idle" | "sending" | "success" | "error";
 
 function DevLoginPage () {
-  const { port } = Route.useSearch();
-  const [status, setStatus] = useState<Status>("idle");
-  const [message, setMessage] = useState("");
+  const { port, status: initialStatus } = Route.useSearch();
+  const [status, setStatus] = useState<Status>(
+    initialStatus === "success" ? "success" : "idle",
+  );
+  const [message, setMessage] = useState(
+    initialStatus === "success"
+      ? "Authentication confirmed. You can close this window."
+      : "",
+  );
 
   const sendToken = async () => {
     if (!port) {
@@ -77,20 +84,25 @@ function DevLoginPage () {
         throw new Error("Failed to generate CLI token: response was missing the jwt field.");
       }
 
-      const response = await fetch(`http://localhost:${port}/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token: cliJwt }),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || response.statusText);
-      }
+      try {
+        const response = await fetch(`http://localhost:${port}/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token: cliJwt }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || response.statusText);
+        }
 
-      setStatus("success");
-      setMessage("Authentication confirmed. You can close this window.");
+        setStatus("success");
+        setMessage("Authentication confirmed. You can close this window.");
+      } catch {
+        // Fall back to top-level redirect when strict CSP connect-src policies block fetch() to localhost
+        window.location.href = `http://localhost:${port}/token?token=${encodeURIComponent(cliJwt)}`;
+      }
     } catch (err) {
       setStatus("error");
       setMessage(
@@ -126,19 +138,21 @@ function DevLoginPage () {
                 Confirm to give the Shaper Dev CLI access to your user account.
               </p>
               {
-                port ? (
-                  <div className="rounded-md border border-cborder dark:border-dborder bg-cbg-secondary dark:bg-dbg-secondary p-4 text-sm">
-                    <p className="font-semibold">
-                      CLI port: <span className="font-mono text-base">{port}</span>
-                    </p>
-                    <p className="text-ctext2 dark:text-dtext2">
-                      Make sure the number here matches the port shown in your terminal before you send the token.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-cborder dark:border-dborder bg-cbg-secondary dark:bg-dbg-secondary p-4 text-sm text-cerr dark:text-derr">
-                    Unable to detect the CLI port. Restart the CLI to try again.
-                  </div>
+                status !== "success" && (
+                  port ? (
+                    <div className="rounded-md border border-cborder dark:border-dborder bg-cbg-secondary dark:bg-dbg-secondary p-4 text-sm">
+                      <p className="font-semibold">
+                        CLI port: <span className="font-mono text-base">{port}</span>
+                      </p>
+                      <p className="text-ctext2 dark:text-dtext2">
+                        Make sure the number here matches the port shown in your terminal before you send the token.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-cborder dark:border-dborder bg-cbg-secondary dark:bg-dbg-secondary p-4 text-sm text-cerr dark:text-derr">
+                      Unable to detect the CLI port. Restart the CLI to try again.
+                    </div>
+                  )
                 )
               }
               {

@@ -254,6 +254,28 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 	tokenCh := make(chan string, 1)
 	server := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/token" {
+				http.NotFound(w, r)
+				return
+			}
+
+			// Support top-level GET redirect (/token?token=...) to avoid CSP connect-src restrictions
+			if r.Method == http.MethodGet {
+				token := strings.TrimSpace(r.URL.Query().Get("token"))
+				if token == "" {
+					http.Error(w, "token required", http.StatusBadRequest)
+					return
+				}
+				select {
+				case tokenCh <- token:
+					redirectURL := fmt.Sprintf("%s/dev-login?port=%d&status=success", a.baseURL, port)
+					http.Redirect(w, r, redirectURL, http.StatusFound)
+				default:
+					http.Error(w, "already authenticated", http.StatusGone)
+				}
+				return
+			}
+
 			origin := r.Header.Get("Origin")
 			if a.allowedOrigin != "" {
 				if origin != a.allowedOrigin {
@@ -268,7 +290,7 @@ func (a *AuthManager) promptForLoginLocked() (string, error) {
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
-			if r.Method != http.MethodPost || r.URL.Path != "/token" {
+			if r.Method != http.MethodPost {
 				http.NotFound(w, r)
 				return
 			}

@@ -73,23 +73,25 @@ func TestFetchSystemConfig_SendsAuthAndCustomHeaders(t *testing.T) {
 
 func TestRunLoginCommand_ProceedsWhenSystemConfigBlockedByProxy(t *testing.T) {
 	testCases := []struct {
-		name    string
-		handler http.HandlerFunc
+		name      string
+		usePost   bool
+		handler   http.HandlerFunc
 	}{
 		{
-			name: "401 Unauthorized from proxy",
+			name: "401 Unauthorized from proxy (GET redirect callback)",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			},
 		},
 		{
-			name: "403 Forbidden from proxy",
+			name:    "403 Forbidden from proxy (legacy POST callback)",
+			usePost: true,
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 			},
 		},
 		{
-			name: "200 HTML login page from proxy redirect",
+			name: "200 HTML login page from proxy redirect (GET redirect callback)",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/html")
 				_, _ = w.Write([]byte(`<!DOCTYPE html><html><body>Login</body></html>`))
@@ -127,7 +129,7 @@ func TestRunLoginCommand_ProceedsWhenSystemConfigBlockedByProxy(t *testing.T) {
 				errCh <- RunLoginCommand(ctx, cfgPath, "", authFile, true)
 			}()
 
-			// Read stdout until the callback port is printed, then post a token to it
+			// Read stdout until the callback port is printed, then send a token to it
 			buf := make([]byte, 4096)
 			var out strings.Builder
 			var callbackPort string
@@ -153,21 +155,41 @@ func TestRunLoginCommand_ProceedsWhenSystemConfigBlockedByProxy(t *testing.T) {
 			}
 
 			expectedToken := makeTestJWT(t, time.Now().Add(24*time.Hour))
-			body, _ := json.Marshal(map[string]string{"token": expectedToken})
-			req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+callbackPort+"/token", bytes.NewReader(body))
-			if err != nil {
-				t.Fatalf("failed to build callback request: %v", err)
-			}
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Origin", srv.URL)
+			if tc.usePost {
+				body, _ := json.Marshal(map[string]string{"token": expectedToken})
+				req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+callbackPort+"/token", bytes.NewReader(body))
+				if err != nil {
+					t.Fatalf("failed to build callback request: %v", err)
+				}
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", srv.URL)
 
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				t.Fatalf("callback request failed: %v", err)
-			}
-			resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				t.Fatalf("expected 200 OK from callback server, got %d", resp.StatusCode)
+				resp, err := http.DefaultClient.Do(req)
+				if err != nil {
+					t.Fatalf("callback request failed: %v", err)
+				}
+				resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					t.Fatalf("expected 200 OK from callback server, got %d", resp.StatusCode)
+				}
+			} else {
+				noRedirectClient := &http.Client{
+					CheckRedirect: func(req *http.Request, via []*http.Request) error {
+						return http.ErrUseLastResponse
+					},
+				}
+				resp, err := noRedirectClient.Get("http://127.0.0.1:" + callbackPort + "/token?token=" + expectedToken)
+				if err != nil {
+					t.Fatalf("callback request failed: %v", err)
+				}
+				resp.Body.Close()
+				if resp.StatusCode != http.StatusFound {
+					t.Fatalf("expected 302 Found from callback server, got %d", resp.StatusCode)
+				}
+				expectedLocation := srv.URL + "/dev-login?port=" + callbackPort + "&status=success"
+				if gotLocation := resp.Header.Get("Location"); gotLocation != expectedLocation {
+					t.Fatalf("expected redirect Location %q, got %q", expectedLocation, gotLocation)
+				}
 			}
 
 			loginErr := <-errCh
