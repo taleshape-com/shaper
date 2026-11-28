@@ -60,8 +60,24 @@ func TestDownloadSQL(t *testing.T) {
 	}
 	defer db.Close()
 
+	sqliteDB, err := sqlx.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer sqliteDB.Close()
+	if err := core.InitSQLite(sqliteDB); err != nil {
+		t.Fatalf("failed to init sqlite: %v", err)
+	}
+	if _, err := sqliteDB.Exec(`
+		INSERT INTO api_keys (id, hash, salt, name, permissions, created_at, updated_at)
+		VALUES ('test-key', 'hash', 'salt', 'Test Key', '["data:query"]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+	`); err != nil {
+		t.Fatalf("failed to seed api key: %v", err)
+	}
+
 	kv := &MockKV{data: make(map[string][]byte)}
 	app := &core.App{
+		Sqlite:          sqliteDB,
 		DuckDB:          db,
 		TmpDashboardsKv: kv,
 		DownloadsKv:     kv,

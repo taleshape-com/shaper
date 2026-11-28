@@ -208,13 +208,10 @@ export const testLogin = async () => {
     return true;
   }
   const jwt = localStorage.getItem(localStorageJwtKey);
-  if (jwt != null && jwt !== "") {
-    const claims = parseJwt(jwt);
-    if (claims && claims.exp && Date.now() / 1000 < claims.exp - 30) {
-      return true;
-    }
-  }
   const token = localStorage.getItem(localStorageTokenKey);
+  if (!jwt && !token) {
+    return false;
+  }
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (jwt) {
     headers["Authorization"] = jwt.startsWith("Bearer ") ? jwt : `Bearer ${jwt}`;
@@ -235,5 +232,7 @@ export const testLogin = async () => {
   } catch {
     return false;
   }
+  localStorage.removeItem(localStorageJwtKey);
+  localStorage.removeItem(localStorageTokenKey);
   return false;
 };

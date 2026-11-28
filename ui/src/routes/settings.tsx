@@ -111,6 +111,8 @@ function Settings () {
         },
       });
 
+      await refreshUserName();
+
       toast({
         title: "Success",
         description: "Password updated successfully.",

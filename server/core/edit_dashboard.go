@@ -4,7 +4,9 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +46,20 @@ type UpdateDashboardPasswordPayload struct {
 	UpdatedBy    string    `json:"updatedBy"`
 }
 
+func ComputeShareRevision(visibility string, passwordHash *string, shareUpdatedAt *time.Time) string {
+	h := sha256.New()
+	h.Write([]byte(visibility))
+	h.Write([]byte{0})
+	if passwordHash != nil {
+		h.Write([]byte(*passwordHash))
+	}
+	h.Write([]byte{0})
+	if shareUpdatedAt != nil && !shareUpdatedAt.IsZero() {
+		h.Write([]byte(shareUpdatedAt.UTC().Format(time.RFC3339Nano)))
+	}
+	return hex.EncodeToString(h.Sum(nil)[:16])
+}
+
 func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, error) {
 	if strings.HasPrefix(id, TMP_DASHBOARD_PREFIX) {
 		entry, err := app.TmpDashboardsKv.Get(ctx, id)
@@ -71,7 +87,7 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 	}
 	var dashboard Dashboard
 	err := app.Sqlite.GetContext(ctx, &dashboard,
-		`SELECT id, folder_id, name, content, created_at, updated_at, created_by, updated_by, visibility
+		`SELECT id, folder_id, name, content, created_at, updated_at, created_by, updated_by, visibility, password_hash, share_updated_at
 		FROM apps
 		WHERE id = $1 AND type = 'dashboard'`, id)
 	if err != nil {
@@ -98,6 +114,10 @@ func GetDashboardInfo(app *App, ctx context.Context, id string) (Dashboard, erro
 		dashboard.Visibility = nil
 	} else if app.NoPasswordProtectedSharing && *dashboard.Visibility == "password-protected" {
 		dashboard.Visibility = nil
+	}
+
+	if dashboard.Visibility != nil {
+		dashboard.ShareRevision = ComputeShareRevision(*dashboard.Visibility, dashboard.PasswordHash, dashboard.ShareUpdatedAt)
 	}
 
 	return dashboard, nil
@@ -336,7 +356,7 @@ func HandleUpdateDashboardVisibility(app *App, data []byte) bool {
 	}
 	_, err = app.Sqlite.Exec(
 		`UPDATE apps
-		 SET visibility = $1, updated_at = $2, updated_by = $3
+		 SET visibility = $1, updated_at = $2, updated_by = $3, share_updated_at = $2
 		 WHERE id = $4 AND type = 'dashboard'`,
 		visibility, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {
@@ -355,7 +375,7 @@ func HandleUpdateDashboardPassword(app *App, data []byte) bool {
 	}
 	_, err = app.Sqlite.Exec(
 		`UPDATE apps
-		 SET password_hash = $1, updated_at = $2, updated_by = $3
+		 SET password_hash = $1, updated_at = $2, updated_by = $3, share_updated_at = $2
 		 WHERE id = $4 AND type = 'dashboard'`,
 		payload.PasswordHash, payload.TimeStamp, payload.UpdatedBy, payload.ID)
 	if err != nil {

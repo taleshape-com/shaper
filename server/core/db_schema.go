@@ -53,6 +53,7 @@ func InitSQLite(sdb *sqlx.DB) error {
 			visibility TEXT,
 			type TEXT NOT NULL,
 			password_hash TEXT,
+			share_updated_at DATETIME,
 			folder_id TEXT,
 			FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE
 		)
@@ -62,6 +63,7 @@ func InitSQLite(sdb *sqlx.DB) error {
 	}
 	// Ignore errors if column already exists
 	_, _ = sdb.Exec(`ALTER TABLE apps ADD COLUMN folder_id TEXT REFERENCES folders(id) ON DELETE CASCADE`)
+	_, _ = sdb.Exec(`ALTER TABLE apps ADD COLUMN share_updated_at DATETIME`)
 	// Ignore errors if column does not exist
 	_, _ = sdb.Exec(`ALTER TABLE apps DROP COLUMN path`)
 

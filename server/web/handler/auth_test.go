@@ -4,6 +4,9 @@ package handler
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -17,14 +20,30 @@ import (
 
 func TestTokenAuth_DashboardIDRestriction(t *testing.T) {
 	e := echo.New()
-	secret := []byte("test-secret-key")
-	app := &core.App{
-		JWTSecret: secret,
-		JWTExp:    time.Hour,
+	app := setupTestApp(t)
+	secret := app.JWTSecret
+	pwdRev := core.ComputePasswordRevision("test-password-hash")
+
+	// Seed user-123 and session-123 for tests in this suite
+	if _, err := app.Sqlite.Exec(`
+		INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
+		VALUES ('user-123', 'user123@example.com', 'User 123', 'test-password-hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+		INSERT INTO sessions (id, user_id, hash, salt, created_at)
+		VALUES ('session-123', 'user-123', 'hash123', 'salt123', CURRENT_TIMESTAMP);
+	`); err != nil {
+		t.Fatalf("failed to seed user-123: %v", err)
 	}
 
 	// Helper to create a signed JWT
 	createJWT := func(claims jwt.MapClaims) string {
+		if _, hasUser := claims["userId"]; hasUser {
+			if _, hasSession := claims["sessionId"]; !hasSession {
+				claims["sessionId"] = "session-123"
+			}
+			if _, hasPwdRev := claims["pwdRev"]; !hasPwdRev {
+				claims["pwdRev"] = pwdRev
+			}
+		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		signed, err := token.SignedString(secret)
 		if err != nil {
@@ -358,6 +377,72 @@ func TestTokenAuth_DashboardIDRestriction(t *testing.T) {
 
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("expected status 401, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("long-lived token is rejected when dashboardId is set", func(t *testing.T) {
+		tokenStr := createJWT(jwt.MapClaims{
+			"userId": "user-123",
+			"exp":    time.Now().Add(time.Hour).Unix(),
+		})
+
+		body, _ := json.Marshal(map[string]any{
+			"dashboardId": "dash-456",
+			"longLived":   true,
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := TokenAuth(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("long-lived token is rejected for API keys", func(t *testing.T) {
+		apiKeyID := "embedkey1"
+		apiKeyToken := "shaperkey." + apiKeyID + ".testsuffix1234567890123456789012"
+		salt := "testsalt123456789012345678901234"
+		mac := hmac.New(sha256.New, []byte(salt))
+		mac.Write([]byte(apiKeyToken))
+		hash := hex.EncodeToString(mac.Sum(nil))
+		payloadBytes, _ := json.Marshal(core.CreateAPIKeyPayload{
+			ID:          apiKeyID,
+			Timestamp:   time.Now(),
+			Name:        "Embed Key",
+			Hash:        hash,
+			Salt:        salt,
+			Permissions: []string{core.PermissionGenerateJWT},
+			CreatedBy:   "user:user-123",
+		})
+		core.HandleCreateAPIKey(app, payloadBytes)
+
+		body, _ := json.Marshal(map[string]any{
+			"token":       apiKeyToken,
+			"dashboardId": "dash-456",
+			"longLived":   true,
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/token", bytes.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := TokenAuth(app)
+		if err := handler(c); err != nil {
+			t.Fatalf("handler failed: %v", err)
+		}
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400 when API key requests longLived token, got %d: %s", rec.Code, rec.Body.String())
 		}
 	})
 }

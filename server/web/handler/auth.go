@@ -140,15 +140,17 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			}
 		}
 
-		// Check if the request is already authenticated via a valid JWT for a user and refresh if it is
+		// Check if the request is already authenticated via a valid JWT for a user and refresh if it is.
+		// If a non-JWT session or API key token is explicitly sent in the body, prefer validating that token
+		// from the database so refreshed JWTs pick up updated user names and password revisions.
 		authHeader := c.Request().Header.Get("Authorization")
 		tokenString := ""
-		if authHeader != "" {
-			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
-			tokenString = strings.TrimSpace(tokenString)
-		} else if loginRequest.Token != "" && strings.HasPrefix(loginRequest.Token, "ey") && len(strings.Split(loginRequest.Token, ".")) == 3 {
+		if loginRequest.Token != "" && strings.HasPrefix(loginRequest.Token, "ey") && len(strings.Split(loginRequest.Token, ".")) == 3 {
 			// Old CLI clients might send JWTs as token in the body instead of as headers. Handle to support them
 			tokenString = loginRequest.Token
+		} else if loginRequest.Token == "" && authHeader != "" {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+			tokenString = strings.TrimSpace(tokenString)
 		}
 
 		if tokenString != "" {
@@ -166,18 +168,13 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 							Error string `json:"error"`
 						}{Error: "Unauthorized"}, "  ")
 					}
-					if _, hasAPIKey := claims["apiKeyId"]; hasAPIKey && app.NoAPIKeys {
+					actor := core.ValidateJWTClaims(app, c.Request().Context(), claims)
+					if actor == nil || actor.Type == core.ActorPublic {
 						return c.JSONPretty(http.StatusUnauthorized, struct {
 							Error string `json:"error"`
 						}{Error: "Unauthorized"}, "  ")
 					}
-					var actor *core.Actor
-					if userId, ok := claims["userId"].(string); ok {
-						actor = &core.Actor{Type: core.ActorUser, ID: userId}
-					} else if apiKeyId, ok := claims["apiKeyId"].(string); ok {
-						actor = &core.Actor{Type: core.ActorAPIKey, ID: apiKeyId}
-					}
-					if actor != nil && !actor.HasPermission(c.Request().Context(), app.Sqlite, core.PermissionGenerateJWT) {
+					if !actor.HasPermission(c.Request().Context(), app.Sqlite, core.PermissionGenerateJWT) {
 						return c.JSON(http.StatusForbidden, map[string]string{"error": "Missing required permission: " + core.PermissionGenerateJWT})
 					}
 
@@ -187,6 +184,9 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 							return c.JSONPretty(http.StatusUnauthorized, struct {
 								Error string `json:"error"`
 							}{Error: "Cannot generate a long-lived token from a long-lived token"}, "  ")
+						}
+						if actor.Type != core.ActorUser || loginRequest.DashboardID != "" {
+							return c.JSON(http.StatusBadRequest, map[string]string{"error": "Long-lived tokens are only supported for user tokens without dashboardId"})
 						}
 					}
 
@@ -248,6 +248,10 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "Missing required permission: " + core.PermissionGenerateJWT})
 		}
 
+		if loginRequest.LongLived && (!authInfo.IsUser || loginRequest.DashboardID != "") {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Long-lived tokens are only supported for user tokens without dashboardId"})
+		}
+
 		expDuration := app.JWTExp
 		if loginRequest.LongLived {
 			expDuration = LONG_LIVED_TOKEN_DURATION
@@ -265,6 +269,7 @@ func TokenAuth(app *core.App) echo.HandlerFunc {
 			claims["userEmail"] = authInfo.UserEmail
 			claims["userName"] = authInfo.UserName
 			claims["sessionId"] = authInfo.SessionID
+			claims["pwdRev"] = authInfo.PasswordRev
 		} else if authInfo.APIKeyID != "" {
 			claims["apiKeyId"] = authInfo.APIKeyID
 			claims["apiKeyName"] = authInfo.APIKeyName
@@ -369,6 +374,7 @@ func PublicAuth(app *core.App, rateLimiter ...middleware.RateLimiterStore) echo.
 			"exp":         time.Now().Add(app.JWTExp).Unix(),
 			"dashboardId": loginRequest.DashboardID,
 			"public":      *dashboard.Visibility,
+			"shareRev":    dashboard.ShareRevision,
 		}
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

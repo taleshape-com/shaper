@@ -68,29 +68,7 @@ func SetActor(app *core.App) func(next echo.HandlerFunc) echo.HandlerFunc {
 				}{Error: "Unauthorized"}, "  ")
 			}
 
-			var actor *core.Actor
-			if userID, ok := claims["userId"].(string); ok {
-				actor = &core.Actor{
-					Type: core.ActorUser,
-					ID:   userID,
-				}
-			} else if apiKeyID, ok := claims["apiKeyId"].(string); ok {
-				if !app.NoAPIKeys {
-					actor = &core.Actor{
-						Type: core.ActorAPIKey,
-						ID:   apiKeyID,
-					}
-				}
-			} else if _, ok := claims["public"]; ok {
-				actor = &core.Actor{
-					Type: core.ActorPublic,
-				}
-			} else if !app.LoginRequired {
-				actor = &core.Actor{
-					Type: core.ActorNoAuth,
-				}
-			}
-
+			actor := core.ValidateJWTClaims(app, c.Request().Context(), claims)
 			if actor == nil {
 				return c.JSONPretty(http.StatusUnauthorized, struct {
 					Error string `json:"error"`

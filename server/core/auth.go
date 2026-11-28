@@ -129,14 +129,158 @@ type DeleteSessionPayload struct {
 }
 
 type AuthInfo struct {
-	Valid      bool
-	IsUser     bool
-	UserID     string
-	UserEmail  string
-	UserName   string
-	SessionID  string
-	APIKeyID   string
-	APIKeyName string
+	Valid       bool
+	IsUser      bool
+	UserID      string
+	UserEmail   string
+	UserName    string
+	SessionID   string
+	PasswordRev string
+	APIKeyID    string
+	APIKeyName  string
+}
+
+func ComputePasswordRevision(passwordHash string) string {
+	if passwordHash == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(passwordHash))
+	return hex.EncodeToString(h[:16])
+}
+
+func ValidateUserSession(app *App, ctx context.Context, userID string, sessionID string, pwdRev string) bool {
+	if app == nil || app.Sqlite == nil || userID == "" || sessionID == "" {
+		return false
+	}
+	var row struct {
+		CreatedAt    time.Time `db:"created_at"`
+		PasswordHash *string   `db:"password_hash"`
+	}
+	err := app.Sqlite.GetContext(ctx, &row,
+		`SELECT s.created_at, u.password_hash
+		 FROM sessions s
+		 JOIN users u ON s.user_id = u.id
+		 WHERE s.id = $1 AND u.id = $2 AND u.deleted_at IS NULL`,
+		sessionID, userID,
+	)
+	if err != nil {
+		return false
+	}
+	if app.SessionExp > 0 && time.Since(row.CreatedAt) > app.SessionExp {
+		return false
+	}
+	expectedPwdRev := ""
+	if row.PasswordHash != nil {
+		expectedPwdRev = ComputePasswordRevision(*row.PasswordHash)
+	}
+	return subtle.ConstantTimeCompare([]byte(expectedPwdRev), []byte(pwdRev)) == 1
+}
+
+func ValidateAPIKeyActor(app *App, ctx context.Context, apiKeyID string, dashboardID string) bool {
+	if app == nil || app.Sqlite == nil || apiKeyID == "" || app.NoAPIKeys {
+		return false
+	}
+	var exists bool
+	err := app.Sqlite.GetContext(ctx, &exists,
+		`SELECT EXISTS(SELECT 1 FROM api_keys WHERE id = $1)`,
+		apiKeyID,
+	)
+	if err != nil || !exists {
+		return false
+	}
+	actor := Actor{Type: ActorAPIKey, ID: apiKeyID}
+	if dashboardID != "" {
+		if strings.HasPrefix(dashboardID, TMP_DASHBOARD_PREFIX) {
+			return actor.HasPermission(ctx, app.Sqlite, PermissionGenerateJWT) ||
+				actor.HasPermission(ctx, app.Sqlite, PermissionReadDashboard) ||
+				actor.HasPermission(ctx, app.Sqlite, PermissionQueryData)
+		}
+		return actor.HasPermission(ctx, app.Sqlite, PermissionGenerateJWT) ||
+			actor.HasPermission(ctx, app.Sqlite, PermissionReadDashboard)
+	}
+	return true
+}
+
+func ValidatePublicShareToken(app *App, ctx context.Context, dashboardID string, shareMode string, shareRev string) bool {
+	if app == nil || app.Sqlite == nil || dashboardID == "" || shareRev == "" {
+		return false
+	}
+	if shareMode != "public" && shareMode != "password-protected" {
+		return false
+	}
+	if app.NoPublicSharing && shareMode == "public" {
+		return false
+	}
+	if app.NoPasswordProtectedSharing && shareMode == "password-protected" {
+		return false
+	}
+	dashboard, err := GetDashboardInfo(app, ctx, dashboardID)
+	if err != nil || dashboard.Visibility == nil || *dashboard.Visibility != shareMode {
+		return false
+	}
+	if shareMode == "password-protected" && (dashboard.PasswordHash == nil || *dashboard.PasswordHash == "") {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(dashboard.ShareRevision), []byte(shareRev)) == 1
+}
+
+// ValidateJWTClaims validates the claims of a parsed JWT against current server state
+// (user existence and password revision, session existence and expiry, API key existence
+// and permissions, or public dashboard share visibility and share revision) and returns
+// the resolved Actor if valid.
+func ValidateJWTClaims(app *App, ctx context.Context, claims map[string]any) *Actor {
+	if userID, ok := claims["userId"].(string); ok {
+		if userID == "" {
+			return nil
+		}
+		if app.SSOLoginURL == "" {
+			sessionID, _ := claims["sessionId"].(string)
+			pwdRev, _ := claims["pwdRev"].(string)
+			if !ValidateUserSession(app, ctx, userID, sessionID, pwdRev) {
+				return nil
+			}
+		}
+		return &Actor{
+			Type: ActorUser,
+			ID:   userID,
+		}
+	}
+
+	if apiKeyID, ok := claims["apiKeyId"].(string); ok {
+		if apiKeyID == "" || app.NoAPIKeys {
+			return nil
+		}
+		dashboardID, _ := claims["dashboardId"].(string)
+		if !ValidateAPIKeyActor(app, ctx, apiKeyID, dashboardID) {
+			return nil
+		}
+		return &Actor{
+			Type: ActorAPIKey,
+			ID:   apiKeyID,
+		}
+	}
+
+	if shareMode, ok := claims["public"].(string); ok {
+		dashboardID, _ := claims["dashboardId"].(string)
+		if shareDashID, ok := claims["shareDashboardId"].(string); ok && shareDashID != "" {
+			dashboardID = shareDashID
+		}
+		shareRev, _ := claims["shareRev"].(string)
+		if !ValidatePublicShareToken(app, ctx, dashboardID, shareMode, shareRev) {
+			return nil
+		}
+		return &Actor{
+			Type: ActorPublic,
+		}
+	}
+
+	if !app.LoginRequired {
+		return &Actor{
+			Type: ActorNoAuth,
+		}
+	}
+
+	return nil
 }
 
 func deleteExpiredSessions(app *App, userID string) (int64, error) {
@@ -351,28 +495,34 @@ func ValidToken(app *App, ctx context.Context, token string) (AuthInfo, error) {
 	if strings.HasPrefix(token, SESSION_TOKEN_PREFIX) {
 		sessionID := strings.Split(strings.TrimPrefix(token, SESSION_TOKEN_PREFIX), ".")[0]
 		var user struct {
-			ID    string `db:"id"`
-			Email string `db:"email"`
-			Name  string `db:"name"`
+			ID           string  `db:"id"`
+			Email        string  `db:"email"`
+			Name         string  `db:"name"`
+			PasswordHash *string `db:"password_hash"`
 		}
 		err := app.Sqlite.GetContext(ctx, &user,
-			`SELECT u.id, u.email, u.name
+			`SELECT u.id, u.email, u.name, u.password_hash
 			 FROM sessions s
 			 JOIN users u ON s.user_id = u.id
-			 WHERE s.id = $1`, sessionID)
+			 WHERE s.id = $1 AND u.deleted_at IS NULL`, sessionID)
 		if err == nil {
 			ok, err := validateSessionToken(app, ctx, token)
 			if err != nil {
 				return AuthInfo{}, err
 			}
 			if ok {
+				pwdRev := ""
+				if user.PasswordHash != nil {
+					pwdRev = ComputePasswordRevision(*user.PasswordHash)
+				}
 				return AuthInfo{
-					Valid:     true,
-					IsUser:    true,
-					UserID:    user.ID,
-					UserEmail: user.Email,
-					UserName:  user.Name,
-					SessionID: sessionID,
+					Valid:       true,
+					IsUser:      true,
+					UserID:      user.ID,
+					UserEmail:   user.Email,
+					UserName:    user.Name,
+					SessionID:   sessionID,
+					PasswordRev: pwdRev,
 				}, nil
 			}
 		}
