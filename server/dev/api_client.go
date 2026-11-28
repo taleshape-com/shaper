@@ -24,11 +24,9 @@ type APIClient struct {
 
 func NewAPIClient(ctx context.Context, baseURL string, auth *AuthManager) (*APIClient, error) {
 	client := &APIClient{
-		baseURL: strings.TrimSuffix(baseURL, "/"),
-		httpClient: &http.Client{
-			Timeout: 300 * time.Second,
-		},
-		auth: auth,
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		httpClient: newCLIHTTPClient(300 * time.Second),
+		auth:       auth,
 	}
 	if err := client.refreshToken(ctx); err != nil {
 		return nil, err
@@ -51,8 +49,21 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 		storedToken = token
 	}
 
+	if storedToken != "" && isJWT(storedToken) {
+		expiry, err := extractJWTExpiry(storedToken)
+		if err != nil {
+			return fmt.Errorf("failed to parse token expiry: %w", err)
+		}
+		if time.Now().After(expiry) {
+			return fmt.Errorf("authentication token expired: please run 'shaper login'")
+		}
+		c.token = storedToken
+		c.tokenExpiry = expiry
+		return nil
+	}
+
 	bodyMap := map[string]any{}
-	if storedToken != "" && !isJWT(storedToken) {
+	if storedToken != "" {
 		bodyMap["token"] = storedToken
 	}
 
@@ -65,10 +76,10 @@ func (c *APIClient) refreshToken(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to build token request: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	if storedToken != "" && isJWT(storedToken) {
-		req.Header.Set("Authorization", "Bearer "+storedToken)
+	if err := applyCustomHeaders(req); err != nil {
+		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -189,7 +200,12 @@ func (c *APIClient) authedRequest(ctx context.Context, method, path string, body
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	if err := applyCustomHeaders(req); err != nil {
+		return nil, err
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
@@ -210,6 +226,14 @@ func (c *APIClient) DoRequest(ctx context.Context, method, path string, body []b
 }
 
 func (c *APIClient) ensureValidToken(ctx context.Context) error {
+	if c.token != "" && c.auth != nil && c.auth.LoginRequired() {
+		if stored, err := c.auth.SessionToken(); err == nil && isJWT(stored) {
+			if time.Now().After(c.tokenExpiry) {
+				return fmt.Errorf("authentication token expired: please run 'shaper login'")
+			}
+			return nil
+		}
+	}
 	if c.token == "" || time.Until(c.tokenExpiry) < time.Minute {
 		return c.refreshToken(ctx)
 	}

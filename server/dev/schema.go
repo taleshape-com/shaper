@@ -18,17 +18,23 @@ func RunSchemaCommand(ctx context.Context, configPath, urlOverride, authFile str
 		return err
 	}
 
-	sysCfg, err := fetchSystemConfig(ctx, cfg.URL)
-	if err != nil {
-		return err
+	if authFile == "" {
+		authFile = defaultAuthFile
 	}
-
 	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
 	if err != nil {
 		return err
 	}
 
+	sysCfg, err := fetchSystemConfig(ctx, cfg.URL, authFilePath)
+	if err != nil {
+		return err
+	}
+
 	auth := NewAuthManager(ctx, cfg.URL, authFilePath, sysCfg.LoginRequired)
+	if err := auth.EnsureSession(); err != nil {
+		return err
+	}
 	client, err := NewAPIClient(ctx, cfg.URL, auth)
 	if err != nil {
 		return err

@@ -23,16 +23,20 @@ func RunLoginCommand(ctx context.Context, configPath, urlOverride, authFile stri
 
 	fmt.Println("Connecting to Shaper at: " + cfg.URL)
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
-	if err != nil {
-		return err
+	systemCfg, sysErr := fetchSystemConfig(ctx, cfg.URL, authFilePath)
+	if sysErr != nil && !isAuthOrProxyBlockError(sysErr) {
+		return sysErr
 	}
 
-	authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
+	loginRequired := true
+	if sysErr == nil {
+		loginRequired = systemCfg.LoginRequired
+	}
+
+	authManager := NewAuthManager(ctx, cfg.URL, authFilePath, loginRequired)
 	authManager.SetNoOpen(noOpen)
 
-	// Check if already logged in with a valid session
-	if _, err := NewAPIClient(ctx, cfg.URL, authManager); err == nil {
+	if !loginRequired {
 		fmt.Println("Already logged in.")
 		return nil
 	}

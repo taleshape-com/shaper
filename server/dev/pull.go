@@ -32,6 +32,9 @@ func RunPullCommand(ctx context.Context, configPath, urlOverride, authFile strin
 		return err
 	}
 
+	if authFile == "" {
+		authFile = defaultAuthFile
+	}
 	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
@@ -39,7 +42,7 @@ func RunPullCommand(ctx context.Context, configPath, urlOverride, authFile strin
 
 	fmt.Printf("Pulling app changes...\n\n")
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL, authFilePath)
 	if err != nil {
 		return err
 	}

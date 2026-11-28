@@ -28,7 +28,7 @@ func RunPreviewCommand(ctx context.Context, configPath, urlOverride, authFile st
 		return fmt.Errorf("failed to resolve auth file path: %w", err)
 	}
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL, authFilePath)
 	if err != nil {
 		return err
 	}

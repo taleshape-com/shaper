@@ -121,7 +121,15 @@ func RunDeployCommand(ctx context.Context, configPath, urlOverride, authFile str
 	fmt.Println("Current time: ", time.Now().Format(time.RFC3339))
 	fmt.Println()
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	if authFile == "" {
+		authFile = defaultAuthFile
+	}
+	authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve auth file path: %w", err)
+	}
+
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL, authFilePath)
 	if err != nil {
 		return err
 	}
@@ -136,10 +144,6 @@ func RunDeployCommand(ctx context.Context, configPath, urlOverride, authFile str
 			return err
 		}
 	default:
-		authFilePath, err := resolvePathRelativeToConfig(authFile, configPath)
-		if err != nil {
-			return fmt.Errorf("failed to resolve auth file path: %w", err)
-		}
 		authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
 		if systemCfg.LoginRequired {
 			if err := authManager.EnsureSession(); err != nil {
@@ -668,12 +672,10 @@ func newAPIKeyClient(baseURL, apiKey string) (*apiKeyClient, error) {
 	}
 
 	return &apiKeyClient{
-		baseURL: strings.TrimSuffix(baseURL, "/"),
-		httpClient: &http.Client{
-			Timeout: 300 * time.Second,
-		},
-		apiKey: apiKey,
-		actor:  actor,
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		httpClient: newCLIHTTPClient(300 * time.Second),
+		apiKey:     apiKey,
+		actor:      actor,
 	}, nil
 }
 
@@ -681,6 +683,9 @@ func (c *apiKeyClient) DoRequest(ctx context.Context, method, path string, body 
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
+	if err := applyCustomHeaders(req); err != nil {
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
@@ -704,10 +709,8 @@ type openDeployClient struct {
 func newOpenDeployClient(baseURL string) *openDeployClient {
 	fmt.Printf("Using unauthenticated deploy client.\n\n")
 	return &openDeployClient{
-		baseURL: strings.TrimSuffix(baseURL, "/"),
-		httpClient: &http.Client{
-			Timeout: 300 * time.Second,
-		},
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		httpClient: newCLIHTTPClient(300 * time.Second),
 	}
 }
 
@@ -719,6 +722,9 @@ func (c *openDeployClient) DoRequest(ctx context.Context, method, path string, b
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
+	if err := applyCustomHeaders(req); err != nil {
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 

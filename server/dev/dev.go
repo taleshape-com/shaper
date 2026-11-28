@@ -33,7 +33,7 @@ func RunDevCommand(ctx context.Context, configPath, urlOverride, authFile string
 
 	fmt.Println("Connecting to Shaper at: " + cfg.URL)
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL, authFilePath)
 	if err != nil {
 		return err
 	}

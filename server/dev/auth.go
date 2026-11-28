@@ -18,29 +18,143 @@ import (
 	"time"
 )
 
+const headersEnv = "SHAPER_HEADERS"
+
 type SystemConfig struct {
 	LoginRequired bool `json:"loginRequired"`
 }
 
-func fetchSystemConfig(ctx context.Context, baseURL string) (SystemConfig, error) {
+var errSystemConfigBlocked = errors.New("system config blocked by auth or proxy")
+
+func isAuthOrProxyBlockError(err error) bool {
+	return errors.Is(err, errSystemConfigBlocked)
+}
+
+func parseHeadersEnv(raw string) (map[string]string, error) {
+	headers := make(map[string]string)
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return headers, nil
+	}
+	if strings.HasPrefix(trimmed, "{") {
+		var parsed map[string]string
+		if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON headers: %w", err)
+		}
+		for k, v := range parsed {
+			key := strings.TrimSpace(k)
+			if key != "" {
+				headers[key] = v
+			}
+		}
+		return headers, nil
+	}
+
+	var parts []string
+	if strings.Contains(trimmed, "\n") {
+		parts = strings.Split(trimmed, "\n")
+	} else {
+		parts = strings.Split(trimmed, ",")
+	}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		k, v, ok := strings.Cut(part, ":")
+		if !ok {
+			return nil, fmt.Errorf("expected 'Header: Value' format, got %q", part)
+		}
+		key := strings.TrimSpace(k)
+		if key == "" {
+			return nil, fmt.Errorf("empty header name in %q", part)
+		}
+		headers[key] = strings.TrimSpace(v)
+	}
+	return headers, nil
+}
+
+func applyCustomHeaders(req *http.Request) error {
+	raw := strings.TrimSpace(os.Getenv(headersEnv))
+	if raw == "" {
+		return nil
+	}
+	headers, err := parseHeadersEnv(raw)
+	if err != nil {
+		return fmt.Errorf("invalid %s: %w", headersEnv, err)
+	}
+	for k, v := range headers {
+		if strings.EqualFold(k, "Host") {
+			req.Host = v
+		} else {
+			req.Header.Set(k, v)
+		}
+	}
+	return nil
+}
+
+func resolveAuthToken(authFile string) string {
+	if authFile != "" {
+		if tokenBytes, err := os.ReadFile(authFile); err == nil {
+			if trimmed := strings.TrimSpace(string(tokenBytes)); trimmed != "" {
+				return trimmed
+			}
+		}
+	}
+	if apiKey := strings.TrimSpace(os.Getenv(deployAPIKeyEnv)); apiKey != "" {
+		return apiKey
+	}
+	return ""
+}
+
+func newCLIHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			orig := via[0].URL
+			if !strings.EqualFold(req.URL.Scheme, orig.Scheme) || !strings.EqualFold(req.URL.Host, orig.Host) {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		},
+	}
+}
+
+func fetchSystemConfig(ctx context.Context, baseURL string, authFile ...string) (SystemConfig, error) {
 	var cfg SystemConfig
 	base := strings.TrimSuffix(baseURL, "/")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/system/config", nil)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to build system config request: %w", err)
 	}
-	client := &http.Client{Timeout: 15 * time.Second}
+	if err := applyCustomHeaders(req); err != nil {
+		return cfg, err
+	}
+	var authFilePath string
+	if len(authFile) > 0 {
+		authFilePath = authFile[0]
+	}
+	if token := resolveAuthToken(authFilePath); token != "" && req.Header.Get("Authorization") == "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	client := newCLIHTTPClient(15 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to fetch system config: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return cfg, fmt.Errorf("%w: system config request failed with status 401 Unauthorized: please run 'shaper login'", errSystemConfigBlocked)
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-		return cfg, fmt.Errorf("system config request failed with status %s: %s", resp.Status, strings.TrimSpace(string(body)))
+		return cfg, fmt.Errorf("%w: system config request failed with status %s: %s", errSystemConfigBlocked, resp.Status, strings.TrimSpace(string(body)))
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
-		return cfg, fmt.Errorf("failed to decode system config: %w", err)
+		return cfg, fmt.Errorf("%w: failed to decode system config: %w", errSystemConfigBlocked, err)
 	}
 	return cfg, nil
 }

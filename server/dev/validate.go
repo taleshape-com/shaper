@@ -25,7 +25,12 @@ func RunValidateCommand(ctx context.Context, configPath, urlOverride string, arg
 		return err
 	}
 
-	systemCfg, err := fetchSystemConfig(ctx, cfg.URL)
+	authFilePath, err := resolvePathRelativeToConfig(defaultAuthFile, configPath)
+	if err != nil {
+		return err
+	}
+
+	systemCfg, err := fetchSystemConfig(ctx, cfg.URL, authFilePath)
 	if err != nil {
 		return err
 	}
@@ -39,10 +44,6 @@ func RunValidateCommand(ctx context.Context, configPath, urlOverride string, arg
 			return err
 		}
 	} else if systemCfg.LoginRequired {
-		authFilePath, err := resolvePathRelativeToConfig(defaultAuthFile, configPath)
-		if err != nil {
-			return err
-		}
 		authManager := NewAuthManager(ctx, cfg.URL, authFilePath, systemCfg.LoginRequired)
 		if err := authManager.EnsureSession(); err != nil {
 			return err
